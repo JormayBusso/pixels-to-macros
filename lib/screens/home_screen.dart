@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/constants.dart';
 import '../core/scan_state.dart';
 import '../providers/scan_state_provider.dart';
 import '../services/database_service.dart';
+import '../services/native_bridge.dart';
 import '../models/food_data.dart';
 import '../theme/app_theme.dart';
 
@@ -22,6 +24,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   List<FoodData> _foods = [];
   bool _loading = true;
+  String? _depthMode;
 
   @override
   void initState() {
@@ -35,6 +38,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _foods = foods;
       _loading = false;
     });
+  }
+
+  Future<void> _queryDepthMode() async {
+    try {
+      final mode = await NativeBridge.instance.getDepthMode();
+      setState(() => _depthMode = mode);
+    } catch (e) {
+      setState(() => _depthMode = 'error: $e');
+    }
   }
 
   @override
@@ -149,13 +161,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             const SizedBox(height: 16),
 
-            // ── MethodChannel status ─────────────────────────────────────
+            // ── Native Bridge status ──────────────────────────────────────
             _SectionCard(
               title: 'Native Bridge',
-              child: const Text(
-                'MethodChannel "com.pixelstomacros/scanner" is configured.\n'
-                'Swift handler will be added in Step 2.',
-                style: TextStyle(fontSize: 13, height: 1.5),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _InfoRow(
+                    label: 'Channel',
+                    value: AppConstants.methodChannelName,
+                  ),
+                  const SizedBox(height: 4),
+                  _InfoRow(
+                    label: 'Depth mode',
+                    value: _depthMode ?? 'not queried',
+                  ),
+                  const SizedBox(height: 12),
+                  _SmallButton(
+                    label: 'Query depth mode',
+                    onPressed: _queryDepthMode,
+                  ),
+                ],
               ),
             ),
           ],
