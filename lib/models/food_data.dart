@@ -6,6 +6,9 @@ class FoodData {
   final double densityMax; // g/cm³
   final double kcalPer100g;
   final String category;
+  final double proteinPer100g;
+  final double carbsPer100g;
+  final double fatPer100g;
 
   const FoodData({
     this.id,
@@ -14,6 +17,9 @@ class FoodData {
     required this.densityMax,
     required this.kcalPer100g,
     required this.category,
+    this.proteinPer100g = 0,
+    this.carbsPer100g = 0,
+    this.fatPer100g = 0,
   });
 
   /// Create a [FoodData] from a SQLite row map.
@@ -25,6 +31,9 @@ class FoodData {
       densityMax: (map['density_max'] as num).toDouble(),
       kcalPer100g: (map['kcal_per_100g'] as num).toDouble(),
       category: map['category'] as String,
+      proteinPer100g: (map['protein_per_100g'] as num? ?? 0).toDouble(),
+      carbsPer100g: (map['carbs_per_100g'] as num? ?? 0).toDouble(),
+      fatPer100g: (map['fat_per_100g'] as num? ?? 0).toDouble(),
     );
   }
 
@@ -37,6 +46,9 @@ class FoodData {
       'density_max': densityMax,
       'kcal_per_100g': kcalPer100g,
       'category': category,
+      'protein_per_100g': proteinPer100g,
+      'carbs_per_100g': carbsPer100g,
+      'fat_per_100g': fatPer100g,
     };
   }
 

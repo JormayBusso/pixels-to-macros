@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../services/database_service.dart';
 
-/// Provides the user's preferences (name, calorie goal, onboarding status).
+/// Provides the user's preferences (name, calorie goal, onboarding status, nutrition goal).
 class UserPrefsNotifier extends StateNotifier<UserPreferences> {
   UserPrefsNotifier() : super(const UserPreferences());
 
@@ -20,11 +21,36 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
   Future<void> completeOnboarding({
     required String name,
     required int dailyCalorieGoal,
+    required NutritionGoalType nutritionGoal,
+    required int dailyCarbLimitG,
+    required int dailyProteinTargetG,
+    required int dailyFatTargetG,
   }) async {
     final prefs = state.copyWith(
       name: name,
       dailyCalorieGoal: dailyCalorieGoal,
       onboardingComplete: true,
+      nutritionGoal: nutritionGoal,
+      dailyCarbLimitG: dailyCarbLimitG,
+      dailyProteinTargetG: dailyProteinTargetG,
+      dailyFatTargetG: dailyFatTargetG,
+    );
+    await update(prefs);
+  }
+
+  Future<void> setGoal({
+    required NutritionGoalType nutritionGoal,
+    required int dailyCalorieGoal,
+    required int dailyCarbLimitG,
+    required int dailyProteinTargetG,
+    required int dailyFatTargetG,
+  }) async {
+    final prefs = state.copyWith(
+      nutritionGoal: nutritionGoal,
+      dailyCalorieGoal: dailyCalorieGoal,
+      dailyCarbLimitG: dailyCarbLimitG,
+      dailyProteinTargetG: dailyProteinTargetG,
+      dailyFatTargetG: dailyFatTargetG,
     );
     await update(prefs);
   }

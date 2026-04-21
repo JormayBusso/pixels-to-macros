@@ -38,7 +38,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -48,12 +48,15 @@ class DatabaseService {
     // food_data — reference table
     await db.execute('''
       CREATE TABLE food_data (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        label         TEXT    NOT NULL UNIQUE,
-        density_min   REAL    NOT NULL,
-        density_max   REAL    NOT NULL,
-        kcal_per_100g REAL    NOT NULL,
-        category      TEXT    NOT NULL
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        label            TEXT    NOT NULL UNIQUE,
+        density_min      REAL    NOT NULL,
+        density_max      REAL    NOT NULL,
+        kcal_per_100g    REAL    NOT NULL,
+        category         TEXT    NOT NULL,
+        protein_per_100g REAL    NOT NULL DEFAULT 0,
+        carbs_per_100g   REAL    NOT NULL DEFAULT 0,
+        fat_per_100g     REAL    NOT NULL DEFAULT 0
       )
     ''');
 
@@ -94,7 +97,11 @@ class DatabaseService {
         name                     TEXT    NOT NULL DEFAULT '',
         daily_calorie_goal       INTEGER NOT NULL DEFAULT 2000,
         onboarding_complete      INTEGER NOT NULL DEFAULT 0,
-        has_seen_scan_tutorial   INTEGER NOT NULL DEFAULT 0
+        has_seen_scan_tutorial   INTEGER NOT NULL DEFAULT 0,
+        nutrition_goal           TEXT    NOT NULL DEFAULT 'maintain',
+        daily_carb_limit_g       INTEGER NOT NULL DEFAULT 250,
+        daily_protein_target_g   INTEGER NOT NULL DEFAULT 80,
+        daily_fat_target_g       INTEGER NOT NULL DEFAULT 65
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
@@ -207,10 +214,66 @@ class DatabaseService {
         await db.execute(
           'ALTER TABLE benchmarks ADD COLUMN peak_memory_bytes INTEGER NOT NULL DEFAULT 0',
         );
-      } catch (_) {
-        // Column already exists from fresh v7 install
+      } catch (_) {}
+    }
+    if (oldVersion < 8) {
+      // Macro columns for food_data
+      for (final col in [
+        'protein_per_100g REAL NOT NULL DEFAULT 0',
+        'carbs_per_100g   REAL NOT NULL DEFAULT 0',
+        'fat_per_100g     REAL NOT NULL DEFAULT 0',
+      ]) {
+        try { await db.execute('ALTER TABLE food_data ADD COLUMN $col'); } catch (_) {}
+      }
+      // Backfill macro values for existing seed foods
+      await _backfillMacros(db);
+      // Goal columns for user_preferences
+      for (final col in [
+        "nutrition_goal TEXT NOT NULL DEFAULT 'maintain'",
+        'daily_carb_limit_g INTEGER NOT NULL DEFAULT 250',
+        'daily_protein_target_g INTEGER NOT NULL DEFAULT 80',
+        'daily_fat_target_g INTEGER NOT NULL DEFAULT 65',
+      ]) {
+        try { await db.execute('ALTER TABLE user_preferences ADD COLUMN $col'); } catch (_) {}
       }
     }
+  }
+
+  /// Updates protein/carbs/fat for foods that were seeded before v8.
+  Future<void> _backfillMacros(Database db) async {
+    const updates = [
+      ('Apple',      0.3,  14.0,  0.2), ('Banana',     1.1,  23.0,  0.3),
+      ('Orange',     0.9,  12.0,  0.1), ('Strawberry', 0.7,   7.7,  0.3),
+      ('Grapes',     0.7,  18.0,  0.2), ('Watermelon', 0.6,   7.6,  0.2),
+      ('Mango',      0.8,  15.0,  0.4), ('Pineapple',  0.5,  13.0,  0.1),
+      ('Broccoli',   2.8,   7.2,  0.4), ('Carrot',     0.9,  10.0,  0.2),
+      ('Tomato',     0.9,   3.9,  0.2), ('Cucumber',   0.7,   3.6,  0.1),
+      ('Lettuce',    1.4,   2.9,  0.2), ('Potato',     2.0,  17.0,  0.1),
+      ('Sweet Potato',1.6, 20.0,  0.1), ('Spinach',    2.9,   3.6,  0.4),
+      ('Bell Pepper',1.0,   6.0,  0.3), ('Onion',      1.1,   9.3,  0.1),
+      ('Rice',       2.7,  28.0,  0.3), ('Pasta',      5.1,  25.0,  0.9),
+      ('Bread',      9.0,  49.0,  3.2), ('Noodles',    4.5,  25.0,  1.0),
+      ('Oatmeal',    2.5,  12.0,  1.5), ('Corn',       3.3,  19.0,  1.4),
+      ('Chicken',   31.0,   0.0,  3.6), ('Beef',      26.0,   0.0, 17.0),
+      ('Pork',      25.0,   0.0, 14.0), ('Fish',      22.0,   0.0, 12.0),
+      ('Salmon',    20.0,   0.0, 13.0), ('Shrimp',    20.0,   0.9,  1.7),
+      ('Egg',       13.0,   1.1, 11.0), ('Tofu',       8.1,   2.0,  4.2),
+      ('Cheese',    25.0,   1.3, 33.0), ('Yogurt',    10.0,   3.6,  0.4),
+      ('Salad',      1.5,   3.0,  0.5), ('Soup',       2.0,   6.0,  1.5),
+      ('Stew',       8.0,  10.0,  4.0), ('Curry',      7.0,  12.0,  5.0),
+      ('Pizza',     11.0,  33.0, 10.0), ('Sushi',      6.7,  19.0,  5.0),
+      ('Fries',      3.4,  41.0, 15.0), ('Cake',       4.5,  55.0, 14.0),
+    ];
+    final batch = db.batch();
+    for (final (label, p, c, f) in updates) {
+      batch.update(
+        'food_data',
+        {'protein_per_100g': p, 'carbs_per_100g': c, 'fat_per_100g': f},
+        where: 'label = ?',
+        whereArgs: [label],
+      );
+    }
+    await batch.commit(noResult: true);
   }
 
   // ── Seed data (42 items across 6 categories) ────────────────────────────
@@ -218,58 +281,58 @@ class DatabaseService {
   Future<void> _seed(Database db) async {
     const seeds = [
       // ── Fruits ──────────────────────────────────────────────────────────
-      FoodData(label: 'Apple', densityMin: 0.75, densityMax: 0.85, kcalPer100g: 52, category: 'fruit'),
-      FoodData(label: 'Banana', densityMin: 0.80, densityMax: 0.95, kcalPer100g: 89, category: 'fruit'),
-      FoodData(label: 'Orange', densityMin: 0.75, densityMax: 0.85, kcalPer100g: 47, category: 'fruit'),
-      FoodData(label: 'Strawberry', densityMin: 0.55, densityMax: 0.65, kcalPer100g: 32, category: 'fruit'),
-      FoodData(label: 'Grapes', densityMin: 0.80, densityMax: 0.90, kcalPer100g: 69, category: 'fruit'),
-      FoodData(label: 'Watermelon', densityMin: 0.60, densityMax: 0.70, kcalPer100g: 30, category: 'fruit'),
-      FoodData(label: 'Mango', densityMin: 0.75, densityMax: 0.85, kcalPer100g: 60, category: 'fruit'),
-      FoodData(label: 'Pineapple', densityMin: 0.70, densityMax: 0.80, kcalPer100g: 50, category: 'fruit'),
+      FoodData(label: 'Apple',      densityMin: 0.75, densityMax: 0.85, kcalPer100g:  52, category: 'fruit',     proteinPer100g: 0.3, carbsPer100g: 14.0, fatPer100g: 0.2),
+      FoodData(label: 'Banana',     densityMin: 0.80, densityMax: 0.95, kcalPer100g:  89, category: 'fruit',     proteinPer100g: 1.1, carbsPer100g: 23.0, fatPer100g: 0.3),
+      FoodData(label: 'Orange',     densityMin: 0.75, densityMax: 0.85, kcalPer100g:  47, category: 'fruit',     proteinPer100g: 0.9, carbsPer100g: 12.0, fatPer100g: 0.1),
+      FoodData(label: 'Strawberry', densityMin: 0.55, densityMax: 0.65, kcalPer100g:  32, category: 'fruit',     proteinPer100g: 0.7, carbsPer100g:  7.7, fatPer100g: 0.3),
+      FoodData(label: 'Grapes',     densityMin: 0.80, densityMax: 0.90, kcalPer100g:  69, category: 'fruit',     proteinPer100g: 0.7, carbsPer100g: 18.0, fatPer100g: 0.2),
+      FoodData(label: 'Watermelon', densityMin: 0.60, densityMax: 0.70, kcalPer100g:  30, category: 'fruit',     proteinPer100g: 0.6, carbsPer100g:  7.6, fatPer100g: 0.2),
+      FoodData(label: 'Mango',      densityMin: 0.75, densityMax: 0.85, kcalPer100g:  60, category: 'fruit',     proteinPer100g: 0.8, carbsPer100g: 15.0, fatPer100g: 0.4),
+      FoodData(label: 'Pineapple',  densityMin: 0.70, densityMax: 0.80, kcalPer100g:  50, category: 'fruit',     proteinPer100g: 0.5, carbsPer100g: 13.0, fatPer100g: 0.1),
 
       // ── Vegetables ──────────────────────────────────────────────────────
-      FoodData(label: 'Broccoli', densityMin: 0.40, densityMax: 0.55, kcalPer100g: 34, category: 'vegetable'),
-      FoodData(label: 'Carrot', densityMin: 0.85, densityMax: 0.95, kcalPer100g: 41, category: 'vegetable'),
-      FoodData(label: 'Tomato', densityMin: 0.70, densityMax: 0.80, kcalPer100g: 18, category: 'vegetable'),
-      FoodData(label: 'Cucumber', densityMin: 0.60, densityMax: 0.70, kcalPer100g: 15, category: 'vegetable'),
-      FoodData(label: 'Lettuce', densityMin: 0.20, densityMax: 0.35, kcalPer100g: 15, category: 'vegetable'),
-      FoodData(label: 'Potato', densityMin: 0.90, densityMax: 1.05, kcalPer100g: 77, category: 'vegetable'),
-      FoodData(label: 'Sweet Potato', densityMin: 0.85, densityMax: 1.00, kcalPer100g: 86, category: 'vegetable'),
-      FoodData(label: 'Spinach', densityMin: 0.25, densityMax: 0.40, kcalPer100g: 23, category: 'vegetable'),
-      FoodData(label: 'Bell Pepper', densityMin: 0.45, densityMax: 0.55, kcalPer100g: 31, category: 'vegetable'),
-      FoodData(label: 'Onion', densityMin: 0.85, densityMax: 0.95, kcalPer100g: 40, category: 'vegetable'),
+      FoodData(label: 'Broccoli',     densityMin: 0.40, densityMax: 0.55, kcalPer100g:  34, category: 'vegetable', proteinPer100g: 2.8, carbsPer100g:  7.2, fatPer100g: 0.4),
+      FoodData(label: 'Carrot',       densityMin: 0.85, densityMax: 0.95, kcalPer100g:  41, category: 'vegetable', proteinPer100g: 0.9, carbsPer100g: 10.0, fatPer100g: 0.2),
+      FoodData(label: 'Tomato',       densityMin: 0.70, densityMax: 0.80, kcalPer100g:  18, category: 'vegetable', proteinPer100g: 0.9, carbsPer100g:  3.9, fatPer100g: 0.2),
+      FoodData(label: 'Cucumber',     densityMin: 0.60, densityMax: 0.70, kcalPer100g:  15, category: 'vegetable', proteinPer100g: 0.7, carbsPer100g:  3.6, fatPer100g: 0.1),
+      FoodData(label: 'Lettuce',      densityMin: 0.20, densityMax: 0.35, kcalPer100g:  15, category: 'vegetable', proteinPer100g: 1.4, carbsPer100g:  2.9, fatPer100g: 0.2),
+      FoodData(label: 'Potato',       densityMin: 0.90, densityMax: 1.05, kcalPer100g:  77, category: 'vegetable', proteinPer100g: 2.0, carbsPer100g: 17.0, fatPer100g: 0.1),
+      FoodData(label: 'Sweet Potato', densityMin: 0.85, densityMax: 1.00, kcalPer100g:  86, category: 'vegetable', proteinPer100g: 1.6, carbsPer100g: 20.0, fatPer100g: 0.1),
+      FoodData(label: 'Spinach',      densityMin: 0.25, densityMax: 0.40, kcalPer100g:  23, category: 'vegetable', proteinPer100g: 2.9, carbsPer100g:  3.6, fatPer100g: 0.4),
+      FoodData(label: 'Bell Pepper',  densityMin: 0.45, densityMax: 0.55, kcalPer100g:  31, category: 'vegetable', proteinPer100g: 1.0, carbsPer100g:  6.0, fatPer100g: 0.3),
+      FoodData(label: 'Onion',        densityMin: 0.85, densityMax: 0.95, kcalPer100g:  40, category: 'vegetable', proteinPer100g: 1.1, carbsPer100g:  9.3, fatPer100g: 0.1),
 
       // ── Grains & Starches ───────────────────────────────────────────────
-      FoodData(label: 'Rice', densityMin: 0.75, densityMax: 0.90, kcalPer100g: 130, category: 'grain'),
-      FoodData(label: 'Pasta', densityMin: 0.80, densityMax: 0.95, kcalPer100g: 131, category: 'grain'),
-      FoodData(label: 'Bread', densityMin: 0.30, densityMax: 0.45, kcalPer100g: 265, category: 'grain'),
-      FoodData(label: 'Noodles', densityMin: 0.70, densityMax: 0.85, kcalPer100g: 138, category: 'grain'),
-      FoodData(label: 'Oatmeal', densityMin: 0.65, densityMax: 0.80, kcalPer100g: 71, category: 'grain'),
-      FoodData(label: 'Corn', densityMin: 0.70, densityMax: 0.85, kcalPer100g: 86, category: 'grain'),
+      FoodData(label: 'Rice',       densityMin: 0.75, densityMax: 0.90, kcalPer100g: 130, category: 'grain', proteinPer100g:  2.7, carbsPer100g: 28.0, fatPer100g: 0.3),
+      FoodData(label: 'Pasta',      densityMin: 0.80, densityMax: 0.95, kcalPer100g: 131, category: 'grain', proteinPer100g:  5.1, carbsPer100g: 25.0, fatPer100g: 0.9),
+      FoodData(label: 'Bread',      densityMin: 0.30, densityMax: 0.45, kcalPer100g: 265, category: 'grain', proteinPer100g:  9.0, carbsPer100g: 49.0, fatPer100g: 3.2),
+      FoodData(label: 'Noodles',    densityMin: 0.70, densityMax: 0.85, kcalPer100g: 138, category: 'grain', proteinPer100g:  4.5, carbsPer100g: 25.0, fatPer100g: 1.0),
+      FoodData(label: 'Oatmeal',    densityMin: 0.65, densityMax: 0.80, kcalPer100g:  71, category: 'grain', proteinPer100g:  2.5, carbsPer100g: 12.0, fatPer100g: 1.5),
+      FoodData(label: 'Corn',       densityMin: 0.70, densityMax: 0.85, kcalPer100g:  86, category: 'grain', proteinPer100g:  3.3, carbsPer100g: 19.0, fatPer100g: 1.4),
 
       // ── Proteins ────────────────────────────────────────────────────────
-      FoodData(label: 'Chicken', densityMin: 1.00, densityMax: 1.10, kcalPer100g: 165, category: 'protein'),
-      FoodData(label: 'Beef', densityMin: 1.00, densityMax: 1.15, kcalPer100g: 250, category: 'protein'),
-      FoodData(label: 'Pork', densityMin: 1.00, densityMax: 1.10, kcalPer100g: 242, category: 'protein'),
-      FoodData(label: 'Fish', densityMin: 0.95, densityMax: 1.05, kcalPer100g: 206, category: 'protein'),
-      FoodData(label: 'Salmon', densityMin: 0.95, densityMax: 1.05, kcalPer100g: 208, category: 'protein'),
-      FoodData(label: 'Shrimp', densityMin: 0.90, densityMax: 1.00, kcalPer100g: 99, category: 'protein'),
-      FoodData(label: 'Egg', densityMin: 0.95, densityMax: 1.05, kcalPer100g: 155, category: 'protein'),
-      FoodData(label: 'Tofu', densityMin: 0.90, densityMax: 1.00, kcalPer100g: 76, category: 'protein'),
+      FoodData(label: 'Chicken', densityMin: 1.00, densityMax: 1.10, kcalPer100g: 165, category: 'protein', proteinPer100g: 31.0, carbsPer100g:  0.0, fatPer100g:  3.6),
+      FoodData(label: 'Beef',    densityMin: 1.00, densityMax: 1.15, kcalPer100g: 250, category: 'protein', proteinPer100g: 26.0, carbsPer100g:  0.0, fatPer100g: 17.0),
+      FoodData(label: 'Pork',    densityMin: 1.00, densityMax: 1.10, kcalPer100g: 242, category: 'protein', proteinPer100g: 25.0, carbsPer100g:  0.0, fatPer100g: 14.0),
+      FoodData(label: 'Fish',    densityMin: 0.95, densityMax: 1.05, kcalPer100g: 206, category: 'protein', proteinPer100g: 22.0, carbsPer100g:  0.0, fatPer100g: 12.0),
+      FoodData(label: 'Salmon',  densityMin: 0.95, densityMax: 1.05, kcalPer100g: 208, category: 'protein', proteinPer100g: 20.0, carbsPer100g:  0.0, fatPer100g: 13.0),
+      FoodData(label: 'Shrimp',  densityMin: 0.90, densityMax: 1.00, kcalPer100g:  99, category: 'protein', proteinPer100g: 20.0, carbsPer100g:  0.9, fatPer100g:  1.7),
+      FoodData(label: 'Egg',     densityMin: 0.95, densityMax: 1.05, kcalPer100g: 155, category: 'protein', proteinPer100g: 13.0, carbsPer100g:  1.1, fatPer100g: 11.0),
+      FoodData(label: 'Tofu',    densityMin: 0.90, densityMax: 1.00, kcalPer100g:  76, category: 'protein', proteinPer100g:  8.1, carbsPer100g:  2.0, fatPer100g:  4.2),
 
       // ── Dairy ───────────────────────────────────────────────────────────
-      FoodData(label: 'Cheese', densityMin: 1.00, densityMax: 1.15, kcalPer100g: 402, category: 'dairy'),
-      FoodData(label: 'Yogurt', densityMin: 1.00, densityMax: 1.10, kcalPer100g: 59, category: 'dairy'),
+      FoodData(label: 'Cheese', densityMin: 1.00, densityMax: 1.15, kcalPer100g: 402, category: 'dairy', proteinPer100g: 25.0, carbsPer100g:  1.3, fatPer100g: 33.0),
+      FoodData(label: 'Yogurt', densityMin: 1.00, densityMax: 1.10, kcalPer100g:  59, category: 'dairy', proteinPer100g: 10.0, carbsPer100g:  3.6, fatPer100g:  0.4),
 
       // ── Mixed / Prepared ────────────────────────────────────────────────
-      FoodData(label: 'Salad', densityMin: 0.25, densityMax: 0.45, kcalPer100g: 20, category: 'mixed'),
-      FoodData(label: 'Soup', densityMin: 0.95, densityMax: 1.05, kcalPer100g: 40, category: 'mixed'),
-      FoodData(label: 'Stew', densityMin: 0.90, densityMax: 1.05, kcalPer100g: 90, category: 'mixed'),
-      FoodData(label: 'Curry', densityMin: 0.90, densityMax: 1.05, kcalPer100g: 110, category: 'mixed'),
-      FoodData(label: 'Pizza', densityMin: 0.60, densityMax: 0.80, kcalPer100g: 266, category: 'mixed'),
-      FoodData(label: 'Sushi', densityMin: 0.85, densityMax: 1.00, kcalPer100g: 143, category: 'mixed'),
-      FoodData(label: 'Fries', densityMin: 0.45, densityMax: 0.60, kcalPer100g: 312, category: 'mixed'),
-      FoodData(label: 'Cake', densityMin: 0.55, densityMax: 0.70, kcalPer100g: 347, category: 'mixed'),
+      FoodData(label: 'Salad', densityMin: 0.25, densityMax: 0.45, kcalPer100g:  20, category: 'mixed', proteinPer100g:  1.5, carbsPer100g:  3.0, fatPer100g:  0.5),
+      FoodData(label: 'Soup',  densityMin: 0.95, densityMax: 1.05, kcalPer100g:  40, category: 'mixed', proteinPer100g:  2.0, carbsPer100g:  6.0, fatPer100g:  1.5),
+      FoodData(label: 'Stew',  densityMin: 0.90, densityMax: 1.05, kcalPer100g:  90, category: 'mixed', proteinPer100g:  8.0, carbsPer100g: 10.0, fatPer100g:  4.0),
+      FoodData(label: 'Curry', densityMin: 0.90, densityMax: 1.05, kcalPer100g: 110, category: 'mixed', proteinPer100g:  7.0, carbsPer100g: 12.0, fatPer100g:  5.0),
+      FoodData(label: 'Pizza', densityMin: 0.60, densityMax: 0.80, kcalPer100g: 266, category: 'mixed', proteinPer100g: 11.0, carbsPer100g: 33.0, fatPer100g: 10.0),
+      FoodData(label: 'Sushi', densityMin: 0.85, densityMax: 1.00, kcalPer100g: 143, category: 'mixed', proteinPer100g:  6.7, carbsPer100g: 19.0, fatPer100g:  5.0),
+      FoodData(label: 'Fries', densityMin: 0.45, densityMax: 0.60, kcalPer100g: 312, category: 'mixed', proteinPer100g:  3.4, carbsPer100g: 41.0, fatPer100g: 15.0),
+      FoodData(label: 'Cake',  densityMin: 0.55, densityMax: 0.70, kcalPer100g: 347, category: 'mixed', proteinPer100g:  4.5, carbsPer100g: 55.0, fatPer100g: 14.0),
     ];
 
     final batch = db.batch();

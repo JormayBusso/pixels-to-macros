@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/nutrition_goal.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
+import '../providers/recommendations_provider.dart';
 import '../providers/streak_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/debug_log.dart';
 import '../theme/app_theme.dart';
+import '../widgets/goal_mascot_widget.dart';
 import 'debug_screen.dart';
 import 'scan_detail_screen.dart';
 
@@ -117,6 +120,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(height: 16),
 
+              // ── Goal mascot card ─────────────────────────────────────
+              _GoalProgressCard(prefs: prefs, intake: intake),
+              const SizedBox(height: 16),
+
               // ── Streak card ──────────────────────────────────────────
               _StreakCard(streak: streak),
               const SizedBox(height: 16),
@@ -193,6 +200,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                 ),
+              const SizedBox(height: 16),
+
+              // ── Recommendations ───────────────────────────────────────
+              _RecommendationsCard(),
               const SizedBox(height: 16),
 
               // ── Recent scans ─────────────────────────────────────────
@@ -565,6 +576,264 @@ class _StreakCard extends StatelessWidget {
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Goal progress card ────────────────────────────────────────────────────────
+
+class _GoalProgressCard extends StatelessWidget {
+  const _GoalProgressCard({required this.prefs, required this.intake});
+  final dynamic prefs;  // UserPreferences
+  final dynamic intake; // DailyIntake
+
+  @override
+  Widget build(BuildContext context) {
+    final goal     = prefs.nutritionGoal as NutritionGoalType;
+    final kcalGoal = (prefs.dailyCalorieGoal as int).toDouble();
+    final carbLim  = (prefs.dailyCarbLimitG as int).toDouble();
+    final protGoal = (prefs.dailyProteinTargetG as int).toDouble();
+    final fatGoal  = (prefs.dailyFatTargetG as int).toDouble();
+
+    final kcalProgress = kcalGoal > 0 ? intake.caloriesAvg / kcalGoal : 0.0;
+    final carbStress   = carbLim  > 0 ? intake.carbsG   / carbLim  : 0.0;
+
+    // For keto/diabetes use carb stress; for others use calorie progress
+    final mascotProgress = (goal == NutritionGoalType.keto ||
+            goal == NutritionGoalType.diabetes)
+        ? carbStress
+        : kcalProgress;
+
+    final stageName = GoalDefaults.mascotStageName(goal, mascotProgress);
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          // Header
+          Container(
+            width: double.infinity,
+            color: goal.lightColor,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                Text(goal.emoji, style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Text(
+                  goal.label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: goal.color,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  stageName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: goal.color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Mascot
+                GoalMascotWidget(
+                  goalType: goal,
+                  progress: kcalProgress,
+                  stressLevel: carbStress,
+                ),
+                const SizedBox(width: 16),
+
+                // Stats
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _MacroRow(
+                        label: '🔥 Calories',
+                        current: intake.caloriesAvg.round(),
+                        target: prefs.dailyCalorieGoal as int,
+                        unit: 'kcal',
+                        color: goal.color,
+                      ),
+                      const SizedBox(height: 8),
+                      _MacroRow(
+                        label: '💪 Protein',
+                        current: intake.proteinG.round(),
+                        target: prefs.dailyProteinTargetG as int,
+                        unit: 'g',
+                        color: Colors.red.shade500,
+                      ),
+                      const SizedBox(height: 8),
+                      _MacroRow(
+                        label: '🍞 Carbs',
+                        current: intake.carbsG.round(),
+                        target: prefs.dailyCarbLimitG as int,
+                        unit: 'g',
+                        color: Colors.amber.shade700,
+                        isLimit: true,
+                      ),
+                      const SizedBox(height: 8),
+                      _MacroRow(
+                        label: '🥑 Fat',
+                        current: intake.fatG.round(),
+                        target: prefs.dailyFatTargetG as int,
+                        unit: 'g',
+                        color: Colors.green.shade600,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MacroRow extends StatelessWidget {
+  const _MacroRow({
+    required this.label,
+    required this.current,
+    required this.target,
+    required this.unit,
+    required this.color,
+    this.isLimit = false,
+  });
+  final String label;
+  final int current;
+  final int target;
+  final String unit;
+  final Color color;
+  final bool isLimit;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = target > 0 ? (current / target).clamp(0.0, 1.0) : 0.0;
+    final isOver = isLimit && current > target;
+    final barColor = isOver ? Colors.red.shade500 : color;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(label,
+                style: const TextStyle(fontSize: 11, color: AppTheme.gray600)),
+            const Spacer(),
+            Text(
+              '$current / $target $unit',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isOver ? Colors.red.shade600 : AppTheme.gray700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: ratio,
+            backgroundColor: barColor.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation(barColor),
+            minHeight: 6,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Recommendations card ──────────────────────────────────────────────────────
+
+class _RecommendationsCard extends ConsumerWidget {
+  const _RecommendationsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(recommendationsProvider);
+
+    if (state.recs.isEmpty) return const SizedBox.shrink();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.lightbulb_outline,
+                    size: 18, color: AppTheme.amber600),
+                SizedBox(width: 6),
+                Text(
+                  'Smart Recommendations',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: AppTheme.gray900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...state.recs.map((rec) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: rec.color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(rec.icon, size: 16, color: rec.color),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              rec.message,
+                              style: const TextStyle(
+                                  fontSize: 13, height: 1.4),
+                            ),
+                            if (rec.suggestion != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                rec.suggestion!,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.gray400,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
           ],
         ),
       ),
