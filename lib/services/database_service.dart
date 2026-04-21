@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../core/constants.dart';
 import '../models/food_data.dart';
+import '../models/ground_truth.dart';
 import '../models/scan_result.dart';
 import '../models/user_preferences.dart';
 
@@ -14,6 +15,7 @@ import '../models/user_preferences.dart';
 ///   • scan_results – historical scan metadata
 ///   • detected_foods – per-scan detected items
 ///   • user_preferences – name, calorie goal, onboarding flag
+///   • ground_truth    – actual weighed measurements for evaluation
 class DatabaseService {
   DatabaseService._();
   static final DatabaseService instance = DatabaseService._();
@@ -34,7 +36,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -90,6 +92,21 @@ class DatabaseService {
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
+
+    // ground_truth — actual measurements for evaluation
+    await db.execute('''
+      CREATE TABLE ground_truth (
+        id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+        detected_food_id     INTEGER NOT NULL,
+        scan_id              INTEGER NOT NULL,
+        actual_weight_grams  REAL    NOT NULL,
+        actual_calories      REAL,
+        notes                TEXT,
+        timestamp            TEXT    NOT NULL,
+        FOREIGN KEY (detected_food_id) REFERENCES detected_foods(id) ON DELETE CASCADE,
+        FOREIGN KEY (scan_id) REFERENCES scan_results(id) ON DELETE CASCADE
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -120,6 +137,21 @@ class DatabaseService {
       } catch (_) {
         // Column already exists from fresh v4 install — ignore
       }
+    }
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ground_truth (
+          id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+          detected_food_id     INTEGER NOT NULL,
+          scan_id              INTEGER NOT NULL,
+          actual_weight_grams  REAL    NOT NULL,
+          actual_calories      REAL,
+          notes                TEXT,
+          timestamp            TEXT    NOT NULL,
+          FOREIGN KEY (detected_food_id) REFERENCES detected_foods(id) ON DELETE CASCADE,
+          FOREIGN KEY (scan_id) REFERENCES scan_results(id) ON DELETE CASCADE
+        )
+      ''');
     }
   }
 
@@ -305,5 +337,45 @@ class DatabaseService {
         whereArgs: [rows.first['id']],
       );
     }
+  }
+
+  // ── ground_truth CRUD ────────────────────────────────────────────────────
+
+  Future<int> insertGroundTruth(GroundTruth gt) async {
+    final db = await database;
+    return db.insert('ground_truth', gt.toMap());
+  }
+
+  Future<List<GroundTruth>> getGroundTruthForScan(int scanId) async {
+    final db = await database;
+    final rows = await db.query(
+      'ground_truth',
+      where: 'scan_id = ?',
+      whereArgs: [scanId],
+    );
+    return rows.map(GroundTruth.fromMap).toList();
+  }
+
+  Future<GroundTruth?> getGroundTruthForFood(int detectedFoodId) async {
+    final db = await database;
+    final rows = await db.query(
+      'ground_truth',
+      where: 'detected_food_id = ?',
+      whereArgs: [detectedFoodId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return GroundTruth.fromMap(rows.first);
+  }
+
+  Future<List<GroundTruth>> getAllGroundTruths() async {
+    final db = await database;
+    final rows = await db.query('ground_truth', orderBy: 'timestamp DESC');
+    return rows.map(GroundTruth.fromMap).toList();
+  }
+
+  Future<void> deleteGroundTruth(int gtId) async {
+    final db = await database;
+    await db.delete('ground_truth', where: 'id = ?', whereArgs: [gtId]);
   }
 }

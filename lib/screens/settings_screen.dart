@@ -5,6 +5,7 @@ import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
+import 'eval_dashboard_screen.dart';
 import 'food_database_screen.dart';
 
 /// Settings screen for editing user profile and calorie goal.
@@ -153,7 +154,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _InfoRow(
                       icon: Icons.storage,
                       label: 'Database version',
-                      value: '4',
+                      value: '5',
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -164,6 +165,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const FoodDatabaseScreen(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── About ────────────────────────────────────────────────
+            _SectionHeader('Evaluation'),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Scientific evaluation tools for thesis research.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.gray400,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.science),
+                        label: const Text('Evaluation Dashboard'),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const EvalDashboardScreen(),
                           ),
                         ),
                       ),

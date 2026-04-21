@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/scan_result.dart';
@@ -7,6 +8,7 @@ import '../providers/history_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
 import 'edit_food_screen.dart';
+import 'ground_truth_screen.dart';
 
 /// Detail view for a single scan result.
 class ScanDetailScreen extends ConsumerStatefulWidget {
@@ -45,6 +47,18 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
     if (edited == true) {
       await _refresh();
     }
+  }
+
+  void _recordGroundTruth(DetectedFood food) async {
+    if (_scan.id == null || food.id == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GroundTruthScreen(
+          scanId: _scan.id!,
+          food: food,
+        ),
+      ),
+    );
   }
 
   @override
@@ -156,9 +170,10 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          ..._scan.foods.map((f) => GestureDetector(
-                onTap: () => _editFood(f),
-                child: _FoodDetailCard(food: f),
+          ..._scan.foods.map((f) => _FoodDetailRow(
+                food: f,
+                onEdit: () => _editFood(f),
+                onGroundTruth: () => _recordGroundTruth(f),
               )),
 
           // Tap hint
@@ -166,7 +181,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 4, bottom: 8),
               child: Text(
-                'Tap a food to edit',
+                'Tap to edit  •  Long-press for ground truth',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 11, color: AppTheme.gray400),
               ),
@@ -316,6 +331,29 @@ class _InfoChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FoodDetailRow extends StatelessWidget {
+  const _FoodDetailRow({
+    required this.food,
+    required this.onEdit,
+    required this.onGroundTruth,
+  });
+  final DetectedFood food;
+  final VoidCallback onEdit;
+  final VoidCallback onGroundTruth;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onEdit,
+      onLongPress: () {
+        HapticFeedback.mediumImpact();
+        onGroundTruth();
+      },
+      child: _FoodDetailCard(food: food),
     );
   }
 }

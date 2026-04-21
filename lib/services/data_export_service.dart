@@ -3,6 +3,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
 import '../models/scan_result.dart';
+import '../models/ground_truth.dart';
 import '../services/database_service.dart';
 
 /// Exports scan history to CSV format (Part 16 — evaluation support).
@@ -85,6 +86,70 @@ class DataExportService {
   /// Copy CSV to clipboard.
   Future<void> copyToClipboard(String csv) async {
     await Clipboard.setData(ClipboardData(text: csv));
+  }
+
+  /// Generate evaluation CSV pairing predicted vs actual values.
+  ///
+  /// Includes all food items that have ground truth entries, with
+  /// columns for predicted min/max/avg, actual weight/calories,
+  /// absolute error, percentage error, and whether actual is in range.
+  Future<String> exportEvaluationCsv() async {
+    final db = DatabaseService.instance;
+    final scans = await db.getAllScanResults();
+    final allGTs = await db.getAllGroundTruths();
+
+    // Index by detected food ID
+    final gtByFoodId = <int, GroundTruth>{};
+    for (final gt in allGTs) {
+      gtByFoodId[gt.detectedFoodId] = gt;
+    }
+
+    final buf = StringBuffer();
+    buf.writeln(
+      'scan_id,timestamp,depth_mode,food_label,volume_cm3,'
+      'predicted_min,predicted_max,predicted_avg,'
+      'actual_weight_g,actual_kcal,'
+      'abs_error,pct_error,within_range,notes',
+    );
+
+    for (final scan in scans) {
+      for (final food in scan.foods) {
+        if (food.id == null) continue;
+        final gt = gtByFoodId[food.id!];
+        if (gt == null) continue;
+
+        final predAvg = (food.caloriesMin + food.caloriesMax) / 2;
+        final absErr = gt.actualCalories != null
+            ? (predAvg - gt.actualCalories!).abs()
+            : null;
+        final pctErr = gt.actualCalories != null && gt.actualCalories! > 0
+            ? (absErr! / gt.actualCalories!) * 100
+            : null;
+        final inRange = gt.actualCalories != null
+            ? (gt.actualCalories! >= food.caloriesMin &&
+                gt.actualCalories! <= food.caloriesMax)
+            : null;
+
+        buf.writeln(
+          '${scan.id},'
+          '${scan.timestamp.toIso8601String()},'
+          '${_escapeCsv(scan.depthMode)},'
+          '${_escapeCsv(food.label)},'
+          '${food.volumeCm3.toStringAsFixed(2)},'
+          '${food.caloriesMin.toStringAsFixed(1)},'
+          '${food.caloriesMax.toStringAsFixed(1)},'
+          '${predAvg.toStringAsFixed(1)},'
+          '${gt.actualWeightGrams.toStringAsFixed(1)},'
+          '${gt.actualCalories?.toStringAsFixed(1) ?? ""},'
+          '${absErr?.toStringAsFixed(1) ?? ""},'
+          '${pctErr?.toStringAsFixed(1) ?? ""},'
+          '${inRange ?? ""},'
+          '${_escapeCsv(gt.notes ?? "")}',
+        );
+      }
+    }
+
+    return buf.toString();
   }
 
   String _escapeCsv(String value) {
