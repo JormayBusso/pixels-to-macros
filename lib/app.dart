@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
-import 'screens/home_screen.dart';
+import 'screens/main_shell.dart';
 
 class PixelsToMacrosApp extends StatelessWidget {
   const PixelsToMacrosApp({super.key});
@@ -11,7 +11,7 @@ class PixelsToMacrosApp extends StatelessWidget {
       title: 'Pixels to Macros',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const HomeScreen(),
+      home: const MainShell(),
     );
   }
 }

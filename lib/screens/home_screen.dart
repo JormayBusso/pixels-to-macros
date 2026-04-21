@@ -5,9 +5,11 @@ import '../core/constants.dart';
 import '../core/scan_state.dart';
 import '../providers/scan_state_provider.dart';
 import '../services/database_service.dart';
+import '../services/debug_log.dart';
 import '../services/native_bridge.dart';
 import '../models/food_data.dart';
 import '../theme/app_theme.dart';
+import 'debug_screen.dart';
 import 'scan_screen.dart';
 
 /// Temporary home screen that verifies the Step 1 foundation:
@@ -67,6 +69,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         title: const Text('Pixels to Macros'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report_outlined),
+            tooltip: 'Debug Log',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const DebugScreen()),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
@@ -231,6 +242,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       'fruit' => (AppTheme.green100, AppTheme.green700),
       'grain' => (AppTheme.amber100, AppTheme.amber700),
       'protein' => (AppTheme.red100, AppTheme.red700),
+      'vegetable' => (AppTheme.green100, AppTheme.green600),
+      'dairy' => (AppTheme.amber100, AppTheme.amber500),
+      'mixed' => (AppTheme.gray100, AppTheme.gray700),
       _ => (AppTheme.gray100, AppTheme.gray700),
     };
     return Container(

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/scan_state.dart';
+import '../models/scan_result.dart';
+import '../providers/history_provider.dart';
 import '../providers/scan_state_provider.dart';
 import '../providers/scan_result_provider.dart';
+import '../services/debug_log.dart';
 import '../services/native_bridge.dart';
 import '../theme/app_theme.dart';
 
@@ -31,9 +34,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   Future<void> _startSession() async {
     try {
+      DebugLog.instance.log('Scan', 'Starting AR session');
       await _bridge.startSession();
       setState(() => _sessionStarted = true);
+      DebugLog.instance.log('Scan', 'AR session started');
     } catch (e) {
+      DebugLog.instance.log('Scan', 'AR session failed: $e');
       ref.read(scanStateProvider.notifier).depthFailed();
     }
   }
@@ -68,13 +74,29 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   Future<void> _runInference() async {
+    DebugLog.instance.log('Scan', 'Running inference pipeline');
     await ref.read(scanResultProvider.notifier).runScan();
     final result = ref.read(scanResultProvider);
     if (result.error != null) {
+      DebugLog.instance.log('Scan', 'Inference error: ${result.error}');
       ref.read(scanStateProvider.notifier).modelFailed();
     } else {
+      DebugLog.instance.log('Scan',
+          'Inference done: ${result.foods.length} items, '
+          '${result.totalCaloriesMin.round()}-${result.totalCaloriesMax.round()} kcal');
       ref.read(scanStateProvider.notifier).calculationDone();
+      await _saveScanResult(result);
     }
+  }
+
+  Future<void> _saveScanResult(ScanResultState resultState) async {
+    final scanResult = ScanResult(
+      timestamp: DateTime.now(),
+      depthMode: 'unknown', // filled by native side in real scan
+      foods: resultState.foods,
+    );
+    await ref.read(historyProvider.notifier).addScan(scanResult);
+    DebugLog.instance.log('Scan', 'Result saved to history');
   }
 
   void _retry() {

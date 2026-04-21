@@ -1,0 +1,21 @@
+# Model Training Pipeline
+#
+# Trains a DeepLabV3 MobileNetV3 segmentation model on FoodSeg103,
+# exports to ONNX, then converts to CoreML for on-device inference.
+#
+# Usage (from repo root):
+#   pip install -r training/requirements.txt
+#   python training/train.py --data_dir ./data/FoodSeg103 --epochs 50
+#   python training/export_coreml.py --checkpoint training/output/best.pth
+
+torch>=2.2.0
+torchvision>=0.17.0
+numpy>=1.26.0
+Pillow>=10.0.0
+tqdm>=4.66.0
+matplotlib>=3.8.0
+scikit-learn>=1.4.0
+onnx>=1.15.0
+onnxruntime>=1.17.0
+coremltools>=7.2
+albumentations>=1.4.0
