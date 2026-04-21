@@ -5,6 +5,7 @@ import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
 import '../theme/app_theme.dart';
+import 'scan_detail_screen.dart';
 
 /// Displays past scan results from SQLite (Part 13 — result history).
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -100,7 +101,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                           ref.read(dailyIntakeProvider.notifier).load();
                         }
                       },
-                      child: _ScanCard(scan: scan),
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ScanDetailScreen(scan: scan),
+                          ),
+                        ),
+                        child: _ScanCard(scan: scan),
+                      ),
                     );
                   },
                 ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/user_prefs_provider.dart';
+import '../services/data_export_service.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 
@@ -49,6 +50,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Settings saved')),
+      );
+    }
+  }
+
+  Future<void> _exportCsv({required bool detailed}) async {
+    final export = DataExportService.instance;
+    final csv = detailed
+        ? await export.exportToCsv()
+        : await export.exportDailySummary();
+    await export.copyToClipboard(csv);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('CSV copied to clipboard')),
       );
     }
   }

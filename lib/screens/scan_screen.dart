@@ -7,8 +7,10 @@ import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/scan_state_provider.dart';
 import '../providers/scan_result_provider.dart';
+import '../providers/streak_provider.dart';
 import '../services/debug_log.dart';
 import '../services/native_bridge.dart';
+import '../services/perf_monitor.dart';
 import '../theme/app_theme.dart';
 
 /// Full-screen scan flow that follows the state machine from Part 4:
@@ -56,7 +58,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   Future<void> _captureTop() async {
     ref.read(scanStateProvider.notifier).topAligned();
     try {
+      PerfMonitor.instance.start('capture_top');
       await _bridge.captureFrame('top');
+      PerfMonitor.instance.end();
       ref.read(scanStateProvider.notifier).topCaptured();
     } catch (_) {
       ref.read(scanStateProvider.notifier).depthFailed();
@@ -66,7 +70,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   Future<void> _captureSide() async {
     ref.read(scanStateProvider.notifier).sideReady();
     try {
+      PerfMonitor.instance.start('capture_side');
       await _bridge.captureFrame('side');
+      PerfMonitor.instance.end();
       ref.read(scanStateProvider.notifier).sideCaptured();
       await _runInference();
     } catch (_) {
@@ -76,7 +82,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   Future<void> _runInference() async {
     DebugLog.instance.log('Scan', 'Running inference pipeline');
+    PerfMonitor.instance.reset();
+    PerfMonitor.instance.start('inference');
     await ref.read(scanResultProvider.notifier).runScan();
+    PerfMonitor.instance.end();
     final result = ref.read(scanResultProvider);
     if (result.error != null) {
       DebugLog.instance.log('Scan', 'Inference error: ${result.error}');
@@ -86,6 +95,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           'Inference done: ${result.foods.length} items, '
           '${result.totalCaloriesMin.round()}-${result.totalCaloriesMax.round()} kcal');
       ref.read(scanStateProvider.notifier).calculationDone();
+      DebugLog.instance.log('Perf', PerfMonitor.instance.report());
       await _saveScanResult(result);
     }
   }
@@ -98,6 +108,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     );
     await ref.read(historyProvider.notifier).addScan(scanResult);
     await ref.read(dailyIntakeProvider.notifier).load();
+    await ref.read(streakProvider.notifier).load();
     DebugLog.instance.log('Scan', 'Result saved to history');
   }
 

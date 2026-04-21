@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
+import '../providers/streak_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/debug_log.dart';
 import '../theme/app_theme.dart';
 import 'debug_screen.dart';
+import 'scan_detail_screen.dart';
 
 /// Dashboard showing today's calorie intake, progress ring,
 /// recent scans, and food breakdown.
@@ -28,6 +30,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await ref.read(userPrefsProvider.notifier).load();
     await ref.read(dailyIntakeProvider.notifier).load();
     await ref.read(historyProvider.notifier).load();
+    await ref.read(streakProvider.notifier).load();
   }
 
   @override
@@ -35,6 +38,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final prefs = ref.watch(userPrefsProvider);
     final intake = ref.watch(dailyIntakeProvider);
     final history = ref.watch(historyProvider);
+    final streak = ref.watch(streakProvider);
 
     final greeting = prefs.name.isNotEmpty
         ? 'Hi, ${prefs.name}!'
@@ -94,6 +98,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 goal: prefs.dailyCalorieGoal.toDouble(),
                 scanCount: intake.scanCount,
               ),
+              const SizedBox(height: 16),
+
+              // ── Streak card ──────────────────────────────────────────
+              _StreakCard(streak: streak),
               const SizedBox(height: 16),
 
               // ── Food breakdown ───────────────────────────────────────
@@ -171,8 +179,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       (scan.totalCaloriesMin + scan.totalCaloriesMax) / 2;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Card(
-                      child: ListTile(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ScanDetailScreen(scan: scan),
+                        ),
+                      ),
+                      child: Card(
+                        child: ListTile(
                         leading: Container(
                           width: 40,
                           height: 40,
@@ -202,6 +216,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                       ),
+                    ),
                     ),
                   );
                 }),
@@ -378,6 +393,84 @@ class _SectionTitle extends StatelessWidget {
         fontSize: 16,
         fontWeight: FontWeight.w700,
         color: AppTheme.gray700,
+      ),
+    );
+  }
+}
+
+class _StreakCard extends StatelessWidget {
+  const _StreakCard({required this.streak});
+  final StreakState streak;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: streak.currentStreak > 0
+                    ? AppTheme.amber100
+                    : AppTheme.gray100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.local_fire_department,
+                size: 28,
+                color: streak.currentStreak > 0
+                    ? AppTheme.amber500
+                    : AppTheme.gray400,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${streak.currentStreak} day streak',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.gray900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    streak.scannedToday
+                        ? 'Keep it going!'
+                        : 'Scan today to continue!',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.gray400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${streak.longestStreak}',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.green700,
+                  ),
+                ),
+                const Text(
+                  'best',
+                  style: TextStyle(fontSize: 11, color: AppTheme.gray400),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
