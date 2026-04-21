@@ -1,0 +1,4 @@
+# NutriLens — UV workspace root config
+
+[tool.uv.workspace]
+members = ["backend"]
