@@ -1,203 +1,64 @@
-# NutriLens 🌿
-### AI-Powered Health & Nutrition Tracking App
+﻿# Pixels to Macros
 
-A full-stack nutrition tracking app with dual-camera AI food recognition, macro/micronutrient analytics, gamified plant growth, and smart dietary suggestions.
+**Offline Multi-Food Calorie Scanner** — Academic thesis project.
 
----
-
-## Quick Setup
-
-### Prerequisites
-- [UV](https://docs.astral.sh/uv/getting-started/installation/) — fast Python package manager
-- [Node.js 18+](https://nodejs.org)
-
-### Backend (UV)
-```bash
-# Install UV if you haven't already:
-# Windows:  powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-# macOS/Linux: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-cd backend
-uv sync                        # creates .venv and installs all deps
-cp ../.env.example ../.env     # fill in GROQ_API_KEY, SECRET_KEY
-uv run uvicorn app.main:app --reload --port 8000
-```
-
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-App: http://localhost:5173 | API docs: http://localhost:8000/docs
-
-### Developer tools (linting / pre-commit)
-```bash
-# Install pre-commit hooks (run once after cloning):
-uv run --directory backend pre-commit install
-
-# Run ruff manually:
-cd backend
-uv run ruff check .
-uv run ruff format .
-```
-
----
-
-## Original project description
-
----
-
-## What Makes This Different
-
-Most food tracking apps use a **single top-down image**, giving only a 2D view. This project uses:
-- 📷 **Top view** → identifies food items and their 2D footprint on the plate
-- 📷 **Side view** → measures the height/depth of each food portion
-
-Together these produce a **3D volume estimate**, which is converted to grams using food density, then looked up in a nutrition database.
+Uses on-device AR (ARKit + LiDAR) and ML (CoreML) to estimate food volume
+and calculate calories with uncertainty ranges. 100%% offline, iOS only.
 
 ---
 
 ## Architecture
 
-```
-Frontend (React)  →  Backend (FastAPI / Python)
-                        ├── AI Recognition   (OpenAI GPT-4o Vision)
-                        ├── Volume Estimator (OpenCV dual-image geometry)
-                        └── Nutrition Lookup (USDA FoodData Central API)
-```
+| Layer | Tech | Responsibility |
+|-------|------|----------------|
+| **UI** | Flutter (Dart) + Riverpod | Screens, state machine, history |
+| **Bridge** | MethodChannel | JSON messages between Dart and Swift |
+| **Native** | Swift / ARKit / CoreML | AR session, depth, segmentation, volume |
+| **Storage** | SQLite (sqflite) | Food reference data, scan history |
 
 ---
 
-## Prerequisites – What to Download
+## Current Status — Step 1 (Foundation)
 
-| Tool | Version | Link |
-|------|---------|------|
-| Python | 3.11+ | https://www.python.org/downloads/ |
-| Node.js | 20 LTS | https://nodejs.org/en/download |
-| Git | latest | https://git-scm.com/downloads |
-| VS Code | latest | https://code.visualstudio.com/ |
+- [x] Flutter project scaffold (`pubspec.yaml`, `analysis_options.yaml`)
+- [x] `ScanState` enum with happy-path + failure states
+- [x] `ScanStateNotifier` (Riverpod) state machine
+- [x] `DatabaseService` — SQLite with seed data (Apple, Rice, Chicken)
+- [x] `FoodData` model with uncertainty calorie math
+- [x] `ScanResult` / `DetectedFood` models for history
+- [x] `NativeBridge` — MethodChannel stub (Swift side comes in Step 2)
+- [x] `AppTheme` — green design language matching original NutriLens UI
+- [x] `HomeScreen` — verification dashboard for Step 1
 
-### API Keys (Free)
-
-| Service | Purpose | Signup |
-|---------|---------|--------|
-| OpenAI | GPT-4o Vision – food recognition | https://platform.openai.com/api-keys |
-| USDA FoodData Central | Nutrition database | https://fdc.nal.usda.gov/api-key-signup.html |
-
-> **Cost note**: OpenAI charges per image (~$0.003 per analysis). USDA is completely free.
+**Next**: Step 2 — Native Swift bridge + ARKit session (requires macOS + Xcode).
 
 ---
 
-## Installation & Setup
+## Prerequisites
 
-### Step 1 – Clone / open the project
+| Tool | Version | Notes |
+|------|---------|-------|
+| Flutter SDK | >= 3.22 | `flutter --version` |
+| Xcode | >= 16 | Required for iOS build |
+| macOS | >= 14 | Xcode requirement |
+| CocoaPods | >= 1.15 | `sudo gem install cocoapods` |
 
-Open a terminal in the project root folder (the folder containing `backend/` and `frontend/`).
+> **Windows note**: Dart code can be written on any OS, but iOS builds
+> require macOS with Xcode. Use a Mac for `flutter run` and device testing.
 
 ---
 
-### Step 2 – Backend Setup
+## Getting Started (macOS)
 
 ```bash
-cd backend
+# 1. Generate platform files (first time only)
+flutter create . --org com.pixelstomacros --platforms ios
 
-# Create a virtual environment
-python -m venv venv
+# 2. Install dependencies
+flutter pub get
 
-# Activate it (Windows)
-venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-#### Configure environment variables
-
-Copy the example file and fill in your API keys:
-
-```bash
-copy .env.example .env
-```
-
-Open `.env` and add your keys:
-
-```
-OPENAI_API_KEY=sk-...your-openai-key...
-USDA_API_KEY=...your-usda-key...
-```
-
-#### Start the backend server
-
-```bash
-uvicorn app.main:app --reload --port 8000
-```
-
-The backend will be running at: http://localhost:8000  
-Interactive API docs: http://localhost:8000/docs
-
----
-
-### Step 3 – Frontend Setup
-
-Open a **new terminal** window:
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-The frontend will be running at: http://localhost:5173
-
----
-
-## How to Use the App
-
-1. **Open** http://localhost:5173 in your browser
-2. **Upload Top View** – take/select a photo of your plate from directly above
-3. **Upload Side View** – take/select a photo of your plate from the side
-4. *(Optional)* Enter your plate diameter in cm (default: 26 cm)
-5. Press **Analyze**
-6. Wait ~5-10 seconds for AI processing
-7. Review the identified foods and their estimated weights
-8. **Adjust** any item: change the weight (grams) or swap the food if the AI got it wrong
-9. See the full **nutrition breakdown** (calories, protein, carbs, fats, vitamins, minerals)
-
----
-
-## Volume Estimation Algorithm
-
-This is the core novelty of the project:
-
-```
-1. PLATE DETECTION (top view)
-   - OpenCV HoughCircles detects the circular plate
-   - Known plate diameter (e.g. 26 cm) provides a pixel-to-cm scale factor
-
-2. FOOD SEGMENTATION (top view)
-   - K-means color clustering separates food regions
-   - Each food's pixel area → converted to real area in cm²
-
-3. HEIGHT MEASUREMENT (side view)
-   - Detect the plate rim as the baseline height reference
-   - Find the peak of each food mound above the plate
-   - Height in pixels → converted to cm using same scale factor
-
-4. VOLUME CALCULATION
-   Volume ≈ food_area_cm² × height_cm × shape_correction_factor (0.6)
-
-5. WEIGHT ESTIMATION
-   Weight (g) = Volume (cm³) × food_density (g/cm³)
-   e.g. cooked rice ≈ 1.0 g/cm³, chicken breast ≈ 0.7 g/cm³
-
-6. NUTRITION LOOKUP
-   Nutrients = (weight_g / 100) × nutrients_per_100g  [from USDA database]
+# 3. Run on iOS simulator or connected device
+flutter run
 ```
 
 ---
@@ -205,42 +66,22 @@ This is the core novelty of the project:
 ## Project Structure
 
 ```
-pixels-to-macros/
-├── backend/
-│   ├── app/
-│   │   ├── main.py                    ← FastAPI app entry point
-│   │   ├── routes/
-│   │   │   └── food_analysis.py       ← /analyze endpoint
-│   │   ├── services/
-│   │   │   ├── ai_recognition.py      ← GPT-4o Vision food identification
-│   │   │   ├── volume_estimation.py   ← Dual-image 3D volume calculation
-│   │   │   └── nutrition_calculator.py← USDA nutrition lookup
-│   │   └── models/
-│   │       └── schemas.py             ← Pydantic request/response models
-│   ├── .env.example
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx                    ← Main app component
-│   │   ├── components/
-│   │   │   ├── ImageUpload.jsx        ← Drag-and-drop image uploader
-│   │   │   ├── NutritionDisplay.jsx   ← Nutrient results panel
-│   │   │   ├── FoodAdjustment.jsx     ← Manual edit modal
-│   │   │   └── LoadingSpinner.jsx     ← Analysis loading screen
-│   │   └── index.css
-│   ├── index.html
-│   └── package.json
-└── README.md                          ← This file
+lib/
+├── main.dart                     Entry point
+├── app.dart                      MaterialApp + routing
+├── core/
+│   ├── constants.dart            App-wide constants, DepthMode enum
+│   └── scan_state.dart           ScanState enum + labels
+├── models/
+│   ├── food_data.dart            FoodData model + calorie math
+│   └── scan_result.dart          ScanResult + DetectedFood
+├── providers/
+│   └── scan_state_provider.dart  Riverpod state notifier
+├── services/
+│   ├── database_service.dart     SQLite singleton + seed
+│   └── native_bridge.dart        MethodChannel to Swift
+├── screens/
+│   └── home_screen.dart          Step 1 verification UI
+└── theme/
+    └── app_theme.dart            Green design system
 ```
-
----
-
-## VS Code Extensions (Recommended)
-
-Install these from the Extensions panel (`Ctrl+Shift+X`):
-- **Python** (Microsoft)
-- **Pylance** (Microsoft)
-- **ES7+ React/Redux/React-Native snippets**
-- **Tailwind CSS IntelliSense**
-- **Prettier – Code formatter**
-- **Thunder Client** (test API endpoints without leaving VS Code)

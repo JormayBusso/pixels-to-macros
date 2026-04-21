@@ -1,62 +1,42 @@
-# ── Python ────────────────────────────────────────────────────────────────────
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-dist/
-*.egg-info/
-.eggs/
-*.egg
-.cache/
-
-# Virtual environments
-.venv/
-venv/
-env/
-ENV/
-
-# UV
-.uv/
-uv.lock
-
-# Distribution / packaging
-*.manifest
-*.spec
-
-# Testing
-.pytest_cache/
-htmlcov/
-.coverage
-.coverage.*
-coverage.xml
-*.cover
-
-# Type checkers
-.mypy_cache/
-.dmypy.json
-.pyre/
-.pytype/
-
-# Ruff
-.ruff_cache/
-
-# ── Node.js / Frontend ────────────────────────────────────────────────────────
+# ── Node (leftover) ───────────────────────────────────────────────────────────
 node_modules/
-frontend/dist/
-frontend/.vite/
-frontend/build/
-*.local
 
-# Package lock files (keep only one)
-# package-lock.json  # uncomment if you use npm
-# yarn.lock          # uncomment if you use yarn
+# ── Flutter / Dart ─────────────────────────────────────────────────────────────
+*.dart_tool/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+flutter_*.pid
+
+# Generated plugin registrant
+lib/generated_plugin_registrant.dart
+
+# ── iOS ───────────────────────────────────────────────────────────────────────
+ios/.generated/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral
+ios/Flutter/flutter_export_environment.sh
+ios/ServiceDefinitions.json
+ios/Runner/GeneratedPluginRegistrant.*
+ios/Pods/
+ios/.symlinks/
+
+# ── Android (not targeted but Flutter creates it) ─────────────────────────────
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
 
 # ── Environment & Secrets ─────────────────────────────────────────────────────
 .env
 .env.*
-!.env.example
 *.pem
 *.key
 *.cert
@@ -77,7 +57,14 @@ desktop.ini
 *.swp
 *.swo
 *~
+*.iml
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
 logs/
+
+# ── ML Models (large binaries) ────────────────────────────────────────────────
+*.mlmodel
+*.mlmodelc/
+*.onnx
+*.tflite
