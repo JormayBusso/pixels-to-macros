@@ -3,14 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/scan_state_provider.dart';
 import '../theme/app_theme.dart';
+import 'analytics_screen.dart';
 import 'home_screen_v2.dart';
 import 'history_screen.dart';
+import 'manual_entry_screen.dart';
 import 'settings_screen.dart';
 import 'scan_screen.dart';
 
-/// Root shell with bottom navigation: Home / History / Settings.
+/// Root shell with bottom navigation: Home / Analytics / History / Settings.
 ///
-/// Scan opens as a full-screen push (it needs its own lifecycle).
+/// Scan and Manual Entry open as full-screen pushes.
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
@@ -23,6 +25,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   static const _tabs = [
     HomeScreen(),
+    AnalyticsScreen(),
     HistoryScreen(),
     SettingsScreen(),
   ];
@@ -31,6 +34,12 @@ class _MainShellState extends ConsumerState<MainShell> {
     ref.read(scanStateProvider.notifier).reset();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const ScanScreen()),
+    );
+  }
+
+  void _openManualEntry() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ManualEntryScreen()),
     );
   }
 
@@ -53,6 +62,11 @@ class _MainShellState extends ConsumerState<MainShell> {
             label: 'Home',
           ),
           NavigationDestination(
+            icon: Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.bar_chart, color: AppTheme.green700),
+            label: 'Analytics',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.history_outlined),
             selectedIcon: Icon(Icons.history, color: AppTheme.green700),
             label: 'History',
@@ -64,14 +78,28 @@ class _MainShellState extends ConsumerState<MainShell> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openScan,
-        backgroundColor: AppTheme.green600,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.camera_alt),
-        label: const Text('Scan'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'manual',
+            onPressed: _openManualEntry,
+            backgroundColor: Colors.white,
+            foregroundColor: AppTheme.green700,
+            child: const Icon(Icons.edit_note),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton.extended(
+            heroTag: 'scan',
+            onPressed: _openScan,
+            backgroundColor: AppTheme.green600,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('Scan'),
+          ),
+        ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }

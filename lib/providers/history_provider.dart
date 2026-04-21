@@ -31,6 +31,11 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
     await DatabaseService.instance.insertScanResult(result);
     await load(); // refresh
   }
+
+  Future<void> deleteScan(int scanId) async {
+    await DatabaseService.instance.deleteScanResult(scanId);
+    await load();
+  }
 }
 
 final historyProvider =
