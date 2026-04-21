@@ -28,6 +28,11 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     );
     await update(prefs);
   }
+
+  Future<void> dismissScanTutorial() async {
+    final prefs = state.copyWith(hasSeenScanTutorial: true);
+    await update(prefs);
+  }
 }
 
 final userPrefsProvider =

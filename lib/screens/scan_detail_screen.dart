@@ -5,6 +5,7 @@ import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/confidence_badge.dart';
 import 'edit_food_screen.dart';
 
 /// Detail view for a single scan result.
@@ -135,6 +136,13 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Confidence score ─────────────────────────────────────────
+          ConfidenceRingCard(
+            caloriesMin: _scan.totalCaloriesMin,
+            caloriesMax: _scan.totalCaloriesMax,
           ),
           const SizedBox(height: 16),
 

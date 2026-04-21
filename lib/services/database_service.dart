@@ -34,7 +34,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -82,10 +82,11 @@ class DatabaseService {
     // user_preferences — single row
     await db.execute('''
       CREATE TABLE user_preferences (
-        id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-        name                 TEXT    NOT NULL DEFAULT '',
-        daily_calorie_goal   INTEGER NOT NULL DEFAULT 2000,
-        onboarding_complete  INTEGER NOT NULL DEFAULT 0
+        id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+        name                     TEXT    NOT NULL DEFAULT '',
+        daily_calorie_goal       INTEGER NOT NULL DEFAULT 2000,
+        onboarding_complete      INTEGER NOT NULL DEFAULT 0,
+        has_seen_scan_tutorial   INTEGER NOT NULL DEFAULT 0
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
@@ -98,15 +99,26 @@ class DatabaseService {
     if (oldVersion < 3) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS user_preferences (
-          id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-          name                 TEXT    NOT NULL DEFAULT '',
-          daily_calorie_goal   INTEGER NOT NULL DEFAULT 2000,
-          onboarding_complete  INTEGER NOT NULL DEFAULT 0
+          id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+          name                     TEXT    NOT NULL DEFAULT '',
+          daily_calorie_goal       INTEGER NOT NULL DEFAULT 2000,
+          onboarding_complete      INTEGER NOT NULL DEFAULT 0,
+          has_seen_scan_tutorial   INTEGER NOT NULL DEFAULT 0
         )
       ''');
       final rows = await db.query('user_preferences');
       if (rows.isEmpty) {
         await db.insert('user_preferences', const UserPreferences().toMap());
+      }
+    }
+    if (oldVersion < 4) {
+      // Add scan tutorial flag — safe to run even if column already exists
+      try {
+        await db.execute(
+          'ALTER TABLE user_preferences ADD COLUMN has_seen_scan_tutorial INTEGER NOT NULL DEFAULT 0',
+        );
+      } catch (_) {
+        // Column already exists from fresh v4 install — ignore
       }
     }
   }
