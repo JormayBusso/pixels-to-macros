@@ -8,6 +8,7 @@ import '../services/database_service.dart';
 import '../services/native_bridge.dart';
 import '../models/food_data.dart';
 import '../theme/app_theme.dart';
+import 'scan_screen.dart';
 
 /// Temporary home screen that verifies the Step 1 foundation:
 ///   • ScanState enum + state machine
@@ -71,6 +72,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // ── Start scan button ────────────────────────────────────────
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Start Scan'),
+                onPressed: () {
+                  ref.read(scanStateProvider.notifier).reset();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ScanScreen()),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // ── Scan state card ──────────────────────────────────────────
             _SectionCard(
               title: 'Scan State Machine',

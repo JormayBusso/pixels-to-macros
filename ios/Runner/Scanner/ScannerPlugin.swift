@@ -17,6 +17,7 @@ final class ScannerPlugin {
     private static let depthDetector = DepthModeDetector()
     private static let sessionManager = ARSessionManager()
     private static let captureService = FrameCaptureService()
+    private static let pipeline = InferencePipeline()
 
     // MARK: – Registration
 
@@ -82,14 +83,22 @@ final class ScannerPlugin {
                     }
                 }
 
-            // ── ML inference (stub — Step 3+) ───────────────────────
+            // ── ML inference ─────────────────────────────────────────
             case "runInference":
-                // Placeholder until CoreML pipeline is built.
-                result(FlutterError(
-                    code: "NOT_IMPLEMENTED",
-                    message: "runInference will be available in Step 3",
-                    details: nil
-                ))
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        let json = try pipeline.run(captureService: captureService)
+                        DispatchQueue.main.async { result(json) }
+                    } catch {
+                        DispatchQueue.main.async {
+                            result(FlutterError(
+                                code: "INFERENCE_FAILED",
+                                message: error.localizedDescription,
+                                details: nil
+                            ))
+                        }
+                    }
+                }
 
             default:
                 result(FlutterMethodNotImplemented)
