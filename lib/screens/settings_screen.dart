@@ -5,6 +5,7 @@ import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
+import 'food_database_screen.dart';
 
 /// Settings screen for editing user profile and calorie goal.
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -153,6 +154,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       icon: Icons.storage,
                       label: 'Database version',
                       value: '3',
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.list_alt),
+                        label: const Text('Browse Food Database'),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const FoodDatabaseScreen(),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

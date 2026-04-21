@@ -247,6 +247,30 @@ class DatabaseService {
     await db.delete('scan_results', where: 'id = ?', whereArgs: [scanId]);
   }
 
+  Future<void> updateDetectedFood(
+    int foodId, {
+    required String label,
+    required double caloriesMin,
+    required double caloriesMax,
+  }) async {
+    final db = await database;
+    await db.update(
+      'detected_foods',
+      {
+        'label': label,
+        'calories_min': caloriesMin,
+        'calories_max': caloriesMax,
+      },
+      where: 'id = ?',
+      whereArgs: [foodId],
+    );
+  }
+
+  Future<void> deleteFood(int foodId) async {
+    final db = await database;
+    await db.delete('food_data', where: 'id = ?', whereArgs: [foodId]);
+  }
+
   // ── user_preferences CRUD ────────────────────────────────────────────────
 
   Future<UserPreferences> getUserPreferences() async {

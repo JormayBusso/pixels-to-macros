@@ -16,29 +16,80 @@ class HistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     ref.read(historyProvider.notifier).load();
   }
 
+  List<ScanResult> get _filteredScans {
+    final scans = ref.read(historyProvider).scans;
+    if (_searchQuery.isEmpty) return scans;
+    final q = _searchQuery.toLowerCase();
+    return scans.where((s) {
+      return s.foods.any((f) => f.label.toLowerCase().contains(q)) ||
+          s.depthMode.toLowerCase().contains(q);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final history = ref.watch(historyProvider);
+    final filtered = _filteredScans;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Scan History')),
       body: history.loading
           ? const Center(child: CircularProgressIndicator())
-          : history.scans.isEmpty
+          : Column(
+              children: [
+                // ── Search bar ─────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: TextField(
+                    onChanged: (q) => setState(() => _searchQuery = q),
+                    decoration: const InputDecoration(
+                      hintText: 'Search by food name...',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                  ),
+                ),
+                if (history.scans.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${filtered.length} of ${history.scans.length} scans',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.gray400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 4),
+
+                // ── List ───────────────────────────────────────────────
+                Expanded(
+                  child: filtered.isEmpty
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.history, size: 64, color: AppTheme.gray200),
+                      Icon(
+                        _searchQuery.isEmpty ? Icons.history : Icons.search_off,
+                        size: 64,
+                        color: AppTheme.gray200,
+                      ),
                       const SizedBox(height: 16),
                       Text(
-                        'No scans yet',
+                        _searchQuery.isEmpty
+                            ? 'No scans yet'
+                            : 'No matching scans',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -47,7 +98,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Scan some food to see results here',
+                        _searchQuery.isEmpty
+                            ? 'Scan some food to see results here'
+                            : 'Try a different search term',
                         style: TextStyle(
                           fontSize: 14,
                           color: AppTheme.gray400,
@@ -58,10 +111,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 )
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: history.scans.length,
+                  itemCount: filtered.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final scan = history.scans[index];
+                    final scan = filtered[index];
                     return Dismissible(
                       key: ValueKey(scan.id),
                       direction: DismissDirection.endToStart,
@@ -112,6 +165,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     );
                   },
                 ),
+              ),
+            ],
+          ),
     );
   }
 }
