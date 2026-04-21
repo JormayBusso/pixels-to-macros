@@ -89,7 +89,36 @@ final class InferencePipeline {
             return "[]"
         }
 
-        // ── 6. Volume calculation ───────────────────────────────────────
+        // ── 6. Depth statistics (Part 14 — debug logging) ───────────────
+        var depthMin: Float = Float.greatestFiniteMagnitude
+        var depthMax: Float = 0
+        var depthSum: Float = 0
+        var depthCount: Int = 0
+        if let db = preprocessedDepth {
+            CVPixelBufferLockBaseAddress(db, .readOnly)
+            let dW = CVPixelBufferGetWidth(db)
+            let dH = CVPixelBufferGetHeight(db)
+            let dRowBytes = CVPixelBufferGetBytesPerRow(db)
+            if let dBase = CVPixelBufferGetBaseAddress(db) {
+                let dPtr = dBase.assumingMemoryBound(to: Float32.self)
+                let dFloatsPerRow = dRowBytes / MemoryLayout<Float32>.stride
+                for r in stride(from: 0, to: dH, by: 4) {
+                    for c in stride(from: 0, to: dW, by: 4) {
+                        let v = dPtr[r * dFloatsPerRow + c]
+                        if v > 0.01 && v < 5.0 {
+                            depthMin = min(depthMin, v)
+                            depthMax = max(depthMax, v)
+                            depthSum += v
+                            depthCount += 1
+                        }
+                    }
+                }
+            }
+            CVPixelBufferUnlockBaseAddress(db, .readOnly)
+        }
+        let depthAvg = depthCount > 0 ? depthSum / Float(depthCount) : 0
+
+        // ── 7. Volume calculation ───────────────────────────────────────
         let volumes = volumeCalculator.calculate(
             objects: segments,
             depthBuffer: preprocessedDepth,
@@ -98,12 +127,16 @@ final class InferencePipeline {
             maskHeight: preprocessor.modelInputHeight
         )
 
-        // ── 7. Serialise to JSON ────────────────────────────────────────
-        let payload: [[String: Any]] = volumes.map { vol in
+        // ── 8. Serialise to JSON ────────────────────────────────────────
+        let payload: [[String: Any]] = zip(segments, volumes).map { seg, vol in
             [
                 "label": vol.label,
-                "volume_cm3": round(vol.volumeCm3 * 10) / 10,  // 1 decimal
+                "volume_cm3": round(vol.volumeCm3 * 10) / 10,
                 "pixel_count": vol.pixelCount,
+                "confidence": round(Double(seg.confidence) * 1000) / 1000,
+                "depth_min_m": round(Double(depthMin) * 1000) / 1000,
+                "depth_max_m": round(Double(depthMax) * 1000) / 1000,
+                "depth_avg_m": round(Double(depthAvg) * 1000) / 1000,
             ]
         }
 
@@ -113,7 +146,7 @@ final class InferencePipeline {
             return "[]"
         }
 
-        // ── 8. Log for debug (Part 14) ──────────────────────────────────
+        // ── 9. Log for debug (Part 14) ──────────────────────────────────
         logResults(
             plate: plate,
             segments: segments,

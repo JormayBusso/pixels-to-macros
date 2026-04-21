@@ -5,6 +5,7 @@ import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
+import 'debug_screen.dart';
 import 'eval_dashboard_screen.dart';
 import 'food_database_screen.dart';
 
@@ -154,7 +155,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _InfoRow(
                       icon: Icons.storage,
                       label: 'Database version',
-                      value: '6',
+                      value: '7',
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -201,6 +202,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const EvalDashboardScreen(),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.bug_report),
+                        label: const Text('Debug Log'),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const DebugScreen(),
                           ),
                         ),
                       ),

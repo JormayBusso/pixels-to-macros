@@ -38,7 +38,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -117,14 +117,15 @@ class DatabaseService {
     // benchmarks — per-scan performance timing
     await db.execute('''
       CREATE TABLE benchmarks (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        scan_id         INTEGER NOT NULL,
-        capture_top_ms  INTEGER NOT NULL,
-        capture_side_ms INTEGER NOT NULL,
-        inference_ms    INTEGER NOT NULL,
-        total_ms        INTEGER NOT NULL,
-        depth_mode      TEXT    NOT NULL,
-        timestamp       TEXT    NOT NULL,
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        scan_id           INTEGER NOT NULL,
+        capture_top_ms    INTEGER NOT NULL,
+        capture_side_ms   INTEGER NOT NULL,
+        inference_ms      INTEGER NOT NULL,
+        total_ms          INTEGER NOT NULL,
+        peak_memory_bytes INTEGER NOT NULL DEFAULT 0,
+        depth_mode        TEXT    NOT NULL,
+        timestamp         TEXT    NOT NULL,
         FOREIGN KEY (scan_id) REFERENCES scan_results(id) ON DELETE CASCADE
       )
     ''');
@@ -199,6 +200,16 @@ class DatabaseService {
           FOREIGN KEY (scan_id) REFERENCES scan_results(id) ON DELETE CASCADE
         )
       ''');
+    }
+    if (oldVersion < 7) {
+      // Add memory usage column to benchmarks
+      try {
+        await db.execute(
+          'ALTER TABLE benchmarks ADD COLUMN peak_memory_bytes INTEGER NOT NULL DEFAULT 0',
+        );
+      } catch (_) {
+        // Column already exists from fresh v7 install
+      }
     }
   }
 

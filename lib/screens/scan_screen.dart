@@ -175,12 +175,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
       // Persist benchmark (Part 17)
       final timings = PerfMonitor.instance.allTimings;
+      final memoryBytes = await _bridge.getMemoryUsage();
       final benchmark = ScanBenchmark(
         scanId: _savedScanResult!.id!,
         captureTopMs: timings['capture_top']?.inMilliseconds ?? 0,
         captureSideMs: timings['capture_side']?.inMilliseconds ?? 0,
         inferenceMs: timings['inference']?.inMilliseconds ?? 0,
         totalMs: PerfMonitor.instance.total.inMilliseconds,
+        peakMemoryBytes: memoryBytes,
         depthMode: _detectedDepthMode,
         timestamp: DateTime.now(),
       );
@@ -608,7 +610,7 @@ class _ScanButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: c,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: c.withOpacity(0.3),
+          disabledBackgroundColor: c.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),

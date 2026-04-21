@@ -262,7 +262,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
       _ => (Icons.circle, AppTheme.gray400),
     };
     return CircleAvatar(
-      backgroundColor: color.withOpacity(0.12),
+      backgroundColor: color.withValues(alpha: 0.12),
       radius: 18,
       child: Icon(icon, size: 18, color: color),
     );

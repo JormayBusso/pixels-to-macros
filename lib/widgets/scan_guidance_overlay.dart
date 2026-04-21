@@ -135,7 +135,7 @@ class _ReticlePainter extends CustomPainter {
     final r = size.width / 2;
 
     final paint = Paint()
-      ..color = color.withOpacity(0.6)
+      ..color = color.withValues(alpha: 0.6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
@@ -144,7 +144,7 @@ class _ReticlePainter extends CustomPainter {
 
     // Inner circle (plate guide)
     final innerPaint = Paint()
-      ..color = color.withOpacity(0.3)
+      ..color = color.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawCircle(Offset(cx, cy), r * 0.5, innerPaint);
@@ -230,7 +230,7 @@ class _InstructionBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: bg.withOpacity(0.85),
+        color: bg.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

@@ -19,11 +19,15 @@ class BenchmarkState {
   double get avgCaptureSideMs => _avg((b) => b.captureSideMs.toDouble());
   double get avgInferenceMs => _avg((b) => b.inferenceMs.toDouble());
   double get avgTotalMs => _avg((b) => b.totalMs.toDouble());
+  double get avgMemoryMB => _avg((b) => b.peakMemoryMB);
 
   int get maxInferenceMs =>
       benchmarks.isEmpty ? 0 : benchmarks.map((b) => b.inferenceMs).reduce((a, b) => a > b ? a : b);
   int get minInferenceMs =>
       benchmarks.isEmpty ? 0 : benchmarks.map((b) => b.inferenceMs).reduce((a, b) => a < b ? a : b);
+
+  double get maxMemoryMB =>
+      benchmarks.isEmpty ? 0 : benchmarks.map((b) => b.peakMemoryMB).reduce((a, b) => a > b ? a : b);
 
   /// Whether all scans met the <200ms inference target.
   int get scansUnderTarget =>

@@ -18,6 +18,10 @@ class EvalPair {
   final String depthMode;
   final DateTime timestamp;
 
+  /// Density bounds from the food database (g/cm³).
+  final double densityMin;
+  final double densityMax;
+
   const EvalPair({
     required this.scanId,
     required this.label,
@@ -28,10 +32,23 @@ class EvalPair {
     this.actualCalories,
     required this.depthMode,
     required this.timestamp,
+    this.densityMin = 0.8,
+    this.densityMax = 1.0,
   });
+
+  double get densityAvg => (densityMin + densityMax) / 2;
 
   double get predictedCaloriesAvg =>
       (predictedCaloriesMin + predictedCaloriesMax) / 2;
+
+  /// Predicted weight from volume × density (Part 12 model).
+  double get predictedWeightMin => volumeCm3 * densityMin;
+  double get predictedWeightMax => volumeCm3 * densityMax;
+  double get predictedWeightAvg => volumeCm3 * densityAvg;
+
+  /// Estimated actual volume derived from actual weight / density.
+  double get actualVolumeCm3 =>
+      densityAvg > 0 ? actualWeightGrams / densityAvg : 0;
 
   /// Absolute error (kcal) — only if actual calories are known.
   double? get absoluteError {
@@ -39,10 +56,24 @@ class EvalPair {
     return (predictedCaloriesAvg - actualCalories!).abs();
   }
 
-  /// Percentage error — only if actual calories are known and > 0.
+  /// Calorie percentage error — only if actual calories are known and > 0.
   double? get percentageError {
     if (actualCalories == null || actualCalories == 0) return null;
     return (absoluteError! / actualCalories!) * 100;
+  }
+
+  /// Weight error (%).
+  double? get weightPercentageError {
+    if (actualWeightGrams <= 0) return null;
+    return ((predictedWeightAvg - actualWeightGrams).abs() /
+            actualWeightGrams) *
+        100;
+  }
+
+  /// Volume error (%).
+  double? get volumePercentageError {
+    if (actualVolumeCm3 <= 0) return null;
+    return ((volumeCm3 - actualVolumeCm3).abs() / actualVolumeCm3) * 100;
   }
 
   /// Whether the actual value falls within the predicted range.
@@ -98,6 +129,24 @@ class EvalMetrics {
     final valid = pairs.where((p) => p.withinRange != null).toList();
     if (valid.isEmpty) return 0;
     return valid.where((p) => p.withinRange!).length / valid.length;
+  }
+
+  /// Mean weight error (%) — Part 16 requirement.
+  double get weightMape {
+    final valid =
+        pairs.where((p) => p.weightPercentageError != null).toList();
+    if (valid.isEmpty) return 0;
+    return valid.map((p) => p.weightPercentageError!).reduce((a, b) => a + b) /
+        valid.length;
+  }
+
+  /// Mean volume error (%) — Part 16 requirement.
+  double get volumeMape {
+    final valid =
+        pairs.where((p) => p.volumePercentageError != null).toList();
+    if (valid.isEmpty) return 0;
+    return valid.map((p) => p.volumePercentageError!).reduce((a, b) => a + b) /
+        valid.length;
   }
 
   /// Pearson correlation coefficient between predicted and actual.
@@ -170,6 +219,8 @@ class EvalNotifier extends StateNotifier<EvalState> {
         final gt = gtByFoodId[food.id!];
         if (gt != null) {
           hasGT = true;
+          // Look up density for weight/volume error calculation
+          final foodData = await db.getFoodByLabel(food.label);
           pairs.add(EvalPair(
             scanId: scan.id ?? 0,
             label: food.label,
@@ -180,6 +231,8 @@ class EvalNotifier extends StateNotifier<EvalState> {
             actualCalories: gt.actualCalories,
             depthMode: scan.depthMode,
             timestamp: scan.timestamp,
+            densityMin: foodData?.densityMin ?? 0.8,
+            densityMax: foodData?.densityMax ?? 1.0,
           ));
         }
       }

@@ -156,10 +156,10 @@ class _TipPage extends StatelessWidget {
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: AppTheme.green600.withOpacity(0.15),
+              color: AppTheme.green600.withValues(alpha: 0.15),
               shape: BoxShape.circle,
               border: Border.all(
-                  color: AppTheme.green400.withOpacity(0.4), width: 2),
+                  color: AppTheme.green400.withValues(alpha: 0.4), width: 2),
             ),
             child: Icon(tip.icon, size: 48, color: AppTheme.green400),
           ),

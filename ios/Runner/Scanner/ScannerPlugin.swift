@@ -120,6 +120,23 @@ final class ScannerPlugin {
                     }
                 }
 
+            // ── Memory usage (Part 17) ───────────────────────────────
+            case "getMemoryUsage":
+                var info = mach_task_basic_info()
+                var count = mach_msg_type_number_t(
+                    MemoryLayout<mach_task_basic_info>.size / MemoryLayout<natural_t>.size
+                )
+                let kr = withUnsafeMutablePointer(to: &info) {
+                    $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                        task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+                    }
+                }
+                if kr == KERN_SUCCESS {
+                    result(Int64(info.resident_size))
+                } else {
+                    result(Int64(0))
+                }
+
             default:
                 result(FlutterMethodNotImplemented)
             }

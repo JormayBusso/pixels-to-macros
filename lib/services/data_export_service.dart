@@ -3,6 +3,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
 import '../models/scan_result.dart';
+import '../models/scan_benchmark.dart';
 import '../models/ground_truth.dart';
 import '../services/database_service.dart';
 
@@ -19,7 +20,8 @@ class DataExportService {
     // Header
     buf.writeln(
       'scan_id,timestamp,depth_mode,food_label,volume_cm3,'
-      'calories_min,calories_max,calories_avg',
+      'calories_min,calories_max,calories_avg,'
+      'top_camera_position,side_camera_position',
     );
 
     for (final scan in scans) {
@@ -33,7 +35,9 @@ class DataExportService {
           '${food.volumeCm3.toStringAsFixed(2)},'
           '${food.caloriesMin.toStringAsFixed(1)},'
           '${food.caloriesMax.toStringAsFixed(1)},'
-          '${avg.toStringAsFixed(1)}',
+          '${avg.toStringAsFixed(1)},'
+          '${_escapeCsv(scan.topCameraPosition ?? "")},'
+          '${_escapeCsv(scan.sideCameraPosition ?? "")}',
         );
       }
     }
@@ -147,6 +151,34 @@ class DataExportService {
           '${_escapeCsv(gt.notes ?? "")}',
         );
       }
+    }
+
+    return buf.toString();
+  }
+
+  /// Generate benchmark CSV with per-scan timing data (Part 17).
+  Future<String> exportBenchmarkCsv() async {
+    final benchmarks = await DatabaseService.instance.getAllBenchmarks();
+
+    final buf = StringBuffer();
+    buf.writeln(
+      'scan_id,timestamp,depth_mode,'
+      'capture_top_ms,capture_side_ms,inference_ms,total_ms,'
+      'peak_memory_bytes,peak_memory_mb',
+    );
+
+    for (final b in benchmarks) {
+      buf.writeln(
+        '${b.scanId},'
+        '${b.timestamp.toIso8601String()},'
+        '${_escapeCsv(b.depthMode)},'
+        '${b.captureTopMs},'
+        '${b.captureSideMs},'
+        '${b.inferenceMs},'
+        '${b.totalMs},'
+        '${b.peakMemoryBytes},'
+        '${b.peakMemoryMB.toStringAsFixed(1)}',
+      );
     }
 
     return buf.toString();

@@ -46,6 +46,16 @@ class _EvalDashboardScreenState extends ConsumerState<EvalDashboardScreen> {
     }
   }
 
+  Future<void> _exportBenchmarks() async {
+    final csv = await DataExportService.instance.exportBenchmarkCsv();
+    await DataExportService.instance.copyToClipboard(csv);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Benchmarks CSV copied to clipboard')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final evalState = ref.watch(evalProvider);
@@ -164,6 +174,32 @@ class _EvalDashboardScreenState extends ConsumerState<EvalDashboardScreen> {
                           unit: '',
                           subtitle: 'Correlation',
                           color: _corrColor(evalState.metrics.correlation),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _MetricCard(
+                          title: 'Weight',
+                          value:
+                              '${evalState.metrics.weightMape.toStringAsFixed(1)}',
+                          unit: '%',
+                          subtitle: 'Weight Error',
+                          color: _mapeColor(evalState.metrics.weightMape),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _MetricCard(
+                          title: 'Volume',
+                          value:
+                              '${evalState.metrics.volumeMape.toStringAsFixed(1)}',
+                          unit: '%',
+                          subtitle: 'Volume Error',
+                          color: _mapeColor(evalState.metrics.volumeMape),
                         ),
                       ),
                     ],
@@ -349,6 +385,14 @@ class _EvalDashboardScreenState extends ConsumerState<EvalDashboardScreen> {
                                     ? AppTheme.green600
                                     : AppTheme.amber600,
                               ),
+                              _MetricRow(
+                                label: 'Avg memory',
+                                value: '${bench.avgMemoryMB.toStringAsFixed(1)} MB',
+                              ),
+                              _MetricRow(
+                                label: 'Peak memory',
+                                value: '${bench.maxMemoryMB.toStringAsFixed(1)} MB',
+                              ),
                             ],
                           ),
                         ),
@@ -379,6 +423,15 @@ class _EvalDashboardScreenState extends ConsumerState<EvalDashboardScreen> {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.timer),
+                    label: const Text('Export Benchmarks CSV'),
+                    onPressed: _exportBenchmarks,
+                  ),
                 ),
                 const SizedBox(height: 80),
               ],
@@ -512,7 +565,7 @@ class _MetricCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: color.withOpacity(0.7),
+                      color: color.withValues(alpha: 0.7),
                     ),
                   ),
               ],

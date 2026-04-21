@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
+import '../services/data_export_service.dart';
+import '../services/native_bridge.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
 import 'edit_food_screen.dart';
@@ -61,6 +63,27 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
     );
   }
 
+  Future<void> _exportPLY() async {
+    final ply = await NativeBridge.instance.exportPointCloud();
+    if (ply == null || ply.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No depth data available for point cloud')),
+        );
+      }
+      return;
+    }
+    final path = await DataExportService.instance.saveToFile(
+      ply,
+      'scan_${_scan.id}_${DateTime.now().millisecondsSinceEpoch}.ply',
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PLY saved to $path')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final avgTotal = (_scan.totalCaloriesMin + _scan.totalCaloriesMax) / 2;
@@ -70,6 +93,11 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
       appBar: AppBar(
         title: const Text('Scan Details'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.view_in_ar),
+            tooltip: 'Export 3D point cloud',
+            onPressed: _exportPLY,
+          ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: AppTheme.red500),
             tooltip: 'Delete scan',
@@ -243,7 +271,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                           flex: (_scan.totalCaloriesMax - avgTotal).round().clamp(1, 9999),
                           child: Container(
                             height: 8,
-                            color: AppTheme.amber500.withOpacity(0.4),
+                            color: AppTheme.amber500.withValues(alpha: 0.4),
                           ),
                         ),
                       ],
@@ -549,7 +577,7 @@ class _FoodDetailCard extends StatelessWidget {
                           child: Container(
                             height: 6,
                             decoration: BoxDecoration(
-                              color: uColor.withOpacity(0.6),
+                              color: uColor.withValues(alpha: 0.6),
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),

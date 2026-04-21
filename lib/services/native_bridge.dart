@@ -67,4 +67,16 @@ class NativeBridge {
       return null;
     }
   }
+
+  // ── Memory usage (Part 17) ───────────────────────────────────────────────
+
+  /// Get current resident memory usage in bytes from the native side.
+  Future<int> getMemoryUsage() async {
+    try {
+      final result = await _channel.invokeMethod<int>('getMemoryUsage');
+      return result ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
 }

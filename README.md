@@ -14,7 +14,7 @@ and calculate calories with uncertainty ranges. 100% offline, iOS only.
 | **UI** | Flutter (Dart) + Riverpod | Screens, state machine, history, analytics |
 | **Bridge** | MethodChannel | JSON messages between Dart and Swift |
 | **Native** | Swift / ARKit / CoreML | AR session, depth, segmentation, volume |
-| **Storage** | SQLite v6 (sqflite) | Food DB (42+ items), scan history, user preferences, ground truth, benchmarks |
+| **Storage** | SQLite v7 (sqflite) | Food DB (42+ items), scan history, preferences, ground truth, benchmarks |
 | **Training** | PyTorch → ONNX → CoreML | DeepLabV3-MobileNetV3 on FoodSeg103 |
 
 ---
@@ -136,7 +136,7 @@ training/
 | 9 | Scan UX polish — guidance, haptics, confidence, tutorial | Done |
 | 10 | Depth mode, scan timing, auto-detail nav, animated ring, loading states | Done |
 | 11 | Scientific evaluation — ground truth, accuracy metrics, eval dashboard | Done |
-| 12 | Point cloud export, benchmark persistence, camera pose storage | Done |
+| 12 | Point cloud export, benchmark persistence, camera pose storage | Done |\n| 13 | Final polish — PLY UI, debug access, weight/volume error, memory tracking | Done |
 
 ---
 
