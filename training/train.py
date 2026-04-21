@@ -122,6 +122,7 @@ def main():
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--output_dir", type=str, default="training/output")
     parser.add_argument("--img_size", type=int, default=513)
+    parser.add_argument("--num_workers", type=int, default=4)
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
@@ -139,11 +140,11 @@ def main():
     print(f"Classes: {num_classes}, Train: {len(train_ds)}, Val: {len(val_ds)}")
 
     train_loader = DataLoader(
-        train_ds, batch_size=args.batch_size, shuffle=True, num_workers=4,
+        train_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
         collate_fn=_collate,
     )
     val_loader = DataLoader(
-        val_ds, batch_size=args.batch_size, shuffle=False, num_workers=4,
+        val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
         collate_fn=_collate,
     )
 
