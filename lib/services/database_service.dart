@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 import '../core/constants.dart';
 import '../models/food_data.dart';
 import '../models/scan_result.dart';
+import '../models/user_preferences.dart';
 
 /// Singleton service wrapping the local SQLite database.
 ///
@@ -12,6 +13,7 @@ import '../models/scan_result.dart';
 ///   • food_data    – reference densities & kcal (seeded on first run)
 ///   • scan_results – historical scan metadata
 ///   • detected_foods – per-scan detected items
+///   • user_preferences – name, calorie goal, onboarding flag
 class DatabaseService {
   DatabaseService._();
   static final DatabaseService instance = DatabaseService._();
@@ -32,7 +34,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -76,12 +78,36 @@ class DatabaseService {
 
     // Seed initial food data
     await _seed(db);
+
+    // user_preferences — single row
+    await db.execute('''
+      CREATE TABLE user_preferences (
+        id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+        name                 TEXT    NOT NULL DEFAULT '',
+        daily_calorie_goal   INTEGER NOT NULL DEFAULT 2000,
+        onboarding_complete  INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.insert('user_preferences', const UserPreferences().toMap());
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Re-seed with expanded food list (ignore duplicates)
       await _seed(db);
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS user_preferences (
+          id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+          name                 TEXT    NOT NULL DEFAULT '',
+          daily_calorie_goal   INTEGER NOT NULL DEFAULT 2000,
+          onboarding_complete  INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+      final rows = await db.query('user_preferences');
+      if (rows.isEmpty) {
+        await db.insert('user_preferences', const UserPreferences().toMap());
+      }
     }
   }
 
@@ -213,5 +239,29 @@ class DatabaseService {
       ));
     }
     return results;
+  }
+
+  // ── user_preferences CRUD ────────────────────────────────────────────────
+
+  Future<UserPreferences> getUserPreferences() async {
+    final db = await database;
+    final rows = await db.query('user_preferences', limit: 1);
+    if (rows.isEmpty) return const UserPreferences();
+    return UserPreferences.fromMap(rows.first);
+  }
+
+  Future<void> saveUserPreferences(UserPreferences prefs) async {
+    final db = await database;
+    final rows = await db.query('user_preferences', limit: 1);
+    if (rows.isEmpty) {
+      await db.insert('user_preferences', prefs.toMap());
+    } else {
+      await db.update(
+        'user_preferences',
+        prefs.toMap(),
+        where: 'id = ?',
+        whereArgs: [rows.first['id']],
+      );
+    }
   }
 }

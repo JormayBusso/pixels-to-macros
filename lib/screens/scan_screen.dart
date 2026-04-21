@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/scan_state.dart';
 import '../models/scan_result.dart';
+import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/scan_state_provider.dart';
 import '../providers/scan_result_provider.dart';
@@ -96,6 +97,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       foods: resultState.foods,
     );
     await ref.read(historyProvider.notifier).addScan(scanResult);
+    await ref.read(dailyIntakeProvider.notifier).load();
     DebugLog.instance.log('Scan', 'Result saved to history');
   }
 
