@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/scan_state.dart';
+import '../models/scan_benchmark.dart';
 import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
@@ -10,6 +12,7 @@ import '../providers/scan_state_provider.dart';
 import '../providers/scan_result_provider.dart';
 import '../providers/streak_provider.dart';
 import '../providers/user_prefs_provider.dart';
+import '../services/database_service.dart';
 import '../services/debug_log.dart';
 import '../services/native_bridge.dart';
 import '../services/perf_monitor.dart';
@@ -34,6 +37,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   bool _showTutorial = false;
   String _detectedDepthMode = 'unknown';
   ScanResult? _savedScanResult;
+
+  // Camera pose metadata from capture (Part 9)
+  Map<String, dynamic> _topFrameMeta = {};
+  Map<String, dynamic> _sideFrameMeta = {};
 
   @override
   void initState() {
@@ -94,7 +101,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     ref.read(scanStateProvider.notifier).topAligned();
     try {
       PerfMonitor.instance.start('capture_top');
-      await _bridge.captureFrame('top');
+      _topFrameMeta = await _bridge.captureFrame('top');
       PerfMonitor.instance.end();
       _hapticMedium();
       ref.read(scanStateProvider.notifier).topCaptured();
@@ -109,7 +116,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     ref.read(scanStateProvider.notifier).sideReady();
     try {
       PerfMonitor.instance.start('capture_side');
-      await _bridge.captureFrame('side');
+      _sideFrameMeta = await _bridge.captureFrame('side');
       PerfMonitor.instance.end();
       _hapticMedium();
       ref.read(scanStateProvider.notifier).sideCaptured();
@@ -143,10 +150,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   Future<void> _saveScanResult(ScanResultState resultState) async {
+    // Encode pose data as JSON strings (Part 9)
+    String? _encodeList(dynamic val) {
+      if (val is List) return jsonEncode(val);
+      return null;
+    }
+
     final scanResult = ScanResult(
       timestamp: DateTime.now(),
       depthMode: _detectedDepthMode,
       foods: resultState.foods,
+      topCameraPosition: _encodeList(_topFrameMeta['camera_position']),
+      topCameraTransform: _encodeList(_topFrameMeta['camera_transform']),
+      sideCameraPosition: _encodeList(_sideFrameMeta['camera_position']),
+      sideCameraTransform: _encodeList(_sideFrameMeta['camera_transform']),
     );
     await ref.read(historyProvider.notifier).addScan(scanResult);
     await ref.read(dailyIntakeProvider.notifier).load();
@@ -155,6 +172,19 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     final history = ref.read(historyProvider);
     if (history.scans.isNotEmpty) {
       _savedScanResult = history.scans.first;
+
+      // Persist benchmark (Part 17)
+      final timings = PerfMonitor.instance.allTimings;
+      final benchmark = ScanBenchmark(
+        scanId: _savedScanResult!.id!,
+        captureTopMs: timings['capture_top']?.inMilliseconds ?? 0,
+        captureSideMs: timings['capture_side']?.inMilliseconds ?? 0,
+        inferenceMs: timings['inference']?.inMilliseconds ?? 0,
+        totalMs: PerfMonitor.instance.total.inMilliseconds,
+        depthMode: _detectedDepthMode,
+        timestamp: DateTime.now(),
+      );
+      await DatabaseService.instance.insertBenchmark(benchmark);
     }
     DebugLog.instance.log('Scan', 'Result saved to history');
   }

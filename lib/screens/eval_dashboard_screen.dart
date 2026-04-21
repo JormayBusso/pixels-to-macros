@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/benchmark_provider.dart';
 import '../providers/eval_provider.dart';
 import '../services/data_export_service.dart';
 import '../theme/app_theme.dart';
 
 /// Scientific evaluation dashboard showing accuracy metrics
-/// for the thesis — MAE, MAPE, RMSE, correlation, range accuracy.
+/// for the thesis — MAE, MAPE, RMSE, correlation, range accuracy,
+/// and performance benchmarks (Part 17).
 class EvalDashboardScreen extends ConsumerStatefulWidget {
   const EvalDashboardScreen({super.key});
 
@@ -20,6 +22,7 @@ class _EvalDashboardScreenState extends ConsumerState<EvalDashboardScreen> {
   void initState() {
     super.initState();
     ref.read(evalProvider.notifier).load();
+    ref.read(benchmarkProvider.notifier).load();
   }
 
   Future<void> _exportEval() async {
@@ -278,6 +281,81 @@ class _EvalDashboardScreenState extends ConsumerState<EvalDashboardScreen> {
                       ),
                     ),
                   ),
+
+                // ── Performance Benchmarks (Part 17) ────────────────────
+                Builder(builder: (context) {
+                  final bench = ref.watch(benchmarkProvider);
+                  if (bench.count == 0) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+                      _SectionTitle('Performance Benchmarks'),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _MetricCard(
+                              title: 'Inference',
+                              value: bench.avgInferenceMs.toStringAsFixed(0),
+                              unit: 'ms',
+                              subtitle: 'Avg (target <200)',
+                              color: bench.avgInferenceMs < 200
+                                  ? AppTheme.green600
+                                  : AppTheme.red500,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _MetricCard(
+                              title: 'Total',
+                              value: bench.avgTotalMs.toStringAsFixed(0),
+                              unit: 'ms',
+                              subtitle: 'Avg scan time',
+                              color: bench.avgTotalMs < 3000
+                                  ? AppTheme.green600
+                                  : AppTheme.amber600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              _MetricRow(
+                                label: 'Scans benchmarked',
+                                value: '${bench.count}',
+                              ),
+                              _MetricRow(
+                                label: 'Avg capture (top)',
+                                value: '${bench.avgCaptureTopMs.toStringAsFixed(0)} ms',
+                              ),
+                              _MetricRow(
+                                label: 'Avg capture (side)',
+                                value: '${bench.avgCaptureSideMs.toStringAsFixed(0)} ms',
+                              ),
+                              _MetricRow(
+                                label: 'Inference range',
+                                value: '${bench.minInferenceMs}–${bench.maxInferenceMs} ms',
+                              ),
+                              _MetricRow(
+                                label: 'Under 200ms target',
+                                value: '${bench.scansUnderTarget}/${bench.count}'
+                                    ' (${bench.count > 0 ? (bench.scansUnderTarget / bench.count * 100).round() : 0}%)',
+                                valueColor: bench.scansUnderTarget == bench.count
+                                    ? AppTheme.green600
+                                    : AppTheme.amber600,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
 
                 // ── Export ───────────────────────────────────────────────
                 const SizedBox(height: 20),

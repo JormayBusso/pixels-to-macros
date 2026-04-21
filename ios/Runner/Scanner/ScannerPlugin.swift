@@ -18,6 +18,7 @@ final class ScannerPlugin {
     private static let sessionManager = ARSessionManager()
     private static let captureService = FrameCaptureService()
     private static let pipeline = InferencePipeline()
+    private static let pointCloudExporter = PointCloudExporter()
 
     // MARK: – Registration
 
@@ -94,6 +95,25 @@ final class ScannerPlugin {
                             result(FlutterError(
                                 code: "INFERENCE_FAILED",
                                 message: error.localizedDescription,
+                                details: nil
+                            ))
+                        }
+                    }
+                }
+
+            // ── Point cloud export (Part 15) ────────────────────────
+            case "exportPointCloud":
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let ply = pointCloudExporter.exportFromCapture(
+                        captureService: captureService
+                    )
+                    DispatchQueue.main.async {
+                        if let ply {
+                            result(ply)
+                        } else {
+                            result(FlutterError(
+                                code: "PLY_EXPORT_FAILED",
+                                message: "No depth data available for point cloud",
                                 details: nil
                             ))
                         }

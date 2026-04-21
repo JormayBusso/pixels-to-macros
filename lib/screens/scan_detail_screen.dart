@@ -253,6 +253,45 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
               ),
             ),
           ),
+          // ── Camera pose data (Part 9) ──────────────────────────────────
+          if (_scan.topCameraPosition != null ||
+              _scan.sideCameraPosition != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Camera Pose',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.gray700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_scan.topCameraPosition != null)
+                      _InfoRow(
+                        label: 'Top position',
+                        value: _scan.topCameraPosition!,
+                      ),
+                    if (_scan.sideCameraPosition != null)
+                      _InfoRow(
+                        label: 'Side position',
+                        value: _scan.sideCameraPosition!,
+                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Full 4×4 transform stored for geometry reconstruction',
+                      style: TextStyle(fontSize: 11, color: AppTheme.gray400),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 80),
         ],
       ),
@@ -327,6 +366,42 @@ class _InfoChip extends StatelessWidget {
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: AppTheme.green700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(label,
+                style: const TextStyle(fontSize: 12, color: AppTheme.gray400)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'monospace',
+                color: AppTheme.gray700,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 import '../core/constants.dart';
 import '../models/food_data.dart';
 import '../models/ground_truth.dart';
+import '../models/scan_benchmark.dart';
 import '../models/scan_result.dart';
 import '../models/user_preferences.dart';
 
@@ -16,6 +17,7 @@ import '../models/user_preferences.dart';
 ///   • detected_foods – per-scan detected items
 ///   • user_preferences – name, calorie goal, onboarding flag
 ///   • ground_truth    – actual weighed measurements for evaluation
+///   • benchmarks      – per-scan performance timing data
 class DatabaseService {
   DatabaseService._();
   static final DatabaseService instance = DatabaseService._();
@@ -36,7 +38,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -58,9 +60,13 @@ class DatabaseService {
     // scan_results — one row per scan session
     await db.execute('''
       CREATE TABLE scan_results (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp  TEXT    NOT NULL,
-        depth_mode TEXT    NOT NULL
+        id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp             TEXT    NOT NULL,
+        depth_mode            TEXT    NOT NULL,
+        top_camera_position   TEXT,
+        top_camera_transform  TEXT,
+        side_camera_position  TEXT,
+        side_camera_transform TEXT
       )
     ''');
 
@@ -107,6 +113,21 @@ class DatabaseService {
         FOREIGN KEY (scan_id) REFERENCES scan_results(id) ON DELETE CASCADE
       )
     ''');
+
+    // benchmarks — per-scan performance timing
+    await db.execute('''
+      CREATE TABLE benchmarks (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        scan_id         INTEGER NOT NULL,
+        capture_top_ms  INTEGER NOT NULL,
+        capture_side_ms INTEGER NOT NULL,
+        inference_ms    INTEGER NOT NULL,
+        total_ms        INTEGER NOT NULL,
+        depth_mode      TEXT    NOT NULL,
+        timestamp       TEXT    NOT NULL,
+        FOREIGN KEY (scan_id) REFERENCES scan_results(id) ON DELETE CASCADE
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -149,6 +170,32 @@ class DatabaseService {
           notes                TEXT,
           timestamp            TEXT    NOT NULL,
           FOREIGN KEY (detected_food_id) REFERENCES detected_foods(id) ON DELETE CASCADE,
+          FOREIGN KEY (scan_id) REFERENCES scan_results(id) ON DELETE CASCADE
+        )
+      ''');
+    }
+    if (oldVersion < 6) {
+      // Camera pose columns on scan_results
+      try {
+        await db.execute('ALTER TABLE scan_results ADD COLUMN top_camera_position TEXT');
+        await db.execute('ALTER TABLE scan_results ADD COLUMN top_camera_transform TEXT');
+        await db.execute('ALTER TABLE scan_results ADD COLUMN side_camera_position TEXT');
+        await db.execute('ALTER TABLE scan_results ADD COLUMN side_camera_transform TEXT');
+      } catch (_) {
+        // Columns already exist from fresh v6 install
+      }
+
+      // Benchmarks table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS benchmarks (
+          id              INTEGER PRIMARY KEY AUTOINCREMENT,
+          scan_id         INTEGER NOT NULL,
+          capture_top_ms  INTEGER NOT NULL,
+          capture_side_ms INTEGER NOT NULL,
+          inference_ms    INTEGER NOT NULL,
+          total_ms        INTEGER NOT NULL,
+          depth_mode      TEXT    NOT NULL,
+          timestamp       TEXT    NOT NULL,
           FOREIGN KEY (scan_id) REFERENCES scan_results(id) ON DELETE CASCADE
         )
       ''');
@@ -377,5 +424,29 @@ class DatabaseService {
   Future<void> deleteGroundTruth(int gtId) async {
     final db = await database;
     await db.delete('ground_truth', where: 'id = ?', whereArgs: [gtId]);
+  }
+
+  // ── Benchmarks (Part 17) ────────────────────────────────────────────────
+
+  Future<int> insertBenchmark(ScanBenchmark benchmark) async {
+    final db = await database;
+    return db.insert('benchmarks', benchmark.toMap());
+  }
+
+  Future<List<ScanBenchmark>> getAllBenchmarks() async {
+    final db = await database;
+    final rows = await db.query('benchmarks', orderBy: 'timestamp DESC');
+    return rows.map(ScanBenchmark.fromMap).toList();
+  }
+
+  Future<ScanBenchmark?> getBenchmarkForScan(int scanId) async {
+    final db = await database;
+    final rows = await db.query(
+      'benchmarks',
+      where: 'scan_id = ?',
+      whereArgs: [scanId],
+    );
+    if (rows.isEmpty) return null;
+    return ScanBenchmark.fromMap(rows.first);
   }
 }

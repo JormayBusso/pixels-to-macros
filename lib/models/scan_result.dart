@@ -5,11 +5,21 @@ class ScanResult {
   final String depthMode;
   final List<DetectedFood> foods;
 
+  /// Camera pose data (Part 9) — stored as JSON strings.
+  final String? topCameraPosition;
+  final String? topCameraTransform;
+  final String? sideCameraPosition;
+  final String? sideCameraTransform;
+
   const ScanResult({
     this.id,
     required this.timestamp,
     required this.depthMode,
     required this.foods,
+    this.topCameraPosition,
+    this.topCameraTransform,
+    this.sideCameraPosition,
+    this.sideCameraTransform,
   });
 
   double get totalCaloriesMin =>
@@ -23,6 +33,10 @@ class ScanResult {
       if (id != null) 'id': id,
       'timestamp': timestamp.toIso8601String(),
       'depth_mode': depthMode,
+      if (topCameraPosition != null) 'top_camera_position': topCameraPosition,
+      if (topCameraTransform != null) 'top_camera_transform': topCameraTransform,
+      if (sideCameraPosition != null) 'side_camera_position': sideCameraPosition,
+      if (sideCameraTransform != null) 'side_camera_transform': sideCameraTransform,
     };
   }
 
@@ -33,6 +47,10 @@ class ScanResult {
       timestamp: DateTime.parse(map['timestamp'] as String),
       depthMode: map['depth_mode'] as String,
       foods: foods,
+      topCameraPosition: map['top_camera_position'] as String?,
+      topCameraTransform: map['top_camera_transform'] as String?,
+      sideCameraPosition: map['side_camera_position'] as String?,
+      sideCameraTransform: map['side_camera_transform'] as String?,
     );
   }
 }

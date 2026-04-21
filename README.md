@@ -14,7 +14,7 @@ and calculate calories with uncertainty ranges. 100% offline, iOS only.
 | **UI** | Flutter (Dart) + Riverpod | Screens, state machine, history, analytics |
 | **Bridge** | MethodChannel | JSON messages between Dart and Swift |
 | **Native** | Swift / ARKit / CoreML | AR session, depth, segmentation, volume |
-| **Storage** | SQLite v4 (sqflite) | Food DB (42+ items), scan history, user preferences |
+| **Storage** | SQLite v6 (sqflite) | Food DB (42+ items), scan history, user preferences, ground truth, benchmarks |
 | **Training** | PyTorch → ONNX → CoreML | DeepLabV3-MobileNetV3 on FoodSeg103 |
 
 ---
@@ -34,6 +34,9 @@ and calculate calories with uncertainty ranges. 100% offline, iOS only.
 - **Edit scans** — correct food labels and calorie values after scanning
 - **Manual food entry** — searchable DB picker with portion input
 - **Food database browser** — view all 42+ foods, add custom entries
+- **Point cloud export** — PLY 3D point cloud from depth data for thesis diagrams
+- **Performance benchmarking** — per-scan timing persistence, historical analysis
+- **Camera pose storage** — full 4×4 transforms for geometry reconstruction
 - **CSV export** — detailed per-food rows and daily summary exports
 - **Streak tracking** — consecutive scanning day counter
 - **Performance monitoring** — pipeline timing (capture, inference, total)
@@ -53,21 +56,27 @@ lib/
 │   └── scan_state.dart               ScanState enum (6 happy + 3 error)
 ├── models/
 │   ├── food_data.dart                FoodData + calorie range math
-│   ├── scan_result.dart              ScanResult + DetectedFood
+│   ├── ground_truth.dart             Ground truth measurements
+│   ├── scan_benchmark.dart           Per-scan performance timing
+│   ├── scan_result.dart              ScanResult + DetectedFood + camera pose
 │   └── user_preferences.dart         User prefs (name, goal, tutorial flag)
 ├── providers/
 │   ├── analytics_provider.dart       7/14/30-day analytics aggregation
+│   ├── benchmark_provider.dart       Historical performance benchmarks
 │   ├── daily_intake_provider.dart    Today's calorie totals
 │   ├── history_provider.dart         Scan history CRUD
 │   ├── scan_result_provider.dart     ML inference + calorie computation
 │   ├── scan_state_provider.dart      Scan state machine
+│   ├── eval_provider.dart            Accuracy metrics (MAE, MAPE, RMSE)
 │   ├── streak_provider.dart          Consecutive-day streak counter
 │   └── user_prefs_provider.dart      User preferences + tutorial flag
 ├── screens/
 │   ├── analytics_screen.dart         Bar charts + stat cards
 │   ├── debug_screen.dart             Monospace log viewer
 │   ├── edit_food_screen.dart         Edit detected food labels/calories
+│   ├── eval_dashboard_screen.dart    Accuracy + benchmark metrics
 │   ├── food_database_screen.dart     Browse + add custom foods
+│   ├── ground_truth_screen.dart      Enter actual measurements
 │   ├── history_screen.dart           Searchable scan history
 │   ├── home_screen_v2.dart           Dashboard with ring + streak + foods
 │   ├── main_shell.dart               4-tab navigation + scan FABs
@@ -77,8 +86,8 @@ lib/
 │   ├── scan_screen.dart              Camera guidance + state machine scan
 │   └── settings_screen.dart          Profile, goal, DB info, exports
 ├── services/
-│   ├── data_export_service.dart      CSV export (detailed + daily)
-│   ├── database_service.dart         SQLite v4 singleton + migrations
+│   ├── data_export_service.dart      CSV export (detailed + daily + eval)
+│   ├── database_service.dart         SQLite v6 singleton + migrations
 │   ├── debug_log.dart                500-entry ring buffer
 │   ├── native_bridge.dart            MethodChannel to Swift
 │   └── perf_monitor.dart             Pipeline timing
@@ -97,6 +106,7 @@ ios/Runner/
     ├── ARSessionManager.swift        ARKit world tracking session
     ├── FrameCaptureService.swift     Frame capture (top + side)
     ├── FramePreprocessor.swift       640×480 resize + normalisation
+    ├── PointCloudExporter.swift     PLY 3D point cloud generation
     ├── PlateDetector.swift           Ellipse fitting for plate boundary
     ├── SegmentationService.swift     CoreML DeepLabV3 inference
     ├── VolumeCalculator.swift        Depth → volume (cm³)
@@ -124,6 +134,9 @@ training/
 | 7 | Scan detail, CSV export, streaks, perf monitoring | Done |
 | 8 | Edit foods, food DB browser, history search, uncertainty | Done |
 | 9 | Scan UX polish — guidance, haptics, confidence, tutorial | Done |
+| 10 | Depth mode, scan timing, auto-detail nav, animated ring, loading states | Done |
+| 11 | Scientific evaluation — ground truth, accuracy metrics, eval dashboard | Done |
+| 12 | Point cloud export, benchmark persistence, camera pose storage | Done |
 
 ---
 

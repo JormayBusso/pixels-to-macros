@@ -154,7 +154,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _InfoRow(
                       icon: Icons.storage,
                       label: 'Database version',
-                      value: '5',
+                      value: '6',
                     ),
                     const SizedBox(height: 12),
                     SizedBox(

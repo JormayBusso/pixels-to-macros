@@ -54,4 +54,17 @@ class NativeBridge {
   Future<void> stopSession() async {
     await _channel.invokeMethod<void>('stopSession');
   }
+
+  // ── Point cloud (Part 15) ────────────────────────────────────────────────
+
+  /// Export the current scan's depth data as a PLY point cloud string.
+  /// Must be called while the AR session is still active (before stopSession).
+  /// Returns the PLY file content, or null if depth data is unavailable.
+  Future<String?> exportPointCloud() async {
+    try {
+      return await _channel.invokeMethod<String>('exportPointCloud');
+    } catch (_) {
+      return null;
+    }
+  }
 }
