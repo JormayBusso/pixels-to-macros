@@ -1,0 +1,117 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - 'lib/**'
+      - 'ios/**'
+      - 'pubspec.yaml'
+      - 'scripts/**'
+
+jobs:
+  build-ios:
+    name: Build unsigned IPA
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Flutter ───────────────────────────────────────────────────────────
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      # ── 3. Save custom iOS files before flutter create overwrites them ───────
+      - name: Save custom iOS files
+        run: |
+          mkdir -p /tmp/ios_custom/Scanner
+          cp ios/Runner/AppDelegate.swift /tmp/ios_custom/
+          cp ios/Runner/Info-additions.plist /tmp/ios_custom/
+          cp ios/Runner/Scanner/*.swift /tmp/ios_custom/Scanner/
+
+      # ── 4. Generate full iOS Xcode project scaffold ──────────────────────────
+      - name: Generate iOS scaffold
+        run: flutter create --org com.pixelstomacros --platforms=ios .
+
+      # ── 5. Restore custom files ───────────────────────────────────────────────
+      - name: Restore custom AppDelegate and Scanner
+        run: |
+          cp /tmp/ios_custom/AppDelegate.swift ios/Runner/AppDelegate.swift
+          mkdir -p ios/Runner/Scanner
+          cp /tmp/ios_custom/Scanner/*.swift ios/Runner/Scanner/
+
+      # ── 6. Patch Info.plist with camera permission + ARKit capability ─────────
+      - name: Patch Info.plist
+        run: |
+          PLIST="ios/Runner/Info.plist"
+
+          # Camera permission
+          /usr/libexec/PlistBuddy -c \
+            "Add :NSCameraUsageDescription string 'Pixels to Macros uses the camera to scan your plate and estimate food calories.'" \
+            "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c \
+            "Set :NSCameraUsageDescription 'Pixels to Macros uses the camera to scan your plate and estimate food calories.'" \
+            "$PLIST"
+
+          # Replace UIRequiredDeviceCapabilities with arkit + arm64
+          /usr/libexec/PlistBuddy -c "Delete :UIRequiredDeviceCapabilities" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UIRequiredDeviceCapabilities array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :UIRequiredDeviceCapabilities:0 string arkit" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :UIRequiredDeviceCapabilities:1 string arm64" "$PLIST"
+
+          # Display name
+          /usr/libexec/PlistBuddy -c \
+            "Add :CFBundleDisplayName string 'Pixels to Macros'" "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c \
+            "Set :CFBundleDisplayName 'Pixels to Macros'" "$PLIST"
+
+      # ── 7. Set iOS 17 deployment target everywhere ───────────────────────────
+      - name: Set deployment target to iOS 17
+        run: |
+          # Podfile
+          perl -i -pe "s/# platform :ios, '[0-9.]+'/platform :ios, '17.0'/" ios/Podfile
+          perl -i -pe "s/^platform :ios, '[0-9.]+'/platform :ios, '17.0'/" ios/Podfile
+          grep -q "^platform :ios" ios/Podfile || echo "platform :ios, '17.0'" >> ios/Podfile
+
+      # ── 8. Install xcodeproj gem and add Scanner/ source files to target ──────
+      - name: Install xcodeproj gem
+        run: gem install xcodeproj --no-document
+
+      - name: Add Scanner files + set deployment target in xcodeproj
+        run: ruby scripts/add_scanner_files.rb
+
+      # ── 9. Flutter dependencies ───────────────────────────────────────────────
+      - name: Flutter pub get
+        run: flutter pub get
+
+      # ── 10. CocoaPods ─────────────────────────────────────────────────────────
+      - name: Pod install
+        run: cd ios && pod install
+
+      # ── 11. Build unsigned IPA ────────────────────────────────────────────────
+      - name: Build iOS (no code sign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package IPA
+        run: |
+          mkdir -p build/ios/iphoneos/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          cd build/ios/iphoneos
+          zip -r PixelsToMacros.ipa Payload/
+          echo "IPA size: $(du -sh PixelsToMacros.ipa | cut -f1)"
+
+      # ── 12. Upload artifact ───────────────────────────────────────────────────
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixelsToMacros-IPA
+          path: build/ios/iphoneos/PixelsToMacros.ipa
+          retention-days: 7
