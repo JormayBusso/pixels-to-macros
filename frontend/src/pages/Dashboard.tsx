@@ -233,10 +233,9 @@ export default function Dashboard() {
 
           {/* RIGHT column */}
           <div className="space-y-5">
-            {/* Plant widget */}
+            {/* Avatar widget */}
             <div className="card text-center">
-              <h2 className="font-bold text-gray-900 mb-1">Your Plant</h2>
-              <PlantWidget streak={summary.streak} />
+              <PlantWidget streak={summary.streak} goal={user?.dietary_goal} />
             </div>
 
             {/* Goal card */}

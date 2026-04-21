@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { User, Eye, EyeOff, Check, Leaf, Target } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Eye, EyeOff, Check, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { DIETARY_GOALS } from '../types';
@@ -22,19 +23,28 @@ const pwSchema = z.object({
 });
 type PwForm = z.infer<typeof pwSchema>;
 
-const VALID_ICONS = ['plant', 'tree', 'flower', 'cactus', 'sunflower', 'bonsai'] as const;
-const ICON_EMOJI: Record<string, string> = {
-  plant:    '🌱', tree: '🌳', flower: '🌸',
-  cactus:   '🌵', sunflower: '🌻', bonsai: '🎋',
-};
-
 export default function Profile() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const [tab, setTab] = useState<'profile' | 'goals' | 'password'>('profile');
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="space-y-4 max-w-lg">
-      <h1 className="text-2xl font-bold text-gray-900">Profile & Settings</h1>
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
+          <Settings className="w-6 h-6 text-green-700" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          <p className="text-sm text-gray-500">{user?.email}</p>
+        </div>
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-white rounded-xl p-1 shadow-sm border border-green-100">
@@ -57,6 +67,22 @@ export default function Profile() {
       {tab === 'profile'  && <ProfileTab  user={user!} onRefresh={refreshUser} />}
       {tab === 'goals'    && <GoalsTab    user={user!} onRefresh={refreshUser} />}
       {tab === 'password' && <PasswordTab />}
+
+      {/* ── Logout ──────────────────────────────────────────────────────── */}
+      <div className="pt-4 border-t border-gray-100">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl
+            bg-red-50 text-red-600 font-semibold hover:bg-red-100
+            border border-red-200 transition-colors"
+        >
+          <LogOut className="w-5 h-5" />
+          Sign out
+        </button>
+        <p className="text-center text-xs text-gray-400 mt-2">
+          Signed in as <span className="font-medium">{user?.username}</span>
+        </p>
+      </div>
     </div>
   );
 }
@@ -64,7 +90,6 @@ export default function Profile() {
 // ── Profile Tab ───────────────────────────────────────────────────────────────
 function ProfileTab({ user, onRefresh }: { user: any; onRefresh: () => Promise<void> }) {
   const [username, setUsername]   = useState(user.username);
-  const [icon, setIcon]           = useState(user.gamification_icon ?? 'plant');
   const [saving, setSaving]       = useState(false);
   const [msg, setMsg]             = useState('');
   const [error, setError]         = useState('');
@@ -72,7 +97,7 @@ function ProfileTab({ user, onRefresh }: { user: any; onRefresh: () => Promise<v
   const handleSave = async () => {
     setSaving(true); setMsg(''); setError('');
     try {
-      await api.put('/users/me', { username, gamification_icon: icon });
+      await api.put('/users/me', { username });
       await onRefresh();
       setMsg('Profile updated!');
     } catch (e: any) {
@@ -101,22 +126,6 @@ function ProfileTab({ user, onRefresh }: { user: any; onRefresh: () => Promise<v
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
-      </div>
-
-      <div>
-        <label className="label">Gamification plant icon</label>
-        <div className="flex gap-2 flex-wrap">
-          {VALID_ICONS.map((ic) => (
-            <button
-              key={ic}
-              onClick={() => setIcon(ic)}
-              className={`w-12 h-12 rounded-xl text-2xl border-2 transition-all
-                ${icon === ic ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-green-300'}`}
-            >
-              {ICON_EMOJI[ic]}
-            </button>
-          ))}
-        </div>
       </div>
 
       {msg   && <p className="text-green-600 text-sm flex items-center gap-1"><Check className="w-4 h-4" /> {msg}</p>}

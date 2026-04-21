@@ -1,8 +1,8 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   LayoutDashboard, Camera, Droplets, BarChart3,
-  ShoppingCart, User, LogOut, Leaf, Menu, X,
+  ShoppingCart, User, Leaf, Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -15,15 +15,9 @@ const NAV_ITEMS = [
 ];
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
-  const navigate  = useNavigate();
   const [open, setOpen] = useState(false);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   return (
     <header className="bg-white border-b border-green-100 sticky top-0 z-40 shadow-sm">
@@ -57,7 +51,7 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* Right: profile + logout */}
+        {/* Right: profile */}
         <div className="flex items-center gap-2">
           <Link
             to="/profile"
@@ -72,13 +66,6 @@ export default function Navbar() {
             </div>
             <span className="hidden md:inline">{user?.username}</span>
           </Link>
-          <button
-            onClick={handleLogout}
-            className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-            title="Logout"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
 
           {/* Mobile menu toggle */}
           <button
