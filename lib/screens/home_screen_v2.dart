@@ -20,6 +20,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _initialLoading = true;
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +33,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await ref.read(dailyIntakeProvider.notifier).load();
     await ref.read(historyProvider.notifier).load();
     await ref.read(streakProvider.notifier).load();
+    if (mounted) setState(() => _initialLoading = false);
   }
 
   @override
@@ -67,7 +70,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-      body: SafeArea(
+      body: _initialLoading
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: AppTheme.green500),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading your data…',
+                    style: TextStyle(color: AppTheme.gray400),
+                  ),
+                ],
+              ),
+            )
+          : SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadData,
           child: ListView(
@@ -105,9 +122,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(height: 16),
 
               // ── Food breakdown ───────────────────────────────────────
-              if (intake.foods.isNotEmpty) ...[
-                _SectionTitle('Today\'s Foods'),
-                const SizedBox(height: 8),
+              _SectionTitle('Today\'s Foods'),
+              const SizedBox(height: 8),
+              if (intake.foods.isEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppTheme.green50,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.restaurant_menu,
+                              color: AppTheme.green300, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'No food logged yet today.\nScan or add food to start tracking!',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.gray400,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -145,8 +193,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-              ],
+              const SizedBox(height: 16),
 
               // ── Recent scans ─────────────────────────────────────────
               _SectionTitle('Recent Scans'),
@@ -187,15 +234,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       child: Card(
                         child: ListTile(
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: AppTheme.green100,
-                            borderRadius: BorderRadius.circular(10),
+                        leading: Hero(
+                          tag: 'scan_icon_${scan.id}',
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppTheme.green100,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.fastfood,
+                                color: AppTheme.green600, size: 20),
                           ),
-                          child: const Icon(Icons.fastfood,
-                              color: AppTheme.green600, size: 20),
                         ),
                         title: Text(
                           '${scan.foods.length} item${scan.foods.length == 1 ? '' : 's'}',
@@ -250,7 +300,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 // ── Calorie progress ring ────────────────────────────────────────────────────
 
-class _CalorieRingCard extends StatelessWidget {
+class _CalorieRingCard extends StatefulWidget {
   const _CalorieRingCard({
     required this.consumed,
     required this.goal,
@@ -261,56 +311,102 @@ class _CalorieRingCard extends StatelessWidget {
   final int scanCount;
 
   @override
+  State<_CalorieRingCard> createState() => _CalorieRingCardState();
+}
+
+class _CalorieRingCardState extends State<_CalorieRingCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _anim;
+  late Animation<double> _progress;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _setupAnimation();
+    _anim.forward();
+  }
+
+  @override
+  void didUpdateWidget(_CalorieRingCard old) {
+    super.didUpdateWidget(old);
+    if (old.consumed != widget.consumed || old.goal != widget.goal) {
+      _setupAnimation();
+      _anim.forward(from: 0);
+    }
+  }
+
+  void _setupAnimation() {
+    final target = widget.goal > 0
+        ? (widget.consumed / widget.goal).clamp(0.0, 1.0)
+        : 0.0;
+    _progress = Tween<double>(begin: 0, end: target).animate(
+      CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
-    final remaining = (goal - consumed).clamp(0, double.infinity);
+    final remaining = (widget.goal - widget.consumed).clamp(0, double.infinity);
 
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Row(
           children: [
-            // Ring
-            SizedBox(
-              width: 120,
-              height: 120,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 120,
-                    height: 120,
-                    child: CircularProgressIndicator(
-                      value: progress,
-                      strokeWidth: 10,
-                      backgroundColor: AppTheme.green100,
-                      color: consumed > goal
-                          ? AppTheme.amber500
-                          : AppTheme.green500,
-                      strokeCap: StrokeCap.round,
+            // Animated ring
+            AnimatedBuilder(
+              animation: _progress,
+              builder: (_, __) => SizedBox(
+                width: 120,
+                height: 120,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 120,
+                      height: 120,
+                      child: CircularProgressIndicator(
+                        value: _progress.value,
+                        strokeWidth: 10,
+                        backgroundColor: AppTheme.green100,
+                        color: widget.consumed > widget.goal
+                            ? AppTheme.amber500
+                            : AppTheme.green500,
+                        strokeCap: StrokeCap.round,
+                      ),
                     ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        consumed.round().toString(),
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.gray900,
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.consumed.round().toString(),
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.gray900,
+                          ),
                         ),
-                      ),
-                      const Text(
-                        'kcal',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.gray400,
+                        const Text(
+                          'kcal',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.gray400,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(width: 24),
@@ -322,21 +418,21 @@ class _CalorieRingCard extends StatelessWidget {
                 children: [
                   _StatRow(
                     label: 'Goal',
-                    value: '${goal.round()} kcal',
+                    value: '${widget.goal.round()} kcal',
                     color: AppTheme.gray700,
                   ),
                   const SizedBox(height: 8),
                   _StatRow(
                     label: 'Remaining',
                     value: '${remaining.round()} kcal',
-                    color: consumed > goal
+                    color: widget.consumed > widget.goal
                         ? AppTheme.amber700
                         : AppTheme.green700,
                   ),
                   const SizedBox(height: 8),
                   _StatRow(
                     label: 'Scans today',
-                    value: '$scanCount',
+                    value: '${widget.scanCount}',
                     color: AppTheme.gray700,
                   ),
                 ],

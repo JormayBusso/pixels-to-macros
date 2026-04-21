@@ -108,8 +108,8 @@ class _Reticle extends StatelessWidget {
         ? AppTheme.green400
         : AppTheme.amber500;
 
-    return AnimatedBuilder(
-      animation: pulse,
+    return _AnimBuilder(
+      listenable: pulse,
       builder: (_, __) {
         final scale = 1.0 + pulse.value * 0.08;
         return Transform.scale(
@@ -263,8 +263,8 @@ class _AnimatedArrow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: pulse,
+    return _AnimBuilder(
+      listenable: pulse,
       builder: (_, __) {
         final dx = pulse.value * 16 - 8; // slides ±8px
         return Transform.translate(
@@ -297,9 +297,9 @@ class _AnimatedArrow extends StatelessWidget {
   }
 }
 
-/// Convenience [AnimatedBuilder] without a child parameter.
-class AnimatedBuilder extends AnimatedWidget {
-  const AnimatedBuilder({
+/// Convenience animated builder without a child parameter.
+class _AnimBuilder extends AnimatedWidget {
+  const _AnimBuilder({
     super.key,
     required super.listenable,
     required this.builder,
@@ -309,6 +309,4 @@ class AnimatedBuilder extends AnimatedWidget {
 
   @override
   Widget build(BuildContext context) => builder(context, null);
-
-  Animation<double> get animation => listenable as Animation<double>;
 }

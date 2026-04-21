@@ -17,6 +17,7 @@ import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
 import '../widgets/scan_guidance_overlay.dart';
 import '../widgets/scan_tutorial_overlay.dart';
+import 'scan_detail_screen.dart';
 
 /// Full-screen scan flow with camera guidance, haptic feedback,
 /// confidence scoring, and first-scan tutorial (Part 4 + Step 9).
@@ -31,6 +32,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   final _bridge = NativeBridge.instance;
   bool _sessionStarted = false;
   bool _showTutorial = false;
+  String _detectedDepthMode = 'unknown';
+  ScanResult? _savedScanResult;
 
   @override
   void initState() {
@@ -55,6 +58,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     try {
       DebugLog.instance.log('Scan', 'Starting AR session');
       await _bridge.startSession();
+      // Detect depth mode for this device
+      try {
+        _detectedDepthMode = await _bridge.getDepthMode();
+        DebugLog.instance.log('Scan', 'Depth mode: $_detectedDepthMode');
+      } catch (_) {
+        _detectedDepthMode = 'plate_fallback';
+      }
       setState(() => _sessionStarted = true);
       DebugLog.instance.log('Scan', 'AR session started');
     } catch (e) {
@@ -135,12 +145,17 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   Future<void> _saveScanResult(ScanResultState resultState) async {
     final scanResult = ScanResult(
       timestamp: DateTime.now(),
-      depthMode: 'unknown',
+      depthMode: _detectedDepthMode,
       foods: resultState.foods,
     );
     await ref.read(historyProvider.notifier).addScan(scanResult);
     await ref.read(dailyIntakeProvider.notifier).load();
     await ref.read(streakProvider.notifier).load();
+    // Store for potential detail navigation
+    final history = ref.read(historyProvider);
+    if (history.scans.isNotEmpty) {
+      _savedScanResult = history.scans.first;
+    }
     DebugLog.instance.log('Scan', 'Result saved to history');
   }
 
@@ -176,10 +191,22 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               scanState: scanState,
               scanResult: scanResult,
               sessionStarted: _sessionStarted,
+              depthMode: _detectedDepthMode,
+              timings: PerfMonitor.instance.allTimings,
               onCaptureTop: _captureTop,
               onCaptureSide: _captureSide,
               onRetry: _retry,
               onClose: () => Navigator.of(context).pop(),
+              onViewDetails: _savedScanResult != null
+                  ? () {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ScanDetailScreen(scan: _savedScanResult!),
+                        ),
+                      );
+                    }
+                  : null,
             ),
           ),
 
@@ -209,19 +236,25 @@ class _BottomPanel extends StatelessWidget {
     required this.scanState,
     required this.scanResult,
     required this.sessionStarted,
+    required this.depthMode,
+    required this.timings,
     required this.onCaptureTop,
     required this.onCaptureSide,
     required this.onRetry,
     required this.onClose,
+    this.onViewDetails,
   });
 
   final ScanState scanState;
   final ScanResultState scanResult;
   final bool sessionStarted;
+  final String depthMode;
+  final Map<String, Duration> timings;
   final VoidCallback onCaptureTop;
   final VoidCallback onCaptureSide;
   final VoidCallback onRetry;
   final VoidCallback onClose;
+  final VoidCallback? onViewDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +314,31 @@ class _BottomPanel extends StatelessWidget {
               caloriesMin: scanResult.totalCaloriesMin,
               caloriesMax: scanResult.totalCaloriesMax,
             ),
+            const SizedBox(height: 8),
+
+            // Timing + depth mode chips
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              alignment: WrapAlignment.center,
+              children: [
+                _InfoChipDark(
+                  icon: Icons.visibility,
+                  label: depthMode.replaceAll('_', ' '),
+                ),
+                if (timings.isNotEmpty)
+                  _InfoChipDark(
+                    icon: Icons.timer,
+                    label: '${timings.values.fold(Duration.zero, (a, b) => a + b).inMilliseconds}ms total',
+                  ),
+                _InfoChipDark(
+                  icon: Icons.restaurant,
+                  label: '${scanResult.foods.length} item${scanResult.foods.length == 1 ? '' : 's'}',
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
+
             ...scanResult.foods.map((f) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(
@@ -334,8 +391,8 @@ class _BottomPanel extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: onClose,
-                    child: const Text('Done'),
+                    onPressed: onViewDetails ?? onClose,
+                    child: Text(onViewDetails != null ? 'View Details' : 'Done'),
                   ),
                 ),
               ],
@@ -553,6 +610,34 @@ class _ProcessingIndicator extends StatelessWidget {
           style: const TextStyle(color: Colors.white54, fontSize: 13),
         ),
       ],
+    );
+  }
+}
+
+class _InfoChipDark extends StatelessWidget {
+  const _InfoChipDark({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: Colors.white54),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: Colors.white54),
+          ),
+        ],
+      ),
     );
   }
 }

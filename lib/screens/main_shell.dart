@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/history_provider.dart';
 import '../providers/scan_state_provider.dart';
 import '../theme/app_theme.dart';
 import 'analytics_screen.dart';
@@ -45,6 +46,9 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final historyState = ref.watch(historyProvider);
+    final scanCount = historyState.scans.length;
+
     return Scaffold(
       body: IndexedStack(
         index: _tabIndex,
@@ -55,23 +59,31 @@ class _MainShellState extends ConsumerState<MainShell> {
         onDestinationSelected: (i) => setState(() => _tabIndex = i),
         backgroundColor: Colors.white,
         indicatorColor: AppTheme.green100,
-        destinations: const [
-          NavigationDestination(
+        destinations: [
+          const NavigationDestination(
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home, color: AppTheme.green700),
             label: 'Home',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.bar_chart_outlined),
             selectedIcon: Icon(Icons.bar_chart, color: AppTheme.green700),
             label: 'Analytics',
           ),
           NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history, color: AppTheme.green700),
+            icon: Badge(
+              isLabelVisible: scanCount > 0,
+              label: Text('$scanCount'),
+              child: const Icon(Icons.history_outlined),
+            ),
+            selectedIcon: Badge(
+              isLabelVisible: scanCount > 0,
+              label: Text('$scanCount'),
+              child: const Icon(Icons.history, color: AppTheme.green700),
+            ),
             label: 'History',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings, color: AppTheme.green700),
             label: 'Settings',
