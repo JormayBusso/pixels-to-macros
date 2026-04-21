@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/mascot_type.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/goal_mascot_widget.dart';
 import 'debug_screen.dart';
 import 'eval_dashboard_screen.dart';
 import 'food_database_screen.dart';
@@ -137,6 +139,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
+            // ── Mascot ───────────────────────────────────────────────
+            _SectionHeader('Mascot'),
+            const SizedBox(height: 12),
+            _MascotPickerCard(),
+            const SizedBox(height: 24),
+
+            // ── Theme color ──────────────────────────────────────────
+            _SectionHeader('App Color Theme'),
+            const SizedBox(height: 12),
+            _ThemeColorPickerCard(),
+            const SizedBox(height: 24),
+
             // ── Database info ────────────────────────────────────────
             _SectionHeader('Database'),
             const SizedBox(height: 12),
@@ -155,7 +169,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _InfoRow(
                       icon: Icons.storage,
                       label: 'Database version',
-                      value: '8',
+                      value: '9',
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -310,6 +324,143 @@ class _InfoRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Mascot picker ─────────────────────────────────────────────────────────────
+
+class _MascotPickerCard extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_MascotPickerCard> createState() => _MascotPickerCardState();
+}
+
+class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
+  @override
+  Widget build(BuildContext context) {
+    final prefs   = ref.watch(userPrefsProvider);
+    final current = prefs.mascotType;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Choose your companion mascot',
+              style: TextStyle(fontSize: 13, color: AppTheme.gray600),
+            ),
+            const SizedBox(height: 16),
+            // Live preview
+            Center(
+              child: GoalMascotWidget(
+                goalType: prefs.nutritionGoal,
+                progress: 0.6,
+                stressLevel: 0.3,
+                mascotOverride: current,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: MascotType.values.map((mt) {
+                final selected = current == mt;
+                return ChoiceChip(
+                  avatar: Text(mt.emoji,
+                      style: const TextStyle(fontSize: 16)),
+                  label: Text(mt.label),
+                  selected: selected,
+                  onSelected: (_) async {
+                    final updated = prefs.copyWith(mascotType: mt);
+                    await ref.read(userPrefsProvider.notifier).update(updated);
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Theme color picker ────────────────────────────────────────────────────────
+
+class _ThemeColorPickerCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs   = ref.watch(userPrefsProvider);
+    final current = prefs.themeColorSeed;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Pick an accent color for the whole app',
+              style: TextStyle(fontSize: 13, color: AppTheme.gray600),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: AppColorSeed.values.map((seed) {
+                final selected = current == seed;
+                return GestureDetector(
+                  onTap: () async {
+                    final updated =
+                        prefs.copyWith(themeColorSeed: seed);
+                    await ref
+                        .read(userPrefsProvider.notifier)
+                        .update(updated);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: seed.color,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: selected
+                            ? AppTheme.gray900
+                            : Colors.transparent,
+                        width: 3,
+                      ),
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color: seed.color.withValues(alpha: 0.5),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              )
+                            ]
+                          : [],
+                    ),
+                    child: selected
+                        ? const Icon(Icons.check,
+                            color: Colors.white, size: 22)
+                        : null,
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              current.label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: current.color,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

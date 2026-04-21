@@ -38,7 +38,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -101,7 +101,9 @@ class DatabaseService {
         nutrition_goal           TEXT    NOT NULL DEFAULT 'maintain',
         daily_carb_limit_g       INTEGER NOT NULL DEFAULT 250,
         daily_protein_target_g   INTEGER NOT NULL DEFAULT 80,
-        daily_fat_target_g       INTEGER NOT NULL DEFAULT 65
+        daily_fat_target_g       INTEGER NOT NULL DEFAULT 65,
+        mascot_type              TEXT    NOT NULL DEFAULT 'auto',
+        theme_color_seed         TEXT    NOT NULL DEFAULT 'green'
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
@@ -233,6 +235,14 @@ class DatabaseService {
         'daily_carb_limit_g INTEGER NOT NULL DEFAULT 250',
         'daily_protein_target_g INTEGER NOT NULL DEFAULT 80',
         'daily_fat_target_g INTEGER NOT NULL DEFAULT 65',
+      ]) {
+        try { await db.execute('ALTER TABLE user_preferences ADD COLUMN $col'); } catch (_) {}
+      }
+    }
+    if (oldVersion < 9) {
+      for (final col in [
+        "mascot_type TEXT NOT NULL DEFAULT 'auto'",
+        "theme_color_seed TEXT NOT NULL DEFAULT 'green'",
       ]) {
         try { await db.execute('ALTER TABLE user_preferences ADD COLUMN $col'); } catch (_) {}
       }

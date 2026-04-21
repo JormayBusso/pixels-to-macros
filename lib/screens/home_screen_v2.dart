@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/mascot_type.dart';
 import '../models/nutrition_goal.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
@@ -653,6 +654,7 @@ class _GoalProgressCard extends StatelessWidget {
                   goalType: goal,
                   progress: kcalProgress,
                   stressLevel: carbStress,
+                  mascotOverride: prefs.mascotType,
                 ),
                 const SizedBox(width: 16),
 

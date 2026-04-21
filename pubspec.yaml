@@ -36,7 +36,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  assets: []
-  # assets:
-  #   - assets/models/    # CoreML models go here later
-  #   - assets/icons/
+  assets:
+    - assets/mascots/

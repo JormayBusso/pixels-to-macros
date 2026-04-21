@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../models/mascot_type.dart';
+
 /// Replicates the green-centric NutriLens design language from the
 /// original React + Tailwind UI in a Flutter ThemeData.
 class AppTheme {
@@ -36,12 +38,25 @@ class AppTheme {
 
   // ── Theme ────────────────────────────────────────────────────────────────
 
-  static ThemeData get light {
+  /// Default light theme (green seed).
+  static ThemeData get light => fromSeed(AppColorSeed.green);
+
+  /// Build a light theme from any [AppColorSeed].
+  static ThemeData fromSeed(AppColorSeed seed) {
+    final primary = seed.color;
+    final surface = seed.surfaceColor;
+
+    // Compute lighter variants from the seed for borders/fills
+    final light100 = Color.alphaBlend(primary.withValues(alpha: 0.08), Colors.white);
+    final light200 = Color.alphaBlend(primary.withValues(alpha: 0.16), Colors.white);
+    final light400 = Color.alphaBlend(primary.withValues(alpha: 0.35), Colors.white);
+    final dark700  = Color.alphaBlend(Colors.black.withValues(alpha: 0.20), primary);
+
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorSchemeSeed: green600,
-      scaffoldBackgroundColor: green50,
+      colorSchemeSeed: primary,
+      scaffoldBackgroundColor: surface,
     );
 
     return base.copyWith(
@@ -50,7 +65,7 @@ class AppTheme {
         displayColor: gray900,
       ),
 
-      // App bar (matches original Navbar)
+      // App bar
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.white,
         foregroundColor: gray900,
@@ -59,25 +74,25 @@ class AppTheme {
         titleTextStyle: GoogleFonts.inter(
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          color: green700,
+          color: dark700,
         ),
       ),
 
-      // Cards (rounded-2xl, green-100 border)
+      // Cards
       cardTheme: CardTheme(
         color: Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: green100),
+          side: BorderSide(color: light100),
         ),
         margin: EdgeInsets.zero,
       ),
 
-      // Elevated buttons (green-600, rounded-xl)
+      // Elevated buttons
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: green600,
+          backgroundColor: primary,
           foregroundColor: Colors.white,
           elevation: 1,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -91,11 +106,11 @@ class AppTheme {
         ),
       ),
 
-      // Outlined buttons (white bg, green-200 border)
+      // Outlined buttons
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: green700,
-          side: const BorderSide(color: green200),
+          foregroundColor: dark700,
+          side: BorderSide(color: light200),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -107,21 +122,21 @@ class AppTheme {
         ),
       ),
 
-      // Input fields (rounded-xl, green-200 border, green-400 focus)
+      // Input fields
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: green200),
+          borderSide: BorderSide(color: light200),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: green200),
+          borderSide: BorderSide(color: light200),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: green400, width: 2),
+          borderSide: BorderSide(color: light400, width: 2),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

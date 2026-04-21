@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'theme/app_theme.dart';
+import 'providers/theme_provider.dart';
 import 'providers/user_prefs_provider.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
 
-class PixelsToMacrosApp extends StatelessWidget {
+class PixelsToMacrosApp extends ConsumerWidget {
   const PixelsToMacrosApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = ref.watch(themeProvider);
     return MaterialApp(
       title: 'Pixels to Macros',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
+      theme: theme,
       home: const _AppGate(),
     );
   }
