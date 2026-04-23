@@ -44,7 +44,37 @@ jobs:
             --project-name pixels_to_macros \
             .
 
-      # ── 5. Disable code-signing in the Xcode project ──────────────────────
+      # ── 5. Add Scanner Swift files to the Xcode project ───────────────────
+      # flutter create generates a fresh project.pbxproj that doesn't know
+      # about ios/Runner/Scanner/*.swift. Use the xcodeproj gem to inject them.
+      - name: Add Scanner sources to Xcode project
+        run: |
+          gem install xcodeproj --no-document --quiet
+          ruby - <<'RUBY'
+          require 'xcodeproj'
+
+          project = Xcodeproj::Project.open('ios/Runner.xcodeproj')
+          target  = project.targets.find { |t| t.name == 'Runner' }
+          runner_group = project.main_group.find_subpath('Runner', false)
+
+          # Create (or reuse) a Scanner group
+          scanner_group = runner_group['Scanner'] ||
+                          runner_group.new_group('Scanner', 'Scanner')
+
+          Dir.glob('ios/Runner/Scanner/*.swift').sort.each do |path|
+            filename = File.basename(path)
+            next if scanner_group.files.any? { |f| f.display_name == filename }
+
+            file_ref = scanner_group.new_file(filename)
+            target.source_build_phase.add_file_reference(file_ref)
+            puts "  Added #{filename}"
+          end
+
+          project.save
+          puts 'Xcode project saved.'
+          RUBY
+
+      # ── 7. Disable code-signing in the Xcode project ──────────────────────
       # Xcode 16 still requires DEVELOPMENT_TEAM even with --no-codesign.
       # Patch pbxproj to force CODE_SIGNING_REQUIRED=NO before building.
       - name: Disable code-signing in pbxproj
@@ -58,11 +88,11 @@ jobs:
             -e 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' \
             "$PBXPROJ"
 
-      # ── 6. Code generation (Riverpod) ──────────────────────────────────────
+      # ── 8. Code generation (Riverpod) ──────────────────────────────────────
       - name: Run build_runner
         run: dart run build_runner build --delete-conflicting-outputs
 
-      # ── 7. Build unsigned iOS archive ─────────────────────────────────────
+      # ── 9. Build unsigned iOS archive ─────────────────────────────────────
       - name: Build iOS (no-codesign)
         env:
           FLUTTER_XCODE_CODE_SIGNING_REQUIRED: NO
@@ -74,7 +104,7 @@ jobs:
             --no-codesign \
             --target lib/main.dart
 
-      # ── 8. Package into installable IPA ───────────────────────────────────
+      # ── 10. Package into installable IPA ───────────────────────────────────
       - name: Package IPA
         run: |
           mkdir -p build/ios/iphoneos/Payload
@@ -84,7 +114,7 @@ jobs:
           zip -qr PixelsToMacros.ipa Payload
           echo "IPA created at build/ios/iphoneos/PixelsToMacros.ipa"
 
-      # ── 9. Upload artifact ─────────────────────────────────────────────────
+      # ── 11. Upload artifact ─────────────────────────────────────────────────
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
