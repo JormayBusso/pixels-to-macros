@@ -74,19 +74,20 @@ jobs:
           puts 'Xcode project saved.'
           RUBY
 
-      # ── 7. Disable code-signing in the Xcode project ──────────────────────
-      # Xcode 16 still requires DEVELOPMENT_TEAM even with --no-codesign.
-      # Patch pbxproj to force CODE_SIGNING_REQUIRED=NO before building.
-      - name: Disable code-signing in pbxproj
+      # ── 7. Patch pbxproj: deployment target + disable code-signing ────────
+      # flutter create defaults to iOS 12; our Swift code needs iOS 14+ APIs.
+      # Xcode 16 also requires DEVELOPMENT_TEAM even with --no-codesign.
+      - name: Patch pbxproj (deployment target + signing)
         run: |
           PBXPROJ="ios/Runner.xcodeproj/project.pbxproj"
-          # Remove any existing team / signing entries so Xcode doesn't complain
           sed -i '' \
+            -e 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 17.0;/g' \
             -e 's/DEVELOPMENT_TEAM = [^;]*;/DEVELOPMENT_TEAM = "";/g' \
             -e 's/CODE_SIGN_IDENTITY = [^;]*;/CODE_SIGN_IDENTITY = "";/g' \
             -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' \
             -e 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' \
             "$PBXPROJ"
+          echo "Patched deployment target and signing settings."
 
       # ── 8. Code generation (Riverpod) ──────────────────────────────────────
       - name: Run build_runner
