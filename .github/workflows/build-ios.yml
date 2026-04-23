@@ -44,19 +44,37 @@ jobs:
             --project-name pixels_to_macros \
             .
 
-      # ── 5. Code generation (Riverpod) ──────────────────────────────────────
+      # ── 5. Disable code-signing in the Xcode project ──────────────────────
+      # Xcode 16 still requires DEVELOPMENT_TEAM even with --no-codesign.
+      # Patch pbxproj to force CODE_SIGNING_REQUIRED=NO before building.
+      - name: Disable code-signing in pbxproj
+        run: |
+          PBXPROJ="ios/Runner.xcodeproj/project.pbxproj"
+          # Remove any existing team / signing entries so Xcode doesn't complain
+          sed -i '' \
+            -e 's/DEVELOPMENT_TEAM = [^;]*;/DEVELOPMENT_TEAM = "";/g' \
+            -e 's/CODE_SIGN_IDENTITY = [^;]*;/CODE_SIGN_IDENTITY = "";/g' \
+            -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' \
+            -e 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' \
+            "$PBXPROJ"
+
+      # ── 6. Code generation (Riverpod) ──────────────────────────────────────
       - name: Run build_runner
         run: dart run build_runner build --delete-conflicting-outputs
 
-      # ── 6. Build unsigned iOS archive ─────────────────────────────────────
+      # ── 7. Build unsigned iOS archive ─────────────────────────────────────
       - name: Build iOS (no-codesign)
+        env:
+          FLUTTER_XCODE_CODE_SIGNING_REQUIRED: NO
+          FLUTTER_XCODE_CODE_SIGNING_ALLOWED: NO
+          FLUTTER_XCODE_DEVELOPMENT_TEAM: ""
         run: |
           flutter build ios \
             --release \
             --no-codesign \
             --target lib/main.dart
 
-      # ── 7. Package into installable IPA ───────────────────────────────────
+      # ── 8. Package into installable IPA ───────────────────────────────────
       - name: Package IPA
         run: |
           mkdir -p build/ios/iphoneos/Payload
@@ -66,7 +84,7 @@ jobs:
           zip -qr PixelsToMacros.ipa Payload
           echo "IPA created at build/ios/iphoneos/PixelsToMacros.ipa"
 
-      # ── 8. Upload artifact ─────────────────────────────────────────────────
+      # ── 9. Upload artifact ─────────────────────────────────────────────────
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
