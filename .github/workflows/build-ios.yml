@@ -5,6 +5,9 @@ on:
     branches: [master, main]
   workflow_dispatch:   # lets you trigger it manually from GitHub UI
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: Flutter iOS (unsigned)
@@ -19,27 +22,41 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.29.3"   # latest stable at time of writing
           channel: stable
           cache: true
+
+      - name: Flutter version info
+        run: flutter --version
 
       # ── 3. Dependencies ────────────────────────────────────────────────────
       - name: Install Dart dependencies
         run: flutter pub get
 
-      # ── 4. Code generation (Riverpod) ──────────────────────────────────────
+      # ── 4. Regenerate missing Xcode project files ──────────────────────────
+      # The ios/ folder only contains Swift sources; Runner.xcodeproj and
+      # Podfile are absent from the repo. Running flutter create (non-destructive)
+      # generates them without overwriting existing files.
+      - name: Regenerate iOS project scaffold
+        run: |
+          flutter create \
+            --org com.pixelstomacros \
+            --platforms ios \
+            --project-name pixels_to_macros \
+            .
+
+      # ── 5. Code generation (Riverpod) ──────────────────────────────────────
       - name: Run build_runner
         run: dart run build_runner build --delete-conflicting-outputs
 
-      # ── 5. Build unsigned iOS archive ─────────────────────────────────────
+      # ── 6. Build unsigned iOS archive ─────────────────────────────────────
       - name: Build iOS (no-codesign)
         run: |
           flutter build ios \
             --release \
             --no-codesign \
-            --dart-define=FLUTTER_TARGET=lib/main.dart
+            --target lib/main.dart
 
-      # ── 6. Package into installable IPA ───────────────────────────────────
+      # ── 7. Package into installable IPA ───────────────────────────────────
       - name: Package IPA
         run: |
           mkdir -p build/ios/iphoneos/Payload
@@ -49,7 +66,7 @@ jobs:
           zip -qr PixelsToMacros.ipa Payload
           echo "IPA created at build/ios/iphoneos/PixelsToMacros.ipa"
 
-      # ── 7. Upload artifact ─────────────────────────────────────────────────
+      # ── 8. Upload artifact ─────────────────────────────────────────────────
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
