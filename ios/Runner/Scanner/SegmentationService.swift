@@ -37,112 +37,116 @@ final class SegmentationService {
     private let modelLock = NSLock()
 
     /// Label map — index 0 is background, 1–103 are FoodSeg103 classes.
-    private(set) var labelMap: [Int: String] = [
-        0:   "background",
-        1:   "candy",
-        2:   "egg tart",
-        3:   "french fries",
-        4:   "chocolate",
-        5:   "biscuit",
-        6:   "popcorn",
-        7:   "pudding",
-        8:   "ice cream",
-        9:   "cheese butter",
-        10:  "cake",
-        11:  "wine",
-        12:  "milkshake",
-        13:  "coffee",
-        14:  "juice",
-        15:  "milk",
-        16:  "tea",
-        17:  "almond",
-        18:  "red beans",
-        19:  "cashew",
-        20:  "dried cranberries",
-        21:  "soy",
-        22:  "walnut",
-        23:  "peanut",
-        24:  "egg",
-        25:  "apple",
-        26:  "date",
-        27:  "apricot",
-        28:  "avocado",
-        29:  "banana",
-        30:  "strawberry",
-        31:  "cherry",
-        32:  "blueberry",
-        33:  "raspberry",
-        34:  "mango",
-        35:  "olives",
-        36:  "peach",
-        37:  "lemon",
-        38:  "pear",
-        39:  "fig",
-        40:  "pineapple",
-        41:  "grape",
-        42:  "kiwi",
-        43:  "melon",
-        44:  "orange",
-        45:  "watermelon",
-        46:  "steak",
-        47:  "pork",
-        48:  "chicken duck",
-        49:  "sausage",
-        50:  "fried meat",
-        51:  "lamb",
-        52:  "sauce",
-        53:  "crab",
-        54:  "fish",
-        55:  "shellfish",
-        56:  "shrimp",
-        57:  "bread",
-        58:  "corn",
-        59:  "hamburg",
-        60:  "pizza",
-        61:  "hanamaki baozi",
-        62:  "wonton dumplings",
-        63:  "taro",
-        64:  "rice",
-        65:  "tofu",
-        66:  "eggplant",
-        67:  "potato",
-        68:  "garlic",
-        69:  "cauliflower",
-        70:  "tomato",
-        71:  "kelp",
-        72:  "seaweed",
-        73:  "spring onion",
-        74:  "rape",
-        75:  "ginger",
-        76:  "okra",
-        77:  "lettuce",
-        78:  "pumpkin",
-        79:  "cucumber",
-        80:  "white radish",
-        81:  "carrot",
-        82:  "asparagus",
-        83:  "bamboo shoots",
-        84:  "broccoli",
-        85:  "celery stick",
-        86:  "cilantro mint",
-        87:  "snow peas",
-        88:  "cabbage",
-        89:  "bean sprouts",
-        90:  "onion",
-        91:  "pepper",
-        92:  "green beans",
-        93:  "french beans",
-        94:  "king oyster mushroom",
-        95:  "white mushroom",
-        96:  "shiitake",
-        97:  "enoki mushroom",
-        98:  "oyster mushroom",
-        99:  "black fungus",
-        100: "dough",
-        101: "noodles",
-        102: "rice noodle",
-        103: "others",
-    ]
+    private(set) var labelMap: [Int: String] = SegmentationService.buildLabelMap()
+
+    private static func buildLabelMap() -> [Int: String] {
+        var m = [Int: String]()
+        m[0]   = "background"
+        m[1]   = "candy"
+        m[2]   = "egg tart"
+        m[3]   = "french fries"
+        m[4]   = "chocolate"
+        m[5]   = "biscuit"
+        m[6]   = "popcorn"
+        m[7]   = "pudding"
+        m[8]   = "ice cream"
+        m[9]   = "cheese butter"
+        m[10]  = "cake"
+        m[11]  = "wine"
+        m[12]  = "milkshake"
+        m[13]  = "coffee"
+        m[14]  = "juice"
+        m[15]  = "milk"
+        m[16]  = "tea"
+        m[17]  = "almond"
+        m[18]  = "red beans"
+        m[19]  = "cashew"
+        m[20]  = "dried cranberries"
+        m[21]  = "soy"
+        m[22]  = "walnut"
+        m[23]  = "peanut"
+        m[24]  = "egg"
+        m[25]  = "apple"
+        m[26]  = "date"
+        m[27]  = "apricot"
+        m[28]  = "avocado"
+        m[29]  = "banana"
+        m[30]  = "strawberry"
+        m[31]  = "cherry"
+        m[32]  = "blueberry"
+        m[33]  = "raspberry"
+        m[34]  = "mango"
+        m[35]  = "olives"
+        m[36]  = "peach"
+        m[37]  = "lemon"
+        m[38]  = "pear"
+        m[39]  = "fig"
+        m[40]  = "pineapple"
+        m[41]  = "grape"
+        m[42]  = "kiwi"
+        m[43]  = "melon"
+        m[44]  = "orange"
+        m[45]  = "watermelon"
+        m[46]  = "steak"
+        m[47]  = "pork"
+        m[48]  = "chicken duck"
+        m[49]  = "sausage"
+        m[50]  = "fried meat"
+        m[51]  = "lamb"
+        m[52]  = "sauce"
+        m[53]  = "crab"
+        m[54]  = "fish"
+        m[55]  = "shellfish"
+        m[56]  = "shrimp"
+        m[57]  = "bread"
+        m[58]  = "corn"
+        m[59]  = "hamburg"
+        m[60]  = "pizza"
+        m[61]  = "hanamaki baozi"
+        m[62]  = "wonton dumplings"
+        m[63]  = "taro"
+        m[64]  = "rice"
+        m[65]  = "tofu"
+        m[66]  = "eggplant"
+        m[67]  = "potato"
+        m[68]  = "garlic"
+        m[69]  = "cauliflower"
+        m[70]  = "tomato"
+        m[71]  = "kelp"
+        m[72]  = "seaweed"
+        m[73]  = "spring onion"
+        m[74]  = "rape"
+        m[75]  = "ginger"
+        m[76]  = "okra"
+        m[77]  = "lettuce"
+        m[78]  = "pumpkin"
+        m[79]  = "cucumber"
+        m[80]  = "white radish"
+        m[81]  = "carrot"
+        m[82]  = "asparagus"
+        m[83]  = "bamboo shoots"
+        m[84]  = "broccoli"
+        m[85]  = "celery stick"
+        m[86]  = "cilantro mint"
+        m[87]  = "snow peas"
+        m[88]  = "cabbage"
+        m[89]  = "bean sprouts"
+        m[90]  = "onion"
+        m[91]  = "pepper"
+        m[92]  = "green beans"
+        m[93]  = "french beans"
+        m[94]  = "king oyster mushroom"
+        m[95]  = "white mushroom"
+        m[96]  = "shiitake"
+        m[97]  = "enoki mushroom"
+        m[98]  = "oyster mushroom"
+        m[99]  = "black fungus"
+        m[100] = "dough"
+        m[101] = "noodles"
+        m[102] = "rice noodle"
+        m[103] = "others"
+        return m
+    }
 
     // MARK: – Initialisation
 

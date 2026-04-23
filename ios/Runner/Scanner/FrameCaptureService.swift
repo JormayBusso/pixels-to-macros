@@ -1,4 +1,4 @@
-import ARKit
+﻿import ARKit
 import CoreVideo
 import Foundation
 
@@ -9,7 +9,7 @@ import Foundation
 /// Full pixel buffers will be consumed by CoreML in Step 3.
 final class FrameCaptureService {
 
-    // MARK: – Types
+    // MARK: â€“ Types
 
     enum CaptureError: LocalizedError {
         case noSession
@@ -25,7 +25,7 @@ final class FrameCaptureService {
         }
     }
 
-    /// Stored frame data — kept in memory until consumed or overwritten.
+    /// Stored frame data â€” kept in memory until consumed or overwritten.
     /// Part 3 mandates max 2 frames (top + side).
     struct CapturedFrame {
         let pixelBuffer: CVPixelBuffer
@@ -35,12 +35,12 @@ final class FrameCaptureService {
         let timestamp: TimeInterval
     }
 
-    // MARK: – Storage (max 2 frames)
+    // MARK: â€“ Storage (max 2 frames)
 
     private(set) var topFrame: CapturedFrame?
     private(set) var sideFrame: CapturedFrame?
 
-    // MARK: – Public
+    // MARK: â€“ Public
 
     /// Capture the current AR frame and store it as either `top` or `side`.
     /// Returns a JSON string with frame metadata for the Dart side.
@@ -73,7 +73,7 @@ final class FrameCaptureService {
             )
         }
 
-        // Store — overwriting any previous frame of same type
+        // Store â€” overwriting any previous frame of same type
         switch frameType {
         case "top":
             topFrame = captured
@@ -94,7 +94,7 @@ final class FrameCaptureService {
         sideFrame = nil
     }
 
-    // MARK: – Private helpers
+    // MARK: â€“ Private helpers
 
     private func buildMetadata(frame: CapturedFrame, type: String) -> String {
         let width = CVPixelBufferGetWidth(frame.pixelBuffer)
@@ -104,7 +104,7 @@ final class FrameCaptureService {
         let pose = frame.cameraTransform
         let position: [Float] = [pose.columns.3.x, pose.columns.3.y, pose.columns.3.z]
 
-        // Flatten 4×4 transform to array for JSON
+        // Flatten 4Ã—4 transform to array for JSON
         let transform: [Float] = [
             pose.columns.0.x, pose.columns.0.y, pose.columns.0.z, pose.columns.0.w,
             pose.columns.1.x, pose.columns.1.y, pose.columns.1.z, pose.columns.1.w,
@@ -112,17 +112,16 @@ final class FrameCaptureService {
             pose.columns.3.x, pose.columns.3.y, pose.columns.3.z, pose.columns.3.w,
         ]
 
-        let dict: [String: Any] = [
-            "type": type,
-            "width": width,
-            "height": height,
-            "has_depth": hasDepth,
-            "depth_width": hasDepth ? CVPixelBufferGetWidth(frame.depthBuffer!) : 0,
-            "depth_height": hasDepth ? CVPixelBufferGetHeight(frame.depthBuffer!) : 0,
-            "timestamp": frame.timestamp,
-            "camera_position": position,
-            "camera_transform": transform,
-        ]
+        var dict = [String: Any]()
+        dict["type"] = type
+        dict["width"] = width
+        dict["height"] = height
+        dict["has_depth"] = hasDepth
+        dict["depth_width"] = hasDepth ? CVPixelBufferGetWidth(frame.depthBuffer!) : 0
+        dict["depth_height"] = hasDepth ? CVPixelBufferGetHeight(frame.depthBuffer!) : 0
+        dict["timestamp"] = frame.timestamp
+        dict["camera_position"] = position
+        dict["camera_transform"] = transform
 
         // Safe JSON serialisation
         guard

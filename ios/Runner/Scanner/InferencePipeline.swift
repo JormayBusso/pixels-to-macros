@@ -128,16 +128,13 @@ final class InferencePipeline {
         )
 
         // ── 8. Serialise to JSON ────────────────────────────────────────
-        let payload: [[String: Any]] = zip(segments, volumes).map { seg, vol in
-            [
-                "label": vol.label,
-                "volume_cm3": round(vol.volumeCm3 * 10) / 10,
-                "pixel_count": vol.pixelCount,
-                "confidence": round(Double(seg.confidence) * 1000) / 1000,
-                "depth_min_m": round(Double(depthMin) * 1000) / 1000,
-                "depth_max_m": round(Double(depthMax) * 1000) / 1000,
-                "depth_avg_m": round(Double(depthAvg) * 1000) / 1000,
-            ]
+        var payload = [[String: Any]]()
+        for i in 0..<segments.count {
+            let entry = makeSegmentDict(
+                seg: segments[i], vol: volumes[i],
+                depthMin: depthMin, depthMax: depthMax, depthAvg: depthAvg
+            )
+            payload.append(entry)
         }
 
         guard let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
@@ -159,6 +156,27 @@ final class InferencePipeline {
 
     // MARK: – Debug logging
 
+    /// Extracted to help the Swift type-checker with a complex dictionary literal.
+    private func makeSegmentDict(
+        seg: SegmentationService.SegmentedObject,
+        vol: VolumeCalculator.FoodVolume,
+        depthMin: Float,
+        depthMax: Float,
+        depthAvg: Float
+    ) -> [String: Any] {
+        var d = [String: Any]()
+        d["label"]       = vol.label
+        d["volume_cm3"]  = round(vol.volumeCm3 * 10) / 10
+        d["pixel_count"] = vol.pixelCount
+        d["confidence"]  = round(Double(seg.confidence) * 1000) / 1000
+        d["depth_min_m"] = round(Double(depthMin) * 1000) / 1000
+        d["depth_max_m"] = round(Double(depthMax) * 1000) / 1000
+        d["depth_avg_m"] = round(Double(depthAvg) * 1000) / 1000
+        return d
+    }
+
+    // MARK: – Debug logging
+
     private func logResults(
         plate: PlateDetector.PlateResult,
         segments: [SegmentationService.SegmentedObject],
@@ -169,9 +187,9 @@ final class InferencePipeline {
         print("Plate detected: \(plate.detected), diameter: \(Int(plate.diameterPx)) px")
         print("Depth available: \(hasDepth)")
         for (seg, vol) in zip(segments, volumes) {
-            print("  \(seg.label): \(seg.pixelCount) px, "
-                + "conf \(String(format: "%.2f", seg.confidence)), "
-                + "vol \(String(format: "%.1f", vol.volumeCm3)) cm³")
+            let conf = String(format: "%.2f", seg.confidence)
+            let v = String(format: "%.1f", vol.volumeCm3)
+            print("  \(seg.label): \(seg.pixelCount) px, conf \(conf), vol \(v) cm³")
         }
         print("──────────────────────────────────────────")
     }

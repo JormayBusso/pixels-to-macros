@@ -1,4 +1,4 @@
-import Flutter
+﻿import Flutter
 import Foundation
 
 /// Central MethodChannel handler.
@@ -8,11 +8,11 @@ import Foundation
 /// the individual services stay transport-agnostic.
 final class ScannerPlugin {
 
-    // MARK: – Channel name (must match Dart side)
+    // MARK: - Channel name (must match Dart side)
 
     private static let channelName = "com.pixelstomacros/scanner"
 
-    // MARK: – Services
+    // MARK: - Services
 
     private static let depthDetector = DepthModeDetector()
     private static let sessionManager = ARSessionManager()
@@ -20,7 +20,7 @@ final class ScannerPlugin {
     private static let pipeline = InferencePipeline()
     private static let pointCloudExporter = PointCloudExporter()
 
-    // MARK: – Registration
+    // MARK: - Registration
 
     static func register(with messenger: FlutterBinaryMessenger) {
         let channel = FlutterMethodChannel(
@@ -29,117 +29,131 @@ final class ScannerPlugin {
         )
 
         channel.setMethodCallHandler { call, result in
-            switch call.method {
+            handleMethodCall(call, result: result)
+        }
+    }
 
-            // ── Device capabilities ──────────────────────────────────
-            case "getDepthMode":
-                let mode = depthDetector.detect()
-                result(mode.rawValue)
+    // MARK: - Method routing
 
-            // ── AR session lifecycle ─────────────────────────────────
-            case "startSession":
-                sessionManager.start { error in
-                    if let error {
-                        result(FlutterError(
-                            code: "AR_START_FAILED",
-                            message: error.localizedDescription,
-                            details: nil
-                        ))
-                    } else {
-                        result(nil) // void success
-                    }
-                }
+    private static func handleMethodCall(
+        _ call: FlutterMethodCall,
+        result: @escaping FlutterResult
+    ) {
+        switch call.method {
 
-            case "stopSession":
-                sessionManager.stop()
-                result(nil)
+        case "getDepthMode":
+            let mode = depthDetector.detect()
+            result(mode.rawValue)
 
-            // ── Frame capture ────────────────────────────────────────
-            case "captureFrame":
-                guard
-                    let args = call.arguments as? [String: Any],
-                    let frameType = args["type"] as? String
-                else {
+        case "startSession":
+            sessionManager.start { error in
+                if let error {
                     result(FlutterError(
-                        code: "INVALID_ARGS",
-                        message: "Missing 'type' argument (top | side)",
+                        code: "AR_START_FAILED",
+                        message: error.localizedDescription,
                         details: nil
                     ))
-                    return
+                } else {
+                    result(nil)
                 }
+            }
 
-                captureService.capture(
-                    session: sessionManager.session,
-                    frameType: frameType
-                ) { captureResult in
-                    switch captureResult {
-                    case .success(let json):
-                        result(json)
-                    case .failure(let error):
+        case "stopSession":
+            sessionManager.stop()
+            result(nil)
+
+        case "captureFrame":
+            handleCaptureFrame(call, result: result)
+
+        case "runInference":
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let json = try pipeline.run(captureService: captureService)
+                    DispatchQueue.main.async { result(json) }
+                } catch {
+                    DispatchQueue.main.async {
                         result(FlutterError(
-                            code: "CAPTURE_FAILED",
+                            code: "INFERENCE_FAILED",
                             message: error.localizedDescription,
                             details: nil
                         ))
                     }
                 }
+            }
 
-            // ── ML inference ─────────────────────────────────────────
-            case "runInference":
-                DispatchQueue.global(qos: .userInitiated).async {
-                    do {
-                        let json = try pipeline.run(captureService: captureService)
-                        DispatchQueue.main.async { result(json) }
-                    } catch {
-                        DispatchQueue.main.async {
-                            result(FlutterError(
-                                code: "INFERENCE_FAILED",
-                                message: error.localizedDescription,
-                                details: nil
-                            ))
-                        }
-                    }
-                }
-
-            // ── Point cloud export (Part 15) ────────────────────────
-            case "exportPointCloud":
-                DispatchQueue.global(qos: .userInitiated).async {
-                    let ply = pointCloudExporter.exportFromCapture(
-                        captureService: captureService
-                    )
-                    DispatchQueue.main.async {
-                        if let ply {
-                            result(ply)
-                        } else {
-                            result(FlutterError(
-                                code: "PLY_EXPORT_FAILED",
-                                message: "No depth data available for point cloud",
-                                details: nil
-                            ))
-                        }
-                    }
-                }
-
-            // ── Memory usage (Part 17) ───────────────────────────────
-            case "getMemoryUsage":
-                var info = mach_task_basic_info()
-                var count = mach_msg_type_number_t(
-                    MemoryLayout<mach_task_basic_info>.size / MemoryLayout<natural_t>.size
+        case "exportPointCloud":
+            DispatchQueue.global(qos: .userInitiated).async {
+                let ply = pointCloudExporter.exportFromCapture(
+                    captureService: captureService
                 )
-                let kr = withUnsafeMutablePointer(to: &info) {
-                    $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
-                        task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+                DispatchQueue.main.async {
+                    if let ply {
+                        result(ply)
+                    } else {
+                        result(FlutterError(
+                            code: "PLY_EXPORT_FAILED",
+                            message: "No depth data available for point cloud",
+                            details: nil
+                        ))
                     }
                 }
-                if kr == KERN_SUCCESS {
-                    result(Int64(info.resident_size))
-                } else {
-                    result(Int64(0))
-                }
+            }
 
-            default:
-                result(FlutterMethodNotImplemented)
+        case "getMemoryUsage":
+            result(getResidentMemory())
+
+        default:
+            result(FlutterMethodNotImplemented)
+        }
+    }
+
+    // MARK: - captureFrame helper
+
+    private static func handleCaptureFrame(
+        _ call: FlutterMethodCall,
+        result: @escaping FlutterResult
+    ) {
+        guard
+            let args = call.arguments as? [String: Any],
+            let frameType = args["type"] as? String
+        else {
+            result(FlutterError(
+                code: "INVALID_ARGS",
+                message: "Missing 'type' argument (top | side)",
+                details: nil
+            ))
+            return
+        }
+
+        captureService.capture(
+            session: sessionManager.session,
+            frameType: frameType
+        ) { captureResult in
+            switch captureResult {
+            case .success(let json):
+                result(json)
+            case .failure(let error):
+                result(FlutterError(
+                    code: "CAPTURE_FAILED",
+                    message: error.localizedDescription,
+                    details: nil
+                ))
             }
         }
+    }
+
+    // MARK: - Memory helper
+
+    private static func getResidentMemory() -> Int64 {
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(
+            MemoryLayout<mach_task_basic_info>.size / MemoryLayout<natural_t>.size
+        )
+        let kr = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+        return kr == KERN_SUCCESS ? Int64(info.resident_size) : 0
     }
 }
