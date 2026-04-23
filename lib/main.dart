@@ -9,9 +9,12 @@ Future<void> main() async {
 
   DebugLog.instance.log('App', 'Starting Pixels to Macros');
 
-  // Initialize SQLite and seed default food data
-  await DatabaseService.instance.database;
-  DebugLog.instance.log('App', 'Database initialized');
+  try {
+    await DatabaseService.instance.database;
+    DebugLog.instance.log('App', 'Database initialized');
+  } catch (e) {
+    DebugLog.instance.log('App', 'Database init failed: $e');
+  }
 
   runApp(
     const ProviderScope(

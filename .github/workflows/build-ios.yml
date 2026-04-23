@@ -44,6 +44,23 @@ jobs:
             --project-name pixels_to_macros \
             .
 
+      # ── 4b. Merge Info-additions.plist into generated Info.plist ────────────
+      - name: Merge Info.plist additions
+        run: |
+          PLIST="ios/Runner/Info.plist"
+          # Camera permission
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Pixels to Macros uses the camera to scan your plate and estimate food calories.'" "$PLIST" || true
+          # ARKit + arm64 capabilities
+          /usr/libexec/PlistBuddy -c "Add :UIRequiredDeviceCapabilities array" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :UIRequiredDeviceCapabilities:0 string arkit" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :UIRequiredDeviceCapabilities:1 string arm64" "$PLIST" || true
+          # Background modes
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string processing" "$PLIST" || true
+          # Minimum OS version
+          /usr/libexec/PlistBuddy -c "Set :MinimumOSVersion 17.0" "$PLIST" || true
+          echo "Info.plist keys merged."
+
       # ── 5. Add Scanner Swift files to the Xcode project ───────────────────
       # flutter create generates a fresh project.pbxproj that doesn't know
       # about ios/Runner/Scanner/*.swift. Use the xcodeproj gem to inject them.
@@ -88,6 +105,10 @@ jobs:
             -e 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' \
             "$PBXPROJ"
           echo "Patched deployment target and signing settings."
+
+      # ── 7b. Generate app icons from assets/app_icon.png ────────────────────
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
 
       # ── 8. Code generation (Riverpod) ──────────────────────────────────────
       - name: Run build_runner
