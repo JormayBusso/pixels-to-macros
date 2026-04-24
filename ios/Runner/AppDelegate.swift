@@ -24,8 +24,9 @@ import Flutter
         let cameraFactory = ARCameraPreviewFactory(
             sessionManager: ScannerPlugin.sessionManager
         )
-        registrar(forPlugin: "ARCameraPreviewPlugin")
-            .register(cameraFactory, withId: ARCameraPreviewFactory.viewType)
+        if let cameraRegistrar = registrar(forPlugin: "ARCameraPreviewPlugin") {
+            cameraRegistrar.register(cameraFactory, withId: ARCameraPreviewFactory.viewType)
+        }
 
         return result
     }
