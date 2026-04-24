@@ -44,7 +44,9 @@ class _ScanGuidanceOverlayState extends State<ScanGuidanceOverlay>
       child: Stack(
         children: [
           // ── Reticle (centre crosshair) ─────────────────────────────────
-          if (state == ScanState.alignTop || state == ScanState.moveSide)
+          if (state == ScanState.readyToRecord ||
+              state == ScanState.alignTop ||
+              state == ScanState.moveSide)
             Center(child: _Reticle(pulse: _pulse, state: state)),
 
           // ── Top banner instruction ─────────────────────────────────────
@@ -62,7 +64,8 @@ class _ScanGuidanceOverlayState extends State<ScanGuidanceOverlay>
           ),
 
           // ── Distance hint (bottom) ─────────────────────────────────────
-          if (state == ScanState.alignTop)
+          if (state == ScanState.readyToRecord ||
+              state == ScanState.alignTop)
             Positioned(
               bottom: 140,
               left: 0,
@@ -104,7 +107,8 @@ class _Reticle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = state == ScanState.alignTop
+    final color = state == ScanState.readyToRecord ||
+            state == ScanState.alignTop
         ? AppTheme.green400
         : AppTheme.amber500;
 
@@ -190,6 +194,16 @@ class _InstructionBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (String text, IconData icon, Color bg) = switch (state) {
+      ScanState.readyToRecord => (
+          'Centre the plate and press the button',
+          Icons.crop_free,
+          AppTheme.green600,
+        ),
+      ScanState.recording => (
+          'Sweep slowly from above to side view',
+          Icons.videocam,
+          AppTheme.amber600,
+        ),
       ScanState.alignTop => (
           'Centre the plate in the reticle',
           Icons.crop_free,
@@ -211,7 +225,7 @@ class _InstructionBanner extends StatelessWidget {
           AppTheme.amber500,
         ),
       ScanState.calculating => (
-          'Analysing food…',
+          'Building 3-D model…',
           Icons.auto_awesome,
           AppTheme.green500,
         ),

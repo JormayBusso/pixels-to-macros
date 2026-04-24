@@ -4,31 +4,33 @@
 /// MethodChannel.
 enum ScanState {
   // ── Happy path ──────────────────────────────────────────────────────────────
-  /// Prompt user to hold phone above plate.
-  alignTop,
+  /// Session started — user should begin the video sweep.
+  readyToRecord,
 
-  /// Capture top-down RGB frame.
-  captureTop,
+  /// Short video sweep is being recorded.
+  recording,
 
-  /// Show animated arrow — "move phone to the side".
-  moveSide,
-
-  /// Capture side frame + depth map.
-  captureSide,
-
-  /// Processing — run ML inference & volume calculation.
+  /// Processing — run ML inference & 3-D volume calculation.
   calculating,
 
   /// Results ready — navigate to result screen.
   done,
 
-  // ── Failure states ──────────────────────────────────────────────────────────
-  /// Depth data could not be acquired (no LiDAR + no fallback).
-  depthFailed,
+  // ── Legacy single-frame states (kept for backward compatibility) ────────────
+  /// Prompt user to hold phone above plate.
+  alignTop,
+  /// Capture top-down RGB frame.
+  captureTop,
+  /// Show animated arrow — "move phone to the side".
+  moveSide,
+  /// Capture side frame + depth map.
+  captureSide,
 
+  // ── Failure states ──────────────────────────────────────────────────────────
+  /// Depth data could not be acquired.
+  depthFailed,
   /// CoreML model failed to load or inference crashed.
   modelFailed,
-
   /// Plate boundary was not detected in the frame.
   plateNotDetected,
 }
@@ -37,6 +39,14 @@ enum ScanState {
 extension ScanStateLabel on ScanState {
   String get label {
     switch (this) {
+      case ScanState.readyToRecord:
+        return 'Press the button to start scanning';
+      case ScanState.recording:
+        return 'Sweep slowly from above to side view…';
+      case ScanState.calculating:
+        return 'Building 3-D model & calculating nutrition…';
+      case ScanState.done:
+        return 'Done!';
       case ScanState.alignTop:
         return 'Hold phone above plate';
       case ScanState.captureTop:
@@ -45,10 +55,6 @@ extension ScanStateLabel on ScanState {
         return 'Move phone smoothly to the side';
       case ScanState.captureSide:
         return 'Capturing side view…';
-      case ScanState.calculating:
-        return 'Calculating nutrition…';
-      case ScanState.done:
-        return 'Done!';
       case ScanState.depthFailed:
         return 'Depth capture failed — try again';
       case ScanState.modelFailed:

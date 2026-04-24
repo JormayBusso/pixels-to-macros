@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -34,14 +35,16 @@ class ScanScreen extends ConsumerStatefulWidget {
 
 class _ScanScreenState extends ConsumerState<ScanScreen> {
   final _bridge = NativeBridge.instance;
-  bool _sessionStarted = false;
-  bool _showTutorial = false;
+  bool _sessionStarted   = false;
+  bool _showTutorial     = false;
+  bool _isRecording      = false;
+  double _recordProgress = 0.0;  // 0.0 – 1.0 over the recording window
+  Timer? _recordTimer;
   String _detectedDepthMode = 'unknown';
   ScanResult? _savedScanResult;
 
-  // Camera pose metadata from capture (Part 9)
-  Map<String, dynamic> _topFrameMeta = {};
-  Map<String, dynamic> _sideFrameMeta = {};
+  static const _recordDuration = Duration(seconds: 4);
+  static const _timerInterval  = Duration(milliseconds: 80);
 
   @override
   void initState() {
@@ -95,7 +98,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       } catch (_) {
         _detectedDepthMode = 'plate_fallback';
       }
-      if (mounted) setState(() => _sessionStarted = true);
+      if (mounted) {
+        setState(() => _sessionStarted = true);
+        ref.read(scanStateProvider.notifier).sessionReady();
+      }
       DebugLog.instance.log('Scan', 'AR session started');
     } catch (e) {
       DebugLog.instance.log('Scan', 'AR session failed: $e');
@@ -135,6 +141,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   @override
   void dispose() {
+    _recordTimer?.cancel();
     _bridge.stopSession();
     super.dispose();
   }
@@ -147,44 +154,58 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   void _hapticSuccess() => HapticFeedback.mediumImpact();
   void _hapticError() => HapticFeedback.heavyImpact();
 
-  // ── State-driven actions ────────────────────────────────────────────────
+  // ── Recording ────────────────────────────────────────────────────────────
 
-  Future<void> _captureTop() async {
-    _hapticLight();
-    ref.read(scanStateProvider.notifier).topAligned();
+  Future<void> _startRecording() async {
+    if (_isRecording) return;
+    _hapticMedium();
+    setState(() {
+      _isRecording    = true;
+      _recordProgress = 0.0;
+    });
+    ref.read(scanStateProvider.notifier).startedRecording();
     try {
-      PerfMonitor.instance.start('capture_top');
-      _topFrameMeta = await _bridge.captureFrame('top');
-      PerfMonitor.instance.end();
-      _hapticMedium();
-      ref.read(scanStateProvider.notifier).topCaptured();
-    } catch (_) {
+      PerfMonitor.instance.start('record');
+      await _bridge.startRecording();
+    } catch (e) {
       _hapticError();
+      setState(() => _isRecording = false);
       ref.read(scanStateProvider.notifier).depthFailed();
+      return;
     }
+
+    final totalTicks = _recordDuration.inMilliseconds ~/
+        _timerInterval.inMilliseconds;
+    var tick = 0;
+    _recordTimer = Timer.periodic(_timerInterval, (t) {
+      tick++;
+      setState(() => _recordProgress = tick / totalTicks);
+      if (tick >= totalTicks) {
+        t.cancel();
+        _stopRecording();
+      }
+    });
   }
 
-  Future<void> _captureSide() async {
-    _hapticLight();
-    ref.read(scanStateProvider.notifier).sideReady();
-    try {
-      PerfMonitor.instance.start('capture_side');
-      _sideFrameMeta = await _bridge.captureFrame('side');
-      PerfMonitor.instance.end();
-      _hapticMedium();
-      ref.read(scanStateProvider.notifier).sideCaptured();
-      await _runInference();
-    } catch (_) {
-      _hapticError();
-      ref.read(scanStateProvider.notifier).depthFailed();
-    }
+  Future<void> _stopRecording() async {
+    if (!_isRecording) return;
+    _recordTimer?.cancel();
+    _recordTimer = null;
+    setState(() {
+      _isRecording    = false;
+      _recordProgress = 1.0;
+    });
+    _hapticHeavy();
+    PerfMonitor.instance.end();
+    await _bridge.stopRecording();
+    await _runVideoInference();
   }
 
-  Future<void> _runInference() async {
-    DebugLog.instance.log('Scan', 'Running inference pipeline');
-    PerfMonitor.instance.reset();
+  Future<void> _runVideoInference() async {
+    DebugLog.instance.log('Scan', 'Running video inference pipeline');
+    ref.read(scanStateProvider.notifier).recordingStopped();
     PerfMonitor.instance.start('inference');
-    await ref.read(scanResultProvider.notifier).runScan();
+    await ref.read(scanResultProvider.notifier).runVideoScan();
     PerfMonitor.instance.end();
     final result = ref.read(scanResultProvider);
     if (result.error != null) {
@@ -203,41 +224,32 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   Future<void> _saveScanResult(ScanResultState resultState) async {
-    // Encode pose data as JSON strings (Part 9)
-    String? _encodeList(dynamic val) {
-      if (val is List) return jsonEncode(val);
-      return null;
-    }
-
     final scanResult = ScanResult(
       timestamp: DateTime.now(),
       depthMode: _detectedDepthMode,
       foods: resultState.foods,
-      topCameraPosition: _encodeList(_topFrameMeta['camera_position']),
-      topCameraTransform: _encodeList(_topFrameMeta['camera_transform']),
-      sideCameraPosition: _encodeList(_sideFrameMeta['camera_position']),
-      sideCameraTransform: _encodeList(_sideFrameMeta['camera_transform']),
+      topCameraPosition:  null,
+      topCameraTransform: null,
+      sideCameraPosition:  null,
+      sideCameraTransform: null,
     );
     await ref.read(historyProvider.notifier).addScan(scanResult);
     await ref.read(dailyIntakeProvider.notifier).load();
     await ref.read(streakProvider.notifier).load();
-    // Store for potential detail navigation
     final history = ref.read(historyProvider);
     if (history.scans.isNotEmpty) {
       _savedScanResult = history.scans.first;
-
-      // Persist benchmark (Part 17)
-      final timings = PerfMonitor.instance.allTimings;
+      final timings     = PerfMonitor.instance.allTimings;
       final memoryBytes = await _bridge.getMemoryUsage();
       final benchmark = ScanBenchmark(
-        scanId: _savedScanResult!.id!,
-        captureTopMs: timings['capture_top']?.inMilliseconds ?? 0,
-        captureSideMs: timings['capture_side']?.inMilliseconds ?? 0,
-        inferenceMs: timings['inference']?.inMilliseconds ?? 0,
-        totalMs: PerfMonitor.instance.total.inMilliseconds,
+        scanId:         _savedScanResult!.id!,
+        captureTopMs:   timings['record']?.inMilliseconds ?? 0,
+        captureSideMs:  0,
+        inferenceMs:    timings['inference']?.inMilliseconds ?? 0,
+        totalMs:        PerfMonitor.instance.total.inMilliseconds,
         peakMemoryBytes: memoryBytes,
-        depthMode: _detectedDepthMode,
-        timestamp: DateTime.now(),
+        depthMode:      _detectedDepthMode,
+        timestamp:      DateTime.now(),
       );
       await DatabaseService.instance.insertBenchmark(benchmark);
     }
@@ -246,12 +258,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   void _retry() {
     _hapticLight();
+    _recordTimer?.cancel();
+    _recordTimer    = null;
+    _isRecording    = false;
+    _recordProgress = 0.0;
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();
-    // Re-attempt session start if it failed on the first try
-    if (!_sessionStarted) {
-      _startSession();
-    }
+    if (!_sessionStarted) _startSession();
   }
 
   // ── Build ───────────────────────────────────────────────────────────────
@@ -288,8 +301,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               sessionStarted: _sessionStarted,
               depthMode: _detectedDepthMode,
               timings: PerfMonitor.instance.allTimings,
-              onCaptureTop: _captureTop,
-              onCaptureSide: _captureSide,
+              isRecording: _isRecording,
+              recordProgress: _recordProgress,
+              onStartRecord: _startRecording,
               onRetry: _retry,
               onClose: () => Navigator.of(context).pop(),
               onViewDetails: _savedScanResult != null
@@ -333,8 +347,9 @@ class _BottomPanel extends StatelessWidget {
     required this.sessionStarted,
     required this.depthMode,
     required this.timings,
-    required this.onCaptureTop,
-    required this.onCaptureSide,
+    required this.isRecording,
+    required this.recordProgress,
+    required this.onStartRecord,
     required this.onRetry,
     required this.onClose,
     this.onViewDetails,
@@ -345,8 +360,9 @@ class _BottomPanel extends StatelessWidget {
   final bool sessionStarted;
   final String depthMode;
   final Map<String, Duration> timings;
-  final VoidCallback onCaptureTop;
-  final VoidCallback onCaptureSide;
+  final bool isRecording;
+  final double recordProgress;
+  final VoidCallback onStartRecord;
   final VoidCallback onRetry;
   final VoidCallback onClose;
   final VoidCallback? onViewDetails;
@@ -359,49 +375,36 @@ class _BottomPanel extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(
-        24,
-        20,
-        24,
-        MediaQuery.of(context).padding.bottom + 20,
+        24, 20, 24, MediaQuery.of(context).padding.bottom + 20,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── State indicator ────────────────────────────────────────
+          // ── Step indicator ────────────────────────────────────────
           _StateProgressRow(state: scanState),
           const SizedBox(height: 16),
 
-          // ── Align top → capture button ────────────────────────────
-          if (scanState == ScanState.alignTop)
-            _ScanButton(
-              label: 'Capture Top View',
-              icon: Icons.camera_alt,
+          // ── Ready to record ───────────────────────────────────────
+          if (scanState == ScanState.readyToRecord)
+            _RecordButton(
               enabled: sessionStarted,
-              onPressed: onCaptureTop,
+              isRecording: false,
+              progress: 0,
+              onPressed: onStartRecord,
             ),
 
-          // ── Capturing top ─────────────────────────────────────────
-          if (scanState == ScanState.captureTop)
-            const _ProcessingIndicator(text: 'Capturing…'),
-
-          // ── Move to side → capture button ─────────────────────────
-          if (scanState == ScanState.moveSide)
-            _ScanButton(
-              label: 'Capture Side View',
-              icon: Icons.camera_alt,
+          // ── Recording in progress ─────────────────────────────────
+          if (scanState == ScanState.recording)
+            _RecordButton(
               enabled: true,
-              onPressed: onCaptureSide,
-              color: AppTheme.amber500,
+              isRecording: true,
+              progress: recordProgress,
+              onPressed: () {},   // auto-stops; button is visual only
             ),
 
-          // ── Capture side / calculating ────────────────────────────
-          if (scanState == ScanState.captureSide ||
-              scanState == ScanState.calculating)
-            _ProcessingIndicator(
-              text: scanResult.loading
-                  ? 'Running ML inference…'
-                  : 'Processing depth data…',
-            ),
+          // ── Processing ────────────────────────────────────────────
+          if (scanState == ScanState.calculating)
+            const _ProcessingIndicator(text: 'Building 3-D model…'),
 
           // ── Done → results + confidence ───────────────────────────
           if (scanState == ScanState.done) ...[
@@ -410,8 +413,6 @@ class _BottomPanel extends StatelessWidget {
               caloriesMax: scanResult.totalCaloriesMax,
             ),
             const SizedBox(height: 8),
-
-            // Timing + depth mode chips
             Wrap(
               spacing: 8,
               runSpacing: 4,
@@ -433,7 +434,6 @@ class _BottomPanel extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-
             ...scanResult.foods.map((f) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(
@@ -547,18 +547,18 @@ class _StateProgressRow extends StatelessWidget {
   final ScanState state;
 
   static const _steps = [
-    (ScanState.alignTop, 'Top'),
-    (ScanState.moveSide, 'Side'),
-    (ScanState.calculating, 'Analyse'),
-    (ScanState.done, 'Done'),
+    (ScanState.readyToRecord, 'Ready'),
+    (ScanState.recording,     'Record'),
+    (ScanState.calculating,   'Analyse'),
+    (ScanState.done,          'Done'),
   ];
 
   int get _activeIndex {
     return switch (state) {
-      ScanState.alignTop || ScanState.captureTop => 0,
-      ScanState.moveSide || ScanState.captureSide => 1,
-      ScanState.calculating => 2,
-      ScanState.done => 3,
+      ScanState.readyToRecord => 0,
+      ScanState.recording     => 1,
+      ScanState.calculating   => 2,
+      ScanState.done          => 3,
       _ => -1, // error
     };
   }
@@ -644,6 +644,82 @@ class _StepDot extends StatelessWidget {
 }
 
 // ── Shared widgets ──────────────────────────────────────────────────────────
+
+/// Circular record button that shows a countdown arc while recording.
+class _RecordButton extends StatelessWidget {
+  const _RecordButton({
+    required this.enabled,
+    required this.isRecording,
+    required this.progress,
+    required this.onPressed,
+  });
+
+  final bool enabled;
+  final bool isRecording;
+  final double progress;   // 0.0 – 1.0
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: enabled ? onPressed : null,
+          child: SizedBox(
+            width: 88,
+            height: 88,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Progress arc
+                SizedBox(
+                  width: 88,
+                  height: 88,
+                  child: CircularProgressIndicator(
+                    value: isRecording ? progress : 0,
+                    strokeWidth: 5,
+                    backgroundColor: Colors.white12,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppTheme.amber500,
+                    ),
+                  ),
+                ),
+                // Inner circle button
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: isRecording
+                        ? AppTheme.red500
+                        : (enabled ? AppTheme.green500 : AppTheme.green500.withValues(alpha: 0.3)),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isRecording ? Icons.stop : Icons.videocam,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          isRecording
+              ? '${((1.0 - progress) * 4).ceil()}s remaining'
+              : (enabled ? 'Tap to scan' : 'Starting camera…'),
+          style: TextStyle(
+            fontSize: 12,
+            color: isRecording ? AppTheme.amber500 : Colors.white54,
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _ScanButton extends StatelessWidget {
   const _ScanButton({

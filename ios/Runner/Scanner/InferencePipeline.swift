@@ -193,4 +193,148 @@ final class InferencePipeline {
         }
         print("──────────────────────────────────────────")
     }
+
+    // MARK: – Video scan (multi-frame 3-D reconstruction)
+
+    /// Run the multi-frame pipeline from a recorded video sweep.
+    ///
+    /// Pipeline:
+    ///   1. Plate detection + segmentation on the top (first) frame.
+    ///   2. Depth fusion: project every recorded depth map into a shared
+    ///      world-space voxel grid.
+    ///   3. Label each occupied voxel using the top-frame segmentation masks.
+    ///   4. Compute per-food volume = occupied labelled voxel count × voxel volume.
+    ///   5. Fallback to single-frame plate-heuristic when no depth was available.
+    ///
+    /// Returns the same JSON format as `run(captureService:)`.
+    func runVideoScan(recorder: MultiFrameRecorder) throws -> String {
+        guard let topFrame = recorder.topFrame else {
+            throw PipelineError.noTopFrame
+        }
+
+        // ── 1. Plate detection ──────────────────────────────────────────
+        let plate    = plateDetector.detect(in: topFrame.pixelBuffer)
+        let cropRect: CGRect? = plate.detected ? plate.rect : nil
+
+        // ── 2. Preprocess top frame for CoreML ─────────────────────────
+        guard let preprocessedRGB = autoreleasepool(invoking: {
+            preprocessor.preprocess(
+                pixelBuffer: topFrame.pixelBuffer,
+                plateRect: cropRect
+            )
+        }) else {
+            throw PipelineError.preprocessingFailed
+        }
+
+        // ── 3. Segmentation ─────────────────────────────────────────────
+        let segments: [SegmentationService.SegmentedObject]
+        do {
+            segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
+        } catch {
+            throw PipelineError.segmentationFailed(error)
+        }
+        guard !segments.isEmpty else { return "[]" }
+
+        // ── 4. Multi-frame depth fusion ─────────────────────────────────
+        let fusion = DepthFusion()
+
+        // Include top-frame depth first (if available).
+        if let topDepth = topFrame.depthBuffer {
+            fusion.integrate(
+                depthBuffer:      topDepth,
+                cameraTransform:  topFrame.cameraTransform,
+                cameraIntrinsics: topFrame.cameraIntrinsics,
+                imageWidth:  CVPixelBufferGetWidth(topFrame.pixelBuffer),
+                imageHeight: CVPixelBufferGetHeight(topFrame.pixelBuffer)
+            )
+        }
+
+        // Fuse all recorded light frames.
+        for frame in recorder.lightFrames {
+            fusion.integrate(
+                depthBuffer:      frame.depthBuffer,
+                cameraTransform:  frame.cameraTransform,
+                cameraIntrinsics: frame.cameraIntrinsics,
+                imageWidth:  frame.imageWidth,
+                imageHeight: frame.imageHeight
+            )
+        }
+
+        // ── 5. Label voxels from top-frame segmentation ─────────────────
+        let plateNormRect = plate.detected
+            ? plate.rect
+            : CGRect(x: 0, y: 0, width: 1, height: 1)
+
+        fusion.assignLabels(
+            segments:           segments,
+            plateRect:          plateNormRect,
+            topFrameTransform:  topFrame.cameraTransform,
+            topFrameIntrinsics: topFrame.cameraIntrinsics,
+            maskWidth:          preprocessor.modelInputWidth,
+            maskHeight:         preprocessor.modelInputHeight,
+            imageWidth:  CVPixelBufferGetWidth(topFrame.pixelBuffer),
+            imageHeight: CVPixelBufferGetHeight(topFrame.pixelBuffer)
+        )
+
+        // ── 6. Volumes ──────────────────────────────────────────────────
+        let volumes: [String: Double]
+        if fusion.totalOccupiedVoxels > 10 {
+            volumes = fusion.allVolumes()
+        } else {
+            // No real depth data: fall back to single-frame plate heuristic.
+            let pxPerCm = plateDetector.pixelsPerCm(
+                plate: plate,
+                frameWidth: CVPixelBufferGetWidth(topFrame.pixelBuffer)
+            )
+            let preprocessedDepth: CVPixelBuffer? = topFrame.depthBuffer.flatMap { depth in
+                autoreleasepool {
+                    preprocessor.preprocessDepth(
+                        depthBuffer:  depth,
+                        plateRect:    cropRect,
+                        outputWidth:  preprocessor.modelInputWidth,
+                        outputHeight: preprocessor.modelInputHeight
+                    )
+                }
+            }
+            let fallback = volumeCalculator.calculate(
+                objects:    segments,
+                depthBuffer: preprocessedDepth,
+                pixelsPerCm: pxPerCm,
+                maskWidth:  preprocessor.modelInputWidth,
+                maskHeight: preprocessor.modelInputHeight
+            )
+            var vols: [String: Double] = [:]
+            for v in fallback { vols[v.label, default: 0] += v.volumeCm3 }
+            volumes = vols
+        }
+
+        // ── 7. Serialise to JSON ────────────────────────────────────────
+        var payload = [[String: Any]]()
+        for seg in segments {
+            var d = [String: Any]()
+            d["label"]       = seg.label
+            d["volume_cm3"]  = round((volumes[seg.label] ?? 0) * 10) / 10
+            d["pixel_count"] = seg.pixelCount
+            d["confidence"]  = round(Double(seg.confidence) * 1000) / 1000
+            d["frames_used"] = recorder.lightFrames.count
+            d["depth_min_m"] = 0.0
+            d["depth_max_m"] = 0.0
+            d["depth_avg_m"] = 0.0
+            payload.append(d)
+        }
+
+        guard let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
+              let json = String(data: data, encoding: .utf8)
+        else { return "[]" }
+
+        print("──────────── Video Scan Result ──────────")
+        print("Frames: \(recorder.lightFrames.count), Voxels: \(fusion.totalOccupiedVoxels)")
+        for seg in segments {
+            let v = String(format: "%.1f", volumes[seg.label] ?? 0)
+            print("  \(seg.label): \(v) cm³, conf \(String(format: "%.2f", seg.confidence))")
+        }
+        print("─────────────────────────────────────────")
+
+        return json
+    }
 }

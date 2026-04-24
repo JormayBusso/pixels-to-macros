@@ -20,6 +20,8 @@ final class ScannerPlugin {
     private static let captureService = FrameCaptureService()
     private static let pipeline = InferencePipeline()
     private static let pointCloudExporter = PointCloudExporter()
+    /// Accumulates frames during a video-sweep recording session.
+    private static let recorder = MultiFrameRecorder()
 
     // MARK: - Registration
 
@@ -75,6 +77,35 @@ final class ScannerPlugin {
                     DispatchQueue.main.async {
                         result(FlutterError(
                             code: "INFERENCE_FAILED",
+                            message: error.localizedDescription,
+                            details: nil
+                        ))
+                    }
+                }
+            }
+
+        case "startRecording":
+            // Must run on main thread — Timer requires a RunLoop.
+            DispatchQueue.main.async {
+                recorder.startRecording(sessionManager: sessionManager)
+                result(nil)
+            }
+
+        case "stopRecording":
+            recorder.stopRecording()
+            result(nil)
+
+        case "runVideoInference":
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let json = try pipeline.runVideoScan(recorder: recorder)
+                    recorder.releaseAll()
+                    DispatchQueue.main.async { result(json) }
+                } catch {
+                    recorder.releaseAll()
+                    DispatchQueue.main.async {
+                        result(FlutterError(
+                            code: "VIDEO_INFERENCE_FAILED",
                             message: error.localizedDescription,
                             details: nil
                         ))

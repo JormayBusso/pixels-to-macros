@@ -55,6 +55,27 @@ class NativeBridge {
     await _channel.invokeMethod<void>('stopSession');
   }
 
+  // ── Video recording ──────────────────────────────────────────────────────
+
+  /// Start sampling ARKit frames (~10 fps) for a video-sweep scan.
+  Future<void> startRecording() async {
+    await _channel.invokeMethod<void>('startRecording');
+  }
+
+  /// Stop frame sampling. Must be followed by [runVideoInference].
+  Future<void> stopRecording() async {
+    await _channel.invokeMethod<void>('stopRecording');
+  }
+
+  /// Run multi-frame 3-D reconstruction + segmentation on the recorded sweep.
+  /// Returns the same JSON list format as [runInference].
+  Future<List<Map<String, dynamic>>> runVideoInference() async {
+    final raw = await _channel.invokeMethod<String>('runVideoInference');
+    if (raw == null) return [];
+    final list = jsonDecode(raw) as List;
+    return list.cast<Map<String, dynamic>>();
+  }
+
   // ── Point cloud (Part 15) ────────────────────────────────────────────────
 
   /// Export the current scan's depth data as a PLY point cloud string.

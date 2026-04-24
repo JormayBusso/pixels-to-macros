@@ -113,6 +113,65 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     }
   }
 
+  /// Run the multi-frame video inference pipeline.
+  /// Same processing as [runScan] but uses [NativeBridge.runVideoInference].
+  Future<void> runVideoScan() async {
+    state = const ScanResultState(loading: true);
+
+    try {
+      final rawVolumes = await NativeBridge.instance.runVideoInference();
+
+      if (rawVolumes.isEmpty) {
+        state = const ScanResultState(
+          error: 'No food detected — try again with a clearer sweep.',
+        );
+        return;
+      }
+
+      final db    = DatabaseService.instance;
+      final foods = <DetectedFood>[];
+
+      for (final vol in rawVolumes) {
+        final label       = vol['label']       as String? ?? 'unknown';
+        final volumeCm3   = (vol['volume_cm3'] as num?)?.toDouble() ?? 0;
+        final pixelCount  = (vol['pixel_count'] as num?)?.toInt() ?? 0;
+        final confidence  = (vol['confidence']  as num?)?.toDouble();
+        final framesUsed  = (vol['frames_used'] as num?)?.toInt() ?? 0;
+
+        final foodData = await db.getFoodByLabel(label);
+        final double calMin;
+        final double calMax;
+
+        if (foodData != null) {
+          final range = foodData.calorieRange(volumeCm3);
+          calMin = range.min;
+          calMax = range.max;
+        } else {
+          calMin = volumeCm3 * 0.7 / 100 * 80;
+          calMax = volumeCm3 * 1.0 / 100 * 120;
+        }
+
+        foods.add(DetectedFood(
+          label:       label,
+          volumeCm3:   volumeCm3,
+          caloriesMin: calMin,
+          caloriesMax: calMax,
+        ));
+
+        DebugLog.instance.log('VideoScan',
+          '$label: ${volumeCm3.toStringAsFixed(1)} cm³ '
+          '(${framesUsed} frames), '
+          '${pixelCount} px, '
+          '${calMin.round()}-${calMax.round()} kcal'
+          '${confidence != null ? ", conf ${confidence.toStringAsFixed(2)}" : ""}');
+      }
+
+      state = ScanResultState(foods: foods);
+    } catch (e) {
+      state = ScanResultState(error: e.toString());
+    }
+  }
+
   void reset() => state = const ScanResultState();
 }
 
