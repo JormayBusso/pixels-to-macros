@@ -33,9 +33,9 @@ jobs:
         run: flutter pub get
 
       # ── 4. Regenerate missing Xcode project files ──────────────────────────
-      # The ios/ folder only contains Swift sources; Runner.xcodeproj and
-      # Podfile are absent from the repo. Running flutter create (non-destructive)
-      # generates them without overwriting existing files.
+      # The ios/ folder contains Swift sources and a committed Podfile (iOS 17+).
+      # Runner.xcodeproj is absent from the repo. Running flutter create
+      # (non-destructive) generates it without overwriting existing files.
       - name: Regenerate iOS project scaffold
         run: |
           flutter create \
