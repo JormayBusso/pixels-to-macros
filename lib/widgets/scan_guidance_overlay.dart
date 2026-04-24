@@ -44,7 +44,8 @@ class _ScanGuidanceOverlayState extends State<ScanGuidanceOverlay>
       child: Stack(
         children: [
           // ── Reticle (centre crosshair) ─────────────────────────────────
-          if (state == ScanState.readyToRecord ||
+          if (state == ScanState.waitingForTopView ||
+              state == ScanState.readyToRecord ||
               state == ScanState.alignTop ||
               state == ScanState.moveSide)
             Center(child: _Reticle(pulse: _pulse, state: state)),
@@ -64,7 +65,8 @@ class _ScanGuidanceOverlayState extends State<ScanGuidanceOverlay>
           ),
 
           // ── Distance hint (bottom) ─────────────────────────────────────
-          if (state == ScanState.readyToRecord ||
+          if (state == ScanState.waitingForTopView ||
+              state == ScanState.readyToRecord ||
               state == ScanState.alignTop)
             Positioned(
               bottom: 140,
@@ -107,7 +109,8 @@ class _Reticle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = state == ScanState.readyToRecord ||
+    final color = state == ScanState.waitingForTopView ||
+            state == ScanState.readyToRecord ||
             state == ScanState.alignTop
         ? AppTheme.green400
         : AppTheme.amber500;
@@ -194,6 +197,11 @@ class _InstructionBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (String text, IconData icon, Color bg) = switch (state) {
+      ScanState.waitingForTopView => (
+          'Point phone straight down at your food',
+          Icons.phone_android,
+          AppTheme.green600,
+        ),
       ScanState.readyToRecord => (
           'Centre the plate and press the button',
           Icons.crop_free,

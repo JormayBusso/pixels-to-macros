@@ -8,10 +8,8 @@ import '../providers/history_provider.dart';
 import '../providers/recommendations_provider.dart';
 import '../providers/streak_provider.dart';
 import '../providers/user_prefs_provider.dart';
-import '../services/debug_log.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
-import 'debug_screen.dart';
 import 'nutrition_dashboard_screen.dart';
 import 'scan_detail_screen.dart';
 
@@ -54,23 +52,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppTheme.green600,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.eco, color: Colors.white, size: 20),
-          ),
-        ),
         title: const Text('Pixels to Macros'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.bug_report_outlined),
-            tooltip: 'Debug Log',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const DebugScreen()),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const NutritionDashboardScreen()),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.green600,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.all(6),
+                child:
+                    const Icon(Icons.eco, color: Colors.white, size: 20),
+              ),
             ),
           ),
         ],
@@ -633,8 +632,6 @@ class _GoalProgressCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                Text(goal.emoji, style: const TextStyle(fontSize: 20)),
-                const SizedBox(width: 8),
                 Text(
                   goal.label,
                   style: TextStyle(

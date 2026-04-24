@@ -91,10 +91,10 @@ class _MascotStages {
 
   const _MascotStages.gorilla()
       : imagePaths = const [
-          'assets/mascots/baby_gorilla.jpeg',
-          'assets/mascots/young_gorilla.jpeg',
-          'assets/mascots/normal_gorilla.jpeg',
-          'assets/mascots/strong_gorilla.jpeg',
+          'assets/mascots/baby_gorilla.png',
+          'assets/mascots/young_gorilla.png',
+          'assets/mascots/normal_gorilla.png',
+          'assets/mascots/strong_gorilla.png',
         ],
         labels = const [
           'Baby Gorilla',
@@ -111,10 +111,10 @@ class _MascotStages {
 
   const _MascotStages.plant()
       : imagePaths = const [
-          'assets/mascots/tiny_plant.jpeg',
-          'assets/mascots/regular_plant.jpeg',
-          'assets/mascots/small_tree.jpeg',
-          'assets/mascots/huge_tree.jpeg',
+          'assets/mascots/tiny_plant.png',
+          'assets/mascots/regular_plant.png',
+          'assets/mascots/small_tree.png',
+          'assets/mascots/huge_tree.png',
         ],
         labels = const [
           'Seedling',
@@ -131,10 +131,10 @@ class _MascotStages {
 
   const _MascotStages.flame()
       : imagePaths = const [
-          'assets/mascots/no_fat_burning.jpeg',
-          'assets/mascots/little_fat_burning.jpeg',
-          'assets/mascots/fat_burning.jpeg',
-          'assets/mascots/extreme_fat_burning.jpeg',
+          'assets/mascots/no_fat_burning.png',
+          'assets/mascots/little_fat_burning.png',
+          'assets/mascots/fat_burning.png',
+          'assets/mascots/extreme_fat_burning.png',
         ],
         labels = const [
           'No Burn Yet',

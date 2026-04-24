@@ -49,6 +49,8 @@ enum AppColorSeed {
   purple,
   orange,
   rose,
+  pink,
+  yellow,
 }
 
 extension AppColorSeedX on AppColorSeed {
@@ -61,6 +63,8 @@ extension AppColorSeedX on AppColorSeed {
       case AppColorSeed.purple: return 'Purple';
       case AppColorSeed.orange: return 'Orange';
       case AppColorSeed.rose:   return 'Rose';
+      case AppColorSeed.pink:   return 'Pink';
+      case AppColorSeed.yellow: return 'Yellow';
     }
   }
 
@@ -71,6 +75,8 @@ extension AppColorSeedX on AppColorSeed {
       case AppColorSeed.purple: return const Color(0xFF7C3AED); // violet-600
       case AppColorSeed.orange: return const Color(0xFFEA580C); // orange-600
       case AppColorSeed.rose:   return const Color(0xFFE11D48); // rose-600
+      case AppColorSeed.pink:   return const Color(0xFFEC4899); // pink-500
+      case AppColorSeed.yellow: return const Color(0xFFEAB308); // yellow-500
     }
   }
 
@@ -82,6 +88,8 @@ extension AppColorSeedX on AppColorSeed {
       case AppColorSeed.purple: return const Color(0xFFF5F3FF);
       case AppColorSeed.orange: return const Color(0xFFFFF7ED);
       case AppColorSeed.rose:   return const Color(0xFFFFF1F2);
+      case AppColorSeed.pink:   return const Color(0xFFFDF2F8);
+      case AppColorSeed.yellow: return const Color(0xFFFEFCE8);
     }
   }
 
@@ -91,6 +99,8 @@ extension AppColorSeedX on AppColorSeed {
       case 'purple': return AppColorSeed.purple;
       case 'orange': return AppColorSeed.orange;
       case 'rose':   return AppColorSeed.rose;
+      case 'pink':   return AppColorSeed.pink;
+      case 'yellow': return AppColorSeed.yellow;
       default:       return AppColorSeed.green;
     }
   }

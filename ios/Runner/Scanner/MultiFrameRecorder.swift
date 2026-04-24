@@ -8,14 +8,17 @@ import Foundation
 ///   - The **first** frame is kept as a full `CapturedFrame` (RGB + depth) and
 ///     used as the "top" reference for plate detection and segmentation.
 ///   - Every subsequent sampled frame stores only **depth + pose** (no RGB),
-///     keeping peak memory well under 20 MB for a 5-second sweep.
+///     keeping peak memory well under 20 MB for a 2-second sweep.
+///
+/// IMPORTANT: ARKit recycles pixel-buffer memory between frames.
+///   We deep-copy every CVPixelBuffer before storing it.
 final class MultiFrameRecorder {
 
     // MARK: – Stored frame types
 
     /// Lightweight per-frame record: depth data + camera pose only.
     struct LightFrame {
-        let depthBuffer:     CVPixelBuffer
+        let depthBuffer:     CVPixelBuffer   // deep copy — owned by us
         let cameraTransform: simd_float4x4
         let cameraIntrinsics: simd_float3x3
         let imageWidth:  Int
@@ -33,6 +36,10 @@ final class MultiFrameRecorder {
     var frameCount: Int { lightFrames.count }
     var hasDepthData: Bool { !lightFrames.isEmpty }
 
+    /// Current phone pitch angle in radians. Updated every sample.
+    /// -π/2 = pointing straight down (top-view), 0 = horizontal (side-view).
+    private(set) var currentPitch: Float = 0
+
     // MARK: – Private
 
     private var timer:    Timer?
@@ -40,8 +47,8 @@ final class MultiFrameRecorder {
 
     /// 10 fps sample rate — enough for reconstruction without excessive memory use.
     private let sampleInterval: TimeInterval = 0.1
-    /// 50 frames == 5 seconds at 10 fps.
-    private let maxFrames = 50
+    /// 20 frames == 2 seconds at 10 fps.
+    private let maxFrames = 20
 
     // MARK: – Control
 
@@ -75,10 +82,22 @@ final class MultiFrameRecorder {
         lightFrames = []
     }
 
+    // MARK: – Orientation query
+
+    /// Read the current pitch from the latest AR frame without recording.
+    /// Returns pitch in radians: -π/2 = top-view, 0 = horizontal.
+    func updatePitch(from sessionManager: ARSessionManager) {
+        guard let frame = sessionManager.latestFrame else { return }
+        currentPitch = frame.camera.eulerAngles.x
+    }
+
     // MARK: – Private
 
     private func sampleFrame(from sessionManager: ARSessionManager) {
         guard isActive, let arFrame = sessionManager.latestFrame else { return }
+
+        // Always update pitch for orientation tracking.
+        currentPitch = arFrame.camera.eulerAngles.x
 
         autoreleasepool {
             let pixBuf    = arFrame.capturedImage
@@ -88,21 +107,22 @@ final class MultiFrameRecorder {
             let w = CVPixelBufferGetWidth(pixBuf)
             let h = CVPixelBufferGetHeight(pixBuf)
 
-            // First frame → full top frame (RGB + depth)
+            // First frame → full top frame (RGB + depth).
+            // Deep-copy pixel buffers so ARKit can reuse its internal pool.
             if topFrame == nil {
                 topFrame = FrameCaptureService.CapturedFrame(
-                    pixelBuffer:     pixBuf,
-                    depthBuffer:     depthBuf,
+                    pixelBuffer:     MultiFrameRecorder.copyPixelBuffer(pixBuf),
+                    depthBuffer:     depthBuf.flatMap { MultiFrameRecorder.copyPixelBuffer($0) },
                     cameraTransform: transform,
                     cameraIntrinsics: intrinsics,
                     timestamp:       arFrame.timestamp
                 )
             }
 
-            // All frames with depth → lightweight record
+            // All frames with depth → lightweight record (deep-copy depth).
             if let depth = depthBuf, lightFrames.count < maxFrames {
                 lightFrames.append(LightFrame(
-                    depthBuffer:      depth,
+                    depthBuffer:      MultiFrameRecorder.copyPixelBuffer(depth),
                     cameraTransform:  transform,
                     cameraIntrinsics: intrinsics,
                     imageWidth:  w,
@@ -110,5 +130,77 @@ final class MultiFrameRecorder {
                 ))
             }
         }
+    }
+
+    // MARK: – Pixel buffer deep copy
+
+    /// Create an independent deep copy of a CVPixelBuffer.
+    /// This is essential because ARKit recycles its pixel buffer pool
+    /// between frames — references become invalid after the next delegate call.
+    static func copyPixelBuffer(_ src: CVPixelBuffer) -> CVPixelBuffer {
+        let width  = CVPixelBufferGetWidth(src)
+        let height = CVPixelBufferGetHeight(src)
+        let format = CVPixelBufferGetPixelFormatType(src)
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(src)
+
+        var dst: CVPixelBuffer?
+        let attrs: [CFString: Any] = [
+            kCVPixelBufferIOSurfacePropertiesKey: [:] as [String: Any],
+        ]
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width, height, format,
+            attrs as CFDictionary,
+            &dst
+        )
+        guard status == kCVReturnSuccess, let dst else {
+            // Last resort: retain the original (unsafe but better than crash).
+            CVPixelBufferRetain(src)
+            return src
+        }
+
+        CVPixelBufferLockBaseAddress(src, .readOnly)
+        CVPixelBufferLockBaseAddress(dst, [])
+        defer {
+            CVPixelBufferUnlockBaseAddress(src, .readOnly)
+            CVPixelBufferUnlockBaseAddress(dst, [])
+        }
+
+        let planeCount = CVPixelBufferGetPlaneCount(src)
+        if planeCount > 0 {
+            // Multi-planar (e.g. YCbCr 420)
+            for plane in 0..<planeCount {
+                guard let srcBase = CVPixelBufferGetBaseAddressOfPlane(src, plane),
+                      let dstBase = CVPixelBufferGetBaseAddressOfPlane(dst, plane)
+                else { continue }
+                let srcRowBytes = CVPixelBufferGetBytesPerRowOfPlane(src, plane)
+                let dstRowBytes = CVPixelBufferGetBytesPerRowOfPlane(dst, plane)
+                let planeH = CVPixelBufferGetHeightOfPlane(src, plane)
+                let copyBytes = min(srcRowBytes, dstRowBytes)
+                for row in 0..<planeH {
+                    memcpy(
+                        dstBase.advanced(by: row * dstRowBytes),
+                        srcBase.advanced(by: row * srcRowBytes),
+                        copyBytes
+                    )
+                }
+            }
+        } else {
+            // Single plane (e.g. Float32 depth, BGRA)
+            guard let srcBase = CVPixelBufferGetBaseAddress(src),
+                  let dstBase = CVPixelBufferGetBaseAddress(dst)
+            else { return dst }
+            let dstRowBytes = CVPixelBufferGetBytesPerRow(dst)
+            let copyBytes = min(bytesPerRow, dstRowBytes)
+            for row in 0..<height {
+                memcpy(
+                    dstBase.advanced(by: row * dstRowBytes),
+                    srcBase.advanced(by: row * bytesPerRow),
+                    copyBytes
+                )
+            }
+        }
+
+        return dst
     }
 }

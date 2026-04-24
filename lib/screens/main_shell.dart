@@ -6,6 +6,7 @@ import '../providers/scan_state_provider.dart';
 import '../theme/app_theme.dart';
 import 'analytics_screen.dart';
 import 'home_screen_v2.dart';
+import 'grocery_list_screen.dart';
 import 'history_screen.dart';
 import 'manual_entry_screen.dart';
 import 'settings_screen.dart';
@@ -27,6 +28,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _tabs = [
     HomeScreen(),
     AnalyticsScreen(),
+    GroceryListScreen(),
     HistoryScreen(),
     SettingsScreen(),
   ];
@@ -69,6 +71,11 @@ class _MainShellState extends ConsumerState<MainShell> {
             icon: Icon(Icons.bar_chart_outlined),
             selectedIcon: Icon(Icons.bar_chart, color: AppTheme.green700),
             label: 'Analytics',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.shopping_cart_outlined),
+            selectedIcon: Icon(Icons.shopping_cart, color: AppTheme.green700),
+            label: 'Groceries',
           ),
           NavigationDestination(
             icon: Badge(

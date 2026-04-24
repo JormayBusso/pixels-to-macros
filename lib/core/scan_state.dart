@@ -4,10 +4,13 @@
 /// MethodChannel.
 enum ScanState {
   // ── Happy path ──────────────────────────────────────────────────────────────
-  /// Session started — user should begin the video sweep.
+  /// Session started — waiting for user to point phone straight down at food.
+  waitingForTopView,
+
+  /// Session started — user can press button to begin recording (manual fallback).
   readyToRecord,
 
-  /// Short video sweep is being recorded.
+  /// Short video sweep is being recorded (auto-started at top-view).
   recording,
 
   /// Processing — run ML inference & 3-D volume calculation.
@@ -39,6 +42,8 @@ enum ScanState {
 extension ScanStateLabel on ScanState {
   String get label {
     switch (this) {
+      case ScanState.waitingForTopView:
+        return 'Point your phone straight down at the food';
       case ScanState.readyToRecord:
         return 'Press the button to start scanning';
       case ScanState.recording:

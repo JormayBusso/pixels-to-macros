@@ -13,8 +13,14 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
     /// The underlying ARKit session. `nil` until `start()` succeeds.
     private(set) var session: ARSession?
 
-    /// The most recent AR frame (updated every delegate callback).
-    private(set) var latestFrame: ARFrame?
+    /// The most recent AR frame.
+    ///
+    /// Reads directly from `session.currentFrame` so it works even when
+    /// `ARSCNView` has taken over as the session delegate (which prevents
+    /// the `didUpdate` callback from reaching this manager).
+    var latestFrame: ARFrame? {
+        return session?.currentFrame
+    }
 
     /// Start (or restart) the AR session.
     /// Completion is called on the main thread.
@@ -65,15 +71,10 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
     /// Pause and release the session.
     func stop() {
         session?.pause()
-        latestFrame = nil
         session = nil
     }
 
     // MARK: – ARSessionDelegate
-
-    func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        latestFrame = frame
-    }
 
     func session(_ session: ARSession, didFailWithError error: Error) {
         print("[ARSessionManager] Session error: \(error.localizedDescription)")

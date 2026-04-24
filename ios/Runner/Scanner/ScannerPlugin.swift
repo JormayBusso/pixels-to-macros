@@ -131,6 +131,12 @@ final class ScannerPlugin {
                 }
             }
 
+        case "getPhonePitch":
+            // Return phone pitch in radians.
+            // -π/2 ≈ pointing straight down (top-view), 0 ≈ horizontal.
+            recorder.updatePitch(from: sessionManager)
+            result(Double(recorder.currentPitch))
+
         case "getMemoryUsage":
             result(getResidentMemory())
 

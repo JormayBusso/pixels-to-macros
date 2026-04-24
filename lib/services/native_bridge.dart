@@ -78,6 +78,17 @@ class NativeBridge {
 
   // ── Point cloud (Part 15) ────────────────────────────────────────────────
 
+  /// Get current phone pitch angle in radians from ARKit.
+  /// Returns -π/2 for straight-down (top-view), 0 for horizontal (side-view).
+  Future<double> getPhonePitch() async {
+    try {
+      final result = await _channel.invokeMethod<double>('getPhonePitch');
+      return result ?? 0.0;
+    } catch (_) {
+      return 0.0;
+    }
+  }
+
   /// Export the current scan's depth data as a PLY point cloud string.
   /// Must be called while the AR session is still active (before stopSession).
   /// Returns the PLY file content, or null if depth data is unavailable.

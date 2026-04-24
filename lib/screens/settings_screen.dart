@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/mascot_type.dart';
+import '../models/nutrition_goal.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
@@ -74,206 +75,297 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // ── Profile section ──────────────────────────────────────
-            _SectionHeader('Profile'),
-            const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _nameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Your name',
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _goalCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Daily calorie goal (kcal)',
-                        prefixIcon: Icon(Icons.flag_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _save,
-                        child: const Text('Save Changes'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // ── Quick presets ────────────────────────────────────────
-            _SectionHeader('Quick Goal Presets'),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [1500, 1800, 2000, 2200, 2500, 3000].map((goal) {
-                final isActive =
-                    _goalCtrl.text == goal.toString();
-                return ChoiceChip(
-                  label: Text('$goal'),
-                  selected: isActive,
-                  selectedColor: AppTheme.green200,
-                  onSelected: (_) {
-                    setState(() => _goalCtrl.text = goal.toString());
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-
-            // ── Mascot ───────────────────────────────────────────────
-            _SectionHeader('Mascot'),
-            const SizedBox(height: 12),
-            _MascotPickerCard(),
-            const SizedBox(height: 24),
-
-            // ── Theme color ──────────────────────────────────────────
-            _SectionHeader('App Color Theme'),
-            const SizedBox(height: 12),
-            _ThemeColorPickerCard(),
-            const SizedBox(height: 24),
-
-            // ── Database info ────────────────────────────────────────
-            _SectionHeader('Database'),
-            const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _InfoRow(
-                      icon: Icons.restaurant_menu,
-                      label: 'Food database entries',
-                      value: '$_foodCount',
-                    ),
-                    const SizedBox(height: 8),
-                    _InfoRow(
-                      icon: Icons.storage,
-                      label: 'Database version',
-                      value: '9',
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.list_alt),
-                        label: const Text('Browse Food Database'),
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const FoodDatabaseScreen(),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── About ────────────────────────────────────────────────
-            _SectionHeader('Evaluation'),
-            const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Scientific evaluation tools for thesis research.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.gray400,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.science),
-                        label: const Text('Evaluation Dashboard'),
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const EvalDashboardScreen(),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.bug_report),
-                        label: const Text('Debug Log'),
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const DebugScreen(),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── About ────────────────────────────────────────────────
-            _SectionHeader('About'),
-            const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Pixels to Macros',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.green700,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '100% offline Multi-Food Calorie Scanner\n'
-                      'Flutter + ARKit + CoreML',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.gray400,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Settings'),
+          bottom: const TabBar(
+            isScrollable: true,
+            tabs: [
+              Tab(icon: Icon(Icons.person_outline), text: 'Account'),
+              Tab(icon: Icon(Icons.palette_outlined), text: 'Appearance'),
+              Tab(icon: Icon(Icons.privacy_tip_outlined), text: 'Privacy'),
+              Tab(icon: Icon(Icons.science_outlined), text: 'Evaluation'),
+            ],
+          ),
+        ),
+        body: SafeArea(
+          child: TabBarView(
+            children: [
+              // ── Account tab ──────────────────────────────────────────
+              _buildAccountTab(),
+              // ── Appearance tab ───────────────────────────────────────
+              _buildAppearanceTab(),
+              // ── Privacy tab ──────────────────────────────────────────
+              _buildPrivacyTab(),
+              // ── Evaluation tab ───────────────────────────────────────
+              _buildEvaluationTab(),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAccountTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _SectionHeader('Profile'),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Your name',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _goalCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Daily calorie goal (kcal)',
+                    prefixIcon: Icon(Icons.flag_outlined),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _save,
+                    child: const Text('Save Changes'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        _SectionHeader('Quick Goal Presets'),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [1500, 1800, 2000, 2200, 2500, 3000].map((goal) {
+            final isActive = _goalCtrl.text == goal.toString();
+            return ChoiceChip(
+              label: Text('$goal'),
+              selected: isActive,
+              selectedColor: AppTheme.green200,
+              onSelected: (_) {
+                setState(() => _goalCtrl.text = goal.toString());
+              },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 24),
+
+        _SectionHeader('Nutrition Goal'),
+        const SizedBox(height: 12),
+        _NutritionGoalPickerCard(),
+        const SizedBox(height: 24),
+
+        _SectionHeader('Database'),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _InfoRow(
+                  icon: Icons.restaurant_menu,
+                  label: 'Food database entries',
+                  value: '$_foodCount',
+                ),
+                const SizedBox(height: 8),
+                _InfoRow(
+                  icon: Icons.storage,
+                  label: 'Database version',
+                  value: '12',
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.list_alt),
+                    label: const Text('Browse Food Database'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const FoodDatabaseScreen(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAppearanceTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _SectionHeader('Mascot'),
+        const SizedBox(height: 12),
+        _MascotPickerCard(),
+        const SizedBox(height: 24),
+
+        _SectionHeader('App Color Theme'),
+        const SizedBox(height: 12),
+        _ThemeColorPickerCard(),
+      ],
+    );
+  }
+
+  Widget _buildPrivacyTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _SectionHeader('Data & Privacy'),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'All data is stored locally on your device. '
+                  'No data is sent to any server.',
+                  style: TextStyle(fontSize: 13, color: AppTheme.gray600),
+                ),
+                const SizedBox(height: 16),
+                const _InfoRow(
+                  icon: Icons.phone_iphone,
+                  label: 'Storage',
+                  value: 'On-device only',
+                ),
+                const SizedBox(height: 8),
+                const _InfoRow(
+                  icon: Icons.cloud_off,
+                  label: 'Cloud sync',
+                  value: 'None',
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.download),
+                    label: const Text('Export Daily Summary (CSV)'),
+                    onPressed: () => _exportCsv(detailed: false),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.download),
+                    label: const Text('Export Detailed Data (CSV)'),
+                    onPressed: () => _exportCsv(detailed: true),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        _SectionHeader('About'),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Pixels to Macros',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.green700,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '100% offline Multi-Food Calorie Scanner\n'
+                  'Flutter + ARKit + CoreML',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.gray400,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEvaluationTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _SectionHeader('Evaluation Tools'),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Scientific evaluation tools for thesis research.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.gray400,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.science),
+                    label: const Text('Evaluation Dashboard'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const EvalDashboardScreen(),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.bug_report),
+                    label: const Text('Debug Log'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const DebugScreen(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -328,6 +420,58 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+// ── Nutrition goal picker ──────────────────────────────────────────────────────
+
+class _NutritionGoalPickerCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs = ref.watch(userPrefsProvider);
+    final current = prefs.nutritionGoal;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              current.description,
+              style: const TextStyle(fontSize: 13, color: AppTheme.gray600),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: NutritionGoalType.values.map((goal) {
+                final selected = current == goal;
+                return ChoiceChip(
+                  avatar: Text(goal.emoji,
+                      style: const TextStyle(fontSize: 16)),
+                  label: Text(goal.label),
+                  selected: selected,
+                  selectedColor: goal.lightColor,
+                  onSelected: (_) async {
+                    final updated = prefs.copyWith(
+                      nutritionGoal: goal,
+                      dailyCalorieGoal: GoalDefaults.calories(goal),
+                      dailyCarbLimitG: GoalDefaults.carbLimitG(goal),
+                      dailyProteinTargetG: GoalDefaults.proteinTargetG(goal),
+                      dailyFatTargetG: GoalDefaults.fatTargetG(goal),
+                    );
+                    await ref
+                        .read(userPrefsProvider.notifier)
+                        .update(updated);
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Mascot picker ─────────────────────────────────────────────────────────────
 
 class _MascotPickerCard extends ConsumerStatefulWidget {
@@ -352,13 +496,21 @@ class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
               style: TextStyle(fontSize: 13, color: AppTheme.gray600),
             ),
             const SizedBox(height: 16),
-            // Live preview
+            // Live preview — show all 4 stages
             Center(
-              child: GoalMascotWidget(
-                goalType: prefs.nutritionGoal,
-                progress: 0.6,
-                stressLevel: 0.3,
-                mascotOverride: current,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [0.15, 0.40, 0.65, 0.90].map((p) {
+                  return SizedBox(
+                    width: 72,
+                    child: GoalMascotWidget(
+                      goalType: prefs.nutritionGoal,
+                      progress: p,
+                      stressLevel: p,
+                      mascotOverride: current,
+                    ),
+                  );
+                }).toList(),
               ),
             ),
             const SizedBox(height: 16),

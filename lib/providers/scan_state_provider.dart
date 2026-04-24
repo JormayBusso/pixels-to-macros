@@ -6,12 +6,14 @@ import '../core/scan_state.dart';
 ///
 /// The UI observes this to show the correct screen / instructions.
 class ScanStateNotifier extends StateNotifier<ScanState> {
-  ScanStateNotifier() : super(ScanState.readyToRecord);
+  ScanStateNotifier() : super(ScanState.waitingForTopView);
 
   // ── Happy-path transitions ───────────────────────────────────────────────
 
-  /// Session started — user can now begin recording.
-  void sessionReady()      => state = ScanState.readyToRecord;
+  /// Session started — waiting for user to point phone down.
+  void sessionReady()      => state = ScanState.waitingForTopView;
+  /// Top-view detected — ready to record (or auto-start).
+  void topViewDetected()   => state = ScanState.readyToRecord;
   void startedRecording()  => state = ScanState.recording;
   void recordingStopped()  => state = ScanState.calculating;
   void calculationDone()   => state = ScanState.done;
@@ -30,7 +32,7 @@ class ScanStateNotifier extends StateNotifier<ScanState> {
 
   // ── Retry / reset ────────────────────────────────────────────────────────
 
-  void reset() => state = ScanState.readyToRecord;
+  void reset() => state = ScanState.waitingForTopView;
 }
 
 /// Global provider for the scanning state machine.

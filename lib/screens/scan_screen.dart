@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,11 +41,19 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   bool _isRecording      = false;
   double _recordProgress = 0.0;  // 0.0 – 1.0 over the recording window
   Timer? _recordTimer;
+  Timer? _pitchTimer;            // polls phone orientation at ~15 fps
+  double _currentPitch   = 0.0;  // radians: -π/2 = top, 0 = horizontal
   String _detectedDepthMode = 'unknown';
   ScanResult? _savedScanResult;
 
-  static const _recordDuration = Duration(seconds: 4);
+  static const _recordDuration = Duration(seconds: 2);
   static const _timerInterval  = Duration(milliseconds: 80);
+
+  /// Pitch thresholds (radians).
+  /// Top-view:  pitch < -60° = -1.047 rad  → auto-start recording.
+  /// Side-view: pitch > -20° = -0.349 rad  → auto-stop recording.
+  static const double _topViewThreshold  = -1.047;  // -60°
+  static const double _sideViewThreshold = -0.349;  // -20°
 
   @override
   void initState() {
@@ -82,13 +91,21 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       await Future.delayed(const Duration(milliseconds: 500));
 
       DebugLog.instance.log('Scan', 'Starting AR session');
-      try {
-        await _bridge.startSession();
-      } catch (firstError) {
-        // Retry once after a longer delay — avoids false failures on first launch
-        DebugLog.instance.log('Scan', 'AR start failed ($firstError), retrying…');
-        await Future.delayed(const Duration(milliseconds: 1000));
-        await _bridge.startSession(); // outer catch handles if this also fails
+
+      // Retry up to 5 times with exponential backoff
+      const maxRetries = 5;
+      for (var attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          await _bridge.startSession();
+          break; // success
+        } catch (e) {
+          DebugLog.instance.log('Scan',
+              'AR start attempt ${attempt + 1}/$maxRetries failed: $e');
+          if (attempt == maxRetries - 1) rethrow;
+          await Future.delayed(
+            Duration(milliseconds: 500 * (attempt + 1)),
+          );
+        }
       }
 
       // Detect depth mode for this device
@@ -98,9 +115,19 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       } catch (_) {
         _detectedDepthMode = 'plate_fallback';
       }
+
+      // Wait up to 2 seconds for the first AR frame to become available.
+      // ARKit may need a moment after session.run() before currentFrame is set.
+      for (var i = 0; i < 20; i++) {
+        final pitch = await _bridge.getPhonePitch();
+        if (pitch != 0.0) break; // frame is available
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
       if (mounted) {
         setState(() => _sessionStarted = true);
         ref.read(scanStateProvider.notifier).sessionReady();
+        _startPitchPolling();
       }
       DebugLog.instance.log('Scan', 'AR session started');
     } catch (e) {
@@ -142,6 +169,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   @override
   void dispose() {
     _recordTimer?.cancel();
+    _pitchTimer?.cancel();
     _bridge.stopSession();
     super.dispose();
   }
@@ -153,6 +181,36 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   void _hapticHeavy() => HapticFeedback.heavyImpact();
   void _hapticSuccess() => HapticFeedback.mediumImpact();
   void _hapticError() => HapticFeedback.heavyImpact();
+
+  // ── Orientation tracking ──────────────────────────────────────────────────
+
+  void _startPitchPolling() {
+    _pitchTimer = Timer.periodic(
+      const Duration(milliseconds: 66), // ~15 fps
+      (_) => _pollPitch(),
+    );
+  }
+
+  Future<void> _pollPitch() async {
+    if (!mounted || !_sessionStarted) return;
+    final pitch = await _bridge.getPhonePitch();
+    if (!mounted) return;
+    setState(() => _currentPitch = pitch);
+
+    final state = ref.read(scanStateProvider);
+
+    // Auto-start recording when phone points down (top-view).
+    if (state == ScanState.waitingForTopView && pitch < _topViewThreshold) {
+      ref.read(scanStateProvider.notifier).topViewDetected();
+      _startRecording();
+      return;
+    }
+
+    // Auto-stop recording when phone reaches side-view.
+    if (state == ScanState.recording && pitch > _sideViewThreshold) {
+      _stopRecording();
+    }
+  }
 
   // ── Recording ────────────────────────────────────────────────────────────
 
@@ -168,9 +226,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       PerfMonitor.instance.start('record');
       await _bridge.startRecording();
     } catch (e) {
+      DebugLog.instance.log('Scan', 'Recording start failed: $e — resetting');
       _hapticError();
       setState(() => _isRecording = false);
-      ref.read(scanStateProvider.notifier).depthFailed();
+      // Don't go to depthFailed; reset to waitingForTopView so the user
+      // can try again automatically when they re-aim.
+      ref.read(scanStateProvider.notifier).reset();
       return;
     }
 
@@ -303,6 +364,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               timings: PerfMonitor.instance.allTimings,
               isRecording: _isRecording,
               recordProgress: _recordProgress,
+              currentPitch: _currentPitch,
               onStartRecord: _startRecording,
               onRetry: _retry,
               onClose: () => Navigator.of(context).pop(),
@@ -349,6 +411,7 @@ class _BottomPanel extends StatelessWidget {
     required this.timings,
     required this.isRecording,
     required this.recordProgress,
+    required this.currentPitch,
     required this.onStartRecord,
     required this.onRetry,
     required this.onClose,
@@ -362,6 +425,7 @@ class _BottomPanel extends StatelessWidget {
   final Map<String, Duration> timings;
   final bool isRecording;
   final double recordProgress;
+  final double currentPitch;
   final VoidCallback onStartRecord;
   final VoidCallback onRetry;
   final VoidCallback onClose;
@@ -384,7 +448,14 @@ class _BottomPanel extends StatelessWidget {
           _StateProgressRow(state: scanState),
           const SizedBox(height: 16),
 
-          // ── Ready to record ───────────────────────────────────────
+          // ── Waiting for top-view orientation ──────────────────────
+          if (scanState == ScanState.waitingForTopView)
+            _OrientationIndicator(
+              pitch: currentPitch,
+              sessionStarted: sessionStarted,
+            ),
+
+          // ── Ready to record (manual fallback) ─────────────────────
           if (scanState == ScanState.readyToRecord)
             _RecordButton(
               enabled: sessionStarted,
@@ -547,7 +618,7 @@ class _StateProgressRow extends StatelessWidget {
   final ScanState state;
 
   static const _steps = [
-    (ScanState.readyToRecord, 'Ready'),
+    (ScanState.waitingForTopView, 'Aim'),
     (ScanState.recording,     'Record'),
     (ScanState.calculating,   'Analyse'),
     (ScanState.done,          'Done'),
@@ -555,10 +626,11 @@ class _StateProgressRow extends StatelessWidget {
 
   int get _activeIndex {
     return switch (state) {
-      ScanState.readyToRecord => 0,
-      ScanState.recording     => 1,
-      ScanState.calculating   => 2,
-      ScanState.done          => 3,
+      ScanState.waitingForTopView => 0,
+      ScanState.readyToRecord     => 0,
+      ScanState.recording         => 1,
+      ScanState.calculating       => 2,
+      ScanState.done              => 3,
       _ => -1, // error
     };
   }
@@ -709,7 +781,7 @@ class _RecordButton extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           isRecording
-              ? '${((1.0 - progress) * 4).ceil()}s remaining'
+              ? '${((1.0 - progress) * 2).ceil()}s remaining'
               : (enabled ? 'Tap to scan' : 'Starting camera…'),
           style: TextStyle(
             fontSize: 12,
@@ -809,6 +881,72 @@ class _InfoChipDark extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Visual indicator showing the phone's tilt angle.
+/// Guides the user to point the phone straight down at the food.
+class _OrientationIndicator extends StatelessWidget {
+  const _OrientationIndicator({
+    required this.pitch,
+    required this.sessionStarted,
+  });
+
+  final double pitch;       // radians: -π/2 = top-view, 0 = horizontal
+  final bool sessionStarted;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!sessionStarted) {
+      return const _ProcessingIndicator(text: 'Starting camera…');
+    }
+
+    // Map pitch to 0..1 progress: -π/2 → 1.0 (top-view), 0 → 0.0 (horizontal).
+    final progress = (pitch / (-math.pi / 2)).clamp(0.0, 1.0);
+    final isTopView = pitch < -1.047; // < -60°
+    final angleDeg = (pitch * 180 / math.pi).round().abs();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 88,
+          height: 88,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 88,
+                height: 88,
+                child: CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 5,
+                  backgroundColor: Colors.white12,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isTopView ? AppTheme.green400 : AppTheme.amber500,
+                  ),
+                ),
+              ),
+              Icon(
+                isTopView ? Icons.check : Icons.phone_android,
+                color: isTopView ? AppTheme.green400 : Colors.white70,
+                size: 36,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          isTopView
+              ? 'Top view detected — starting…'
+              : 'Tilt phone down ($angleDeg°)',
+          style: TextStyle(
+            fontSize: 12,
+            color: isTopView ? AppTheme.green400 : AppTheme.amber500,
+          ),
+        ),
+      ],
     );
   }
 }
