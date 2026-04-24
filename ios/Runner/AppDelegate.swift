@@ -19,6 +19,14 @@ import Flutter
             ScannerPlugin.register(with: controller.binaryMessenger)
         }
 
+        // Register the live AR camera preview as a Flutter platform view.
+        // Must happen after super so the Flutter engine exists.
+        let cameraFactory = ARCameraPreviewFactory(
+            sessionManager: ScannerPlugin.sessionManager
+        )
+        registrar(forPlugin: "ARCameraPreviewPlugin")
+            .register(cameraFactory, withId: ARCameraPreviewFactory.viewType)
+
         return result
     }
 }

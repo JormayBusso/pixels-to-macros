@@ -74,8 +74,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         return;
       }
 
+      // Brief pause so iOS camera hardware is available after the permission
+      // grant dialog dismisses (known ARKit timing requirement on iOS 17+).
+      await Future.delayed(const Duration(milliseconds: 500));
+
       DebugLog.instance.log('Scan', 'Starting AR session');
-      await _bridge.startSession();
+      try {
+        await _bridge.startSession();
+      } catch (firstError) {
+        // Retry once after a longer delay — avoids false failures on first launch
+        DebugLog.instance.log('Scan', 'AR start failed ($firstError), retrying…');
+        await Future.delayed(const Duration(milliseconds: 1000));
+        await _bridge.startSession(); // outer catch handles if this also fails
+      }
+
       // Detect depth mode for this device
       try {
         _detectedDepthMode = await _bridge.getDepthMode();
@@ -83,11 +95,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       } catch (_) {
         _detectedDepthMode = 'plate_fallback';
       }
-      setState(() => _sessionStarted = true);
+      if (mounted) setState(() => _sessionStarted = true);
       DebugLog.instance.log('Scan', 'AR session started');
     } catch (e) {
       DebugLog.instance.log('Scan', 'AR session failed: $e');
-      ref.read(scanStateProvider.notifier).depthFailed();
+      if (mounted) ref.read(scanStateProvider.notifier).depthFailed();
     }
   }
 
@@ -236,6 +248,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _hapticLight();
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();
+    // Re-attempt session start if it failed on the first try
+    if (!_sessionStarted) {
+      _startSession();
+    }
   }
 
   // ── Build ───────────────────────────────────────────────────────────────
@@ -249,8 +265,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // ── Camera placeholder / dark background ─────────────────────
-          Container(color: Colors.black),
+          // ── Live AR camera preview ───────────────────────────────────
+          // Shows the ARKit camera feed through a platform view so the user
+          // can see exactly what the camera is pointing at.
+          Positioned.fill(
+            child: _sessionStarted
+                ? const UiKitView(viewType: 'com.pixelstomacros/ar_camera')
+                : Container(color: Colors.black),
+          ),
 
           // ── Guidance overlay ─────────────────────────────────────────
           ScanGuidanceOverlay(scanState: scanState),

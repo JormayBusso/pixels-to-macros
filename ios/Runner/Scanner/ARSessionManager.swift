@@ -52,6 +52,9 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
 
         session.run(config, options: [.resetTracking, .removeExistingAnchors])
 
+        // Notify any camera preview platform views that the session is live
+        NotificationCenter.default.post(name: .arSessionDidStart, object: session)
+
         // ARKit doesn't have a "ready" callback — treat run() as success
         // unless configuration itself is unsupported.
         DispatchQueue.main.async {
@@ -75,4 +78,11 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
     func session(_ session: ARSession, didFailWithError error: Error) {
         print("[ARSessionManager] Session error: \(error.localizedDescription)")
     }
+}
+
+// MARK: – Notification names
+
+extension Notification.Name {
+    /// Posted (with the ARSession as object) once session.run() is called.
+    static let arSessionDidStart = Notification.Name("com.pixelstomacros.arSessionDidStart")
 }

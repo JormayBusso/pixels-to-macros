@@ -15,7 +15,8 @@ final class ScannerPlugin {
     // MARK: - Services
 
     private static let depthDetector = DepthModeDetector()
-    private static let sessionManager = ARSessionManager()
+    /// Exposed (internal) so AppDelegate can pass it to ARCameraPreviewFactory.
+    static let sessionManager = ARSessionManager()
     private static let captureService = FrameCaptureService()
     private static let pipeline = InferencePipeline()
     private static let pointCloudExporter = PointCloudExporter()
