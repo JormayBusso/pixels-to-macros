@@ -25,6 +25,18 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
     /// Start (or restart) the AR session.
     /// Completion is called on the main thread.
     func start(completion: @escaping (Error?) -> Void) {
+        // Guard: ARWorldTracking requires an A9 chip or newer.
+        guard ARWorldTrackingConfiguration.isSupported else {
+            DispatchQueue.main.async {
+                completion(NSError(
+                    domain: "ARSessionManager",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "ARWorldTrackingConfiguration is not supported on this device"]
+                ))
+            }
+            return
+        }
+
         let session = ARSession()
         session.delegate = self
         self.session = session
@@ -48,21 +60,27 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
                 config.frameSemantics.insert(.sceneDepth)
             }
         case .plateFallback:
-            break // RGB only — no depth semantics
+            // RGB only — no depth semantics.
+            // Safe to limit resolution here since no depth formats are needed.
+            if let lowResFormat = ARWorldTrackingConfiguration.supportedVideoFormats
+                .filter({ $0.imageResolution.width <= 1280 })
+                .min(by: { $0.imageResolution.width < $1.imageResolution.width }) {
+                config.videoFormat = lowResFormat
+            }
         }
 
-        // Limit frame rate to save memory (Part 3 — performance safety)
-        config.videoFormat = ARWorldTrackingConfiguration.supportedVideoFormats
-            .filter { $0.imageResolution.width <= 640 }
-            .first ?? ARWorldTrackingConfiguration.supportedVideoFormats.first!
+        // NOTE: Do NOT restrict videoFormat when depth semantics are enabled.
+        // Many depth-capable formats require the native high-res sensor output;
+        // forcing a 640-wide format conflicts with sceneDepth and causes silent
+        // session failures on LiDAR and TrueDepth devices.
 
         session.run(config, options: [.resetTracking, .removeExistingAnchors])
 
         // Notify any camera preview platform views that the session is live
         NotificationCenter.default.post(name: .arSessionDidStart, object: session)
 
-        // ARKit doesn't have a "ready" callback — treat run() as success
-        // unless configuration itself is unsupported.
+        // ARKit doesn't have a synchronous "ready" callback — treat run() as
+        // success; any hardware failure will surface via didFailWithError.
         DispatchQueue.main.async {
             completion(nil)
         }
@@ -78,6 +96,12 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
 
     func session(_ session: ARSession, didFailWithError error: Error) {
         print("[ARSessionManager] Session error: \(error.localizedDescription)")
+        // Post a notification so the camera preview (and any interested party)
+        // knows the session is no longer running.
+        NotificationCenter.default.post(
+            name: .arSessionDidFail,
+            object: error
+        )
     }
 }
 
@@ -86,4 +110,6 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
 extension Notification.Name {
     /// Posted (with the ARSession as object) once session.run() is called.
     static let arSessionDidStart = Notification.Name("com.pixelstomacros.arSessionDidStart")
+    /// Posted (with the Error as object) when the session fails.
+    static let arSessionDidFail  = Notification.Name("com.pixelstomacros.arSessionDidFail")
 }

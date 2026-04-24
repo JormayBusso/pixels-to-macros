@@ -131,8 +131,17 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       }
       DebugLog.instance.log('Scan', 'AR session started');
     } catch (e) {
-      DebugLog.instance.log('Scan', 'AR session failed: $e');
-      if (mounted) ref.read(scanStateProvider.notifier).depthFailed();
+      final msg = e.toString();
+      DebugLog.instance.log('Scan', 'AR session failed: $msg');
+      // Print to console so the developer can see the error in Xcode logs.
+      // ignore: avoid_print
+      print('[ScanScreen] startSession error: $msg');
+      if (mounted) {
+        // Always mark session started so the camera view is shown even when
+        // the session couldn't be set up — the user can still retry.
+        setState(() => _sessionStarted = true);
+        ref.read(scanStateProvider.notifier).depthFailed();
+      }
     }
   }
 
@@ -325,7 +334,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _recordProgress = 0.0;
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();
-    if (!_sessionStarted) _startSession();
+    // Always restart the native session on retry — whether or not it was
+    // previously started, so a failed session gets a fresh attempt.
+    _sessionStarted = false;
+    _startSession();
   }
 
   // ── Build ───────────────────────────────────────────────────────────────
@@ -340,12 +352,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       body: Stack(
         children: [
           // ── Live AR camera preview ───────────────────────────────────
-          // Shows the ARKit camera feed through a platform view so the user
-          // can see exactly what the camera is pointing at.
-          Positioned.fill(
-            child: _sessionStarted
-                ? const UiKitView(viewType: 'com.pixelstomacros/ar_camera')
-                : Container(color: Colors.black),
+          // Always show the ARKit camera platform view so the background is
+          // never a plain black container.  The native ARSCNView handles the
+          // "no session yet" case internally (shows black until the session
+          // starts, then auto-connects via the arSessionDidStart notification).
+          const Positioned.fill(
+            child: UiKitView(viewType: 'com.pixelstomacros/ar_camera'),
           ),
 
           // ── Guidance overlay ─────────────────────────────────────────
