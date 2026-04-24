@@ -15,6 +15,7 @@ class GoalMascotWidget extends StatelessWidget {
   final double progress;
   final double stressLevel;
   final MascotType mascotOverride;
+  final VoidCallback? onTap;
 
   const GoalMascotWidget({
     super.key,
@@ -22,6 +23,7 @@ class GoalMascotWidget extends StatelessWidget {
     required this.progress,
     this.stressLevel = 0,
     this.mascotOverride = MascotType.auto,
+    this.onTap,
   });
 
   MascotType get _effectiveMascot {
@@ -43,27 +45,32 @@ class GoalMascotWidget extends StatelessWidget {
         return _ImageMascot(
           stages: const _MascotStages.gorilla(),
           progress: progress,
+          onTap: onTap,
         );
       case MascotType.plant:
         return _ImageMascot(
           stages: const _MascotStages.plant(),
           progress: progress,
+          onTap: onTap,
         );
       case MascotType.flame:
         return _ImageMascot(
           stages: const _MascotStages.flame(),
           progress: progress,
+          onTap: onTap,
         );
       case MascotType.pancreas:
         return _ImageMascot(
           stages: const _MascotStages.pancreas(),
           progress: stressLevel,
           invertStage: true,
+          onTap: onTap,
         );
       case MascotType.auto:
         return _ImageMascot(
           stages: const _MascotStages.plant(),
           progress: progress,
+          onTap: onTap,
         );
     }
   }
@@ -167,14 +174,16 @@ class _MascotStages {
 
 class _ImageMascot extends StatelessWidget {
   final _MascotStages stages;
-  final double progress; // 0.0 â€“ 1.0+
-  /// When true, high progress = lower stage (e.g. pancreas: high stress â†’ worse).
+  final double progress; // 0.0 – 1.0+
+  /// When true, high progress = lower stage (e.g. pancreas: high stress → worse).
   final bool invertStage;
+  final VoidCallback? onTap;
 
   const _ImageMascot({
     required this.stages,
     required this.progress,
     this.invertStage = false,
+    this.onTap,
   });
 
   int get _stage {
@@ -197,7 +206,7 @@ class _ImageMascot extends StatelessWidget {
     final bgColor = stages.bgColors[s];
     final isBest = s == 3;
 
-    return Column(
+    final col = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         AnimatedContainer(
@@ -231,6 +240,9 @@ class _ImageMascot extends StatelessWidget {
                 fit: BoxFit.contain,
                 width: 100,
                 height: 100,
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Text('🍽️', style: TextStyle(fontSize: 40)),
+                ),
               ),
             ),
           ),
@@ -251,7 +263,24 @@ class _ImageMascot extends StatelessWidget {
             ),
           ),
         ),
+        if (onTap != null) ...[
+          const SizedBox(height: 4),
+          const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Nutrition details',
+                style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+              ),
+              Icon(Icons.chevron_right, size: 12, color: Color(0xFF9CA3AF)),
+            ],
+          ),
+        ],
       ],
     );
+
+    return onTap != null
+        ? GestureDetector(onTap: onTap, child: col)
+        : col;
   }
 }

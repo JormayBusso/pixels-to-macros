@@ -12,6 +12,7 @@ import '../services/debug_log.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
 import 'debug_screen.dart';
+import 'nutrition_dashboard_screen.dart';
 import 'scan_detail_screen.dart';
 
 /// Dashboard showing today's calorie intake, progress ring,
@@ -655,6 +656,11 @@ class _GoalProgressCard extends StatelessWidget {
                   progress: kcalProgress,
                   stressLevel: carbStress,
                   mascotOverride: prefs.mascotType,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const NutritionDashboardScreen(),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 16),
 

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/nutrient_data.dart';
 import '../models/scan_result.dart';
 import '../services/database_service.dart';
 
@@ -13,6 +14,7 @@ class DailyIntake {
   final double proteinG;
   final double carbsG;
   final double fatG;
+  final NutrientTotals nutrientTotals;
 
   const DailyIntake({
     this.loading = false,
@@ -23,6 +25,7 @@ class DailyIntake {
     this.proteinG = 0,
     this.carbsG = 0,
     this.fatG = 0,
+    this.nutrientTotals = const NutrientTotals(),
   });
 
   double get caloriesAvg => (caloriesMin + caloriesMax) / 2;
@@ -47,6 +50,7 @@ class DailyIntakeNotifier extends StateNotifier<DailyIntake> {
     double proteinSum = 0;
     double carbsSum = 0;
     double fatSum = 0;
+    var nutrientSum = const NutrientTotals();
     final allFoods = <DetectedFood>[];
 
     for (final scan in todayScans) {
@@ -61,9 +65,13 @@ class DailyIntakeNotifier extends StateNotifier<DailyIntake> {
         if (foodData != null && foodData.kcalPer100g > 0) {
           final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
           final weightG = avgCal / (foodData.kcalPer100g / 100);
-          proteinSum += weightG * foodData.proteinPer100g / 100;
-          carbsSum   += weightG * foodData.carbsPer100g   / 100;
-          fatSum     += weightG * foodData.fatPer100g     / 100;
+          proteinSum  += weightG * foodData.proteinPer100g / 100;
+          carbsSum    += weightG * foodData.carbsPer100g   / 100;
+          fatSum      += weightG * foodData.fatPer100g     / 100;
+          nutrientSum  = nutrientSum + estimateNutrientsForFood(
+            category: foodData.category,
+            weightG: weightG,
+          );
         }
       }
     }
@@ -76,6 +84,7 @@ class DailyIntakeNotifier extends StateNotifier<DailyIntake> {
       proteinG: proteinSum,
       carbsG: carbsSum,
       fatG: fatSum,
+      nutrientTotals: nutrientSum,
     );
   }
 }
