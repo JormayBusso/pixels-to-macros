@@ -58,6 +58,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     });
   }
 
+  /// When the calorie slider moves, proportionally scale the other macros
+  /// so the defaults always reflect a realistic intake for the chosen kcal.
+  void _onCaloriesChanged(int newCalories) {
+    final defaultCals = GoalDefaults.calories(_selectedGoalType);
+    final ratio = newCalories / defaultCals;
+    setState(() {
+      _calories      = newCalories;
+      _carbLimit     = (GoalDefaults.carbLimitG(_selectedGoalType) * ratio).round().clamp(15, 500);
+      _proteinTarget = (GoalDefaults.proteinTargetG(_selectedGoalType) * ratio).round().clamp(30, 300);
+      _fatTarget     = (GoalDefaults.fatTargetG(_selectedGoalType) * ratio).round().clamp(20, 250);
+    });
+  }
+
   Future<void> _finish() async {
     await ref.read(userPrefsProvider.notifier).completeOnboarding(
           name: _nameCtrl.text.trim(),
@@ -115,7 +128,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     carbLimit: _carbLimit,
                     proteinTarget: _proteinTarget,
                     fatTarget: _fatTarget,
-                    onCaloriesChanged: (v) => setState(() => _calories = v),
+                    onCaloriesChanged: _onCaloriesChanged,
                     onCarbChanged: (v) => setState(() => _carbLimit = v),
                     onProteinChanged: (v) => setState(() => _proteinTarget = v),
                     onFatChanged: (v) => setState(() => _fatTarget = v),
@@ -165,8 +178,8 @@ class _WelcomePage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Scan your food with your camera and get\n'
-            'instant calorie estimates â€” 100% offline.',
+            'Point your camera at any meal to instantly see\n'
+            'calories, macros & key nutrients \u2014 100% offline.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 16, color: AppTheme.gray400, height: 1.5),
           ),
@@ -418,46 +431,54 @@ class _ConfirmPage extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           _TargetSlider(
-            label: 'ðŸ”¥ Daily Calories',
+            label: '🔥 Daily Calories',
             value: calories,
             min: 1200,
             max: 5000,
             step: 100,
             unit: 'kcal',
             color: goalType.color,
+            warningValue: 3000,
+            dangerValue: 4000,
             onChanged: onCaloriesChanged,
           ),
           const SizedBox(height: 16),
           _TargetSlider(
-            label: 'ðŸž Carb Limit',
+            label: '🍞 Carb Limit',
             value: carbLimit,
             min: 15,
             max: 500,
             step: 5,
             unit: 'g / day',
             color: Colors.amber.shade700,
+            warningValue: 300,
+            dangerValue: 400,
             onChanged: onCarbChanged,
           ),
           const SizedBox(height: 16),
           _TargetSlider(
-            label: 'ðŸ’ª Protein Target',
+            label: '💪 Protein Target',
             value: proteinTarget,
             min: 30,
             max: 300,
             step: 5,
             unit: 'g / day',
             color: Colors.red.shade600,
+            warningValue: 180,
+            dangerValue: 220,
             onChanged: onProteinChanged,
           ),
           const SizedBox(height: 16),
           _TargetSlider(
-            label: 'ðŸ¥‘ Fat Target',
+            label: '🥑 Fat Target',
             value: fatTarget,
             min: 20,
             max: 250,
             step: 5,
             unit: 'g / day',
             color: Colors.green.shade600,
+            warningValue: 150,
+            dangerValue: 180,
             onChanged: onFatChanged,
           ),
           const SizedBox(height: 28),
@@ -465,7 +486,7 @@ class _ConfirmPage extends StatelessWidget {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: onFinish,
-              child: const Text('Start Scanning! ðŸš€'),
+              child: const Text('Start Scanning! 🚀'),
             ),
           ),
           const SizedBox(height: 16),
@@ -485,6 +506,8 @@ class _TargetSlider extends StatelessWidget {
     required this.unit,
     required this.color,
     required this.onChanged,
+    this.warningValue,
+    this.dangerValue,
   });
 
   final String label;
@@ -495,9 +518,18 @@ class _TargetSlider extends StatelessWidget {
   final String unit;
   final Color color;
   final ValueChanged<int> onChanged;
+  final int? warningValue;
+  final int? dangerValue;
+
+  Color get _activeColor {
+    if (dangerValue != null && value > dangerValue!) return Colors.red.shade600;
+    if (warningValue != null && value > warningValue!) return Colors.orange.shade700;
+    return color;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final activeColor = _activeColor;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -510,7 +542,7 @@ class _TargetSlider extends StatelessWidget {
             Text(
               '$value $unit',
               style: TextStyle(
-                  fontWeight: FontWeight.w700, color: color, fontSize: 14),
+                  fontWeight: FontWeight.w700, color: activeColor, fontSize: 14),
             ),
           ],
         ),
@@ -519,8 +551,8 @@ class _TargetSlider extends StatelessWidget {
           min: min.toDouble(),
           max: max.toDouble(),
           divisions: (max - min) ~/ step,
-          activeColor: color,
-          inactiveColor: color.withValues(alpha: 0.2),
+          activeColor: activeColor,
+          inactiveColor: activeColor.withValues(alpha: 0.2),
           onChanged: (v) => onChanged(v.round()),
         ),
       ],

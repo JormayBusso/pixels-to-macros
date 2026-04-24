@@ -84,16 +84,16 @@ class _MascotStages {
 
   const _MascotStages.gorilla()
       : imagePaths = const [
-          'assets/mascots/baby_gorilla.png',
-          'assets/mascots/young_gorilla.png',
-          'assets/mascots/normal_gorilla.png',
-          'assets/mascots/strong_gorilla.png',
+          'assets/mascots/baby_gorilla.jpeg',
+          'assets/mascots/young_gorilla.jpeg',
+          'assets/mascots/normal_gorilla.jpeg',
+          'assets/mascots/strong_gorilla.jpeg',
         ],
         labels = const [
-          'Baby Gorilla ðŸ’',
-          'Growing Strong ðŸ¦',
-          'Mighty Gorilla ðŸ¦',
-          'Champion! ðŸ¦ðŸ’ª',
+          'Baby Gorilla 🐒',
+          'Growing Strong 🦍',
+          'Mighty Gorilla 🦍',
+          'Champion! 🦍💪',
         ],
         bgColors = const [
           Color(0xFFDCFCE7),
@@ -104,16 +104,16 @@ class _MascotStages {
 
   const _MascotStages.plant()
       : imagePaths = const [
-          'assets/mascots/tiny_plant.png',
-          'assets/mascots/regular_plant.png',
-          'assets/mascots/small_tree.png',
-          'assets/mascots/big_tree.png',
+          'assets/mascots/tiny_plant.jpeg',
+          'assets/mascots/regular_plant.jpeg',
+          'assets/mascots/small_tree.jpeg',
+          'assets/mascots/huge_tree.jpeg',
         ],
         labels = const [
-          'Seedling ðŸŒ±',
-          'Sprouting ðŸŒ¿',
-          'Growing Strong ðŸŒ³',
-          'In Full Bloom ðŸŒ¸',
+          'Seedling 🌱',
+          'Sprouting 🌿',
+          'Growing Strong 🌳',
+          'In Full Bloom 🌸',
         ],
         bgColors = const [
           Color(0xFFF0FDF4),
@@ -124,16 +124,16 @@ class _MascotStages {
 
   const _MascotStages.flame()
       : imagePaths = const [
-          'assets/mascots/no_fat_burning.png',
-          'assets/mascots/little_fat_burning.png',
-          'assets/mascots/fat_burning.png',
-          'assets/mascots/extreme_fat_burning.png',
+          'assets/mascots/no_fat_burning.jpeg',
+          'assets/mascots/little_fat_burning.jpeg',
+          'assets/mascots/fat_burning.jpeg',
+          'assets/mascots/extreme_fat_burning.jpeg',
         ],
         labels = const [
           'No Burn Yet',
-          'Warming Up ðŸ”¥',
-          'Fat Burning! ðŸ”¥ðŸ”¥',
-          'Extreme Burn! ðŸ”¥ðŸ”¥ðŸ”¥',
+          'Warming Up 🔥',
+          'Fat Burning! 🔥🔥',
+          'Extreme Burn! 🔥🔥🔥',
         ],
         bgColors = const [
           Color(0xFFFFF7ED),
@@ -144,16 +144,16 @@ class _MascotStages {
 
   const _MascotStages.pancreas()
       : imagePaths = const [
-          'assets/mascots/unhealthy_pancreas.png',
-          'assets/mascots/little_unhealthy_pancreas.png',
-          'assets/mascots/healthy_pancreas.png',
-          'assets/mascots/very_healthy_pancreas.png',
+          'assets/mascots/unhealthy_pancreas.jpeg',
+          'assets/mascots/littlebit_unhealthy_pancreas.jpeg',
+          'assets/mascots/healty_pancreas.jpeg',
+          'assets/mascots/very_healthy_pancreas.jpeg',
         ],
         labels = const [
-          'Overloaded! âŒ',
-          'Under Stress âš ï¸',
-          'Healthy ðŸ©º',
-          'Perfect Control âœ…',
+          'Overloaded! ❌',
+          'Under Stress ⚠️',
+          'Healthy 🩺',
+          'Perfect Control ✅',
         ],
         bgColors = const [
           Color(0xFFFEE2E2),
