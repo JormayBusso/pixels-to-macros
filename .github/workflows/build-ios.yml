@@ -1,0 +1,145 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:   # lets you trigger it manually from GitHub UI
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    name: Flutter iOS (unsigned)
+    runs-on: macos-15   # Xcode 16, supports iOS 17+ SDK
+
+    steps:
+      # -- 1. Source -------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # -- 2. Flutter ------------------------------------------------------
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version info
+        run: flutter --version
+
+      # -- 3. Dependencies -------------------------------------------------
+      - name: Install Dart dependencies
+        run: flutter pub get
+
+      # -- 4. Regenerate missing Xcode project files -----------------------
+      # The ios/ folder contains Swift sources and a committed Podfile (iOS 17+).
+      # Runner.xcodeproj is absent from the repo. Running flutter create
+      # (non-destructive) generates it without overwriting existing files.
+      - name: Regenerate iOS project scaffold
+        run: |
+          flutter create \
+            --org com.pixelstomacros \
+            --platforms ios \
+            --project-name pixels_to_macros \
+            .
+
+      # -- 4b. Merge Info-additions.plist into generated Info.plist --------
+      - name: Merge Info.plist additions
+        run: |
+          PLIST="ios/Runner/Info.plist"
+          # Camera permission
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Pixels to Macros uses the camera to scan your plate and estimate food calories.'" "$PLIST" || true
+          # ARKit + arm64 capabilities
+          /usr/libexec/PlistBuddy -c "Add :UIRequiredDeviceCapabilities array" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :UIRequiredDeviceCapabilities:0 string arkit" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :UIRequiredDeviceCapabilities:1 string arm64" "$PLIST" || true
+          # Background modes
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string processing" "$PLIST" || true
+          # Minimum OS version
+          /usr/libexec/PlistBuddy -c "Set :MinimumOSVersion 17.0" "$PLIST" || true
+          echo "Info.plist keys merged."
+
+      # -- 5. Add Scanner Swift files to the Xcode project -----------------
+      # flutter create generates a fresh project.pbxproj that doesn't know
+      # about ios/Runner/Scanner/*.swift. Use the xcodeproj gem to inject them.
+      - name: Add Scanner sources to Xcode project
+        run: |
+          gem install xcodeproj --no-document --quiet
+          ruby - <<'RUBY'
+          require 'xcodeproj'
+
+          project = Xcodeproj::Project.open('ios/Runner.xcodeproj')
+          target  = project.targets.find { |t| t.name == 'Runner' }
+          runner_group = project.main_group.find_subpath('Runner', false)
+
+          # Create (or reuse) a Scanner group
+          scanner_group = runner_group['Scanner'] ||
+                          runner_group.new_group('Scanner', 'Scanner')
+
+          Dir.glob('ios/Runner/Scanner/*.swift').sort.each do |path|
+            filename = File.basename(path)
+            next if scanner_group.files.any? { |f| f.display_name == filename }
+
+            file_ref = scanner_group.new_file(filename)
+            target.source_build_phase.add_file_reference(file_ref)
+            puts "  Added #{filename}"
+          end
+
+          project.save
+          puts 'Xcode project saved.'
+          RUBY
+
+      # -- 7. Patch pbxproj: deployment target + disable code-signing ------
+      # flutter create defaults to iOS 12; our Swift code needs iOS 17+ APIs.
+      # Xcode 16 also requires DEVELOPMENT_TEAM even with --no-codesign.
+      - name: Patch pbxproj (deployment target + signing)
+        run: |
+          PBXPROJ="ios/Runner.xcodeproj/project.pbxproj"
+          sed -i '' \
+            -e 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 17.0;/g' \
+            -e 's/DEVELOPMENT_TEAM = [^;]*;/DEVELOPMENT_TEAM = "";/g' \
+            -e 's/CODE_SIGN_IDENTITY = [^;]*;/CODE_SIGN_IDENTITY = "";/g' \
+            -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' \
+            -e 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' \
+            "$PBXPROJ"
+          echo "Patched deployment target and signing settings."
+
+      # -- 7b. Generate app icons from assets/app_icon.png -----------------
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+
+      # -- 8. Code generation (Riverpod) -----------------------------------
+      - name: Run build_runner
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # -- 9. Build unsigned iOS archive -----------------------------------
+      - name: Build iOS (no-codesign)
+        env:
+          FLUTTER_XCODE_CODE_SIGNING_REQUIRED: NO
+          FLUTTER_XCODE_CODE_SIGNING_ALLOWED: NO
+          FLUTTER_XCODE_DEVELOPMENT_TEAM: ""
+        run: |
+          flutter build ios \
+            --release \
+            --no-codesign \
+            --target lib/main.dart
+
+      # -- 10. Package into installable IPA --------------------------------
+      - name: Package IPA
+        run: |
+          mkdir -p build/ios/iphoneos/Payload
+          cp -r build/ios/iphoneos/Runner.app \
+                build/ios/iphoneos/Payload/Runner.app
+          cd build/ios/iphoneos
+          zip -qr PixelsToMacros.ipa Payload
+          echo "IPA created at build/ios/iphoneos/PixelsToMacros.ipa"
+
+      # -- 11. Upload artifact ---------------------------------------------
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixelsToMacros-unsigned-ipa
+          path: build/ios/iphoneos/PixelsToMacros.ipa
+          retention-days: 7
