@@ -154,8 +154,7 @@ final class MultiFrameRecorder {
             &dst
         )
         guard status == kCVReturnSuccess, let dst else {
-            // Last resort: retain the original (unsafe but better than crash).
-            CVPixelBufferRetain(src)
+            // Allocation failed – return the original; ARC keeps it alive.
             return src
         }
 
