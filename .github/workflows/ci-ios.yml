@@ -1,0 +1,55 @@
+name: CI - iOS Build
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build_ios:
+    runs-on: macos-latest
+    env:
+      CI: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
+
+      - name: Install dependencies
+        run: |
+          flutter pub get
+
+      - name: Analyze
+        run: |
+          flutter analyze || true
+
+      - name: Build iOS (no codesign)
+        run: |
+          flutter build ios --no-codesign --obfuscate --split-debug-info=build/symbols || flutter build ios --no-codesign
+
+      - name: Archive ios artifacts
+        if: success()
+        run: |
+          mkdir -p build_artifacts
+          cp -R build/ios/iphoneos build_artifacts/ || true
+          ls -la build_artifacts || true
+
+      - name: Upload artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-artifacts
+          path: build_artifacts
