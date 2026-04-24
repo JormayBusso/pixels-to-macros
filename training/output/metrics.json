@@ -1,18 +1,18 @@
 [
   {
     "epoch": 1,
-    "train_loss": 0.6539,
-    "val_loss": 0.3619,
-    "val_miou": 0.1267,
+    "train_loss": 0.667,
+    "val_loss": 0.3688,
+    "val_miou": 0.1504,
     "lr": 0.0005,
-    "time_s": 46.8
+    "time_s": 50.2
   },
   {
     "epoch": 2,
-    "train_loss": 0.3091,
-    "val_loss": 0.3552,
-    "val_miou": 0.1658,
+    "train_loss": 0.2992,
+    "val_loss": 0.3581,
+    "val_miou": 0.1642,
     "lr": 0.0,
-    "time_s": 39.0
+    "time_s": 39.6
   }
 ]
