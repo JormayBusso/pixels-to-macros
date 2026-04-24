@@ -44,6 +44,9 @@ post_install do |installer|
     target.build_configurations.each do |config|
       # Enforce iOS 17 minimum across all pods so no pod downgrades the target.
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '17.0'
+
+      # Enable camera permission for permission_handler package
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)', 'PERMISSION_CAMERA=1']
     end
   end
 end

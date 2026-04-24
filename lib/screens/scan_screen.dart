@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../core/scan_state.dart';
 import '../models/scan_benchmark.dart';
@@ -63,6 +64,16 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   Future<void> _startSession() async {
     try {
+      // Request camera permission before starting ARKit
+      final status = await Permission.camera.request();
+      if (!status.isGranted) {
+        DebugLog.instance.log('Scan', 'Camera permission denied: $status');
+        if (mounted) {
+          _showCameraPermissionDialog();
+        }
+        return;
+      }
+
       DebugLog.instance.log('Scan', 'Starting AR session');
       await _bridge.startSession();
       // Detect depth mode for this device
@@ -78,6 +89,36 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       DebugLog.instance.log('Scan', 'AR session failed: $e');
       ref.read(scanStateProvider.notifier).depthFailed();
     }
+  }
+
+  void _showCameraPermissionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Camera Required'),
+        content: const Text(
+          'Pixels to Macros needs camera access to scan your food. '
+          'Please enable it in Settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
