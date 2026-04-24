@@ -38,7 +38,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -251,6 +251,48 @@ class DatabaseService {
       // Re-seed food_data with all 103 FoodSeg103 classes
       await _seed(db);
     }
+    if (oldVersion < 11) {
+      // Corrected apparent/bulk density values (g/cm³) for as-plated foods.
+      // Sources: USDA FoodData Central, FAO food composition tables,
+      // and published bulk-density measurements for common foods.
+      const densityUpdates = [
+        // (label,            densityMin, densityMax)
+        ('candy',             1.30, 1.55), // hard candy ~1.4-1.6 g/cm³
+        ('cake',              0.35, 0.55), // sponge/layer cake, very light
+        ('strawberry',        0.75, 0.90), // fresh flesh ~0.9 g/cm³
+        ('raspberry',         0.55, 0.70), // on-plate bulk
+        ('blueberry',         0.72, 0.85), // fresh blueberry
+        ('watermelon',        0.88, 0.98), // flesh is ~96% water
+        ('melon',             0.82, 0.92), // cantaloupe / honeydew flesh
+        ('pineapple',         0.85, 0.97), // fresh cut flesh
+        ('lemon',             0.95, 1.05), // citrus close to water density
+        ('grape',             0.88, 0.98), // fresh grape, quite dense
+        ('tomato',            0.85, 0.98), // tomato flesh ~0.9-1.0
+        ('cucumber',          0.88, 0.98), // ~96% water
+        ('white radish',      0.87, 0.97), // firm daikon
+        ('carrot',            0.95, 1.05), // dense root vegetable
+        ('bean sprouts',      0.50, 0.65), // mung sprouts with air gaps
+        ('okra',              0.62, 0.78), // whole okra pods
+        ('pepper',            0.60, 0.75), // cut bell pepper
+        ('black fungus',      0.65, 0.85), // soaked / cooked wood-ear
+        ('enoki mushroom',    0.42, 0.62), // delicate enoki
+        ('noodles',           0.85, 1.05), // cooked, water-absorbed
+        ('bamboo shoots',     0.80, 0.95), // cooked bamboo shoots
+        ('asparagus',         0.55, 0.75), // spears with some air
+        ('kelp',              0.90, 1.05), // cooked / soaked kelp
+        ('eggplant',          0.60, 0.80), // cooked eggplant
+      ];
+      final batch = db.batch();
+      for (final (label, dMin, dMax) in densityUpdates) {
+        batch.update(
+          'food_data',
+          {'density_min': dMin, 'density_max': dMax},
+          where: 'label = ?',
+          whereArgs: [label],
+        );
+      }
+      await batch.commit(noResult: true);
+    }
   }
 
   /// Updates protein/carbs/fat for foods that were seeded before v8.
@@ -297,7 +339,7 @@ class DatabaseService {
       // ── 0. background (skipped) ─────────────────────────────────────────
 
       // ── 1–10: Sweets / Snacks / Dairy ────────────────────────────────────
-      FoodData(label: 'candy',               densityMin: 0.90, densityMax: 1.10, kcalPer100g: 394, category: 'snack',     proteinPer100g:  1.0, carbsPer100g: 90.0, fatPer100g:  2.0),
+      FoodData(label: 'candy',               densityMin: 1.30, densityMax: 1.55, kcalPer100g: 394, category: 'snack',     proteinPer100g:  1.0, carbsPer100g: 90.0, fatPer100g:  2.0),
       FoodData(label: 'egg tart',            densityMin: 0.75, densityMax: 0.90, kcalPer100g: 280, category: 'mixed',     proteinPer100g:  6.0, carbsPer100g: 28.0, fatPer100g: 16.0),
       FoodData(label: 'french fries',        densityMin: 0.45, densityMax: 0.60, kcalPer100g: 312, category: 'mixed',     proteinPer100g:  3.4, carbsPer100g: 41.0, fatPer100g: 15.0),
       FoodData(label: 'chocolate',           densityMin: 1.10, densityMax: 1.30, kcalPer100g: 546, category: 'snack',     proteinPer100g:  5.0, carbsPer100g: 60.0, fatPer100g: 31.0),
@@ -306,7 +348,7 @@ class DatabaseService {
       FoodData(label: 'pudding',             densityMin: 0.95, densityMax: 1.05, kcalPer100g: 130, category: 'mixed',     proteinPer100g:  3.0, carbsPer100g: 20.0, fatPer100g:  4.0),
       FoodData(label: 'ice cream',           densityMin: 0.55, densityMax: 0.70, kcalPer100g: 207, category: 'dairy',     proteinPer100g:  3.5, carbsPer100g: 24.0, fatPer100g: 11.0),
       FoodData(label: 'cheese butter',       densityMin: 1.00, densityMax: 1.15, kcalPer100g: 402, category: 'dairy',     proteinPer100g: 25.0, carbsPer100g:  1.3, fatPer100g: 33.0),
-      FoodData(label: 'cake',                densityMin: 0.55, densityMax: 0.70, kcalPer100g: 347, category: 'mixed',     proteinPer100g:  4.5, carbsPer100g: 55.0, fatPer100g: 14.0),
+      FoodData(label: 'cake',                densityMin: 0.35, densityMax: 0.55, kcalPer100g: 347, category: 'mixed',     proteinPer100g:  4.5, carbsPer100g: 55.0, fatPer100g: 14.0),
 
       // ── 11–16: Drinks ────────────────────────────────────────────────────
       FoodData(label: 'wine',                densityMin: 0.99, densityMax: 1.02, kcalPer100g:  85, category: 'drink',     proteinPer100g:  0.1, carbsPer100g:  2.6, fatPer100g:  0.0),
@@ -334,22 +376,22 @@ class DatabaseService {
       FoodData(label: 'apricot',             densityMin: 0.75, densityMax: 0.85, kcalPer100g:  48, category: 'fruit',     proteinPer100g:  1.4, carbsPer100g: 11.0, fatPer100g:  0.4),
       FoodData(label: 'avocado',             densityMin: 0.90, densityMax: 1.00, kcalPer100g: 160, category: 'fruit',     proteinPer100g:  2.0, carbsPer100g:  9.0, fatPer100g: 15.0),
       FoodData(label: 'banana',              densityMin: 0.80, densityMax: 0.95, kcalPer100g:  89, category: 'fruit',     proteinPer100g:  1.1, carbsPer100g: 23.0, fatPer100g:  0.3),
-      FoodData(label: 'strawberry',          densityMin: 0.55, densityMax: 0.65, kcalPer100g:  32, category: 'fruit',     proteinPer100g:  0.7, carbsPer100g:  7.7, fatPer100g:  0.3),
+      FoodData(label: 'strawberry',          densityMin: 0.75, densityMax: 0.90, kcalPer100g:  32, category: 'fruit',     proteinPer100g:  0.7, carbsPer100g:  7.7, fatPer100g:  0.3),
       FoodData(label: 'cherry',              densityMin: 0.85, densityMax: 0.95, kcalPer100g:  50, category: 'fruit',     proteinPer100g:  1.0, carbsPer100g: 12.0, fatPer100g:  0.3),
-      FoodData(label: 'blueberry',           densityMin: 0.65, densityMax: 0.75, kcalPer100g:  57, category: 'fruit',     proteinPer100g:  0.7, carbsPer100g: 14.0, fatPer100g:  0.3),
-      FoodData(label: 'raspberry',           densityMin: 0.45, densityMax: 0.55, kcalPer100g:  52, category: 'fruit',     proteinPer100g:  1.2, carbsPer100g: 12.0, fatPer100g:  0.7),
+      FoodData(label: 'blueberry',           densityMin: 0.72, densityMax: 0.85, kcalPer100g:  57, category: 'fruit',     proteinPer100g:  0.7, carbsPer100g: 14.0, fatPer100g:  0.3),
+      FoodData(label: 'raspberry',           densityMin: 0.55, densityMax: 0.70, kcalPer100g:  52, category: 'fruit',     proteinPer100g:  1.2, carbsPer100g: 12.0, fatPer100g:  0.7),
       FoodData(label: 'mango',               densityMin: 0.75, densityMax: 0.85, kcalPer100g:  60, category: 'fruit',     proteinPer100g:  0.8, carbsPer100g: 15.0, fatPer100g:  0.4),
       FoodData(label: 'olives',              densityMin: 0.85, densityMax: 0.95, kcalPer100g: 115, category: 'fruit',     proteinPer100g:  0.8, carbsPer100g:  6.3, fatPer100g: 11.0),
       FoodData(label: 'peach',               densityMin: 0.75, densityMax: 0.85, kcalPer100g:  39, category: 'fruit',     proteinPer100g:  0.9, carbsPer100g: 10.0, fatPer100g:  0.3),
-      FoodData(label: 'lemon',               densityMin: 0.80, densityMax: 0.90, kcalPer100g:  29, category: 'fruit',     proteinPer100g:  1.1, carbsPer100g:  9.3, fatPer100g:  0.3),
+      FoodData(label: 'lemon',               densityMin: 0.95, densityMax: 1.05, kcalPer100g:  29, category: 'fruit',     proteinPer100g:  1.1, carbsPer100g:  9.3, fatPer100g:  0.3),
       FoodData(label: 'pear',                densityMin: 0.75, densityMax: 0.85, kcalPer100g:  57, category: 'fruit',     proteinPer100g:  0.4, carbsPer100g: 15.0, fatPer100g:  0.1),
       FoodData(label: 'fig',                 densityMin: 0.85, densityMax: 0.95, kcalPer100g:  74, category: 'fruit',     proteinPer100g:  0.8, carbsPer100g: 19.0, fatPer100g:  0.3),
-      FoodData(label: 'pineapple',           densityMin: 0.70, densityMax: 0.80, kcalPer100g:  50, category: 'fruit',     proteinPer100g:  0.5, carbsPer100g: 13.0, fatPer100g:  0.1),
-      FoodData(label: 'grape',               densityMin: 0.80, densityMax: 0.90, kcalPer100g:  69, category: 'fruit',     proteinPer100g:  0.7, carbsPer100g: 18.0, fatPer100g:  0.2),
+      FoodData(label: 'pineapple',           densityMin: 0.85, densityMax: 0.97, kcalPer100g:  50, category: 'fruit',     proteinPer100g:  0.5, carbsPer100g: 13.0, fatPer100g:  0.1),
+      FoodData(label: 'grape',               densityMin: 0.88, densityMax: 0.98, kcalPer100g:  69, category: 'fruit',     proteinPer100g:  0.7, carbsPer100g: 18.0, fatPer100g:  0.2),
       FoodData(label: 'kiwi',                densityMin: 0.80, densityMax: 0.90, kcalPer100g:  61, category: 'fruit',     proteinPer100g:  1.1, carbsPer100g: 15.0, fatPer100g:  0.5),
-      FoodData(label: 'melon',               densityMin: 0.60, densityMax: 0.70, kcalPer100g:  34, category: 'fruit',     proteinPer100g:  0.8, carbsPer100g:  8.2, fatPer100g:  0.2),
+      FoodData(label: 'melon',               densityMin: 0.82, densityMax: 0.92, kcalPer100g:  34, category: 'fruit',     proteinPer100g:  0.8, carbsPer100g:  8.2, fatPer100g:  0.2),
       FoodData(label: 'orange',              densityMin: 0.75, densityMax: 0.85, kcalPer100g:  47, category: 'fruit',     proteinPer100g:  0.9, carbsPer100g: 12.0, fatPer100g:  0.1),
-      FoodData(label: 'watermelon',          densityMin: 0.60, densityMax: 0.70, kcalPer100g:  30, category: 'fruit',     proteinPer100g:  0.6, carbsPer100g:  7.6, fatPer100g:  0.2),
+      FoodData(label: 'watermelon',          densityMin: 0.88, densityMax: 0.98, kcalPer100g:  30, category: 'fruit',     proteinPer100g:  0.6, carbsPer100g:  7.6, fatPer100g:  0.2),
 
       // ── 46–56: Meats & Seafood ───────────────────────────────────────────
       FoodData(label: 'steak',               densityMin: 1.00, densityMax: 1.15, kcalPer100g: 271, category: 'protein',   proteinPer100g: 26.0, carbsPer100g:  0.0, fatPer100g: 18.0),
@@ -376,44 +418,44 @@ class DatabaseService {
       FoodData(label: 'tofu',                densityMin: 0.90, densityMax: 1.00, kcalPer100g:  76, category: 'protein',   proteinPer100g:  8.1, carbsPer100g:  2.0, fatPer100g:  4.2),
 
       // ── 66–99: Vegetables ────────────────────────────────────────────────
-      FoodData(label: 'eggplant',            densityMin: 0.50, densityMax: 0.65, kcalPer100g:  25, category: 'vegetable', proteinPer100g:  1.0, carbsPer100g:  6.0, fatPer100g:  0.2),
+      FoodData(label: 'eggplant',            densityMin: 0.60, densityMax: 0.80, kcalPer100g:  25, category: 'vegetable', proteinPer100g:  1.0, carbsPer100g:  6.0, fatPer100g:  0.2),
       FoodData(label: 'potato',              densityMin: 0.90, densityMax: 1.05, kcalPer100g:  77, category: 'vegetable', proteinPer100g:  2.0, carbsPer100g: 17.0, fatPer100g:  0.1),
       FoodData(label: 'garlic',              densityMin: 0.90, densityMax: 1.05, kcalPer100g: 149, category: 'vegetable', proteinPer100g:  6.4, carbsPer100g: 33.0, fatPer100g:  0.5),
       FoodData(label: 'cauliflower',         densityMin: 0.35, densityMax: 0.50, kcalPer100g:  25, category: 'vegetable', proteinPer100g:  1.9, carbsPer100g:  5.0, fatPer100g:  0.3),
-      FoodData(label: 'tomato',              densityMin: 0.70, densityMax: 0.80, kcalPer100g:  18, category: 'vegetable', proteinPer100g:  0.9, carbsPer100g:  3.9, fatPer100g:  0.2),
-      FoodData(label: 'kelp',                densityMin: 0.80, densityMax: 0.95, kcalPer100g:  43, category: 'vegetable', proteinPer100g:  1.7, carbsPer100g: 10.0, fatPer100g:  0.6),
+      FoodData(label: 'tomato',              densityMin: 0.85, densityMax: 0.98, kcalPer100g:  18, category: 'vegetable', proteinPer100g:  0.9, carbsPer100g:  3.9, fatPer100g:  0.2),
+      FoodData(label: 'kelp',                densityMin: 0.90, densityMax: 1.05, kcalPer100g:  43, category: 'vegetable', proteinPer100g:  1.7, carbsPer100g: 10.0, fatPer100g:  0.6),
       FoodData(label: 'seaweed',             densityMin: 0.20, densityMax: 0.35, kcalPer100g:  35, category: 'vegetable', proteinPer100g:  5.8, carbsPer100g:  5.1, fatPer100g:  0.3),
       FoodData(label: 'spring onion',        densityMin: 0.50, densityMax: 0.65, kcalPer100g:  32, category: 'vegetable', proteinPer100g:  1.8, carbsPer100g:  7.3, fatPer100g:  0.2),
       FoodData(label: 'rape',                densityMin: 0.35, densityMax: 0.50, kcalPer100g:  22, category: 'vegetable', proteinPer100g:  1.5, carbsPer100g:  3.2, fatPer100g:  0.3),
       FoodData(label: 'ginger',              densityMin: 0.90, densityMax: 1.05, kcalPer100g:  80, category: 'vegetable', proteinPer100g:  1.8, carbsPer100g: 18.0, fatPer100g:  0.8),
-      FoodData(label: 'okra',                densityMin: 0.40, densityMax: 0.55, kcalPer100g:  33, category: 'vegetable', proteinPer100g:  1.9, carbsPer100g:  7.5, fatPer100g:  0.2),
+      FoodData(label: 'okra',                densityMin: 0.62, densityMax: 0.78, kcalPer100g:  33, category: 'vegetable', proteinPer100g:  1.9, carbsPer100g:  7.5, fatPer100g:  0.2),
       FoodData(label: 'lettuce',             densityMin: 0.20, densityMax: 0.35, kcalPer100g:  15, category: 'vegetable', proteinPer100g:  1.4, carbsPer100g:  2.9, fatPer100g:  0.2),
       FoodData(label: 'pumpkin',             densityMin: 0.70, densityMax: 0.85, kcalPer100g:  26, category: 'vegetable', proteinPer100g:  1.0, carbsPer100g:  7.0, fatPer100g:  0.1),
-      FoodData(label: 'cucumber',            densityMin: 0.60, densityMax: 0.70, kcalPer100g:  15, category: 'vegetable', proteinPer100g:  0.7, carbsPer100g:  3.6, fatPer100g:  0.1),
-      FoodData(label: 'white radish',        densityMin: 0.75, densityMax: 0.85, kcalPer100g:  18, category: 'vegetable', proteinPer100g:  0.7, carbsPer100g:  4.1, fatPer100g:  0.1),
-      FoodData(label: 'carrot',              densityMin: 0.85, densityMax: 0.95, kcalPer100g:  41, category: 'vegetable', proteinPer100g:  0.9, carbsPer100g: 10.0, fatPer100g:  0.2),
-      FoodData(label: 'asparagus',           densityMin: 0.45, densityMax: 0.60, kcalPer100g:  20, category: 'vegetable', proteinPer100g:  2.2, carbsPer100g:  3.9, fatPer100g:  0.1),
-      FoodData(label: 'bamboo shoots',       densityMin: 0.70, densityMax: 0.85, kcalPer100g:  27, category: 'vegetable', proteinPer100g:  2.6, carbsPer100g:  5.2, fatPer100g:  0.3),
+      FoodData(label: 'cucumber',            densityMin: 0.88, densityMax: 0.98, kcalPer100g:  15, category: 'vegetable', proteinPer100g:  0.7, carbsPer100g:  3.6, fatPer100g:  0.1),
+      FoodData(label: 'white radish',        densityMin: 0.87, densityMax: 0.97, kcalPer100g:  18, category: 'vegetable', proteinPer100g:  0.7, carbsPer100g:  4.1, fatPer100g:  0.1),
+      FoodData(label: 'carrot',              densityMin: 0.95, densityMax: 1.05, kcalPer100g:  41, category: 'vegetable', proteinPer100g:  0.9, carbsPer100g: 10.0, fatPer100g:  0.2),
+      FoodData(label: 'asparagus',           densityMin: 0.55, densityMax: 0.75, kcalPer100g:  20, category: 'vegetable', proteinPer100g:  2.2, carbsPer100g:  3.9, fatPer100g:  0.1),
+      FoodData(label: 'bamboo shoots',       densityMin: 0.80, densityMax: 0.95, kcalPer100g:  27, category: 'vegetable', proteinPer100g:  2.6, carbsPer100g:  5.2, fatPer100g:  0.3),
       FoodData(label: 'broccoli',            densityMin: 0.40, densityMax: 0.55, kcalPer100g:  34, category: 'vegetable', proteinPer100g:  2.8, carbsPer100g:  7.2, fatPer100g:  0.4),
       FoodData(label: 'celery stick',        densityMin: 0.55, densityMax: 0.70, kcalPer100g:  16, category: 'vegetable', proteinPer100g:  0.7, carbsPer100g:  3.0, fatPer100g:  0.2),
       FoodData(label: 'cilantro mint',       densityMin: 0.25, densityMax: 0.40, kcalPer100g:  23, category: 'vegetable', proteinPer100g:  2.1, carbsPer100g:  3.7, fatPer100g:  0.5),
       FoodData(label: 'snow peas',           densityMin: 0.50, densityMax: 0.65, kcalPer100g:  42, category: 'vegetable', proteinPer100g:  2.8, carbsPer100g:  7.6, fatPer100g:  0.2),
       FoodData(label: 'cabbage',             densityMin: 0.35, densityMax: 0.50, kcalPer100g:  25, category: 'vegetable', proteinPer100g:  1.3, carbsPer100g:  6.0, fatPer100g:  0.1),
-      FoodData(label: 'bean sprouts',        densityMin: 0.30, densityMax: 0.45, kcalPer100g:  31, category: 'vegetable', proteinPer100g:  3.0, carbsPer100g:  6.0, fatPer100g:  0.2),
+      FoodData(label: 'bean sprouts',        densityMin: 0.50, densityMax: 0.65, kcalPer100g:  31, category: 'vegetable', proteinPer100g:  3.0, carbsPer100g:  6.0, fatPer100g:  0.2),
       FoodData(label: 'onion',               densityMin: 0.85, densityMax: 0.95, kcalPer100g:  40, category: 'vegetable', proteinPer100g:  1.1, carbsPer100g:  9.3, fatPer100g:  0.1),
-      FoodData(label: 'pepper',              densityMin: 0.45, densityMax: 0.55, kcalPer100g:  31, category: 'vegetable', proteinPer100g:  1.0, carbsPer100g:  6.0, fatPer100g:  0.3),
+      FoodData(label: 'pepper',              densityMin: 0.60, densityMax: 0.75, kcalPer100g:  31, category: 'vegetable', proteinPer100g:  1.0, carbsPer100g:  6.0, fatPer100g:  0.3),
       FoodData(label: 'green beans',         densityMin: 0.55, densityMax: 0.70, kcalPer100g:  31, category: 'vegetable', proteinPer100g:  1.8, carbsPer100g:  7.0, fatPer100g:  0.1),
       FoodData(label: 'french beans',        densityMin: 0.55, densityMax: 0.70, kcalPer100g:  31, category: 'vegetable', proteinPer100g:  1.8, carbsPer100g:  7.0, fatPer100g:  0.1),
       FoodData(label: 'king oyster mushroom',densityMin: 0.55, densityMax: 0.70, kcalPer100g:  35, category: 'vegetable', proteinPer100g:  3.3, carbsPer100g:  6.0, fatPer100g:  0.4),
       FoodData(label: 'white mushroom',      densityMin: 0.50, densityMax: 0.65, kcalPer100g:  22, category: 'vegetable', proteinPer100g:  3.1, carbsPer100g:  3.3, fatPer100g:  0.3),
       FoodData(label: 'shiitake',            densityMin: 0.55, densityMax: 0.70, kcalPer100g:  34, category: 'vegetable', proteinPer100g:  2.2, carbsPer100g:  7.0, fatPer100g:  0.5),
-      FoodData(label: 'enoki mushroom',      densityMin: 0.30, densityMax: 0.45, kcalPer100g:  37, category: 'vegetable', proteinPer100g:  2.7, carbsPer100g:  7.8, fatPer100g:  0.3),
+      FoodData(label: 'enoki mushroom',      densityMin: 0.42, densityMax: 0.62, kcalPer100g:  37, category: 'vegetable', proteinPer100g:  2.7, carbsPer100g:  7.8, fatPer100g:  0.3),
       FoodData(label: 'oyster mushroom',     densityMin: 0.50, densityMax: 0.65, kcalPer100g:  33, category: 'vegetable', proteinPer100g:  3.3, carbsPer100g:  6.1, fatPer100g:  0.4),
-      FoodData(label: 'black fungus',        densityMin: 0.45, densityMax: 0.60, kcalPer100g:  40, category: 'vegetable', proteinPer100g:  0.5, carbsPer100g: 10.0, fatPer100g:  0.2),
+      FoodData(label: 'black fungus',        densityMin: 0.65, densityMax: 0.85, kcalPer100g:  40, category: 'vegetable', proteinPer100g:  0.5, carbsPer100g: 10.0, fatPer100g:  0.2),
 
       // ── 100–103: Noodles & Others ────────────────────────────────────────
       FoodData(label: 'dough',               densityMin: 0.75, densityMax: 0.90, kcalPer100g: 289, category: 'grain',     proteinPer100g:  8.0, carbsPer100g: 55.0, fatPer100g:  3.5),
-      FoodData(label: 'noodles',             densityMin: 0.70, densityMax: 0.85, kcalPer100g: 138, category: 'grain',     proteinPer100g:  4.5, carbsPer100g: 25.0, fatPer100g:  1.0),
+      FoodData(label: 'noodles',             densityMin: 0.85, densityMax: 1.05, kcalPer100g: 138, category: 'grain',     proteinPer100g:  4.5, carbsPer100g: 25.0, fatPer100g:  1.0),
       FoodData(label: 'rice noodle',         densityMin: 0.70, densityMax: 0.85, kcalPer100g: 109, category: 'grain',     proteinPer100g:  0.9, carbsPer100g: 25.0, fatPer100g:  0.2),
       FoodData(label: 'others',              densityMin: 0.60, densityMax: 0.90, kcalPer100g: 150, category: 'mixed',     proteinPer100g:  5.0, carbsPer100g: 20.0, fatPer100g:  5.0),
 

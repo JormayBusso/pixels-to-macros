@@ -33,7 +33,7 @@ class GoalMascotWidget extends StatelessWidget {
       case NutritionGoalType.vegan:        return MascotType.plant;
       case NutritionGoalType.keto:         return MascotType.flame;
       case NutritionGoalType.weightLoss:   return MascotType.flame;
-      case NutritionGoalType.diabetes:     return MascotType.pancreas;
+      case NutritionGoalType.diabetes:     return MascotType.sugar;
       case NutritionGoalType.maintain:     return MascotType.plant;
     }
   }
@@ -59,9 +59,9 @@ class GoalMascotWidget extends StatelessWidget {
           progress: progress,
           onTap: onTap,
         );
-      case MascotType.pancreas:
+      case MascotType.sugar:
         return _ImageMascot(
-          stages: const _MascotStages.pancreas(),
+          stages: const _MascotStages.sugar(),
           progress: stressLevel,
           invertStage: true,
           onTap: onTap,
@@ -97,10 +97,10 @@ class _MascotStages {
           'assets/mascots/strong_gorilla.jpeg',
         ],
         labels = const [
-          'Baby Gorilla 🐒',
-          'Growing Strong 🦍',
-          'Mighty Gorilla 🦍',
-          'Champion! 🦍💪',
+          'Baby Gorilla',
+          'Growing Strong',
+          'Mighty Gorilla',
+          'Champion',
         ],
         bgColors = const [
           Color(0xFFDCFCE7),
@@ -117,10 +117,10 @@ class _MascotStages {
           'assets/mascots/huge_tree.jpeg',
         ],
         labels = const [
-          'Seedling 🌱',
-          'Sprouting 🌿',
-          'Growing Strong 🌳',
-          'In Full Bloom 🌸',
+          'Seedling',
+          'Sprouting',
+          'Growing Strong',
+          'In Full Bloom',
         ],
         bgColors = const [
           Color(0xFFF0FDF4),
@@ -138,9 +138,9 @@ class _MascotStages {
         ],
         labels = const [
           'No Burn Yet',
-          'Warming Up 🔥',
-          'Fat Burning! 🔥🔥',
-          'Extreme Burn! 🔥🔥🔥',
+          'Warming Up',
+          'Fat Burning',
+          'Extreme Burn',
         ],
         bgColors = const [
           Color(0xFFFFF7ED),
@@ -149,18 +149,18 @@ class _MascotStages {
           Color(0xFFEA580C),
         ];
 
-  const _MascotStages.pancreas()
+  const _MascotStages.sugar()
       : imagePaths = const [
-          'assets/mascots/unhealthy_pancreas.jpeg',
-          'assets/mascots/littlebit_unhealthy_pancreas.jpeg',
-          'assets/mascots/healty_pancreas.jpeg',
-          'assets/mascots/very_healthy_pancreas.jpeg',
+          'assets/mascots/very_unhealty_sugar.PNG',
+          'assets/mascots/bit_unhealthy_sugar.PNG',
+          'assets/mascots/healthy_sugar.PNG',
+          'assets/mascots/very_healthy_sugar.PNG',
         ],
         labels = const [
-          'Overloaded! ❌',
-          'Under Stress ⚠️',
-          'Healthy 🩺',
-          'Perfect Control ✅',
+          'Sugar Overload',
+          'Too Much Sugar',
+          'Under Control',
+          'Excellent Control',
         ],
         bgColors = const [
           Color(0xFFFEE2E2),

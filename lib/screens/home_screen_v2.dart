@@ -602,12 +602,23 @@ class _GoalProgressCard extends StatelessWidget {
 
     final kcalProgress = kcalGoal > 0 ? intake.caloriesAvg / kcalGoal : 0.0;
     final carbStress   = carbLim  > 0 ? intake.carbsG   / carbLim  : 0.0;
+    final fatStress    = fatGoal  > 0 ? intake.fatG     / fatGoal  : 0.0;
 
-    // For keto/diabetes use carb stress; for others use calorie progress
-    final mascotProgress = (goal == NutritionGoalType.keto ||
-            goal == NutritionGoalType.diabetes)
-        ? carbStress
-        : kcalProgress;
+    // Composite unhealthy score for the diabetes sugar mascot:
+    // start at 0 (best = very healthy sugar), rise as the person
+    // overshoots carbs, fat, OR overall calories.
+    // Each ratio is capped at 1.5 so one extreme macro can't dominate
+    // beyond reason. Weighted: carbs 50%, fat 30%, calories 20%.
+    final diabetesStress = (carbStress.clamp(0.0, 1.5) * 0.50 +
+                            fatStress.clamp(0.0, 1.5)  * 0.30 +
+                            kcalProgress.clamp(0.0, 1.5) * 0.20);
+
+    // For keto use carb stress; for diabetes use composite unhealthy score; for others use calorie progress
+    final mascotProgress = switch (goal) {
+      NutritionGoalType.keto     => carbStress,
+      NutritionGoalType.diabetes => diabetesStress,
+      _                          => kcalProgress,
+    };
 
     final stageName = GoalDefaults.mascotStageName(goal, mascotProgress);
 
@@ -654,7 +665,9 @@ class _GoalProgressCard extends StatelessWidget {
                 GoalMascotWidget(
                   goalType: goal,
                   progress: kcalProgress,
-                  stressLevel: carbStress,
+                  stressLevel: goal == NutritionGoalType.diabetes
+                      ? diabetesStress
+                      : carbStress,
                   mascotOverride: prefs.mascotType,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(

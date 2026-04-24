@@ -136,31 +136,32 @@ abstract final class GoalDefaults {
         if (progress < 0.33) return 'Baby Gorilla';
         if (progress < 0.66) return 'Growing Strong';
         if (progress < 1.00) return 'Mighty Gorilla';
-        return 'Champion! 💪';
+        return 'Champion';
       case NutritionGoalType.diabetes:
-        if (progress < 0.50) return 'Pancreas Healthy';
-        if (progress < 0.80) return 'Slightly Stressed';
-        if (progress < 1.00) return 'Under Pressure';
-        return 'Overloaded!';
+        // diabetesStress: 0 = nothing eaten yet (excellent), rises with unhealthy eating.
+        if (progress < 0.30) return 'Excellent Control';
+        if (progress < 0.60) return 'Under Control';
+        if (progress < 0.90) return 'Too Much Sugar';
+        return 'Sugar Overload';
       case NutritionGoalType.vegan:
         if (progress < 0.33) return 'Seed Stage';
         if (progress < 0.66) return 'Sprouting';
         if (progress < 1.00) return 'Growing Well';
-        return 'In Full Bloom 🌸';
+        return 'In Full Bloom';
       case NutritionGoalType.weightLoss:
         if (progress < 0.33) return 'Just Started';
         if (progress < 0.66) return 'Making Progress';
-        if (progress < 1.00) return 'Almost There!';
-        return 'Goal Reached! 🎉';
+        if (progress < 1.00) return 'Almost There';
+        return 'Goal Reached';
       case NutritionGoalType.keto:
-        if (progress < 0.40) return '🔥 Deep Ketosis';
-        if (progress < 0.70) return '🔥 In Ketosis';
-        if (progress < 1.00) return '⚠️ Near Limit';
-        return '❌ Ketosis Broken';
+        if (progress < 0.40) return 'Deep Ketosis';
+        if (progress < 0.70) return 'In Ketosis';
+        if (progress < 1.00) return 'Near Limit';
+        return 'Ketosis Broken';
       case NutritionGoalType.maintain:
         if (progress < 0.50) return 'Under Target';
         if (progress < 0.90) return 'On Track';
-        if (progress < 1.10) return 'Balanced ✅';
+        if (progress < 1.10) return 'Balanced';
         return 'Over Target';
     }
   }
