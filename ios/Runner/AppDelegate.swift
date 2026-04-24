@@ -8,11 +8,17 @@ import Flutter
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        // Register the native scanner plugin on the Flutter MethodChannel.
-        let controller = window?.rootViewController as! FlutterViewController
-        ScannerPlugin.register(with: controller.binaryMessenger)
-
+        // GeneratedPluginRegistrant must be registered before super so that
+        // Flutter's engine is fully initialised when super returns.
         GeneratedPluginRegistrant.register(with: self)
-        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+        let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+
+        // super.application sets up the FlutterViewController and assigns it
+        // to window.rootViewController — only access it after that call.
+        if let controller = window?.rootViewController as? FlutterViewController {
+            ScannerPlugin.register(with: controller.binaryMessenger)
+        }
+
+        return result
     }
 }
