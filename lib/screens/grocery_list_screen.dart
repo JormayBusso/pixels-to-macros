@@ -629,23 +629,3 @@ class _GroceryTile extends StatelessWidget {
     );
   }
 }
-
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppTheme.green100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'x${item.quantity}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.green700,
-                  ),
-                ),
-              )
-            : null,
-      ),
-    );
-  }
-}
