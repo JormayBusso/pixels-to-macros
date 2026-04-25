@@ -2,6 +2,7 @@
 
 import '../models/mascot_type.dart';
 import '../models/nutrition_goal.dart';
+import '../theme/app_theme.dart';
 
 // â”€â”€ Public entry point â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -203,11 +204,10 @@ class _ImageMascot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = _stage;
-    // All mascots share the same light-green circle background so the UI is
-    // visually consistent regardless of mascot type or progress stage.
-    const bgColor = Color(0xFFDCFCE7); // green-100
-    const borderActiveColor = Color(0xFF4ADE80); // green-400
-    const borderIdleColor   = Color(0xFFBBF7D0); // green-200
+    // Circle colours follow the app's chosen theme seed.
+    final bgColor           = context.primary100;
+    final borderActiveColor = context.primary400;
+    final borderIdleColor   = context.primary200;
     final isBest = s == 3;
 
     final col = Column(
@@ -266,8 +266,8 @@ class _ImageMascot extends StatelessWidget {
               fontWeight: FontWeight.w700,
               fontSize: 13,
               color: isBest
-                  ? const Color(0xFF15803D) // green-700
-                  : const Color(0xFF374151), // gray-700
+                  ? context.primary700
+                  : AppTheme.gray700,
             ),
           ),
         ),

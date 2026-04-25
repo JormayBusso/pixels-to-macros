@@ -619,8 +619,6 @@ class _GoalProgressCard extends StatelessWidget {
       _                          => kcalProgress,
     };
 
-    final stageName = GoalDefaults.mascotStageName(goal, mascotProgress);
-
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -628,28 +626,15 @@ class _GoalProgressCard extends StatelessWidget {
           // Header
           Container(
             width: double.infinity,
-            color: goal.lightColor,
+            color: context.primary100,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                Text(
-                  goal.label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    color: goal.color,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  stageName,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: goal.color,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            child: Text(
+              goal.label,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                color: context.primary700,
+              ),
             ),
           ),
 

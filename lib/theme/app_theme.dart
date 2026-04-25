@@ -141,25 +141,50 @@ class AppTheme {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
+
+      // Embed the vivid seed color so ThemeColors can retrieve it
+      extensions: [AppColorTheme(seedColor: primary)],
     );
+  }
+}
+
+/// Stores the vivid seed color in the theme so it can be retrieved anywhere
+/// via BuildContext, bypassing Material 3's tonal derivation of colorScheme.primary.
+class AppColorTheme extends ThemeExtension<AppColorTheme> {
+  const AppColorTheme({required this.seedColor});
+  final Color seedColor;
+
+  @override
+  AppColorTheme copyWith({Color? seedColor}) =>
+      AppColorTheme(seedColor: seedColor ?? this.seedColor);
+
+  @override
+  AppColorTheme lerp(ThemeExtension<AppColorTheme>? other, double t) {
+    if (other is! AppColorTheme) return this;
+    return AppColorTheme(seedColor: Color.lerp(seedColor, other.seedColor, t)!);
   }
 }
 
 /// Extension providing theme-aware color shades that follow the user's chosen
 /// color seed instead of hard-coded green.
 extension ThemeColors on BuildContext {
-  ColorScheme get _cs => Theme.of(this).colorScheme;
+  /// The vivid seed color set by the user — matches what ElevatedButton uses.
+  Color get _seed =>
+      Theme.of(this).extension<AppColorTheme>()?.seedColor ??
+      Theme.of(this).colorScheme.primary;
 
   /// Lightest tint — backgrounds, subtle fills.
-  Color get primary50 => Color.alphaBlend(_cs.primary.withValues(alpha: 0.04), Colors.white);
-  Color get primary100 => Color.alphaBlend(_cs.primary.withValues(alpha: 0.08), Colors.white);
-  Color get primary200 => Color.alphaBlend(_cs.primary.withValues(alpha: 0.16), Colors.white);
+  Color get primary50  => Color.alphaBlend(_seed.withValues(alpha: 0.04), Colors.white);
+  Color get primary100 => Color.alphaBlend(_seed.withValues(alpha: 0.10), Colors.white);
+  Color get primary200 => Color.alphaBlend(_seed.withValues(alpha: 0.20), Colors.white);
 
   /// Medium shades — icons, badges, active states.
-  Color get primary400 => Color.alphaBlend(_cs.primary.withValues(alpha: 0.55), Colors.white);
-  Color get primary500 => _cs.primary;
+  Color get primary400 => Color.alphaBlend(_seed.withValues(alpha: 0.55), Colors.white);
+
+  /// The vivid seed color itself — matches ElevatedButton and Save Changes.
+  Color get primary500 => _seed;
 
   /// Darker shades — text, prominent UI.
-  Color get primary600 => Color.alphaBlend(Colors.black.withValues(alpha: 0.10), _cs.primary);
-  Color get primary700 => Color.alphaBlend(Colors.black.withValues(alpha: 0.20), _cs.primary);
+  Color get primary600 => Color.alphaBlend(Colors.black.withValues(alpha: 0.18), _seed);
+  Color get primary700 => Color.alphaBlend(Colors.black.withValues(alpha: 0.35), _seed);
 }
