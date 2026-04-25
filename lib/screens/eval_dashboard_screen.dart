@@ -104,8 +104,8 @@ class _EvalDashboardScreenState extends ConsumerState<EvalDashboardScreen> {
                                     evalState.metrics.totalScans
                                 : 0,
                             backgroundColor: AppTheme.gray100,
-                            valueColor: const AlwaysStoppedAnimation(
-                                AppTheme.green500),
+                            valueColor: AlwaysStoppedAnimation(
+                                context.primary500),
                             minHeight: 6,
                           ),
                         ),
@@ -337,7 +337,7 @@ class _EvalDashboardScreenState extends ConsumerState<EvalDashboardScreen> {
                               unit: 'ms',
                               subtitle: 'Avg (target <200)',
                               color: bench.avgInferenceMs < 200
-                                  ? AppTheme.green600
+                                  ? context.primary600
                                   : AppTheme.red500,
                             ),
                           ),
@@ -349,7 +349,7 @@ class _EvalDashboardScreenState extends ConsumerState<EvalDashboardScreen> {
                               unit: 'ms',
                               subtitle: 'Avg scan time',
                               color: bench.avgTotalMs < 3000
-                                  ? AppTheme.green600
+                                  ? context.primary600
                                   : AppTheme.amber600,
                             ),
                           ),
@@ -382,7 +382,7 @@ class _EvalDashboardScreenState extends ConsumerState<EvalDashboardScreen> {
                                 value: '${bench.scansUnderTarget}/${bench.count}'
                                     ' (${bench.count > 0 ? (bench.scansUnderTarget / bench.count * 100).round() : 0}%)',
                                 valueColor: bench.scansUnderTarget == bench.count
-                                    ? AppTheme.green600
+                                    ? context.primary600
                                     : AppTheme.amber600,
                               ),
                               _MetricRow(
@@ -440,25 +440,25 @@ class _EvalDashboardScreenState extends ConsumerState<EvalDashboardScreen> {
   }
 
   Color _maeColor(double mae) {
-    if (mae < 30) return AppTheme.green600;
+    if (mae < 30) return context.primary600;
     if (mae < 60) return AppTheme.amber600;
     return AppTheme.red500;
   }
 
   Color _mapeColor(double mape) {
-    if (mape < 15) return AppTheme.green600;
+    if (mape < 15) return context.primary600;
     if (mape < 30) return AppTheme.amber600;
     return AppTheme.red500;
   }
 
   Color _corrColor(double r) {
-    if (r > 0.8) return AppTheme.green600;
+    if (r > 0.8) return context.primary600;
     if (r > 0.5) return AppTheme.amber600;
     return AppTheme.red500;
   }
 
   Color _rangeColor(double acc) {
-    if (acc > 0.7) return AppTheme.green600;
+    if (acc > 0.7) return context.primary600;
     if (acc > 0.4) return AppTheme.amber600;
     return AppTheme.red500;
   }
@@ -602,7 +602,7 @@ class _PairTile extends StatelessWidget {
               height: 36,
               decoration: BoxDecoration(
                 color: pair.withinRange == true
-                    ? AppTheme.green100
+                    ? context.primary100
                     : AppTheme.red100,
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -612,7 +612,7 @@ class _PairTile extends StatelessWidget {
                     : Icons.close,
                 size: 18,
                 color: pair.withinRange == true
-                    ? AppTheme.green600
+                    ? context.primary600
                     : AppTheme.red500,
               ),
             ),
@@ -644,7 +644,7 @@ class _PairTile extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: error < 15
-                      ? AppTheme.green600
+                      ? context.primary600
                       : error < 30
                           ? AppTheme.amber600
                           : AppTheme.red500,

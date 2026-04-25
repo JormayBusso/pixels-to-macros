@@ -114,8 +114,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  const Icon(Icons.check_circle,
-                      size: 48, color: AppTheme.green500),
+                  Icon(Icons.check_circle,
+                      size: 48, color: context.primary500),
                   const SizedBox(height: 12),
                   Text(
                     '${avgTotal.round()} kcal',
@@ -165,8 +165,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_today,
-                      size: 18, color: AppTheme.green500),
+                  Icon(Icons.calendar_today,
+                      size: 18, color: context.primary500),
                   const SizedBox(width: 12),
                   Text(
                     _formatFullDate(_scan.timestamp),
@@ -234,7 +234,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                   _RangeRow(
                     label: 'Minimum',
                     value: '${_scan.totalCaloriesMin.round()} kcal',
-                    color: AppTheme.green600,
+                    color: context.primary600,
                   ),
                   const SizedBox(height: 8),
                   _RangeRow(
@@ -257,14 +257,14 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                           flex: _scan.totalCaloriesMin.round(),
                           child: Container(
                             height: 8,
-                            color: AppTheme.green400,
+                            color: context.primary400,
                           ),
                         ),
                         Expanded(
                           flex: (avgTotal - _scan.totalCaloriesMin).round().clamp(1, 9999),
                           child: Container(
                             height: 8,
-                            color: AppTheme.green200,
+                            color: context.primary200,
                           ),
                         ),
                         Expanded(
@@ -379,21 +379,21 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppTheme.green50,
+        color: context.primary50,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.green200),
+        border: Border.all(color: context.primary200),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppTheme.green600),
+          Icon(icon, size: 14, color: context.primary600),
           const SizedBox(width: 4),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppTheme.green700,
+              color: context.primary700,
             ),
           ),
         ],
@@ -466,10 +466,10 @@ class _FoodDetailCard extends StatelessWidget {
   final DetectedFood food;
 
   /// Returns a color indicating uncertainty: green=low, amber=med, red=high.
-  Color _uncertaintyColor(double margin, double avg) {
+  Color _uncertaintyColor(double margin, double avg, BuildContext context) {
     if (avg == 0) return AppTheme.gray200;
     final pct = margin / avg; // relative uncertainty
-    if (pct < 0.15) return AppTheme.green400;
+    if (pct < 0.15) return context.primary400;
     if (pct < 0.30) return AppTheme.amber500;
     return AppTheme.red500;
   }
@@ -478,7 +478,7 @@ class _FoodDetailCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final avg = (food.caloriesMin + food.caloriesMax) / 2;
     final margin = (food.caloriesMax - food.caloriesMin) / 2;
-    final uColor = _uncertaintyColor(margin, avg);
+    final uColor = _uncertaintyColor(margin, avg, context);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -493,11 +493,11 @@ class _FoodDetailCard extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppTheme.green100,
+                      color: context.primary100,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.restaurant,
-                        color: AppTheme.green600, size: 20),
+                    child: Icon(Icons.restaurant,
+                        color: context.primary600, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -527,10 +527,10 @@ class _FoodDetailCard extends StatelessWidget {
                     children: [
                       Text(
                         '${avg.round()} kcal',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.green700,
+                          color: context.primary700,
                         ),
                       ),
                       Text(

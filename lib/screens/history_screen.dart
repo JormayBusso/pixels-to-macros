@@ -194,15 +194,15 @@ class _ScanCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppTheme.green100,
+                    color: context.primary100,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     scan.depthMode,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.green700,
+                      color: context.primary700,
                     ),
                   ),
                 ),
@@ -223,8 +223,8 @@ class _ScanCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(
                     children: [
-                      const Icon(Icons.restaurant,
-                          size: 14, color: AppTheme.green500),
+                      Icon(Icons.restaurant,
+                          size: 14, color: context.primary500),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -269,10 +269,10 @@ class _ScanCard extends StatelessWidget {
                 ),
                 Text(
                   '${avgTotal.round()} kcal',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.green700,
+                    color: context.primary700,
                   ),
                 ),
               ],

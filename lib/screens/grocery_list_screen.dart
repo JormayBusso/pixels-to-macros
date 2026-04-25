@@ -33,6 +33,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   /// Three reference-photo slots for the smart-suggestion sheet.
   final List<XFile?> _photos = [null, null, null];
 
+  /// How many times per week the user does groceries (default 2).
+  int _groceryFrequency = 2;
+
   static const _categories = [
     'Fruits', 'Vegetables', 'Protein', 'Dairy',
     'Grains', 'Snacks',     'Drinks',  'Other',
@@ -151,10 +154,17 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     final sorted = freq.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
+    // Days between grocery trips
+    final daysBetween = (7 / _groceryFrequency).ceil();
+
     return sorted.take(12).map((e) {
+      // Estimate quantity: times eaten per week × weeks until next trip
+      final timesPerWeek = e.value / 4; // rough 30-day avg
+      final qty = (timesPerWeek * daysBetween / 7).ceil().clamp(1, 10);
       return _SuggestionItem(
         name:     _capitalize(e.key),
         category: _guessCategory(e.key),
+        suggestedQty: qty,
       );
     }).toList();
   }
@@ -189,6 +199,13 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     if (file != null && mounted) {
       setState(() => _photos[slot] = file);
       setSheetState(() {});
+      // After adding a photo, scroll to suggestions and show a hint
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Photo saved! Check your personalised suggestions below.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -230,7 +247,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
-                        const Icon(Icons.auto_awesome, color: AppTheme.green600),
+                        Icon(Icons.auto_awesome, color: ctx.primary600),
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Column(
@@ -291,11 +308,11 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                   margin: EdgeInsets.only(
                                       right: i < 2 ? 8.0 : 0.0),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.green50,
+                                    color: ctx.primary50,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: photo != null
-                                          ? AppTheme.green400
+                                          ? ctx.primary400
                                           : AppTheme.gray200,
                                     ),
                                   ),
@@ -313,9 +330,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           children: [
-                                            const Icon(
+                                            Icon(
                                               Icons.add_a_photo_outlined,
-                                              color: AppTheme.green500,
+                                              color: ctx.primary500,
                                               size: 24,
                                             ),
                                             const SizedBox(height: 4),
@@ -332,6 +349,32 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                         ),
 
                         const SizedBox(height: 24),
+
+                        // Grocery frequency picker
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 16, color: AppTheme.gray600),
+                            const SizedBox(width: 8),
+                            const Text('How often do you shop?',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.gray700)),
+                            const Spacer(),
+                            DropdownButton<int>(
+                              value: _groceryFrequency,
+                              underline: const SizedBox.shrink(),
+                              items: [1, 2, 3, 4, 5, 7].map((n) {
+                                return DropdownMenuItem(value: n, child: Text('${n}x/week'));
+                              }).toList(),
+                              onChanged: (v) {
+                                if (v != null) {
+                                  setState(() => _groceryFrequency = v);
+                                  setSheetState(() {});
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 8),
                         const Divider(height: 1),
                         const SizedBox(height: 16),
 
@@ -362,10 +405,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                             ),
                           ),
                         ] else ...[
-                          const Row(
+                          Row(
                             children: [
                               Icon(Icons.recommend_outlined,
-                                  size: 16, color: AppTheme.green600),
+                                  size: 16, color: ctx.primary600),
                               SizedBox(width: 6),
                               Text('You often eat these — stock up!',
                                   style: TextStyle(
@@ -381,11 +424,12 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                             return CheckboxListTile(
                               value:           selected.contains(idx),
                               dense:           true,
-                              activeColor:     AppTheme.green600,
+                              activeColor:     ctx.primary600,
                               contentPadding: EdgeInsets.zero,
                               title: Text(item.name,
                                   style: const TextStyle(fontSize: 14)),
-                              subtitle: Text(item.category,
+                              subtitle: Text(
+                                  '${item.category} • suggested qty: ${item.suggestedQty}',
                                   style: const TextStyle(
                                       fontSize: 11,
                                       color: AppTheme.gray400)),
@@ -509,7 +553,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                   children: [
                     if (unchecked.isNotEmpty) ...[
                       _SectionLabel('To Buy (${unchecked.length})',
-                          color: AppTheme.green700),
+                        color: context.primary700),
                       ...unchecked.map((item) => _GroceryTile(
                             item:     item,
                             onToggle: () => ref
@@ -544,7 +588,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 class _SuggestionItem {
   final String name;
   final String category;
-  const _SuggestionItem({required this.name, required this.category});
+  final int suggestedQty;
+  const _SuggestionItem({required this.name, required this.category, this.suggestedQty = 1});
 }
 
 // ── Section label ──────────────────────────────────────────────────────────────
@@ -594,7 +639,7 @@ class _GroceryTile extends StatelessWidget {
         leading: Checkbox(
           value:       item.checked,
           onChanged:   (_) => onToggle(),
-          activeColor: AppTheme.green500,
+          activeColor: context.primary500,
         ),
         title: Text(
           item.name,
@@ -615,14 +660,14 @@ class _GroceryTile extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color:        AppTheme.green100,
+                  color:        context.primary100,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text('x${item.quantity}',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize:   12,
                         fontWeight: FontWeight.w600,
-                        color:      AppTheme.green700)),
+                        color:      context.primary700)),
               )
             : null,
       ),

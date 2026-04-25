@@ -211,7 +211,7 @@ class _BarChart extends StatelessWidget {
                     height: barHeight.clamp(2.0, constraints.maxHeight - 20),
                     margin: const EdgeInsets.symmetric(horizontal: 2),
                     decoration: BoxDecoration(
-                      color: overGoal ? AppTheme.amber500 : AppTheme.green400,
+                      color: overGoal ? AppTheme.amber500 : context.primary400,
                       borderRadius:
                           const BorderRadius.vertical(top: Radius.circular(4)),
                     ),
@@ -258,7 +258,7 @@ class _RangeChip extends StatelessWidget {
     return ChoiceChip(
       label: Text(label),
       selected: active,
-      selectedColor: AppTheme.green200,
+      selectedColor: context.primary200,
       onSelected: (_) => onTap(days),
     );
   }
@@ -284,7 +284,7 @@ class _StatCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 20, color: AppTheme.green500),
+            Icon(icon, size: 20, color: context.primary500),
             const SizedBox(height: 8),
             Text(
               label,
@@ -347,8 +347,8 @@ class _DayRow extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: pct,
                 minHeight: 8,
-                backgroundColor: AppTheme.green100,
-                color: over ? AppTheme.amber500 : AppTheme.green500,
+                backgroundColor: context.primary100,
+                color: over ? AppTheme.amber500 : context.primary500,
               ),
             ),
           ),

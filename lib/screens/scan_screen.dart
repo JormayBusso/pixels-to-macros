@@ -47,14 +47,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   ScanResult? _savedScanResult;
   int? _sessionGeneration;       // generation counter for safe stop()
 
-  static const _recordDuration = Duration(seconds: 2);
-  static const _timerInterval  = Duration(milliseconds: 80);
+  static const _maxRecordDuration = Duration(seconds: 5);
+  static const _timerInterval     = Duration(milliseconds: 80);
 
   /// Pitch thresholds (radians).
-  /// Top-view:  pitch < -60° = -1.047 rad  → auto-start recording.
-  /// Side-view: pitch > -20° = -0.349 rad  → auto-stop recording.
-  static const double _topViewThreshold  = -1.047;  // -60°
-  static const double _sideViewThreshold = -0.349;  // -20°
+  /// Top-view:  pitch < -80° = -1.396 rad → phone is nearly flat / pointing straight down.
+  /// Side-view: pitch > -10° = -0.175 rad → phone is nearly vertical (upright).
+  static const double _topViewThreshold  = -1.396;  // -80° — truly horizontal
+  static const double _sideViewThreshold = -0.175;  // -10° — nearly vertical
 
   @override
   void initState() {
@@ -255,13 +255,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       DebugLog.instance.log('Scan', 'Recording start failed: $e — resetting');
       _hapticError();
       setState(() => _isRecording = false);
-      // Don't go to depthFailed; reset to waitingForTopView so the user
-      // can try again automatically when they re-aim.
       ref.read(scanStateProvider.notifier).reset();
       return;
     }
 
-    final totalTicks = _recordDuration.inMilliseconds ~/
+    // Recording stops automatically when the phone reaches vertical (side-view).
+    // The max-duration timer is a safety fallback only.
+    final totalTicks = _maxRecordDuration.inMilliseconds ~/
         _timerInterval.inMilliseconds;
     var tick = 0;
     _recordTimer = Timer.periodic(_timerInterval, (t) {
@@ -379,7 +379,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           ),
 
           // ── Guidance overlay ─────────────────────────────────────────
-          ScanGuidanceOverlay(scanState: scanState),
+          ScanGuidanceOverlay(scanState: scanState, currentPitch: _currentPitch),
 
           // ── Bottom action panel ─────────────────────────────────────
           Positioned(
@@ -542,8 +542,8 @@ class _BottomPanel extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(
                     children: [
-                      const Icon(Icons.restaurant,
-                          size: 14, color: AppTheme.green400),
+                      Icon(Icons.restaurant,
+                          size: 14, color: context.primary400),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -556,8 +556,8 @@ class _BottomPanel extends StatelessWidget {
                       ),
                       Text(
                         f.displayCalories,
-                        style: const TextStyle(
-                          color: AppTheme.green400,
+                        style: TextStyle(
+                          color: context.primary400,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -568,10 +568,10 @@ class _BottomPanel extends StatelessWidget {
             Text(
               'Total: ${scanResult.totalCaloriesMin.round()}–'
               '${scanResult.totalCaloriesMax.round()} kcal',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.green400,
+                color: context.primary400,
               ),
             ),
             const SizedBox(height: 16),
@@ -694,7 +694,7 @@ class _StateProgressRow extends StatelessWidget {
             Expanded(
               child: Container(
                 height: 2,
-                color: i <= active ? AppTheme.green400 : Colors.white12,
+                color: i <= active ? context.primary400 : Colors.white12,
               ),
             ),
           _StepDot(
@@ -728,9 +728,9 @@ class _StepDot extends StatelessWidget {
     if (isError) {
       color = AppTheme.red500;
     } else if (isCompleted) {
-      color = AppTheme.green400;
+      color = context.primary400;
     } else if (isActive) {
-      color = AppTheme.green500;
+      color = context.primary500;
     } else {
       color = Colors.white24;
     }
@@ -814,7 +814,7 @@ class _RecordButton extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isRecording
                         ? AppTheme.red500
-                        : (enabled ? AppTheme.green500 : AppTheme.green500.withValues(alpha: 0.3)),
+                        : (enabled ? context.primary500 : context.primary500.withValues(alpha: 0.3)),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -859,7 +859,7 @@ class _ScanButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppTheme.green500;
+    final c = color ?? context.primary500;
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -893,7 +893,7 @@ class _ProcessingIndicator extends StatelessWidget {
           height: 40,
           child: CircularProgressIndicator(
             strokeWidth: 3,
-            valueColor: AlwaysStoppedAnimation(AppTheme.green400),
+            valueColor: AlwaysStoppedAnimation(context.primary400),
           ),
         ),
         const SizedBox(height: 12),
@@ -973,13 +973,13 @@ class _OrientationIndicator extends StatelessWidget {
                   strokeWidth: 5,
                   backgroundColor: Colors.white12,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    isTopView ? AppTheme.green400 : AppTheme.amber500,
+                    isTopView ? context.primary400 : AppTheme.amber500,
                   ),
                 ),
               ),
               Icon(
                 isTopView ? Icons.check : Icons.phone_android,
-                color: isTopView ? AppTheme.green400 : Colors.white70,
+                color: isTopView ? context.primary400 : Colors.white70,
                 size: 36,
               ),
             ],
@@ -992,7 +992,7 @@ class _OrientationIndicator extends StatelessWidget {
               : 'Tilt phone down ($angleDeg°)',
           style: TextStyle(
             fontSize: 12,
-            color: isTopView ? AppTheme.green400 : AppTheme.amber500,
+            color: isTopView ? context.primary400 : AppTheme.amber500,
           ),
         ),
       ],

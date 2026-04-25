@@ -147,6 +147,47 @@ jobs:
             "$PBXPROJ"
           echo "Patched deployment target and signing settings."
 
+      # -- 6. Export and compile the CoreML model --------------------------
+      # The trained PyTorch checkpoint (best.pth) is in the repo.
+      # We export to ONNX → CoreML → compile to .mlmodelc and place it
+      # in the Runner bundle so Xcode includes it in the app.
+      - name: Export and compile CoreML model
+        run: |
+          pip3 install torch torchvision onnx coremltools numpy --quiet
+          python3 training/export_coreml.py \
+            --checkpoint training/output/best.pth \
+            --num_classes 104 \
+            --img_size 513 \
+            --output_dir training/output
+          xcrun coremlcompiler compile \
+            training/output/FoodSegmentation.mlpackage \
+            ios/Runner/
+          echo "FoodSegmentation.mlmodelc compiled and placed in ios/Runner/"
+          ls -la ios/Runner/FoodSegmentation.mlmodelc/
+
+      # -- 6b. Add mlmodelc to Xcode project resources ---------------------
+      - name: Add CoreML model to Xcode project
+        run: |
+          ruby - <<'RUBY'
+          require 'xcodeproj'
+
+          project = Xcodeproj::Project.open('ios/Runner.xcodeproj')
+          target  = project.targets.find { |t| t.name == 'Runner' }
+          runner_group = project.main_group.find_subpath('Runner', false)
+
+          model_name = 'FoodSegmentation.mlmodelc'
+          unless runner_group.files.any? { |f| f.display_name == model_name }
+            ref = runner_group.new_file(model_name)
+            target.resources_build_phase.add_file_reference(ref)
+            puts "  Added #{model_name} to Runner resources"
+          else
+            puts "  #{model_name} already in project"
+          end
+
+          project.save
+          puts 'Xcode project saved with CoreML model.'
+          RUBY
+
       # -- 7b. Generate app icons from assets/app_icon.png -----------------
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons

@@ -102,7 +102,7 @@ class _FoodDatabaseScreenState extends ConsumerState<FoodDatabaseScreen> {
                         child: ChoiceChip(
                           label: Text(cat == 'all' ? 'All' : cat),
                           selected: isActive,
-                          selectedColor: AppTheme.green200,
+                          selectedColor: context.primary200,
                           onSelected: (_) {
                             _selectedCategory = cat;
                             _applyFilter();
@@ -167,7 +167,7 @@ class _FoodTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            _categoryBadge(food.category),
+            _categoryBadge(context, food.category),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -196,10 +196,10 @@ class _FoodTile extends StatelessWidget {
               children: [
                 Text(
                   '${food.kcalPer100g.round()}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.green700,
+                    color: context.primary700,
                   ),
                 ),
                 const Text(
@@ -214,10 +214,10 @@ class _FoodTile extends StatelessWidget {
     );
   }
 
-  Widget _categoryBadge(String category) {
+  Widget _categoryBadge(BuildContext context, String category) {
     final (Color bg, Color fg, IconData icon) = switch (category) {
-      'fruit' => (AppTheme.green100, AppTheme.green700, Icons.apple),
-      'vegetable' => (AppTheme.green100, AppTheme.green600, Icons.grass),
+      'fruit' => (context.primary100, context.primary700, Icons.apple),
+      'vegetable' => (context.primary100, context.primary600, Icons.grass),
       'grain' => (AppTheme.amber100, AppTheme.amber700, Icons.grain),
       'protein' => (AppTheme.red100, AppTheme.red700, Icons.egg),
       'dairy' => (AppTheme.amber100, AppTheme.amber500, Icons.water_drop),
@@ -360,7 +360,7 @@ class _AddFoodScreenState extends State<_AddFoodScreen> {
               return ChoiceChip(
                 label: Text(cat),
                 selected: _category == cat,
-                selectedColor: AppTheme.green200,
+                selectedColor: context.primary200,
                 onSelected: (_) => setState(() => _category = cat),
               );
             }).toList(),

@@ -60,21 +60,21 @@ class _MainShellState extends ConsumerState<MainShell> {
         selectedIndex: _tabIndex,
         onDestinationSelected: (i) => setState(() => _tabIndex = i),
         backgroundColor: Colors.white,
-        indicatorColor: AppTheme.green100,
+        indicatorColor: context.primary100,
         destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home, color: AppTheme.green700),
+          NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home, color: context.primary700),
             label: 'Home',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart, color: AppTheme.green700),
+          NavigationDestination(
+            icon: const Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.bar_chart, color: context.primary700),
             label: 'Analytics',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.shopping_cart_outlined),
-            selectedIcon: Icon(Icons.shopping_cart, color: AppTheme.green700),
+          NavigationDestination(
+            icon: const Icon(Icons.shopping_cart_outlined),
+            selectedIcon: Icon(Icons.shopping_cart, color: context.primary700),
             label: 'Groceries',
           ),
           NavigationDestination(
@@ -86,13 +86,13 @@ class _MainShellState extends ConsumerState<MainShell> {
             selectedIcon: Badge(
               isLabelVisible: scanCount > 0,
               label: Text('$scanCount'),
-              child: const Icon(Icons.history, color: AppTheme.green700),
+              child: Icon(Icons.history, color: context.primary700),
             ),
             label: 'History',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings, color: AppTheme.green700),
+          NavigationDestination(
+            icon: const Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings, color: context.primary700),
             label: 'Settings',
           ),
         ],
@@ -104,14 +104,14 @@ class _MainShellState extends ConsumerState<MainShell> {
             heroTag: 'manual',
             onPressed: _openManualEntry,
             backgroundColor: Colors.white,
-            foregroundColor: AppTheme.green700,
+            foregroundColor: context.primary700,
             child: const Icon(Icons.edit_note),
           ),
           const SizedBox(height: 8),
           FloatingActionButton.extended(
             heroTag: 'scan',
             onPressed: _openScan,
-            backgroundColor: AppTheme.green600,
+            backgroundColor: context.primary600,
             foregroundColor: Colors.white,
             icon: const Icon(Icons.camera_alt),
             label: const Text('Scan'),

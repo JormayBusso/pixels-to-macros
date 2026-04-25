@@ -85,7 +85,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.green50,
+      backgroundColor: context.primary50,
       body: SafeArea(
         child: Column(
           children: [
@@ -100,7 +100,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     width: _page == i ? 24 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: _page == i ? AppTheme.green600 : AppTheme.green200,
+                      color: _page == i ? context.primary600 : context.primary200,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   );
@@ -161,19 +161,19 @@ class _WelcomePage extends StatelessWidget {
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: AppTheme.green100,
+              color: context.primary100,
               shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.green300, width: 3),
+              border: Border.all(color: context.primary400, width: 3),
             ),
-            child: const Icon(Icons.eco, size: 56, color: AppTheme.green600),
+            child: Icon(Icons.eco, size: 56, color: context.primary600),
           ),
           const SizedBox(height: 32),
-          const Text(
+          Text(
             'Pixels to Macros',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
-              color: AppTheme.green700,
+              color: context.primary700,
             ),
           ),
           const SizedBox(height: 12),
@@ -211,7 +211,7 @@ class _NamePage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.person_outline, size: 56, color: AppTheme.green500),
+          Icon(Icons.person_outline, size: 56, color: context.primary500),
           const SizedBox(height: 24),
           const Text(
             'What\'s your name?',

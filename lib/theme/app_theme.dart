@@ -144,3 +144,22 @@ class AppTheme {
     );
   }
 }
+
+/// Extension providing theme-aware color shades that follow the user's chosen
+/// color seed instead of hard-coded green.
+extension ThemeColors on BuildContext {
+  ColorScheme get _cs => Theme.of(this).colorScheme;
+
+  /// Lightest tint — backgrounds, subtle fills.
+  Color get primary50 => Color.alphaBlend(_cs.primary.withValues(alpha: 0.04), Colors.white);
+  Color get primary100 => Color.alphaBlend(_cs.primary.withValues(alpha: 0.08), Colors.white);
+  Color get primary200 => Color.alphaBlend(_cs.primary.withValues(alpha: 0.16), Colors.white);
+
+  /// Medium shades — icons, badges, active states.
+  Color get primary400 => Color.alphaBlend(_cs.primary.withValues(alpha: 0.55), Colors.white);
+  Color get primary500 => _cs.primary;
+
+  /// Darker shades — text, prominent UI.
+  Color get primary600 => Color.alphaBlend(Colors.black.withValues(alpha: 0.10), _cs.primary);
+  Color get primary700 => Color.alphaBlend(Colors.black.withValues(alpha: 0.20), _cs.primary);
+}

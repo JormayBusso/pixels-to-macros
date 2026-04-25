@@ -260,6 +260,30 @@ private final class BarcodeScanViewController: UIViewController,
             "protein":       doubleFrom(nutrients, "proteins_100g")       ?? 0.0,
             "carbs":         doubleFrom(nutrients, "carbohydrates_100g")  ?? 0.0,
             "fat":           doubleFrom(nutrients, "fat_100g")            ?? 0.0,
+            // Fiber
+            "fiber":         doubleFrom(nutrients, "fiber_100g")          ?? 0.0,
+            // Sugars
+            "sugars":        doubleFrom(nutrients, "sugars_100g")         ?? 0.0,
+            // Sodium / Salt
+            "sodium_mg":     (doubleFrom(nutrients, "sodium_100g") ?? 0.0) * 1000,
+            // Vitamins
+            "vitamin_a_ug":  doubleFrom(nutrients, "vitamin-a_100g")     ?? 0.0,
+            "vitamin_c_mg":  doubleFrom(nutrients, "vitamin-c_100g")     ?? 0.0,
+            "vitamin_d_ug":  doubleFrom(nutrients, "vitamin-d_100g")     ?? 0.0,
+            "vitamin_e_mg":  doubleFrom(nutrients, "vitamin-e_100g")     ?? 0.0,
+            "vitamin_k_ug":  doubleFrom(nutrients, "vitamin-k_100g")     ?? 0.0,
+            "vitamin_b12_ug": doubleFrom(nutrients, "vitamin-b12_100g")  ?? 0.0,
+            "folate_ug":     doubleFrom(nutrients, "vitamin-b9_100g")    ?? 0.0,
+            // Minerals
+            "calcium_mg":    doubleFrom(nutrients, "calcium_100g")       ?? 0.0,
+            "iron_mg":       doubleFrom(nutrients, "iron_100g")          ?? 0.0,
+            "magnesium_mg":  doubleFrom(nutrients, "magnesium_100g")     ?? 0.0,
+            "potassium_mg":  doubleFrom(nutrients, "potassium_100g")     ?? 0.0,
+            "zinc_mg":       doubleFrom(nutrients, "zinc_100g")          ?? 0.0,
+            // Saturated fat
+            "saturated_fat": doubleFrom(nutrients, "saturated-fat_100g") ?? 0.0,
+            // Cholesterol
+            "cholesterol_mg": doubleFrom(nutrients, "cholesterol_100g")  ?? 0.0,
         ]
 
         if let sqty = product["serving_quantity"] {

@@ -121,9 +121,9 @@ final class ARCameraPreviewView: NSObject, FlutterPlatformView {
     private func startDisplayLink() {
         stopDisplayLink()
         displayLink = CADisplayLink(target: self, selector: #selector(tick))
-        // 15 fps is plenty for a camera preview; keeps CPU/GPU usage low.
+        // 30 fps for a smooth camera preview.
         displayLink?.preferredFrameRateRange =
-            CAFrameRateRange(minimum: 12, maximum: 15, preferred: 15)
+            CAFrameRateRange(minimum: 24, maximum: 30, preferred: 30)
         displayLink?.add(to: .main, forMode: .common)
     }
 

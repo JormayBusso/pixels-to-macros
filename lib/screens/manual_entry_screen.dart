@@ -255,7 +255,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                         final food = _filtered[i];
                         final isSelected = _selected?.label == food.label;
                         return Card(
-                          color: isSelected ? AppTheme.green50 : null,
+                          color: isSelected ? context.primary50 : null,
                           child: ListTile(
                             leading: _categoryIcon(food.category),
                             title: Text(
@@ -274,8 +274,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                               ),
                             ),
                             trailing: isSelected
-                                ? const Icon(Icons.check_circle,
-                                    color: AppTheme.green600)
+                                ? Icon(Icons.check_circle,
+                                    color: context.primary600)
                                 : null,
                             onTap: () => _selectFood(food),
                           ),
@@ -291,7 +291,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         border: Border(
-                          top: BorderSide(color: AppTheme.green100),
+                          top: BorderSide(color: context.primary100),
                         ),
                       ),
                       child: Column(
@@ -311,10 +311,10 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                               if (calPreview != null)
                                 Text(
                                   '≈ ${calPreview.round()} kcal',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
-                                    color: AppTheme.green700,
+                                    color: context.primary700,
                                   ),
                                 ),
                             ],
@@ -412,16 +412,16 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
 
   Widget _categoryIcon(String category) {
     final (IconData icon, Color color) = switch (category) {
-      'fruit' => (Icons.apple, AppTheme.green600),
-      'vegetable' => (Icons.grass, AppTheme.green500),
+      'fruit' => (Icons.apple, context.primary600),
+      'vegetable' => (Icons.grass, context.primary500),
       'grain' => (Icons.grain, AppTheme.amber700),
       'protein' => (Icons.egg, AppTheme.red500),
       'dairy' => (Icons.water_drop, AppTheme.amber500),
       'mixed' => (Icons.restaurant, AppTheme.gray700),
-      'legume' => (Icons.eco, AppTheme.green700),
+      'legume' => (Icons.eco, context.primary700),
       'nut' => (Icons.filter_vintage, AppTheme.amber600),
       'snack' => (Icons.cookie, AppTheme.amber500),
-      'drink' => (Icons.local_drink, AppTheme.green400),
+      'drink' => (Icons.local_drink, context.primary400),
       _ => (Icons.circle, AppTheme.gray400),
     };
     return CircleAvatar(
@@ -497,7 +497,7 @@ class _ServingPicker extends StatelessWidget {
                 ),
                 selected: i == selectedSizeIndex,
                 onSelected: (_) => onSizeChanged(i),
-                selectedColor: AppTheme.green200,
+                selectedColor: context.primary200,
               ),
           ],
         ),
@@ -526,7 +526,7 @@ class _PortionChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: active ? AppTheme.green200 : AppTheme.gray100,
+          color: active ? context.primary200 : AppTheme.gray100,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
@@ -534,7 +534,7 @@ class _PortionChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: active ? AppTheme.green700 : AppTheme.gray700,
+            color: active ? context.primary700 : AppTheme.gray700,
           ),
         ),
       ),

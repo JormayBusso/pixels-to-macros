@@ -115,7 +115,7 @@ class _GroundTruthScreenState extends State<GroundTruthScreen> {
         children: [
           // ── Predicted values (read-only) ──────────────────────────────
           Card(
-            color: AppTheme.green50,
+            color: context.primary50,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -123,15 +123,15 @@ class _GroundTruthScreenState extends State<GroundTruthScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.auto_awesome,
-                          size: 18, color: AppTheme.green600),
+                      Icon(Icons.auto_awesome,
+                          size: 18, color: context.primary600),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Model Prediction',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.green700,
+                          color: context.primary700,
                         ),
                       ),
                     ],

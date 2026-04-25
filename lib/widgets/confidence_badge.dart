@@ -27,9 +27,9 @@ class ConfidenceBadge extends StatelessWidget {
     return (100 * (1 - spread).clamp(0.0, 1.0)).round();
   }
 
-  Color get _color {
-    if (score >= 80) return AppTheme.green600;
-    if (score >= 60) return AppTheme.green400;
+  Color _color(BuildContext context) {
+    if (score >= 80) return context.primary600;
+    if (score >= 60) return context.primary400;
     if (score >= 40) return AppTheme.amber500;
     return AppTheme.red500;
   }
@@ -50,24 +50,25 @@ class ConfidenceBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = _color(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: _color.withValues(alpha: 0.10),
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_icon, size: 18, color: _color),
+          Icon(_icon, size: 18, color: color),
           const SizedBox(width: 6),
           Text(
             '$_label confidence ($score%)',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: _color,
+              color: color,
             ),
           ),
         ],

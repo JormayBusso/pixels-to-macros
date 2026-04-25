@@ -63,7 +63,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppTheme.green600,
+                  color: context.primary600,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 padding: const EdgeInsets.all(6),
@@ -75,11 +75,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       body: _initialLoading
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: AppTheme.green500),
+                  CircularProgressIndicator(color: context.primary500),
                   SizedBox(height: 16),
                   Text(
                     'Loading your data…',
@@ -142,11 +142,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: AppTheme.green50,
+                            color: context.primary50,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(Icons.restaurant_menu,
-                              color: AppTheme.green300, size: 20),
+                          child: Icon(Icons.restaurant_menu,
+                              color: context.primary400, size: 20),
                         ),
                         const SizedBox(width: 12),
                         const Expanded(
@@ -174,8 +174,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
                             children: [
-                              const Icon(Icons.restaurant,
-                                  size: 16, color: AppTheme.green500),
+                              Icon(Icons.restaurant,
+                                  size: 16, color: context.primary500),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
@@ -188,10 +188,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                               Text(
                                 '${avg.round()} kcal',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: AppTheme.green700,
+                                  color: context.primary700,
                                 ),
                               ),
                             ],
@@ -252,11 +252,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: AppTheme.green100,
+                              color: context.primary100,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.fastfood,
-                                color: AppTheme.green600, size: 20),
+                            child: Icon(Icons.fastfood,
+                                color: context.primary600, size: 20),
                           ),
                         ),
                         title: Text(
@@ -272,9 +272,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         trailing: Text(
                           '${avg.round()} kcal',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            color: AppTheme.green700,
+                            color: context.primary700,
                           ),
                         ),
                       ),
@@ -390,10 +390,10 @@ class _CalorieRingCardState extends State<_CalorieRingCard>
                       child: CircularProgressIndicator(
                         value: _progress.value,
                         strokeWidth: 10,
-                        backgroundColor: AppTheme.green100,
+                        backgroundColor: context.primary100,
                         color: widget.consumed > widget.goal
                             ? AppTheme.amber500
-                            : AppTheme.green500,
+                            : context.primary500,
                         strokeCap: StrokeCap.round,
                       ),
                     ),
@@ -439,7 +439,7 @@ class _CalorieRingCardState extends State<_CalorieRingCard>
                     value: '${remaining.round()} kcal',
                     color: widget.consumed > widget.goal
                         ? AppTheme.amber700
-                        : AppTheme.green700,
+                        : context.primary700,
                   ),
                   const SizedBox(height: 8),
                   _StatRow(
@@ -565,10 +565,10 @@ class _StreakCard extends StatelessWidget {
               children: [
                 Text(
                   '${streak.longestStreak}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.green700,
+                    color: context.primary700,
                   ),
                 ),
                 const Text(

@@ -105,10 +105,10 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
                 children: [
                   Text(
                     '≈ ${avg.round()} kcal',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.green700,
+                      color: context.primary700,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -152,7 +152,7 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.green200),
+                border: Border.all(color: context.primary200),
               ),
               child: ListView.builder(
                 shrinkWrap: true,

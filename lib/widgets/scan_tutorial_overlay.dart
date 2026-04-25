@@ -88,7 +88,7 @@ class _ScanTutorialOverlayState extends State<ScanTutorialOverlay> {
                   width: _page == i ? 24 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: _page == i ? AppTheme.green400 : Colors.white24,
+                    color: _page == i ? context.primary400 : Colors.white24,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -156,12 +156,12 @@ class _TipPage extends StatelessWidget {
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: AppTheme.green600.withValues(alpha: 0.15),
+              color: context.primary600.withValues(alpha: 0.15),
               shape: BoxShape.circle,
               border: Border.all(
-                  color: AppTheme.green400.withValues(alpha: 0.4), width: 2),
+                  color: context.primary400.withValues(alpha: 0.4), width: 2),
             ),
-            child: Icon(tip.icon, size: 48, color: AppTheme.green400),
+            child: Icon(tip.icon, size: 48, color: context.primary400),
           ),
           const SizedBox(height: 24),
           Text(

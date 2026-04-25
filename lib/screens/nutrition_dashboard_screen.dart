@@ -42,7 +42,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       _NutrientRow(
-                        emoji: '🔥',
+                        icon: const Text('🔥', style: TextStyle(fontSize: 16)),
                         name: 'Calories',
                         current: intake.caloriesAvg,
                         drv: prefs.dailyCalorieGoal.toDouble(),
@@ -50,7 +50,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '💪',
+                        icon: const Text('💪', style: TextStyle(fontSize: 16)),
                         name: 'Protein',
                         current: intake.proteinG,
                         drv: prefs.dailyProteinTargetG.toDouble(),
@@ -58,7 +58,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '🍞',
+                        icon: const Text('🍞', style: TextStyle(fontSize: 16)),
                         name: 'Carbohydrates',
                         current: intake.carbsG,
                         drv: prefs.dailyCarbLimitG.toDouble(),
@@ -67,7 +67,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '🥑',
+                        icon: const Text('🥑', style: TextStyle(fontSize: 16)),
                         name: 'Fat',
                         current: intake.fatG,
                         drv: prefs.dailyFatTargetG.toDouble(),
@@ -75,7 +75,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '🌾',
+                        icon: const Text('🌾', style: TextStyle(fontSize: 16)),
                         name: 'Dietary Fiber',
                         current: intake.nutrientTotals.fiberG,
                         drv: NutrientDRV.fiberG,
@@ -93,7 +93,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       _NutrientRow(
-                        emoji: '🟠',
+                        icon: _ElementIcon('A', const Color(0xFFFF8C00)),
                         name: 'Vitamin A',
                         current: intake.nutrientTotals.vitaminAUg,
                         drv: NutrientDRV.vitaminAUg,
@@ -101,7 +101,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '🍋',
+                        icon: _ElementIcon('C', const Color(0xFFFFA500)),
                         name: 'Vitamin C',
                         current: intake.nutrientTotals.vitaminCMg,
                         drv: NutrientDRV.vitaminCMg,
@@ -109,7 +109,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '☀️',
+                        icon: const Text('☀️', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin D',
                         current: intake.nutrientTotals.vitaminDUg,
                         drv: NutrientDRV.vitaminDUg,
@@ -117,7 +117,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '🌻',
+                        icon: _ElementIcon('E', const Color(0xFF4CAF50)),
                         name: 'Vitamin E',
                         current: intake.nutrientTotals.vitaminEMg,
                         drv: NutrientDRV.vitaminEMg,
@@ -125,7 +125,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '🥦',
+                        icon: _ElementIcon('K', const Color(0xFF2E7D32)),
                         name: 'Vitamin K',
                         current: intake.nutrientTotals.vitaminKUg,
                         drv: NutrientDRV.vitaminKUg,
@@ -133,7 +133,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '🫘',
+                        icon: _ElementIcon('B9', const Color(0xFF795548)),
                         name: 'Folate (B9)',
                         current: intake.nutrientTotals.folateMcg,
                         drv: NutrientDRV.folateMcg,
@@ -141,7 +141,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '🥩',
+                        icon: _ElementIcon('B12', const Color(0xFFD32F2F)),
                         name: 'Vitamin B12',
                         current: intake.nutrientTotals.b12Mcg,
                         drv: NutrientDRV.b12Mcg,
@@ -159,7 +159,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       _NutrientRow(
-                        emoji: '🦷',
+                        icon: _ElementIcon('Ca', const Color(0xFF90CAF9)),
                         name: 'Calcium',
                         current: intake.nutrientTotals.calciumMg,
                         drv: NutrientDRV.calciumMg,
@@ -167,7 +167,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '🩸',
+                        icon: _ElementIcon('Fe', const Color(0xFFB71C1C)),
                         name: 'Iron',
                         current: intake.nutrientTotals.ironMg,
                         drv: NutrientDRV.ironMg,
@@ -175,7 +175,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '⚡',
+                        icon: _ElementIcon('Mg', const Color(0xFF7B1FA2)),
                         name: 'Magnesium',
                         current: intake.nutrientTotals.magnesiumMg,
                         drv: NutrientDRV.magnesiumMg,
@@ -183,7 +183,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '🫀',
+                        icon: _ElementIcon('K', const Color(0xFFE65100)),
                         name: 'Potassium',
                         current: intake.nutrientTotals.potassiumMg,
                         drv: NutrientDRV.potassiumMg,
@@ -191,7 +191,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '🧂',
+                        icon: _ElementIcon('Na', const Color(0xFF546E7A)),
                         name: 'Sodium',
                         current: intake.nutrientTotals.sodiumMg,
                         drv: NutrientDRV.sodiumMaxMg,
@@ -200,7 +200,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        emoji: '🔩',
+                        icon: _ElementIcon('Zn', const Color(0xFF607D8B)),
                         name: 'Zinc',
                         current: intake.nutrientTotals.zincMg,
                         drv: NutrientDRV.zincMg,
@@ -250,7 +250,7 @@ class _SummaryCard extends StatelessWidget {
     final pctColor = pct > 110
         ? AppTheme.red500
         : pct >= 80
-            ? AppTheme.green600
+            ? context.primary600
             : AppTheme.amber500;
 
     return Card(
@@ -344,7 +344,7 @@ class _Divider extends StatelessWidget {
 
 class _NutrientRow extends StatelessWidget {
   const _NutrientRow({
-    required this.emoji,
+    required this.icon,
     required this.name,
     required this.current,
     required this.drv,
@@ -352,22 +352,22 @@ class _NutrientRow extends StatelessWidget {
     this.isLimit = false,
   });
 
-  final String emoji;
+  final Widget icon;
   final String name;
   final double current;
   final double drv;
   final String unit;
   final bool isLimit;
 
-  Color _barColor(double pct) {
+  Color _barColor(double pct, BuildContext context) {
     if (isLimit) {
       if (pct > 1.0) return AppTheme.red500;
       if (pct > 0.7) return AppTheme.amber600;
-      return AppTheme.green500;
+      return context.primary500;
     }
     if (pct < 0.30) return AppTheme.red500;
     if (pct < 0.70) return AppTheme.amber600;
-    return AppTheme.green500;
+    return context.primary500;
   }
 
   String _fmt(double v) {
@@ -380,7 +380,7 @@ class _NutrientRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct = drv > 0 ? (current / drv).clamp(0.0, 1.5) : 0.0;
     final displayPct = (pct * 100).round().clamp(0, 999);
-    final barColor = _barColor(pct);
+    final barColor = _barColor(pct, context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -389,7 +389,7 @@ class _NutrientRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 16)),
+              SizedBox(width: 24, height: 24, child: Center(child: icon)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -431,6 +431,37 @@ class _NutrientRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Element symbol icon (periodic-table style) ────────────────────────────────
+
+class _ElementIcon extends StatelessWidget {
+  const _ElementIcon(this.symbol, this.color);
+  final String symbol;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        symbol,
+        style: TextStyle(
+          fontSize: symbol.length > 2 ? 8 : 10,
+          fontWeight: FontWeight.w800,
+          color: color,
+          height: 1,
+        ),
       ),
     );
   }

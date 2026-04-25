@@ -6,9 +6,7 @@ import '../models/nutrition_goal.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
-import '../theme/app_theme.dart';
-import '../widgets/goal_mascot_widget.dart';
-import 'debug_screen.dart';
+import '../theme/app_theme.dart';\nimport '../widgets/goal_mascot_widget.dart';
 import 'eval_dashboard_screen.dart';
 import 'food_database_screen.dart';
 
@@ -23,6 +21,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _nameCtrl;
   late TextEditingController _goalCtrl;
+  late TextEditingController _passwordCtrl;
+  bool _obscurePassword = true;
   int _foodCount = 0;
 
   @override
@@ -31,6 +31,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final prefs = ref.read(userPrefsProvider);
     _nameCtrl = TextEditingController(text: prefs.name);
     _goalCtrl = TextEditingController(text: prefs.dailyCalorieGoal.toString());
+    _passwordCtrl = TextEditingController();
     _loadFoodCount();
   }
 
@@ -43,6 +44,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _goalCtrl.dispose();
+    _passwordCtrl.dispose();
     super.dispose();
   }
 
@@ -90,8 +92,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
           ),
         ),
-        body: SafeArea(
-          child: TabBarView(
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SafeArea(
+            child: TabBarView(
             children: [
               // ── Account tab ──────────────────────────────────────────
               _buildAccountTab(),
@@ -103,6 +107,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _buildEvaluationTab(),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -130,9 +135,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 TextField(
                   controller: _goalCtrl,
                   keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
+                  onEditingComplete: () => FocusScope.of(context).unfocus(),
                   decoration: const InputDecoration(
                     labelText: 'Daily calorie goal (kcal)',
                     prefixIcon: Icon(Icons.flag_outlined),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passwordCtrl,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility),
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -146,25 +170,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 24),
-
-        _SectionHeader('Quick Goal Presets'),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [1500, 1800, 2000, 2200, 2500, 3000].map((goal) {
-            final isActive = _goalCtrl.text == goal.toString();
-            return ChoiceChip(
-              label: Text('$goal'),
-              selected: isActive,
-              selectedColor: AppTheme.green200,
-              onSelected: (_) {
-                setState(() => _goalCtrl.text = goal.toString());
-              },
-            );
-          }).toList(),
         ),
         const SizedBox(height: 24),
 
@@ -289,13 +294,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
                   'Pixels to Macros',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.green700,
+                    color: context.primary700,
                   ),
                 ),
                 SizedBox(height: 4),
@@ -348,19 +353,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.bug_report),
-                    label: const Text('Debug Log'),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const DebugScreen(),
-                      ),
-                    ),
-                  ),
-                ),
+
               ],
             ),
           ),
@@ -401,7 +394,7 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: AppTheme.green500),
+        Icon(icon, size: 18, color: context.primary500),
         const SizedBox(width: 10),
         Expanded(
           child: Text(label,
