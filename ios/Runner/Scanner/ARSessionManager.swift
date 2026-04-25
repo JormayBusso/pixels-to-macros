@@ -37,9 +37,15 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
             return
         }
 
-        let session = ARSession()
-        session.delegate = self
-        self.session = session
+        // Pause and release the current session before creating a new one.
+        // This makes any delayed stop() calls that arrive later see nil and
+        // become no-ops, preventing them from killing the brand-new session.
+        session?.pause()
+        session = nil
+
+        let newSession = ARSession()
+        newSession.delegate = self
+        self.session = newSession
 
         let config = ARWorldTrackingConfiguration()
 
@@ -74,10 +80,10 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
         // forcing a 640-wide format conflicts with sceneDepth and causes silent
         // session failures on LiDAR and TrueDepth devices.
 
-        session.run(config, options: [.resetTracking, .removeExistingAnchors])
+        newSession.run(config, options: [.resetTracking, .removeExistingAnchors])
 
         // Notify any camera preview platform views that the session is live
-        NotificationCenter.default.post(name: .arSessionDidStart, object: session)
+        NotificationCenter.default.post(name: .arSessionDidStart, object: newSession)
 
         // ARKit doesn't have a synchronous "ready" callback — treat run() as
         // success; any hardware failure will surface via didFailWithError.

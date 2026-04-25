@@ -58,6 +58,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   @override
   void initState() {
     super.initState();
+    // Reset any stale state from a previous scan session (the provider is
+    // NOT autoDispose so depthFailed / modelFailed from earlier persists).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(scanStateProvider.notifier).reset();
+    });
     _checkTutorial();
     _startSession();
   }
@@ -75,6 +80,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   Future<void> _startSession() async {
+    // Stop any previous session NOW, before the 500 ms permission delay.
+    // This ensures both (a) any pending dispose()-stopSession and (b) our
+    // explicit stop are queued BEFORE startSession on the method channel,
+    // preventing the old stop() from racing with the new session.
+    try { await _bridge.stopSession(); } catch (_) {}
+
     try {
       // Request camera permission before starting ARKit
       final status = await Permission.camera.request();
@@ -330,13 +341,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _hapticLight();
     _recordTimer?.cancel();
     _recordTimer    = null;
+    _pitchTimer?.cancel();   // cancel polling so _startSession creates a fresh one
+    _pitchTimer     = null;
     _isRecording    = false;
     _recordProgress = 0.0;
+    _sessionStarted = false;
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();
-    // Always restart the native session on retry — whether or not it was
-    // previously started, so a failed session gets a fresh attempt.
-    _sessionStarted = false;
     _startSession();
   }
 

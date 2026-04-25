@@ -61,7 +61,7 @@ extension ScanStateLabel on ScanState {
       case ScanState.captureSide:
         return 'Capturing side view…';
       case ScanState.depthFailed:
-        return 'Depth capture failed — try again';
+        return 'Camera session failed — tap \'Try again\'';
       case ScanState.modelFailed:
         return 'Model error — please restart';
       case ScanState.plateNotDetected:

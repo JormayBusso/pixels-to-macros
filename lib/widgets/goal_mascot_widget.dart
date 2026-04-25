@@ -203,7 +203,11 @@ class _ImageMascot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = _stage;
-    final bgColor = stages.bgColors[s];
+    // All mascots share the same light-green circle background so the UI is
+    // visually consistent regardless of mascot type or progress stage.
+    const bgColor = Color(0xFFDCFCE7); // green-100
+    const borderActiveColor = Color(0xFF4ADE80); // green-400
+    const borderIdleColor   = Color(0xFFBBF7D0); // green-200
     final isBest = s == 3;
 
     final col = Column(
@@ -214,32 +218,36 @@ class _ImageMascot extends StatelessWidget {
           curve: Curves.easeInOut,
           width: 120,
           height: 120,
+          // clipBehavior ensures the image never bleeds outside the circle.
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: bgColor,
             shape: BoxShape.circle,
             border: Border.all(
-              color: bgColor.withValues(alpha: 0.8),
+              color: isBest ? borderActiveColor : borderIdleColor,
               width: isBest ? 3 : 1.5,
             ),
             boxShadow: isBest
                 ? [
                     BoxShadow(
-                      color: bgColor.withValues(alpha: 0.6),
+                      color: borderActiveColor.withValues(alpha: 0.5),
                       blurRadius: 16,
                       spreadRadius: 4,
                     )
                   ]
                 : [],
           ),
-          child: ClipOval(
+          // Padding gives a consistent inset so every mascot image is
+          // comfortably inside the circle with no clipping at the edges.
+          child: Padding(
+            padding: const EdgeInsets.all(10),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 500),
               child: Image.asset(
                 stages.imagePaths[s],
                 key: ValueKey(s),
                 fit: BoxFit.contain,
-                width: 100,
-                height: 100,
+                alignment: Alignment.center,
                 errorBuilder: (_, __, ___) => const Center(
                   child: Text('🍽️', style: TextStyle(fontSize: 40)),
                 ),
