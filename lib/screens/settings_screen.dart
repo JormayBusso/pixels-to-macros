@@ -6,7 +6,8 @@ import '../models/nutrition_goal.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
-import '../theme/app_theme.dart';\nimport '../widgets/goal_mascot_widget.dart';
+import '../theme/app_theme.dart';
+import '../widgets/goal_mascot_widget.dart';
 import 'eval_dashboard_screen.dart';
 import 'food_database_screen.dart';
 
