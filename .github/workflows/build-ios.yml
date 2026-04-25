@@ -153,8 +153,10 @@ jobs:
       # in the Runner bundle so Xcode includes it in the app.
       - name: Export and compile CoreML model
         run: |
-          pip3 install torch torchvision onnx coremltools numpy --quiet
-          python3 training/export_coreml.py \
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install torch torchvision onnx coremltools numpy --quiet
+          python training/export_coreml.py \
             --checkpoint training/output/best.pth \
             --num_classes 104 \
             --img_size 513 \
