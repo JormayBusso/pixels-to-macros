@@ -61,6 +61,12 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string processing" "$PLIST" || true
           # Minimum OS version
           /usr/libexec/PlistBuddy -c "Set :MinimumOSVersion 17.0" "$PLIST" || true
+          # Allow HTTPS to OpenFoodFacts for barcode nutrition lookup
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSExceptionDomains dict" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSExceptionDomains:world.openfoodfacts.org dict" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSExceptionDomains:world.openfoodfacts.org:NSExceptionAllowsInsecureHTTPLoads bool false" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSExceptionDomains:world.openfoodfacts.org:NSIncludesSubdomains bool true" "$PLIST" || true
           echo "Info.plist keys merged."
 
       # -- 5. Add Scanner Swift files to the Xcode project -----------------
