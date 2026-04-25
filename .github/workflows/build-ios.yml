@@ -44,6 +44,16 @@ jobs:
             --project-name pixels_to_macros \
             .
 
+      # -- 4a. Restore our custom AppDelegate ---------------------------------
+      # flutter create sometimes overwrites ios/Runner/AppDelegate.swift with
+      # the default Flutter stub (no ScannerPlugin registration).
+      # Force-restore the committed version so the plugin channel is always set up.
+      - name: Restore custom AppDelegate.swift
+        run: |
+          git checkout -- ios/Runner/AppDelegate.swift
+          echo "AppDelegate.swift restored from git:"
+          head -5 ios/Runner/AppDelegate.swift
+
       # -- 4b. Merge Info-additions.plist into generated Info.plist --------
       - name: Merge Info.plist additions
         run: |
@@ -69,9 +79,10 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSExceptionDomains:world.openfoodfacts.org:NSIncludesSubdomains bool true" "$PLIST" || true
           echo "Info.plist keys merged."
 
-      # -- 5. Add Scanner Swift files to the Xcode project -----------------
+      # -- 5. Add Scanner Swift files + AppDelegate to the Xcode project ----
       # flutter create generates a fresh project.pbxproj that doesn't know
-      # about ios/Runner/Scanner/*.swift. Use the xcodeproj gem to inject them.
+      # about ios/Runner/Scanner/*.swift or our custom AppDelegate.
+      # The xcodeproj gem injects all of them into the Runner target.
       - name: Add Scanner sources to Xcode project
         run: |
           gem install xcodeproj --no-document --quiet
@@ -82,21 +93,43 @@ jobs:
           target  = project.targets.find { |t| t.name == 'Runner' }
           runner_group = project.main_group.find_subpath('Runner', false)
 
-          # Create (or reuse) a Scanner group
+          raise "Could not find Runner group in project" unless runner_group
+
+          # ── Add AppDelegate.swift if not already in the project ───────────
+          # flutter create may have added a stub AppDelegate; replace its ref
+          # with ours.  We match by display name and overwrite the source tree.
+          app_delegate_name = 'AppDelegate.swift'
+          unless runner_group.files.any? { |f| f.display_name == app_delegate_name }
+            ref = runner_group.new_file(app_delegate_name)
+            target.source_build_phase.add_file_reference(ref)
+            puts "  Added #{app_delegate_name} to Runner group"
+          else
+            puts "  #{app_delegate_name} already in project — skipping"
+          end
+
+          # ── Add Scanner/*.swift ───────────────────────────────────────────
           scanner_group = runner_group['Scanner'] ||
                           runner_group.new_group('Scanner', 'Scanner')
 
           Dir.glob('ios/Runner/Scanner/*.swift').sort.each do |path|
             filename = File.basename(path)
-            next if scanner_group.files.any? { |f| f.display_name == filename }
-
+            if scanner_group.files.any? { |f| f.display_name == filename }
+              puts "  #{filename} already in project — skipping"
+              next
+            end
             file_ref = scanner_group.new_file(filename)
             target.source_build_phase.add_file_reference(file_ref)
-            puts "  Added #{filename}"
+            puts "  Added Scanner/#{filename}"
           end
 
           project.save
           puts 'Xcode project saved.'
+
+          # Print compile sources for verification
+          puts "\nCompile sources in Runner target:"
+          target.source_build_phase.files_references.each do |f|
+            puts "  #{f.display_name}"
+          end
           RUBY
 
       # -- 7. Patch pbxproj: deployment target + disable code-signing ------
