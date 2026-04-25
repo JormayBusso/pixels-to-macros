@@ -37,9 +37,22 @@ def export_onnx(
     output: Path,
 ) -> Path:
     """Export PyTorch checkpoint → ONNX."""
-    model = get_model(num_classes, pretrained=False)
     state = torch.load(checkpoint, map_location="cpu", weights_only=True)
-    model.load_state_dict(state)
+
+    # Auto-detect num_classes from the saved classifier head so the model
+    # shape always matches the checkpoint, regardless of the --num_classes flag.
+    detected = state["classifier.4.weight"].shape[0]
+    if detected != num_classes:
+        print(f"[export] Checkpoint has {detected} classes; "
+              f"overriding --num_classes {num_classes} → {detected}")
+        num_classes = detected
+
+    model = get_model(num_classes, pretrained=False)
+    # strict=False: aux_classifier keys in the checkpoint are silently skipped
+    # when the export model is built without aux_loss (inference-only).
+    missing, unexpected = model.load_state_dict(state, strict=False)
+    if unexpected:
+        print(f"[export] Ignored unexpected keys: {unexpected}")
     model.eval()
 
     dummy = torch.randn(1, 3, img_size, img_size)
