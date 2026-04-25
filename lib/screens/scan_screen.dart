@@ -265,6 +265,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         _timerInterval.inMilliseconds;
     var tick = 0;
     _recordTimer = Timer.periodic(_timerInterval, (t) {
+      if (!mounted) { t.cancel(); return; }
       tick++;
       setState(() => _recordProgress = tick / totalTicks);
       if (tick >= totalTicks) {
@@ -284,18 +285,33 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     });
     _hapticHeavy();
     PerfMonitor.instance.end();
-    await _bridge.stopRecording();
+    try {
+      await _bridge.stopRecording();
+    } catch (e) {
+      DebugLog.instance.log('Scan', 'stopRecording error: $e');
+    }
+    if (!mounted) return;
     await _runVideoInference();
   }
 
   Future<void> _runVideoInference() async {
+    if (!mounted) return;
     DebugLog.instance.log('Scan', 'Running video inference pipeline');
     ref.read(scanStateProvider.notifier).recordingStopped();
     PerfMonitor.instance.start('inference');
-    await ref.read(scanResultProvider.notifier).runVideoScan();
+    try {
+      await ref.read(scanResultProvider.notifier).runVideoScan();
+    } catch (e) {
+      DebugLog.instance.log('Scan', 'runVideoScan threw: $e');
+    }
+    if (!mounted) return;
     PerfMonitor.instance.end();
     final result = ref.read(scanResultProvider);
-    if (result.error != null) {
+    if (result.noFood) {
+      // Friendly "no food" state — different from a hard model error.
+      _hapticError();
+      ref.read(scanStateProvider.notifier).plateNotDetected();
+    } else if (result.error != null) {
       DebugLog.instance.log('Scan', 'Inference error: ${result.error}');
       _hapticError();
       ref.read(scanStateProvider.notifier).modelFailed();
@@ -397,6 +413,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               recordProgress: _recordProgress,
               currentPitch: _currentPitch,
               onStartRecord: _startRecording,
+              onStopRecord: _stopRecording,
               onRetry: _retry,
               onClose: () => Navigator.of(context).pop(),
               onViewDetails: _savedScanResult != null
@@ -445,6 +462,7 @@ class _BottomPanel extends StatelessWidget {
     required this.recordProgress,
     required this.currentPitch,
     required this.onStartRecord,
+    required this.onStopRecord,
     required this.onRetry,
     required this.onClose,
     this.onViewDetails,
@@ -460,6 +478,7 @@ class _BottomPanel extends StatelessWidget {
   final double recordProgress;
   final double currentPitch;
   final VoidCallback onStartRecord;
+  final VoidCallback onStopRecord;
   final VoidCallback onRetry;
   final VoidCallback onClose;
   final VoidCallback? onViewDetails;
@@ -503,7 +522,7 @@ class _BottomPanel extends StatelessWidget {
               enabled: true,
               isRecording: true,
               progress: recordProgress,
-              onPressed: () {},   // auto-stops; button is visual only
+              onPressed: onStopRecord,
             ),
 
           // ── Processing ────────────────────────────────────────────

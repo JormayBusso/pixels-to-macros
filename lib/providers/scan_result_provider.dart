@@ -10,22 +10,26 @@ import '../services/native_bridge.dart';
 class ScanResultState {
   final bool loading;
   final String? error;
+  final bool noFood;   // true when inference ran but found no food items
   final List<DetectedFood> foods;
 
   const ScanResultState({
     this.loading = false,
     this.error,
+    this.noFood = false,
     this.foods = const [],
   });
 
   ScanResultState copyWith({
     bool? loading,
     String? error,
+    bool? noFood,
     List<DetectedFood>? foods,
   }) {
     return ScanResultState(
       loading: loading ?? this.loading,
       error: error,
+      noFood: noFood ?? this.noFood,
       foods: foods ?? this.foods,
     );
   }
@@ -135,7 +139,8 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
 
       if (rawVolumes.isEmpty) {
         state = const ScanResultState(
-          error: 'No food detected — try again with a clearer sweep.',
+          noFood: true,
+          error: 'No food detected. Point the camera directly at a plate of food and record the full sweep.',
         );
         return;
       }

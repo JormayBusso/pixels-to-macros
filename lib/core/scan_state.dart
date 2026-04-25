@@ -63,9 +63,9 @@ extension ScanStateLabel on ScanState {
       case ScanState.depthFailed:
         return 'Camera session failed — tap \'Try again\'';
       case ScanState.modelFailed:
-        return 'Model error — please restart';
+        return 'Analysis error — tap Retry to try again';
       case ScanState.plateNotDetected:
-        return 'Plate not found — reposition';
+        return 'No food detected — make sure food fills the frame, then try again';
     }
   }
 
