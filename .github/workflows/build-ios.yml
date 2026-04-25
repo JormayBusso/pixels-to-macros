@@ -50,6 +50,8 @@ jobs:
           PLIST="ios/Runner/Info.plist"
           # Camera permission
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Pixels to Macros uses the camera to scan your plate and estimate food calories.'" "$PLIST" || true
+          # Photo library (required by image_picker for gallery fallback)
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Pixels to Macros can read photos to help build your grocery list.'" "$PLIST" || true
           # ARKit + arm64 capabilities
           /usr/libexec/PlistBuddy -c "Add :UIRequiredDeviceCapabilities array" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :UIRequiredDeviceCapabilities:0 string arkit" "$PLIST" || true
