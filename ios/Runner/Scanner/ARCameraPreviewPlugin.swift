@@ -136,7 +136,10 @@ final class ARCameraPreviewView: NSObject, FlutterPlatformView {
 
     @objc private func tick() {
         autoreleasepool {
-            guard let pixelBuffer = sessionManager?.latestFrame?.capturedImage
+            // Hold a strong reference for the duration of this tick so
+            // the manager can't be deallocated mid-access.
+            guard let manager = sessionManager,
+                  let pixelBuffer = manager.latestFrame?.capturedImage
             else { return }
 
             // Build a CMVideoFormatDescription for this pixel buffer.

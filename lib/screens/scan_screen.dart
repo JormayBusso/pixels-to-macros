@@ -85,47 +85,37 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     setState(() => _showTutorial = false);
   }
 
+  String? _sessionErrorDetail;       // actual error text for UI
+
   Future<void> _startSession() async {
-    // Stop any previous session NOW, using the generation counter so only
-    // the correct session is stopped (prevents race with stale dispose stops).
+    // Stop any previous session, using the generation counter so only
+    // the correct session is stopped.
     try { await _bridge.stopSession(generation: _sessionGeneration); } catch (_) {}
 
     try {
-      // Request camera permission before starting ARKit
+      // ── 1. Dart-side camera permission (belt) ─────────────────────────
+      // The native side ALSO checks AVCaptureDevice.authorizationStatus
+      // (suspenders), but calling permission_handler first ensures the
+      // Flutter permission dialogue shows if needed.
       final status = await Permission.camera.request();
       if (!status.isGranted) {
         DebugLog.instance.log('Scan', 'Camera permission denied: $status');
-        if (mounted) {
-          _showCameraPermissionDialog();
-        }
+        if (mounted) _showCameraPermissionDialog();
         return;
       }
 
-      // Brief pause so iOS camera hardware is available after the permission
-      // grant dialog dismisses (known ARKit timing requirement on iOS 17+).
-      await Future.delayed(const Duration(milliseconds: 500));
-
       DebugLog.instance.log('Scan', 'Starting AR session');
 
-      // The native side now verifies frame production and automatically
-      // falls back through 3 config levels before returning an error.
-      // Retry up to 3 times on the Dart side as well.
-      const maxRetries = 3;
-      for (var attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-          _sessionGeneration = await _bridge.startSession();
-          break; // success
-        } catch (e) {
-          DebugLog.instance.log('Scan',
-              'AR start attempt ${attempt + 1}/$maxRetries failed: $e');
-          if (attempt == maxRetries - 1) rethrow;
-          await Future.delayed(
-            Duration(milliseconds: 500 * (attempt + 1)),
-          );
-        }
-      }
+      // ── 2. Start session (single call — native handles retries) ───────
+      // The native side:
+      //   a) verifies camera auth natively (AVCaptureDevice)
+      //   b) starts a bare ARWorldTrackingConfiguration (no depth)
+      //   c) waits up to 5 s for the first frame
+      //   d) retries once automatically if it fails
+      // NO Dart-side retry loop — that was causing 30 s waits.
+      _sessionGeneration = await _bridge.startSession();
 
-      // Detect depth mode for this device
+      // ── 3. Detect depth mode ──────────────────────────────────────────
       try {
         _detectedDepthMode = await _bridge.getDepthMode();
         DebugLog.instance.log('Scan', 'Depth mode: $_detectedDepthMode');
@@ -133,11 +123,16 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         _detectedDepthMode = 'plate_fallback';
       }
 
-      // The native side already verifies that the first frame is available
-      // before returning from startSession, so no additional polling needed.
+      // ── 4. Upgrade to depth config in the background ──────────────────
+      // The session started with a bare config (no depth/mesh) to maximise
+      // startup reliability.  Now that frames are flowing, add depth.
+      _bridge.upgradeDepthConfig();
 
       if (mounted) {
-        setState(() => _sessionStarted = true);
+        setState(() {
+          _sessionStarted = true;
+          _sessionErrorDetail = null;
+        });
         ref.read(scanStateProvider.notifier).sessionReady();
         _startPitchPolling();
       }
@@ -145,18 +140,21 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     } catch (e) {
       final msg = e.toString();
       DebugLog.instance.log('Scan', 'AR session failed: $msg');
-      // Print to console so the developer can see the error in Xcode logs.
       // ignore: avoid_print
       print('[ScanScreen] startSession error: $msg');
 
-      // Try to get more detail from the native side.
+      // Get the real error from the native side.
       final nativeError = await _bridge.getSessionError();
       if (nativeError != null) {
-        DebugLog.instance.log('Scan', 'Native error detail: $nativeError');
+        DebugLog.instance.log('Scan', 'Native error: $nativeError');
       }
 
       if (mounted) {
-        setState(() => _sessionStarted = true);
+        setState(() {
+          _sessionStarted = true;
+          // Show the ACTUAL error so the user (and developer) can diagnose.
+          _sessionErrorDetail = nativeError ?? msg;
+        });
         ref.read(scanStateProvider.notifier).depthFailed();
       }
     }
@@ -349,11 +347,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _hapticLight();
     _recordTimer?.cancel();
     _recordTimer    = null;
-    _pitchTimer?.cancel();   // cancel polling so _startSession creates a fresh one
+    _pitchTimer?.cancel();
     _pitchTimer     = null;
     _isRecording    = false;
     _recordProgress = 0.0;
     _sessionStarted = false;
+    _sessionErrorDetail = null;
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();
     _startSession();
@@ -391,6 +390,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               scanState: scanState,
               scanResult: scanResult,
               sessionStarted: _sessionStarted,
+              sessionErrorDetail: _sessionErrorDetail,
               depthMode: _detectedDepthMode,
               timings: PerfMonitor.instance.allTimings,
               isRecording: _isRecording,
@@ -438,6 +438,7 @@ class _BottomPanel extends StatelessWidget {
     required this.scanState,
     required this.scanResult,
     required this.sessionStarted,
+    this.sessionErrorDetail,
     required this.depthMode,
     required this.timings,
     required this.isRecording,
@@ -452,6 +453,7 @@ class _BottomPanel extends StatelessWidget {
   final ScanState scanState;
   final ScanResultState scanResult;
   final bool sessionStarted;
+  final String? sessionErrorDetail;
   final String depthMode;
   final Map<String, Duration> timings;
   final bool isRecording;
@@ -605,7 +607,23 @@ class _BottomPanel extends StatelessWidget {
               style: const TextStyle(color: Colors.white70, fontSize: 14),
               textAlign: TextAlign.center,
             ),
-            if (scanResult.error != null) ...[
+            // Show the ACTUAL native error so the user/developer can
+            // see exactly why the camera failed.
+            if (sessionErrorDetail != null) ...[
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  sessionErrorDetail!,
+                  style: const TextStyle(fontSize: 11, color: Colors.white38),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ] else if (scanResult.error != null) ...[
               const SizedBox(height: 4),
               Text(
                 scanResult.error!,

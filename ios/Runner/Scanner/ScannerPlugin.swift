@@ -159,6 +159,10 @@ final class ScannerPlugin {
                 result(nil)
             }
 
+        case "upgradeDepthConfig":
+            sessionManager.upgradeToDepthConfig()
+            result(nil)
+
         case "scanBarcode":
             // Present the native barcode scanner, query OpenFoodFacts,
             // and return a JSON string (or nil on cancel/not found).

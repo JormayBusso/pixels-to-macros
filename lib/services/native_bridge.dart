@@ -51,6 +51,14 @@ class NativeBridge {
     }
   }
 
+  /// Upgrade the running ARKit session to include depth/mesh features.
+  /// Safe to call repeatedly; no-op if no session is active.
+  Future<void> upgradeDepthConfig() async {
+    try {
+      await _channel.invokeMethod<void>('upgradeDepthConfig');
+    } catch (_) {}
+  }
+
   /// Capture the current camera frame (top or side).
   /// [frameType] is "top" or "side".
   Future<Map<String, dynamic>> captureFrame(String frameType) async {
