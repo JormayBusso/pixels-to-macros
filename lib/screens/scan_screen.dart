@@ -888,7 +888,7 @@ class _ProcessingIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(
+        SizedBox(
           width: 40,
           height: 40,
           child: CircularProgressIndicator(

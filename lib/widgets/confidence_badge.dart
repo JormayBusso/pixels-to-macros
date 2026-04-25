@@ -95,7 +95,7 @@ class ConfidenceRingCard extends StatelessWidget {
       caloriesMax: caloriesMax,
     );
     final score = badge.score;
-    final color = badge._color;
+    final color = badge._color(context);
     final label = badge._label;
 
     return Card(
