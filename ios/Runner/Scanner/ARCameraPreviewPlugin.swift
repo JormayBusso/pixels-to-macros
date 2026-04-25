@@ -159,7 +159,11 @@ final class ARCameraPreviewView: NSObject, FlutterPlatformView {
             // which is always satisfied by our iOS 17.0 deployment target.
             var sampleBuffer: CMSampleBuffer?
             guard CMSampleBufferCreateReadyWithImageBuffer(
-                nil, pixelBuffer, format, &timing, &sampleBuffer) == noErr,
+                allocator:         nil,
+                imageBuffer:       pixelBuffer,
+                formatDescription: format,
+                sampleTiming:      &timing,
+                sampleBufferOut:   &sampleBuffer) == noErr,
                   let sample = sampleBuffer
             else { return }
 
