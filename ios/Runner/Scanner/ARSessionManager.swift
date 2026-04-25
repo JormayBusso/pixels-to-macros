@@ -77,6 +77,9 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
             return
         }
 
+        // Detach the delegate BEFORE pausing so the old session cannot fire
+        // session(_:didFailWithError:) into the new level's verification loop.
+        session?.delegate = nil
         session?.pause()
         session = nil
 
@@ -93,9 +96,9 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
         NotificationCenter.default.post(name: .arSessionDidStart, object: newSession)
 
         // Wait for the first frame or an async session error before telling
-        // Dart the session is ready.  15 attempts × 100 ms = 1.5 s max.
+        // Dart the session is ready.  30 attempts × 100 ms = 3 s max.
         verifySession(
-            attemptsRemaining: 15,
+            attemptsRemaining: 30,
             configLevel: level,
             generation: gen,
             completion: completion
@@ -160,7 +163,12 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
                   + "\(error.localizedDescription)")
             if configLevel < 2 {
                 print("[ARSessionManager] Falling back to level \(configLevel + 1)")
-                startWithLevel(configLevel + 1, generation: gen, completion: completion)
+                // Brief cooldown so the old session fully winds down before
+                // the next ARSession.run() — avoids camera resource contention.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    guard let self, gen == self.generation else { return }
+                    self.startWithLevel(configLevel + 1, generation: gen, completion: completion)
+                }
             } else {
                 DispatchQueue.main.async { completion(error) }
             }
@@ -195,6 +203,13 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
     // MARK: – ARSessionDelegate
 
     func session(_ session: ARSession, didFailWithError error: Error) {
+        // Only record the error if it comes from the currently active session.
+        // Errors from a paused/old session arriving after we've already started
+        // the next fallback level must be ignored.
+        guard session === self.session else {
+            print("[ARSessionManager] Ignoring error from stale session: \(error.localizedDescription)")
+            return
+        }
         print("[ARSessionManager] Session error: \(error.localizedDescription)")
         lastSessionError = error
         NotificationCenter.default.post(

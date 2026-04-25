@@ -28,8 +28,9 @@ class NativeBridge {
   /// Start the ARKit session on the native side.
   /// Returns the session generation number (for generation-aware stop).
   Future<int> startSession() async {
-    await _channel.invokeMethod<void>('startSession');
-    final gen = await _channel.invokeMethod<int>('getSessionGeneration');
+    // startSession now returns the generation number directly,
+    // avoiding a second round-trip for getSessionGeneration.
+    final gen = await _channel.invokeMethod<int>('startSession');
     return gen ?? 0;
   }
 

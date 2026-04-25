@@ -57,7 +57,9 @@ final class ScannerPlugin {
                         details: nil
                     ))
                 } else {
-                    result(nil)
+                    // Return the generation number so Dart doesn't need a
+                    // second round-trip to call getSessionGeneration.
+                    result(sessionManager.generation)
                 }
             }
 
