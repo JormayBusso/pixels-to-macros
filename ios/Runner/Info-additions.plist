@@ -30,5 +30,22 @@
   <!-- Minimum deployment target (set in Xcode too) -->
   <key>MinimumOSVersion</key>
   <string>17.0</string>
+
+  <!-- Allow HTTPS requests to OpenFoodFacts for barcode nutrition lookup.
+       iOS enforces App Transport Security (ATS); this exception permits
+       only the specific domain needed and keeps all other domains secure. -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSExceptionDomains</key>
+    <dict>
+      <key>world.openfoodfacts.org</key>
+      <dict>
+        <key>NSExceptionAllowsInsecureHTTPLoads</key>
+        <false/>
+        <key>NSIncludesSubdomains</key>
+        <true/>
+      </dict>
+    </dict>
+  </dict>
 </dict>
 </plist>

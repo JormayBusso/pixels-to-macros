@@ -60,8 +60,14 @@ class DailyIntakeNotifier extends StateNotifier<DailyIntake> {
 
       // Estimate macros from food DB lookup
       for (final food in scan.foods) {
+        // Map legacy model labels (e.g. "chicken duck" → "chicken").
+        var lookupLabel = food.label;
+        const aliases = {'chicken duck': 'chicken'};
+        if (aliases.containsKey(lookupLabel.toLowerCase())) {
+          lookupLabel = aliases[lookupLabel.toLowerCase()]!;
+        }
         final foodData =
-            await DatabaseService.instance.getFoodByLabel(food.label);
+            await DatabaseService.instance.getFoodByLabel(lookupLabel);
         if (foodData != null && foodData.kcalPer100g > 0) {
           final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
           final weightG = avgCal / (foodData.kcalPer100g / 100);

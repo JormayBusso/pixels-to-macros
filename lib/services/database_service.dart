@@ -39,7 +39,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 12,
+      version: 13,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -323,6 +323,24 @@ class DatabaseService {
         )
       ''');
     }
+    if (oldVersion < 13) {
+      // Clean up duplicate aliases and confusing labels.
+      // Remove 'Chicken' (duplicate of 'chicken duck' / now 'chicken').
+      // Remove 'Fries' (duplicate of 'french fries').
+      await db.delete('food_data', where: 'label = ?', whereArgs: ['Chicken']);
+      await db.delete('food_data', where: 'label = ?', whereArgs: ['Fries']);
+
+      // Rename 'chicken duck' → 'chicken' (cleaner label).
+      await db.update(
+        'food_data',
+        {'label': 'chicken'},
+        where: 'label = ?',
+        whereArgs: ['chicken duck'],
+      );
+
+      // Re-seed to add any new items.
+      await _seed(db);
+    }
   }
 
   /// Updates protein/carbs/fat for foods that were seeded before v8.
@@ -426,7 +444,7 @@ class DatabaseService {
       // ── 46–56: Meats & Seafood ───────────────────────────────────────────
       FoodData(label: 'steak',               densityMin: 1.00, densityMax: 1.15, kcalPer100g: 271, category: 'protein',   proteinPer100g: 26.0, carbsPer100g:  0.0, fatPer100g: 18.0),
       FoodData(label: 'pork',                densityMin: 1.00, densityMax: 1.10, kcalPer100g: 242, category: 'protein',   proteinPer100g: 25.0, carbsPer100g:  0.0, fatPer100g: 14.0),
-      FoodData(label: 'chicken duck',        densityMin: 1.00, densityMax: 1.10, kcalPer100g: 165, category: 'protein',   proteinPer100g: 31.0, carbsPer100g:  0.0, fatPer100g:  3.6),
+      FoodData(label: 'chicken',             densityMin: 1.00, densityMax: 1.10, kcalPer100g: 165, category: 'protein',   proteinPer100g: 31.0, carbsPer100g:  0.0, fatPer100g:  3.6),
       FoodData(label: 'sausage',             densityMin: 0.90, densityMax: 1.05, kcalPer100g: 301, category: 'protein',   proteinPer100g: 12.0, carbsPer100g:  2.0, fatPer100g: 27.0),
       FoodData(label: 'fried meat',          densityMin: 0.85, densityMax: 1.00, kcalPer100g: 280, category: 'protein',   proteinPer100g: 23.0, carbsPer100g: 10.0, fatPer100g: 17.0),
       FoodData(label: 'lamb',                densityMin: 1.00, densityMax: 1.10, kcalPer100g: 294, category: 'protein',   proteinPer100g: 25.0, carbsPer100g:  0.0, fatPer100g: 21.0),
@@ -489,8 +507,9 @@ class DatabaseService {
       FoodData(label: 'rice noodle',         densityMin: 0.70, densityMax: 0.85, kcalPer100g: 109, category: 'grain',     proteinPer100g:  0.9, carbsPer100g: 25.0, fatPer100g:  0.2),
       FoodData(label: 'others',              densityMin: 0.60, densityMax: 0.90, kcalPer100g: 150, category: 'mixed',     proteinPer100g:  5.0, carbsPer100g: 20.0, fatPer100g:  5.0),
 
-      // ── Common aliases (map old seed labels to FS103 equivalents) ────────
-      FoodData(label: 'Chicken',             densityMin: 1.00, densityMax: 1.10, kcalPer100g: 165, category: 'protein',   proteinPer100g: 31.0, carbsPer100g:  0.0, fatPer100g:  3.6),
+      // ── Common aliases (map user-friendly names to FS103 equivalents) ──────
+      // NOTE: Only include aliases that don't duplicate an existing FS103 label.
+      // Removed: Chicken (dup of chicken duck), Fries (dup of french fries).
       FoodData(label: 'Beef',                densityMin: 1.00, densityMax: 1.15, kcalPer100g: 250, category: 'protein',   proteinPer100g: 26.0, carbsPer100g:  0.0, fatPer100g: 17.0),
       FoodData(label: 'Salmon',              densityMin: 0.95, densityMax: 1.05, kcalPer100g: 208, category: 'protein',   proteinPer100g: 20.0, carbsPer100g:  0.0, fatPer100g: 13.0),
       FoodData(label: 'Yogurt',              densityMin: 1.00, densityMax: 1.10, kcalPer100g:  59, category: 'dairy',     proteinPer100g: 10.0, carbsPer100g:  3.6, fatPer100g:  0.4),
@@ -504,7 +523,6 @@ class DatabaseService {
       FoodData(label: 'Stew',                densityMin: 0.90, densityMax: 1.05, kcalPer100g:  90, category: 'mixed',     proteinPer100g:  8.0, carbsPer100g: 10.0, fatPer100g:  4.0),
       FoodData(label: 'Curry',               densityMin: 0.90, densityMax: 1.05, kcalPer100g: 110, category: 'mixed',     proteinPer100g:  7.0, carbsPer100g: 12.0, fatPer100g:  5.0),
       FoodData(label: 'Sushi',               densityMin: 0.85, densityMax: 1.00, kcalPer100g: 143, category: 'mixed',     proteinPer100g:  6.7, carbsPer100g: 19.0, fatPer100g:  5.0),
-      FoodData(label: 'Fries',               densityMin: 0.45, densityMax: 0.60, kcalPer100g: 312, category: 'mixed',     proteinPer100g:  3.4, carbsPer100g: 41.0, fatPer100g: 15.0),
 
       // ── Extended common foods (v12) ──────────────────────────────────────
 

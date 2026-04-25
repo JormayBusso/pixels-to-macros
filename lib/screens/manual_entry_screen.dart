@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/food_data.dart';
 import '../models/scan_result.dart';
+import '../models/serving_config.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
+import '../services/barcode_lookup_service.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 
-/// Manual food entry — pick from the food DB and enter a portion.
+/// Manual food entry — pick from the food DB, scan a barcode, or enter grams.
 class ManualEntryScreen extends ConsumerStatefulWidget {
   const ManualEntryScreen({super.key});
 
@@ -23,6 +25,12 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   final _searchCtrl = TextEditingController();
   final _portionCtrl = TextEditingController(text: '100');
   bool _loading = true;
+  double _sliderGrams = 100;
+
+  // Serving-size picker state (for countable foods).
+  ServingConfig? _servingConfig;
+  int _servingCount = 1;
+  int _selectedSizeIndex = 1; // default to medium
 
   @override
   void initState() {
@@ -51,14 +59,57 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     });
   }
 
+  void _selectFood(FoodData food) {
+    final config = getServingConfig(food.label);
+    setState(() {
+      _selected = food;
+      _servingConfig = config;
+      _servingCount = 1;
+      _selectedSizeIndex = config != null
+          ? (config.sizes.length > 1 ? 1 : 0) // default to medium
+          : 0;
+      if (config != null) {
+        final grams = config.totalGrams(
+            _servingCount, config.sizes[_selectedSizeIndex]);
+        _portionCtrl.text = grams.round().toString();
+        _sliderGrams = grams;
+      } else {
+        _portionCtrl.text = '100';
+        _sliderGrams = 100;
+      }
+    });
+  }
+
+  void _updateServingGrams() {
+    if (_servingConfig == null) return;
+    final grams = _servingConfig!.totalGrams(
+        _servingCount, _servingConfig!.sizes[_selectedSizeIndex]);
+    setState(() {
+      _portionCtrl.text = grams.round().toString();
+      _sliderGrams = grams;
+    });
+  }
+
+  void _onSliderChanged(double value) {
+    setState(() {
+      _sliderGrams = value;
+      _portionCtrl.text = value.round().toString();
+    });
+  }
+
+  void _onPortionTextChanged(String text) {
+    final grams = double.tryParse(text);
+    if (grams != null && grams >= 0 && grams <= 1000) {
+      setState(() => _sliderGrams = grams);
+    }
+  }
+
   Future<void> _save() async {
     if (_selected == null) return;
 
     final grams = double.tryParse(_portionCtrl.text) ?? 100;
-    // Convert grams to approximate volume using average density
     final avgDensity = (_selected!.densityMin + _selected!.densityMax) / 2;
     final volumeCm3 = grams / avgDensity;
-
     final range = _selected!.calorieRange(volumeCm3);
 
     final result = ScanResult(
@@ -90,6 +141,59 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     }
   }
 
+  // ── Barcode scanning ────────────────────────────────────────────────────
+
+  Future<void> _openBarcodeScanner() async {
+    // The native Swift side presents its own full-screen scanner UI and
+    // performs the OpenFoodFacts lookup using URLSession — no Flutter
+    // packages required.
+    final result = await BarcodeLookupService.instance.scanAndLookup();
+    if (result == null || !mounted) return;
+
+    // Check if food is already in our database.
+    final existing =
+        await DatabaseService.instance.getFoodByLabel(result.name);
+    FoodData food;
+    if (existing != null) {
+      food = existing;
+    } else {
+      // Add the barcode food to the database with average density.
+      food = FoodData(
+        label: result.name,
+        densityMin: 0.80,
+        densityMax: 1.00,
+        kcalPer100g: result.kcalPer100g,
+        category: 'mixed',
+        proteinPer100g: result.proteinPer100g,
+        carbsPer100g: result.carbsPer100g,
+        fatPer100g: result.fatPer100g,
+      );
+      await DatabaseService.instance.insertFood(food);
+      // Reload the list.
+      await _loadFoods();
+      // Re-fetch so we get the id.
+      food = (await DatabaseService.instance.getFoodByLabel(result.name)) ??
+          food;
+    }
+
+    _selectFood(food);
+
+    // Pre-fill serving grams if available from OpenFoodFacts.
+    if (result.servingGrams != null) {
+      setState(() {
+        _portionCtrl.text = result.servingGrams!.round().toString();
+        _sliderGrams = result.servingGrams!;
+        _servingConfig = null; // barcode overrides serving picker
+      });
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Found: ${result.name}')),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -102,7 +206,16 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     final calPreview = _caloriePreview();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Log Food Manually')),
+      appBar: AppBar(
+        title: const Text('Log Food Manually'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            tooltip: 'Scan barcode',
+            onPressed: _openBarcodeScanner,
+          ),
+        ],
+      ),
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -111,13 +224,25 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                   // ── Search bar ──────────────────────────────────────
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: TextField(
-                      controller: _searchCtrl,
-                      onChanged: _filter,
-                      decoration: const InputDecoration(
-                        hintText: 'Search food...',
-                        prefixIcon: Icon(Icons.search),
-                      ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchCtrl,
+                            onChanged: _filter,
+                            decoration: const InputDecoration(
+                              hintText: 'Search food...',
+                              prefixIcon: Icon(Icons.search),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.tonalIcon(
+                          icon: const Icon(Icons.qr_code_scanner, size: 18),
+                          label: const Text('Barcode'),
+                          onPressed: _openBarcodeScanner,
+                        ),
+                      ],
                     ),
                   ),
 
@@ -152,7 +277,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                                 ? const Icon(Icons.check_circle,
                                     color: AppTheme.green600)
                                 : null,
-                            onTap: () => setState(() => _selected = food),
+                            onTap: () => _selectFood(food),
                           ),
                         );
                       },
@@ -195,37 +320,71 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
+
+                          // ── Serving picker for countable foods ──────
+                          if (_servingConfig != null) ...[
+                            _ServingPicker(
+                              config: _servingConfig!,
+                              count: _servingCount,
+                              selectedSizeIndex: _selectedSizeIndex,
+                              onCountChanged: (c) {
+                                _servingCount = c;
+                                _updateServingGrams();
+                              },
+                              onSizeChanged: (i) {
+                                _selectedSizeIndex = i;
+                                _updateServingGrams();
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+
+                          // ── Gram slider ─────────────────────────────
                           Row(
                             children: [
                               SizedBox(
-                                width: 120,
+                                width: 80,
                                 child: TextField(
                                   controller: _portionCtrl,
                                   keyboardType: TextInputType.number,
-                                  onChanged: (_) => setState(() {}),
+                                  onChanged: _onPortionTextChanged,
                                   decoration: const InputDecoration(
                                     suffixText: 'g',
-                                    labelText: 'Portion',
+                                    labelText: 'Grams',
                                     isDense: true,
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              // Quick portion buttons
-                              ...[50, 100, 150, 200].map((g) => Padding(
-                                    padding:
-                                        const EdgeInsets.symmetric(horizontal: 3),
-                                    child: _PortionChip(
-                                      grams: g,
-                                      active:
-                                          _portionCtrl.text == g.toString(),
-                                      onTap: () {
-                                        _portionCtrl.text = g.toString();
-                                        setState(() {});
-                                      },
-                                    ),
-                                  )),
+                              Expanded(
+                                child: Slider(
+                                  value: _sliderGrams.clamp(0, 1000),
+                                  min: 0,
+                                  max: 1000,
+                                  divisions: 200,
+                                  label: '${_sliderGrams.round()}g',
+                                  onChanged: _onSliderChanged,
+                                ),
+                              ),
                             ],
+                          ),
+                          const SizedBox(height: 4),
+                          // Quick portion buttons
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [50, 100, 150, 200, 300].map((g) => Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 3),
+                                  child: _PortionChip(
+                                    grams: g,
+                                    active:
+                                        _portionCtrl.text == g.toString(),
+                                    onTap: () {
+                                      _portionCtrl.text = g.toString();
+                                      setState(() => _sliderGrams = g.toDouble());
+                                    },
+                                  ),
+                                )).toList(),
                           ),
                           const SizedBox(height: 12),
                           SizedBox(
@@ -259,6 +418,10 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
       'protein' => (Icons.egg, AppTheme.red500),
       'dairy' => (Icons.water_drop, AppTheme.amber500),
       'mixed' => (Icons.restaurant, AppTheme.gray700),
+      'legume' => (Icons.eco, AppTheme.green700),
+      'nut' => (Icons.filter_vintage, AppTheme.amber600),
+      'snack' => (Icons.cookie, AppTheme.amber500),
+      'drink' => (Icons.local_drink, AppTheme.green400),
       _ => (Icons.circle, AppTheme.gray400),
     };
     return CircleAvatar(
@@ -268,6 +431,82 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     );
   }
 }
+
+// ── Serving picker widget ───────────────────────────────────────────────────
+
+class _ServingPicker extends StatelessWidget {
+  const _ServingPicker({
+    required this.config,
+    required this.count,
+    required this.selectedSizeIndex,
+    required this.onCountChanged,
+    required this.onSizeChanged,
+  });
+
+  final ServingConfig config;
+  final int count;
+  final int selectedSizeIndex;
+  final ValueChanged<int> onCountChanged;
+  final ValueChanged<int> onSizeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Count selector.
+        Row(
+          children: [
+            Text(
+              config.countLabel,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            const Spacer(),
+            IconButton(
+              icon: const Icon(Icons.remove_circle_outline),
+              iconSize: 22,
+              onPressed: count > 1 ? () => onCountChanged(count - 1) : null,
+            ),
+            Text(
+              '$count',
+              style: const TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              iconSize: 22,
+              onPressed: count < 20 ? () => onCountChanged(count + 1) : null,
+            ),
+          ],
+        ),
+        // Size selector.
+        Text(
+          config.sizeLabel,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: [
+            for (var i = 0; i < config.sizes.length; i++)
+              ChoiceChip(
+                label: Text(
+                  config.sizes[i].label,
+                  style: const TextStyle(fontSize: 12),
+                ),
+                selected: i == selectedSizeIndex,
+                onSelected: (_) => onSizeChanged(i),
+                selectedColor: AppTheme.green200,
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ── Portion chip ────────────────────────────────────────────────────────────
 
 class _PortionChip extends StatelessWidget {
   const _PortionChip({

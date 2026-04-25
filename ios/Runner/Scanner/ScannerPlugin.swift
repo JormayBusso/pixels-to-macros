@@ -62,8 +62,18 @@ final class ScannerPlugin {
             }
 
         case "stopSession":
-            sessionManager.stop()
+            // Support generation-aware stop to prevent stale dispose() calls
+            // from killing a freshly started session.
+            if let args = call.arguments as? [String: Any],
+               let gen = args["generation"] as? Int {
+                sessionManager.stop(generation: gen)
+            } else {
+                sessionManager.stop()
+            }
             result(nil)
+
+        case "getSessionGeneration":
+            result(sessionManager.generation)
 
         case "captureFrame":
             handleCaptureFrame(call, result: result)
@@ -139,6 +149,18 @@ final class ScannerPlugin {
 
         case "getMemoryUsage":
             result(getResidentMemory())
+
+        case "getSessionError":
+            if let error = sessionManager.lastSessionError {
+                result(error.localizedDescription)
+            } else {
+                result(nil)
+            }
+
+        case "scanBarcode":
+            // Present the native barcode scanner, query OpenFoodFacts,
+            // and return a JSON string (or nil on cancel/not found).
+            BarcodeScannerPlugin.present(result: result)
 
         default:
             result(FlutterMethodNotImplemented)

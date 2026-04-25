@@ -42,6 +42,17 @@ class ScanResultState {
 class ScanResultNotifier extends StateNotifier<ScanResultState> {
   ScanResultNotifier() : super(const ScanResultState());
 
+  /// Maps model output labels to user-friendly DB labels where they differ.
+  static const _labelAliases = {
+    'chicken duck': 'chicken',
+  };
+
+  /// Normalise a model label: apply alias mapping, then title-case fallback.
+  static String _normaliseLabel(String raw) {
+    final lower = raw.toLowerCase();
+    return _labelAliases[lower] ?? raw;
+  }
+
   /// Run inference and compute calories.
   Future<void> runScan() async {
     state = const ScanResultState(loading: true);
@@ -62,7 +73,8 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
       final foods = <DetectedFood>[];
 
       for (final vol in rawVolumes) {
-        final label = vol['label'] as String? ?? 'unknown';
+        final rawLabel = vol['label'] as String? ?? 'unknown';
+        final label = _normaliseLabel(rawLabel);
         final volumeCm3 = (vol['volume_cm3'] as num?)?.toDouble() ?? 0;
         final pixelCount = (vol['pixel_count'] as num?)?.toInt() ?? 0;
         final confidence = (vol['confidence'] as num?)?.toDouble();
@@ -132,7 +144,8 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
       final foods = <DetectedFood>[];
 
       for (final vol in rawVolumes) {
-        final label       = vol['label']       as String? ?? 'unknown';
+        final rawLabel    = vol['label']       as String? ?? 'unknown';
+        final label       = _normaliseLabel(rawLabel);
         final volumeCm3   = (vol['volume_cm3'] as num?)?.toDouble() ?? 0;
         final pixelCount  = (vol['pixel_count'] as num?)?.toInt() ?? 0;
         final confidence  = (vol['confidence']  as num?)?.toDouble();

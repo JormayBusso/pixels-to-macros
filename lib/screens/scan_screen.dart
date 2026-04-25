@@ -45,6 +45,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   double _currentPitch   = 0.0;  // radians: -π/2 = top, 0 = horizontal
   String _detectedDepthMode = 'unknown';
   ScanResult? _savedScanResult;
+  int? _sessionGeneration;       // generation counter for safe stop()
 
   static const _recordDuration = Duration(seconds: 2);
   static const _timerInterval  = Duration(milliseconds: 80);
@@ -60,11 +61,16 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     super.initState();
     // Reset any stale state from a previous scan session (the provider is
     // NOT autoDispose so depthFailed / modelFailed from earlier persists).
+    // Defer both reset AND session start to post-frame callback so that
+    // the previous screen's dispose() (and its fire-and-forget stopSession)
+    // has already been sent to the method channel.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(scanStateProvider.notifier).reset();
+      if (mounted) {
+        ref.read(scanStateProvider.notifier).reset();
+        _startSession();
+      }
     });
     _checkTutorial();
-    _startSession();
   }
 
   void _checkTutorial() {
@@ -80,11 +86,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   Future<void> _startSession() async {
-    // Stop any previous session NOW, before the 500 ms permission delay.
-    // This ensures both (a) any pending dispose()-stopSession and (b) our
-    // explicit stop are queued BEFORE startSession on the method channel,
-    // preventing the old stop() from racing with the new session.
-    try { await _bridge.stopSession(); } catch (_) {}
+    // Stop any previous session NOW, using the generation counter so only
+    // the correct session is stopped (prevents race with stale dispose stops).
+    try { await _bridge.stopSession(generation: _sessionGeneration); } catch (_) {}
 
     try {
       // Request camera permission before starting ARKit
@@ -103,11 +107,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
       DebugLog.instance.log('Scan', 'Starting AR session');
 
-      // Retry up to 5 times with exponential backoff
-      const maxRetries = 5;
+      // The native side now verifies frame production and automatically
+      // falls back through 3 config levels before returning an error.
+      // Retry up to 3 times on the Dart side as well.
+      const maxRetries = 3;
       for (var attempt = 0; attempt < maxRetries; attempt++) {
         try {
-          await _bridge.startSession();
+          _sessionGeneration = await _bridge.startSession();
           break; // success
         } catch (e) {
           DebugLog.instance.log('Scan',
@@ -127,13 +133,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         _detectedDepthMode = 'plate_fallback';
       }
 
-      // Wait up to 2 seconds for the first AR frame to become available.
-      // ARKit may need a moment after session.run() before currentFrame is set.
-      for (var i = 0; i < 20; i++) {
-        final pitch = await _bridge.getPhonePitch();
-        if (pitch != 0.0) break; // frame is available
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
+      // The native side already verifies that the first frame is available
+      // before returning from startSession, so no additional polling needed.
 
       if (mounted) {
         setState(() => _sessionStarted = true);
@@ -147,9 +148,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       // Print to console so the developer can see the error in Xcode logs.
       // ignore: avoid_print
       print('[ScanScreen] startSession error: $msg');
+
+      // Try to get more detail from the native side.
+      final nativeError = await _bridge.getSessionError();
+      if (nativeError != null) {
+        DebugLog.instance.log('Scan', 'Native error detail: $nativeError');
+      }
+
       if (mounted) {
-        // Always mark session started so the camera view is shown even when
-        // the session couldn't be set up — the user can still retry.
         setState(() => _sessionStarted = true);
         ref.read(scanStateProvider.notifier).depthFailed();
       }
@@ -190,7 +196,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   void dispose() {
     _recordTimer?.cancel();
     _pitchTimer?.cancel();
-    _bridge.stopSession();
+    // Use generation-aware stop so this fire-and-forget call can never
+    // accidentally kill a session started by a newer ScanScreen instance.
+    _bridge.stopSession(generation: _sessionGeneration);
     super.dispose();
   }
 

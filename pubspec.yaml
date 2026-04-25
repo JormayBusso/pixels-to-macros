@@ -32,6 +32,12 @@ dependencies:
   # Image picking / camera capture
   image_picker: ^1.1.2
 
+  # Barcode scanning
+  mobile_scanner: ^6.0.2
+
+  # HTTP client (for OpenFoodFacts barcode lookup)
+  http: ^1.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

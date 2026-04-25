@@ -26,8 +26,28 @@ class NativeBridge {
   // ── Scanning lifecycle ───────────────────────────────────────────────────
 
   /// Start the ARKit session on the native side.
-  Future<void> startSession() async {
+  /// Returns the session generation number (for generation-aware stop).
+  Future<int> startSession() async {
     await _channel.invokeMethod<void>('startSession');
+    final gen = await _channel.invokeMethod<int>('getSessionGeneration');
+    return gen ?? 0;
+  }
+
+  /// Stop the AR session and release native resources.
+  /// If [generation] is provided, only stops if it matches the current
+  /// generation — prevents a stale stop from killing a newer session.
+  Future<void> stopSession({int? generation}) async {
+    await _channel.invokeMethod<void>('stopSession', 
+        generation != null ? {'generation': generation} : null);
+  }
+
+  /// Get the last session error message, or null if no error.
+  Future<String?> getSessionError() async {
+    try {
+      return await _channel.invokeMethod<String>('getSessionError');
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Capture the current camera frame (top or side).
@@ -48,11 +68,6 @@ class NativeBridge {
     if (raw == null) return [];
     final list = jsonDecode(raw) as List;
     return list.cast<Map<String, dynamic>>();
-  }
-
-  /// Stop the AR session and release native resources.
-  Future<void> stopSession() async {
-    await _channel.invokeMethod<void>('stopSession');
   }
 
   // ── Video recording ──────────────────────────────────────────────────────
