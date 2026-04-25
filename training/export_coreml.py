@@ -88,11 +88,7 @@ def convert_coreml(
         outputs=[ct.TensorType(name="segmentation")],
         minimum_deployment_target=ct.target.iOS17,
         convert_to="mlprogram",
-    )
-
-    # FP16 weight compression
-    mlmodel = ct.models.compression_utils.affine_quantize_weights(
-        mlmodel, mode="linear_symmetric", dtype=ct.dtype.float16
+        compute_precision=ct.precision.FLOAT16,
     )
 
     mlpackage_path = output / "FoodSegmentation.mlpackage"
