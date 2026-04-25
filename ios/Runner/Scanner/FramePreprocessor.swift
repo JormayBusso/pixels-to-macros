@@ -19,6 +19,11 @@ final class FramePreprocessor {
     let modelInputWidth  = 513
     let modelInputHeight = 513
 
+    // MARK: – Private state
+
+    /// Shared CIContext — creating one per call is expensive (GPU setup).
+    private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
+
     // MARK: – Public
 
     /// Preprocess a raw camera pixel buffer for CoreML.
@@ -67,8 +72,7 @@ final class FramePreprocessor {
             height: modelInputHeight
         ) else { return nil }
 
-        let context = CIContext(options: [.useSoftwareRenderer: false])
-        context.render(processed, to: output)
+        ciContext.render(processed, to: output)
 
         return output
     }
@@ -113,8 +117,7 @@ final class FramePreprocessor {
             return nil
         }
 
-        let context = CIContext(options: [.useSoftwareRenderer: false])
-        context.render(processed, to: output)
+        ciContext.render(processed, to: output)
         return output
     }
 

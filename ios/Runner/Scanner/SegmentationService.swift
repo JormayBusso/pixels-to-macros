@@ -238,6 +238,16 @@ final class SegmentationService {
             return []
         }
 
+        // Strides from the array's own metadata — avoids assuming contiguous layout.
+        let strides = output.strides.map { $0.intValue }
+
+        // We only support Float32 output (our mlprogram exports Float32 I/O).
+        guard output.dataType == .float32 else {
+            // Unexpected type — fall back to safe (slow) subscript access.
+            return parseSegmentationOutputSafe(output,
+                height: height, width: width, numClasses: numClasses)
+        }
+
         // Build class-index grid + confidence grid
         var classGrid = [[Int]](repeating: [Int](repeating: 0, count: width), count: height)
         var confGrid  = [[Float]](repeating: [Float](repeating: 0, count: width), count: height)
@@ -245,13 +255,17 @@ final class SegmentationService {
         let ptr = output.dataPointer.assumingMemoryBound(to: Float32.self)
 
         if numClasses > 0 {
-            // Softmax output — argmax per pixel, resolve overlaps by confidence
+            // Softmax output — argmax per pixel, resolve overlaps by confidence.
+            // Use strides[1/2/3] so non-contiguous layouts are handled correctly.
+            let sC = strides.count == 4 ? strides[1] : strides[0]
+            let sR = strides.count == 4 ? strides[2] : strides[1]
+            let sCol = strides.count == 4 ? strides[3] : strides[2]
             for r in 0..<height {
                 for c in 0..<width {
                     var bestClass = 0
                     var bestConf: Float = -Float.infinity
                     for cls in 0..<numClasses {
-                        let idx = cls * height * width + r * width + c
+                        let idx = cls * sC + r * sR + c * sCol
                         let val = ptr[idx]
                         if val > bestConf {
                             bestConf = val
@@ -264,15 +278,67 @@ final class SegmentationService {
             }
         } else {
             // Argmax indices directly
+            let sR   = strides.count == 3 ? strides[1] : strides[0]
+            let sCol = strides.count == 3 ? strides[2] : strides[1]
             for r in 0..<height {
                 for c in 0..<width {
-                    let idx = r * width + c
+                    let idx = r * sR + c * sCol
                     classGrid[r][c] = Int(ptr[idx])
                     confGrid[r][c]  = 1.0
                 }
             }
         }
 
+        return buildObjects(classGrid: classGrid, confGrid: confGrid,
+                            height: height, width: width)
+    }
+
+    /// Safe fallback that uses `MLMultiArray`'s subscript (handles any data type).
+    private func parseSegmentationOutputSafe(
+        _ output: MLMultiArray,
+        height: Int, width: Int, numClasses: Int
+    ) -> [SegmentedObject] {
+        let strides = output.strides.map { $0.intValue }
+
+        var classGrid = [[Int]](repeating: [Int](repeating: 0, count: width), count: height)
+        var confGrid  = [[Float]](repeating: [Float](repeating: 0, count: width), count: height)
+
+        if numClasses > 0 {
+            let sC   = strides.count == 4 ? strides[1] : strides[0]
+            let sR   = strides.count == 4 ? strides[2] : strides[1]
+            let sCol = strides.count == 4 ? strides[3] : strides[2]
+            for r in 0..<height {
+                for c in 0..<width {
+                    var bestClass = 0
+                    var bestConf: Float = -Float.infinity
+                    for cls in 0..<numClasses {
+                        let val = output[cls * sC + r * sR + c * sCol].floatValue
+                        if val > bestConf { bestConf = val; bestClass = cls }
+                    }
+                    classGrid[r][c] = bestClass
+                    confGrid[r][c]  = bestConf
+                }
+            }
+        } else {
+            let sR   = strides.count == 3 ? strides[1] : strides[0]
+            let sCol = strides.count == 3 ? strides[2] : strides[1]
+            for r in 0..<height {
+                for c in 0..<width {
+                    classGrid[r][c] = output[r * sR + c * sCol].intValue
+                    confGrid[r][c]  = 1.0
+                }
+            }
+        }
+
+        return buildObjects(classGrid: classGrid, confGrid: confGrid,
+                            height: height, width: width)
+    }
+
+    /// Convert per-pixel class/confidence grids into `SegmentedObject` list.
+    private func buildObjects(
+        classGrid: [[Int]], confGrid: [[Float]],
+        height: Int, width: Int
+    ) -> [SegmentedObject] {
         // Group pixels by class
         var classPixels: [Int: [(row: Int, col: Int, conf: Float)]] = [:]
         for r in 0..<height {

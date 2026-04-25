@@ -152,6 +152,10 @@ final class DepthFusion {
         let pRh = Float(plateRect.height)
         guard pRw > 0.001 && pRh > 0.001 else { return }
 
+        // Collect pending label assignments — mutating a Dictionary during
+        // for-in enumeration is undefined behaviour in Swift (can crash).
+        var pendingLabels: [(key: VoxelKey, label: Int32)] = []
+
         for (key, value) in grid {
             guard value == 0 else { continue }   // skip already-labelled voxels
 
@@ -184,8 +188,13 @@ final class DepthFusion {
 
             let label = combinedMask[mv * maskWidth + mu]
             if label > 0 {
-                grid[key] = label
+                pendingLabels.append((key: key, label: label))
             }
+        }
+
+        // Apply collected labels now that enumeration is complete.
+        for pending in pendingLabels {
+            grid[pending.key] = pending.label
         }
     }
 
@@ -201,12 +210,23 @@ final class DepthFusion {
 
     /// All (label → volume cm³) pairs. Only labels with at least one voxel.
     func allVolumes() -> [String: Double] {
-        var result: [String: Double] = [:]
         let s = Double(voxelSizeM * 100)
         let voxVol = s * s * s
-        for (label, lIdx) in labelMap {
-            let count = grid.values.filter { $0 == lIdx }.count
-            if count > 0 { result[label] = Double(count) * voxVol }
+
+        // Single O(V) pass: count occupied voxels per label index.
+        var counts: [Int32: Int] = [:]
+        for v in grid.values where v > 0 {
+            counts[v, default: 0] += 1
+        }
+
+        // Build reverse map for O(1) label lookup.
+        let indexToLabel = Dictionary(uniqueKeysWithValues: labelMap.map { ($1, $0) })
+
+        var result: [String: Double] = [:]
+        for (lIdx, count) in counts {
+            if let label = indexToLabel[lIdx] {
+                result[label] = Double(count) * voxVol
+            }
         }
         return result
     }
