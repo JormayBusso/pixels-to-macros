@@ -160,7 +160,7 @@ jobs:
         run: |
           python3.11 -m venv .venv
           source .venv/bin/activate
-          pip install "torch==2.7.0" "torchvision==0.22.0" onnx coremltools numpy --quiet
+          pip install "torch==2.7.0" "torchvision==0.22.0" coremltools numpy --quiet
           python training/export_coreml.py \
             --checkpoint training/output/best.pth \
             --num_classes 104 \
