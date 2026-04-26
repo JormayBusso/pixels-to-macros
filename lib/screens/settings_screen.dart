@@ -284,7 +284,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: const Text('Re-watch the guided feature tour'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              ref.read(userPrefsProvider.notifier).replayAppTutorial(ref);
+              ref.read(userPrefsProvider.notifier).replayAppTutorial();
+              ref.read(showTourProvider.notifier).state = true;
             },
           ),
         ),
@@ -551,7 +552,7 @@ class _TextSizePickerCard extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: selected ? context.primary700 : AppTheme.gray500,
+                                color: selected ? context.primary700 : AppTheme.gray400,
                               ),
                             ),
                           ],
@@ -592,7 +593,7 @@ class _TextSizePickerCard extends ConsumerWidget {
                     '285 kcal  /  32 g protein',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppTheme.gray500,
+                      color: AppTheme.gray400,
                     ),
                   ),
                 ],

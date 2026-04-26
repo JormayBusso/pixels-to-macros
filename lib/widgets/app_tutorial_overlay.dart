@@ -394,15 +394,6 @@ class _TooltipCard extends StatelessWidget {
   }
 }
 
-
-class _AppTutorialOverlayState extends State<AppTutorialOverlay>
-    with SingleTickerProviderStateMixin {
-  int _step = 0;
-  late AnimationController _fadeCtrl;
-  late Animation<double> _fade;
-
-  static const _steps = [
-    _TutorialStep(
       title: 'Welcome to Pixels to Macros! 🎉',
       description:
           'Let\'s take a quick tour so you know where everything is.\n\n'

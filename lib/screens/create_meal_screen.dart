@@ -196,7 +196,7 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
                                       size: 14,
                                       color: selected
                                           ? context.primary700
-                                          : AppTheme.gray500),
+                                          : AppTheme.gray400),
                                   const SizedBox(width: 4),
                                   Text(type.displayName),
                                 ],

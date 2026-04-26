@@ -795,7 +795,7 @@ class _TabToggleButton extends StatelessWidget {
           children: [
             Icon(icon,
                 size: 16,
-                color: active ? Colors.white : AppTheme.gray500),
+                color: active ? Colors.white : AppTheme.gray400),
             const SizedBox(width: 6),
             Text(
               label,
@@ -845,7 +845,7 @@ class _MealsTab extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.gray500)),
+                    color: AppTheme.gray400)),
             const SizedBox(height: 6),
             const Text('Create a meal to quickly log it next time.',
                 style: TextStyle(color: AppTheme.gray400)),
@@ -876,14 +876,14 @@ class _MealsTab extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
         child: Row(
           children: [
-            Icon(_mealTypeIcon(type), size: 16, color: AppTheme.gray500),
+            Icon(_mealTypeIcon(type), size: 16, color: AppTheme.gray400),
             const SizedBox(width: 6),
             Text(
               type.displayName,
               style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.gray500,
+                  color: AppTheme.gray400,
                   letterSpacing: 0.5),
             ),
           ],
