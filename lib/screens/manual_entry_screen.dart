@@ -21,11 +21,15 @@ class ManualEntryScreen extends ConsumerStatefulWidget {
 class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   List<FoodData> _allFoods = [];
   List<FoodData> _filtered = [];
-  FoodData? _selected;
+  final Set<String> _selectedLabels = {};
+  FoodData? _activeFood; // the food currently being configured in bottom panel
   final _searchCtrl = TextEditingController();
   final _portionCtrl = TextEditingController(text: '100');
   bool _loading = true;
   double _sliderGrams = 100;
+
+  // Per-food gram overrides: label → grams
+  final Map<String, double> _gramsOverrides = {};
 
   // Serving-size picker state (for countable foods).
   ServingConfig? _servingConfig;
@@ -60,22 +64,40 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   }
 
   void _selectFood(FoodData food) {
-    final config = getServingConfig(food.label);
     setState(() {
-      _selected = food;
-      _servingConfig = config;
-      _servingCount = 1;
-      _selectedSizeIndex = config != null
-          ? (config.sizes.length > 1 ? 1 : 0) // default to medium
-          : 0;
-      if (config != null) {
-        final grams = config.totalGrams(
-            _servingCount, config.sizes[_selectedSizeIndex]);
-        _portionCtrl.text = grams.round().toString();
-        _sliderGrams = grams;
+      if (_selectedLabels.contains(food.label)) {
+        // Deselect
+        _selectedLabels.remove(food.label);
+        _gramsOverrides.remove(food.label);
+        if (_activeFood?.label == food.label) {
+          _activeFood = null;
+          _servingConfig = null;
+        }
       } else {
-        _portionCtrl.text = '100';
-        _sliderGrams = 100;
+        // Add to selection
+        _selectedLabels.add(food.label);
+        _gramsOverrides[food.label] = 100;
+      }
+      // Always make the last-tapped food the active one for gram adjustment
+      if (_selectedLabels.contains(food.label)) {
+        _activeFood = food;
+        final config = getServingConfig(food.label);
+        _servingConfig = config;
+        _servingCount = 1;
+        _selectedSizeIndex = config != null
+            ? (config.sizes.length > 1 ? 1 : 0)
+            : 0;
+        if (config != null) {
+          final grams = config.totalGrams(
+              _servingCount, config.sizes[_selectedSizeIndex]);
+          _portionCtrl.text = grams.round().toString();
+          _sliderGrams = grams;
+          _gramsOverrides[food.label] = grams;
+        } else {
+          final g = _gramsOverrides[food.label] ?? 100;
+          _portionCtrl.text = g.round().toString();
+          _sliderGrams = g;
+        }
       }
     });
   }
@@ -87,6 +109,9 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     setState(() {
       _portionCtrl.text = grams.round().toString();
       _sliderGrams = grams;
+      if (_activeFood != null) {
+        _gramsOverrides[_activeFood!.label] = grams;
+      }
     });
   }
 
@@ -94,35 +119,56 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     setState(() {
       _sliderGrams = value;
       _portionCtrl.text = value.round().toString();
+      if (_activeFood != null) {
+        _gramsOverrides[_activeFood!.label] = value;
+      }
     });
   }
 
   void _onPortionTextChanged(String text) {
     final grams = double.tryParse(text);
     if (grams != null && grams >= 0 && grams <= 1000) {
-      setState(() => _sliderGrams = grams);
+      setState(() {
+        _sliderGrams = grams;
+        if (_activeFood != null) {
+          _gramsOverrides[_activeFood!.label] = grams;
+        }
+      });
     }
   }
 
   Future<void> _save() async {
-    if (_selected == null) return;
+    if (_selectedLabels.isEmpty) return;
 
-    final grams = double.tryParse(_portionCtrl.text) ?? 100;
-    final avgDensity = (_selected!.densityMin + _selected!.densityMax) / 2;
-    final volumeCm3 = grams / avgDensity;
-    final range = _selected!.calorieRange(volumeCm3);
+    // Save active food's current grams
+    if (_activeFood != null) {
+      _gramsOverrides[_activeFood!.label] =
+          double.tryParse(_portionCtrl.text) ?? 100;
+    }
+
+    final detectedFoods = <DetectedFood>[];
+    int totalCal = 0;
+
+    for (final label in _selectedLabels) {
+      final food = _allFoods.firstWhere((f) => f.label == label,
+          orElse: () => _allFoods.first);
+      final grams = _gramsOverrides[label] ?? 100;
+      final avgDensity = (food.densityMin + food.densityMax) / 2;
+      final volumeCm3 = grams / avgDensity;
+      final range = food.calorieRange(volumeCm3);
+      detectedFoods.add(DetectedFood(
+        label: food.label,
+        volumeCm3: volumeCm3,
+        caloriesMin: range.min,
+        caloriesMax: range.max,
+      ));
+      totalCal += ((range.min + range.max) / 2).round();
+    }
 
     final result = ScanResult(
       timestamp: DateTime.now(),
       depthMode: 'manual',
-      foods: [
-        DetectedFood(
-          label: _selected!.label,
-          volumeCm3: volumeCm3,
-          caloriesMin: range.min,
-          caloriesMax: range.max,
-        ),
-      ],
+      foods: detectedFoods,
     );
 
     await ref.read(historyProvider.notifier).addScan(result);
@@ -132,8 +178,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${_selected!.label} logged — '
-            '${((range.min + range.max) / 2).round()} kcal',
+            '${_selectedLabels.length} item${_selectedLabels.length > 1 ? 's' : ''} logged — '
+            '$totalCal kcal',
           ),
         ),
       );
@@ -147,7 +193,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     // The native Swift side presents its own full-screen scanner UI and
     // performs the OpenFoodFacts lookup using URLSession — no Flutter
     // packages required.
-    final result = await BarcodeLookupService.instance.scanAndLookup();
+    final themeColor = context.primary500;
+    final result = await BarcodeLookupService.instance.scanAndLookup(themeColor: themeColor);
     if (result == null || !mounted) return;
 
     // Check if food is already in our database.
@@ -184,6 +231,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
         _portionCtrl.text = result.servingGrams!.round().toString();
         _sliderGrams = result.servingGrams!;
         _servingConfig = null; // barcode overrides serving picker
+        _gramsOverrides[food.label] = result.servingGrams!;
       });
     }
 
@@ -253,9 +301,10 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                       itemCount: _filtered.length,
                       itemBuilder: (context, i) {
                         final food = _filtered[i];
-                        final isSelected = _selected?.label == food.label;
+                        final isSelected = _selectedLabels.contains(food.label);
+                        final isActive = _activeFood?.label == food.label;
                         return Card(
-                          color: isSelected ? context.primary50 : null,
+                          color: isActive ? context.primary50 : (isSelected ? context.primary50.withValues(alpha: 0.5) : null),
                           child: ListTile(
                             leading: _categoryIcon(food.category),
                             title: Text(
@@ -276,7 +325,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                             trailing: isSelected
                                 ? Icon(Icons.check_circle,
                                     color: context.primary600)
-                                : null,
+                                : Icon(Icons.circle_outlined,
+                                    color: AppTheme.gray300),
                             onTap: () => _selectFood(food),
                           ),
                         );
@@ -285,7 +335,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                   ),
 
                   // ── Portion + save bar ──────────────────────────────
-                  if (_selected != null)
+                  if (_selectedLabels.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -297,11 +347,31 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // Selected count
+                          if (_selectedLabels.length > 1)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.check_circle, size: 16, color: context.primary600),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '${_selectedLabels.length} items selected',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: context.primary700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (_activeFood != null) ...[
                           Row(
                             children: [
                               Expanded(
                                 child: Text(
-                                  _selected!.label,
+                                  _activeFood!.label,
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
@@ -381,17 +451,23 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                                         _portionCtrl.text == g.toString(),
                                     onTap: () {
                                       _portionCtrl.text = g.toString();
-                                      setState(() => _sliderGrams = g.toDouble());
+                                      setState(() {
+                                        _sliderGrams = g.toDouble();
+                                        if (_activeFood != null) {
+                                          _gramsOverrides[_activeFood!.label] = g.toDouble();
+                                        }
+                                      });
                                     },
                                   ),
                                 )).toList(),
                           ),
+                          ],
                           const SizedBox(height: 12),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               icon: const Icon(Icons.add),
-                              label: const Text('Log Food'),
+                              label: Text('+ Log Food (${_selectedLabels.length})'),
                               onPressed: _save,
                             ),
                           ),
@@ -405,9 +481,9 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   }
 
   double? _caloriePreview() {
-    if (_selected == null) return null;
+    if (_activeFood == null) return null;
     final grams = double.tryParse(_portionCtrl.text) ?? 0;
-    return _selected!.kcalPer100g * grams / 100;
+    return _activeFood!.kcalPer100g * grams / 100;
   }
 
   Widget _categoryIcon(String category) {

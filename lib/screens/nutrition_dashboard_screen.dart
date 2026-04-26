@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/nutrient_data.dart';
+import '../models/user_preferences.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
@@ -15,6 +16,8 @@ class NutritionDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final intake = ref.watch(dailyIntakeProvider);
     final prefs  = ref.watch(userPrefsProvider);
+    final isMale = prefs.gender == UserGender.male;
+    final isFemale = prefs.gender == UserGender.female;
 
     return Scaffold(
       appBar: AppBar(
@@ -93,18 +96,18 @@ class NutritionDashboardScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       _NutrientRow(
-                        icon: _ElementIcon('A', const Color(0xFFFF8C00)),
+                        icon: const Text('🥕', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin A',
                         current: intake.nutrientTotals.vitaminAUg,
-                        drv: NutrientDRV.vitaminAUg,
+                        drv: isFemale ? NutrientDRV.vitaminAUg_female : NutrientDRV.vitaminAUg_male,
                         unit: 'μg',
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('C', const Color(0xFFFFA500)),
+                        icon: const Text('🍊', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin C',
                         current: intake.nutrientTotals.vitaminCMg,
-                        drv: NutrientDRV.vitaminCMg,
+                        drv: isFemale ? NutrientDRV.vitaminCMg_female : NutrientDRV.vitaminCMg_male,
                         unit: 'mg',
                       ),
                       const _Divider(),
@@ -117,7 +120,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('E', const Color(0xFF4CAF50)),
+                        icon: const Text('🌻', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin E',
                         current: intake.nutrientTotals.vitaminEMg,
                         drv: NutrientDRV.vitaminEMg,
@@ -125,15 +128,15 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('K', const Color(0xFF2E7D32)),
+                        icon: const Text('🥬', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin K',
                         current: intake.nutrientTotals.vitaminKUg,
-                        drv: NutrientDRV.vitaminKUg,
+                        drv: isFemale ? NutrientDRV.vitaminKUg_female : NutrientDRV.vitaminKUg_male,
                         unit: 'μg',
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('B9', const Color(0xFF795548)),
+                        icon: const Text('🫘', style: TextStyle(fontSize: 16)),
                         name: 'Folate (B9)',
                         current: intake.nutrientTotals.folateMcg,
                         drv: NutrientDRV.folateMcg,
@@ -141,7 +144,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('B12', const Color(0xFFD32F2F)),
+                        icon: const Text('🥩', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin B12',
                         current: intake.nutrientTotals.b12Mcg,
                         drv: NutrientDRV.b12Mcg,
@@ -159,39 +162,39 @@ class NutritionDashboardScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       _NutrientRow(
-                        icon: _ElementIcon('Ca', const Color(0xFF90CAF9)),
+                        icon: _ElementIcon('Ca', const Color(0xFFE5E4E2)),
                         name: 'Calcium',
                         current: intake.nutrientTotals.calciumMg,
-                        drv: NutrientDRV.calciumMg,
+                        drv: isFemale ? NutrientDRV.calciumMg_female : NutrientDRV.calciumMg_male,
                         unit: 'mg',
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('Fe', const Color(0xFFB71C1C)),
+                        icon: _ElementIcon('Fe', const Color(0xFF7A7A78)),
                         name: 'Iron',
                         current: intake.nutrientTotals.ironMg,
-                        drv: NutrientDRV.ironMg,
+                        drv: isFemale ? NutrientDRV.ironMg_female : NutrientDRV.ironMg_male,
                         unit: 'mg',
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('Mg', const Color(0xFF7B1FA2)),
+                        icon: _ElementIcon('Mg', const Color(0xFFDCDEDD)),
                         name: 'Magnesium',
                         current: intake.nutrientTotals.magnesiumMg,
-                        drv: NutrientDRV.magnesiumMg,
+                        drv: isFemale ? NutrientDRV.magnesiumMg_female : NutrientDRV.magnesiumMg_male,
                         unit: 'mg',
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('K', const Color(0xFFE65100)),
+                        icon: _ElementIcon('K', const Color(0xFFB5B7B5)),
                         name: 'Potassium',
                         current: intake.nutrientTotals.potassiumMg,
-                        drv: NutrientDRV.potassiumMg,
+                        drv: isFemale ? NutrientDRV.potassiumMg_female : NutrientDRV.potassiumMg_male,
                         unit: 'mg',
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('Na', const Color(0xFF546E7A)),
+                        icon: _ElementIcon('Na', const Color(0xFFC6C8C7)),
                         name: 'Sodium',
                         current: intake.nutrientTotals.sodiumMg,
                         drv: NutrientDRV.sodiumMaxMg,
@@ -200,10 +203,10 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('Zn', const Color(0xFF607D8B)),
+                        icon: _ElementIcon('Zn', const Color(0xFFBAC4C8)),
                         name: 'Zinc',
                         current: intake.nutrientTotals.zincMg,
-                        drv: NutrientDRV.zincMg,
+                        drv: isFemale ? NutrientDRV.zincMg_female : NutrientDRV.zincMg_male,
                         unit: 'mg',
                       ),
                     ],
@@ -232,6 +235,43 @@ class NutritionDashboardScreen extends ConsumerWidget {
   }
 }
 
+// ── 7-zone color logic ────────────────────────────────────────────────────────
+//
+// For targets (isLimit = false):
+//   <10%          → red    (severely deficient)
+//   10% – 30%     → amber  (deficient)
+//   30% – 60%     → orange (getting there)
+//   60% – 110%    → green  (good / optimal)
+//   110% – 130%   → orange (slightly over)
+//   130% – 150%   → amber  (over)
+//   >150%         → red    (too much)
+//
+// For limits (isLimit = true, e.g. sodium, carbs):
+//   ≤70%          → green  (well under)
+//   70% – 95%     → primary (approaching)
+//   95% – 110%    → amber  (near limit)
+//   >110%         → red    (over limit)
+
+Color _nutrientBarColor(double pct, {
+  required bool isLimit,
+  required BuildContext context,
+}) {
+  if (isLimit) {
+    if (pct > 1.10) return AppTheme.red500;
+    if (pct > 0.95) return AppTheme.amber600;
+    if (pct > 0.70) return context.primary500;
+    return context.primary500; // well under limit — just use green
+  }
+  // Target nutrients
+  if (pct < 0.10) return AppTheme.red500;
+  if (pct < 0.30) return AppTheme.amber600;
+  if (pct < 0.60) return Colors.orange.shade600;
+  if (pct <= 1.10) return context.primary500; // green / optimal zone
+  if (pct <= 1.30) return Colors.orange.shade600;
+  if (pct <= 1.50) return AppTheme.amber600;
+  return AppTheme.red500;
+}
+
 // ── Summary card ──────────────────────────────────────────────────────────────
 
 class _SummaryCard extends StatelessWidget {
@@ -247,11 +287,9 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pct = calorieGoal > 0 ? (calories / calorieGoal * 100).round() : 0;
-    final pctColor = pct > 110
-        ? AppTheme.red500
-        : pct >= 80
-            ? context.primary600
-            : AppTheme.amber500;
+    final pctFrac = calorieGoal > 0 ? calories / calorieGoal : 0.0;
+    // 7-zone color for calories (not a hard limit, treat as target)
+    final pctColor = _nutrientBarColor(pctFrac, isLimit: false, context: context);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -359,16 +397,8 @@ class _NutrientRow extends StatelessWidget {
   final String unit;
   final bool isLimit;
 
-  Color _barColor(double pct, BuildContext context) {
-    if (isLimit) {
-      if (pct > 1.0) return AppTheme.red500;
-      if (pct > 0.7) return AppTheme.amber600;
-      return context.primary500;
-    }
-    if (pct < 0.30) return AppTheme.red500;
-    if (pct < 0.70) return AppTheme.amber600;
-    return context.primary500;
-  }
+  Color _barColor(double pct, BuildContext context) =>
+      _nutrientBarColor(pct, isLimit: isLimit, context: context);
 
   String _fmt(double v) {
     if (v == 0) return '0';

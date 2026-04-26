@@ -1,6 +1,28 @@
 import 'mascot_type.dart';
 import 'nutrition_goal.dart';
 
+/// Biological sex for gender-specific DRV calculations.
+enum UserGender {
+  male,
+  female,
+  preferNotToSay;
+
+  String get dbValue => name;
+  String get label {
+    switch (this) {
+      case UserGender.male:           return 'Male';
+      case UserGender.female:         return 'Female';
+      case UserGender.preferNotToSay: return 'Prefer not to say';
+    }
+  }
+  static UserGender fromDbValue(String? v) {
+    return UserGender.values.firstWhere(
+      (e) => e.name == v,
+      orElse: () => UserGender.preferNotToSay,
+    );
+  }
+}
+
 /// User preferences stored in SQLite.
 class UserPreferences {
   final int? id;
@@ -8,12 +30,14 @@ class UserPreferences {
   final int dailyCalorieGoal;
   final bool onboardingComplete;
   final bool hasSeenScanTutorial;
+  final bool hasSeenAppTutorial;
   final NutritionGoalType nutritionGoal;
   final int dailyCarbLimitG;
   final int dailyProteinTargetG;
   final int dailyFatTargetG;
   final MascotType mascotType;
   final AppColorSeed themeColorSeed;
+  final UserGender gender;
 
   const UserPreferences({
     this.id,
@@ -21,12 +45,14 @@ class UserPreferences {
     this.dailyCalorieGoal = 2000,
     this.onboardingComplete = false,
     this.hasSeenScanTutorial = false,
+    this.hasSeenAppTutorial = false,
     this.nutritionGoal = NutritionGoalType.maintain,
     this.dailyCarbLimitG = 250,
     this.dailyProteinTargetG = 80,
     this.dailyFatTargetG = 65,
     this.mascotType = MascotType.auto,
     this.themeColorSeed = AppColorSeed.green,
+    this.gender = UserGender.preferNotToSay,
   });
 
   Map<String, dynamic> toMap() {
@@ -36,12 +62,14 @@ class UserPreferences {
       'daily_calorie_goal': dailyCalorieGoal,
       'onboarding_complete': onboardingComplete ? 1 : 0,
       'has_seen_scan_tutorial': hasSeenScanTutorial ? 1 : 0,
+      'has_seen_app_tutorial': hasSeenAppTutorial ? 1 : 0,
       'nutrition_goal': nutritionGoal.dbValue,
       'daily_carb_limit_g': dailyCarbLimitG,
       'daily_protein_target_g': dailyProteinTargetG,
       'daily_fat_target_g': dailyFatTargetG,
       'mascot_type': mascotType.dbValue,
       'theme_color_seed': themeColorSeed.dbValue,
+      'gender': gender.dbValue,
     };
   }
 
@@ -52,6 +80,7 @@ class UserPreferences {
       dailyCalorieGoal: (map['daily_calorie_goal'] as int?) ?? 2000,
       onboardingComplete: (map['onboarding_complete'] as int?) == 1,
       hasSeenScanTutorial: (map['has_seen_scan_tutorial'] as int?) == 1,
+      hasSeenAppTutorial: (map['has_seen_app_tutorial'] as int?) == 1,
       nutritionGoal: NutritionGoalTypeX.fromDbValue(
           map['nutrition_goal'] as String?),
       dailyCarbLimitG: (map['daily_carb_limit_g'] as int?) ?? 250,
@@ -59,6 +88,7 @@ class UserPreferences {
       dailyFatTargetG: (map['daily_fat_target_g'] as int?) ?? 65,
       mascotType: MascotTypeX.fromDbValue(map['mascot_type'] as String?),
       themeColorSeed: AppColorSeedX.fromDbValue(map['theme_color_seed'] as String?),
+      gender: UserGender.fromDbValue(map['gender'] as String?),
     );
   }
 
@@ -67,12 +97,14 @@ class UserPreferences {
     int? dailyCalorieGoal,
     bool? onboardingComplete,
     bool? hasSeenScanTutorial,
+    bool? hasSeenAppTutorial,
     NutritionGoalType? nutritionGoal,
     int? dailyCarbLimitG,
     int? dailyProteinTargetG,
     int? dailyFatTargetG,
     MascotType? mascotType,
     AppColorSeed? themeColorSeed,
+    UserGender? gender,
   }) {
     return UserPreferences(
       id: id,
@@ -80,12 +112,14 @@ class UserPreferences {
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
       hasSeenScanTutorial: hasSeenScanTutorial ?? this.hasSeenScanTutorial,
+      hasSeenAppTutorial: hasSeenAppTutorial ?? this.hasSeenAppTutorial,
       nutritionGoal: nutritionGoal ?? this.nutritionGoal,
       dailyCarbLimitG: dailyCarbLimitG ?? this.dailyCarbLimitG,
       dailyProteinTargetG: dailyProteinTargetG ?? this.dailyProteinTargetG,
       dailyFatTargetG: dailyFatTargetG ?? this.dailyFatTargetG,
       mascotType: mascotType ?? this.mascotType,
       themeColorSeed: themeColorSeed ?? this.themeColorSeed,
+      gender: gender ?? this.gender,
     );
   }
 }

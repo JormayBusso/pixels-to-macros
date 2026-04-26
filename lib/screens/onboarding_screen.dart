@@ -2,6 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/nutrition_goal.dart';
+import '../models/user_preferences.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
@@ -21,16 +22,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   // Page 1: name
   final _nameCtrl = TextEditingController();
 
-  // Page 2: goal type
+  // Page 2: gender
+  UserGender _selectedGender = UserGender.preferNotToSay;
+
+  // Page 3: goal type
   NutritionGoalType _selectedGoalType = NutritionGoalType.maintain;
 
-  // Page 3: macro targets (pre-filled from goal defaults, editable)
+  // Page 4: macro targets (pre-filled from goal defaults, editable)
   late int _calories    = GoalDefaults.calories(_selectedGoalType);
   late int _carbLimit   = GoalDefaults.carbLimitG(_selectedGoalType);
   late int _proteinTarget = GoalDefaults.proteinTargetG(_selectedGoalType);
   late int _fatTarget   = GoalDefaults.fatTargetG(_selectedGoalType);
 
-  static const _totalPages = 4;
+  static const _totalPages = 5;
 
   @override
   void dispose() {
@@ -48,10 +52,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
+  void _selectGender(UserGender gender) {
+    setState(() {
+      _selectedGender = gender;
+      // Update calorie defaults based on gender
+      final isMale = gender == UserGender.male;
+      _calories = GoalDefaults.calories(_selectedGoalType, male: isMale);
+      _carbLimit     = GoalDefaults.carbLimitG(_selectedGoalType);
+      _proteinTarget = GoalDefaults.proteinTargetG(_selectedGoalType);
+      _fatTarget     = GoalDefaults.fatTargetG(_selectedGoalType);
+    });
+  }
+
   void _selectGoal(NutritionGoalType goal) {
+    final isMale = _selectedGender == UserGender.male;
     setState(() {
       _selectedGoalType = goal;
-      _calories      = GoalDefaults.calories(goal);
+      _calories      = GoalDefaults.calories(goal, male: isMale);
       _carbLimit     = GoalDefaults.carbLimitG(goal);
       _proteinTarget = GoalDefaults.proteinTargetG(goal);
       _fatTarget     = GoalDefaults.fatTargetG(goal);
@@ -61,7 +78,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   /// When the calorie slider moves, proportionally scale the other macros
   /// so the defaults always reflect a realistic intake for the chosen kcal.
   void _onCaloriesChanged(int newCalories) {
-    final defaultCals = GoalDefaults.calories(_selectedGoalType);
+    final isMale = _selectedGender == UserGender.male;
+    final defaultCals = GoalDefaults.calories(_selectedGoalType, male: isMale);
     final ratio = newCalories / defaultCals;
     setState(() {
       _calories      = newCalories;
@@ -79,6 +97,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           dailyCarbLimitG: _carbLimit,
           dailyProteinTargetG: _proteinTarget,
           dailyFatTargetG: _fatTarget,
+          gender: _selectedGender,
         );
   }
 
@@ -117,6 +136,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 children: [
                   _WelcomePage(onNext: _next),
                   _NamePage(controller: _nameCtrl, onNext: _next),
+                  _GenderPage(
+                    selected: _selectedGender,
+                    onSelect: _selectGender,
+                    onNext: _next,
+                  ),
                   _GoalTypePage(
                     selected: _selectedGoalType,
                     onSelect: _selectGoal,
@@ -250,6 +274,127 @@ class _NamePage extends StatelessWidget {
 }
 
 // â”€â”€ Page 2: Goal Type â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+// ── Page 2: Gender ─────────────────────────────────────────────────────────────
+
+class _GenderPage extends StatelessWidget {
+  const _GenderPage({
+    required this.selected,
+    required this.onSelect,
+    required this.onNext,
+  });
+  final UserGender selected;
+  final ValueChanged<UserGender> onSelect;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.person_search_outlined, size: 56, color: context.primary500),
+          const SizedBox(height: 24),
+          const Text(
+            'Biological sex',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.gray900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Used to personalise your nutrient targets\n(vitamin, mineral & calorie recommendations).',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: AppTheme.gray400, height: 1.5),
+          ),
+          const SizedBox(height: 32),
+          _GenderOption(
+            icon: Icons.male,
+            label: 'Male',
+            isSelected: selected == UserGender.male,
+            onTap: () => onSelect(UserGender.male),
+          ),
+          const SizedBox(height: 12),
+          _GenderOption(
+            icon: Icons.female,
+            label: 'Female',
+            isSelected: selected == UserGender.female,
+            onTap: () => onSelect(UserGender.female),
+          ),
+          const SizedBox(height: 12),
+          _GenderOption(
+            icon: Icons.help_outline,
+            label: 'Prefer not to say',
+            isSelected: selected == UserGender.preferNotToSay,
+            onTap: () => onSelect(UserGender.preferNotToSay),
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: onNext,
+              child: const Text('Continue'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GenderOption extends StatelessWidget {
+  const _GenderOption({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? context.primary100 : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? context.primary600 : AppTheme.gray300,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 24,
+                color: isSelected ? context.primary600 : AppTheme.gray400),
+            const SizedBox(width: 14),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? context.primary700 : AppTheme.gray600,
+              ),
+            ),
+            const Spacer(),
+            if (isSelected)
+              Icon(Icons.check_circle, color: context.primary600, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 class _GoalTypePage extends StatelessWidget {
   const _GoalTypePage({

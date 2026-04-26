@@ -39,7 +39,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 13,
+      version: 15,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -99,12 +99,14 @@ class DatabaseService {
         daily_calorie_goal       INTEGER NOT NULL DEFAULT 2000,
         onboarding_complete      INTEGER NOT NULL DEFAULT 0,
         has_seen_scan_tutorial   INTEGER NOT NULL DEFAULT 0,
+        has_seen_app_tutorial    INTEGER NOT NULL DEFAULT 0,
         nutrition_goal           TEXT    NOT NULL DEFAULT 'maintain',
         daily_carb_limit_g       INTEGER NOT NULL DEFAULT 250,
         daily_protein_target_g   INTEGER NOT NULL DEFAULT 80,
         daily_fat_target_g       INTEGER NOT NULL DEFAULT 65,
         mascot_type              TEXT    NOT NULL DEFAULT 'auto',
-        theme_color_seed         TEXT    NOT NULL DEFAULT 'green'
+        theme_color_seed         TEXT    NOT NULL DEFAULT 'green',
+        gender                   TEXT    NOT NULL DEFAULT 'preferNotToSay'
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
@@ -340,6 +342,20 @@ class DatabaseService {
 
       // Re-seed to add any new items.
       await _seed(db);
+    }
+    if (oldVersion < 14) {
+      try {
+        await db.execute(
+          'ALTER TABLE user_preferences ADD COLUMN has_seen_app_tutorial INTEGER NOT NULL DEFAULT 0',
+        );
+      } catch (_) {}
+    }
+    if (oldVersion < 15) {
+      try {
+        await db.execute(
+          "ALTER TABLE user_preferences ADD COLUMN gender TEXT NOT NULL DEFAULT 'preferNotToSay'",
+        );
+      } catch (_) {}
     }
   }
 

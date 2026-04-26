@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/mascot_type.dart';
 import '../models/nutrition_goal.dart';
+import '../models/user_preferences.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
@@ -142,6 +143,55 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     labelText: 'Daily calorie goal (kcal)',
                     prefixIcon: Icon(Icons.flag_outlined),
                   ),
+                ),
+                const SizedBox(height: 16),
+                // Gender picker
+                Consumer(
+                  builder: (context, ref, _) {
+                    final prefs = ref.watch(userPrefsProvider);
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Biological sex',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.gray400,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SegmentedButton<UserGender>(
+                          segments: const [
+                            ButtonSegment(
+                              value: UserGender.male,
+                              label: Text('Male'),
+                              icon: Icon(Icons.male, size: 18),
+                            ),
+                            ButtonSegment(
+                              value: UserGender.female,
+                              label: Text('Female'),
+                              icon: Icon(Icons.female, size: 18),
+                            ),
+                            ButtonSegment(
+                              value: UserGender.preferNotToSay,
+                              label: Text('Other'),
+                              icon: Icon(Icons.help_outline, size: 18),
+                            ),
+                          ],
+                          selected: {prefs.gender},
+                          onSelectionChanged: (selection) {
+                            ref
+                                .read(userPrefsProvider.notifier)
+                                .setGender(selection.first);
+                          },
+                          style: SegmentedButton.styleFrom(
+                            textStyle: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextField(

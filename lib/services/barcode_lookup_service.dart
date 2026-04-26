@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/services.dart';
 
 import '../core/constants.dart';
@@ -102,9 +103,17 @@ class BarcodeLookupService {
 
   /// Present the native barcode scanner, scan, and return nutrition data.
   /// Returns null if the user cancels or the product has no nutrition data.
-  Future<BarcodeFood?> scanAndLookup() async {
+  /// If [themeColor] is provided, the scanner rectangle will use that color.
+  Future<BarcodeFood?> scanAndLookup({Color? themeColor}) async {
     try {
-      final raw = await _channel.invokeMethod<String>('scanBarcode');
+      final args = themeColor != null
+          ? {
+              'r': themeColor.r,
+              'g': themeColor.g,
+              'b': themeColor.b,
+            }
+          : null;
+      final raw = await _channel.invokeMethod<String>('scanBarcode', args);
       if (raw == null) return null;
       final map = jsonDecode(raw) as Map<String, dynamic>;
       return BarcodeFood.fromMap(map);

@@ -194,9 +194,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   void dispose() {
     _recordTimer?.cancel();
     _pitchTimer?.cancel();
+    _isRecording = false;
     // Use generation-aware stop so this fire-and-forget call can never
     // accidentally kill a session started by a newer ScanScreen instance.
-    _bridge.stopSession(generation: _sessionGeneration);
+    try {
+      _bridge.stopSession(generation: _sessionGeneration);
+    } catch (_) {}
     super.dispose();
   }
 
@@ -219,7 +222,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   Future<void> _pollPitch() async {
     if (!mounted || !_sessionStarted) return;
-    final pitch = await _bridge.getPhonePitch();
+    double pitch;
+    try {
+      pitch = await _bridge.getPhonePitch();
+    } catch (e) {
+      return;
+    }
     if (!mounted) return;
     setState(() => _currentPitch = pitch);
 
@@ -241,7 +249,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   // ── Recording ────────────────────────────────────────────────────────────
 
   Future<void> _startRecording() async {
-    if (_isRecording) return;
+    if (_isRecording || !mounted) return;
     _hapticMedium();
     setState(() {
       _isRecording    = true;
@@ -254,6 +262,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     } catch (e) {
       DebugLog.instance.log('Scan', 'Recording start failed: $e — resetting');
       _hapticError();
+      if (!mounted) return;
       setState(() => _isRecording = false);
       ref.read(scanStateProvider.notifier).reset();
       return;
@@ -267,10 +276,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _recordTimer = Timer.periodic(_timerInterval, (t) {
       if (!mounted) { t.cancel(); return; }
       tick++;
-      setState(() => _recordProgress = tick / totalTicks);
+      if (mounted) setState(() => _recordProgress = tick / totalTicks);
       if (tick >= totalTicks) {
         t.cancel();
-        _stopRecording();
+        if (mounted) _stopRecording();
       }
     });
   }
@@ -279,6 +288,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     if (!_isRecording) return;
     _recordTimer?.cancel();
     _recordTimer = null;
+    if (!mounted) return;
     setState(() {
       _isRecording    = false;
       _recordProgress = 1.0;
@@ -303,6 +313,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       await ref.read(scanResultProvider.notifier).runVideoScan();
     } catch (e) {
       DebugLog.instance.log('Scan', 'runVideoScan threw: $e');
+      if (!mounted) return;
+      _hapticError();
+      ref.read(scanStateProvider.notifier).modelFailed();
+      return;
     }
     if (!mounted) return;
     PerfMonitor.instance.end();
@@ -322,41 +336,52 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       _hapticSuccess();
       ref.read(scanStateProvider.notifier).calculationDone();
       DebugLog.instance.log('Perf', PerfMonitor.instance.report());
-      await _saveScanResult(result);
+      if (mounted) await _saveScanResult(result);
     }
   }
 
   Future<void> _saveScanResult(ScanResultState resultState) async {
-    final scanResult = ScanResult(
-      timestamp: DateTime.now(),
-      depthMode: _detectedDepthMode,
-      foods: resultState.foods,
-      topCameraPosition:  null,
-      topCameraTransform: null,
-      sideCameraPosition:  null,
-      sideCameraTransform: null,
-    );
-    await ref.read(historyProvider.notifier).addScan(scanResult);
-    await ref.read(dailyIntakeProvider.notifier).load();
-    await ref.read(streakProvider.notifier).load();
-    final history = ref.read(historyProvider);
-    if (history.scans.isNotEmpty) {
-      _savedScanResult = history.scans.first;
-      final timings     = PerfMonitor.instance.allTimings;
-      final memoryBytes = await _bridge.getMemoryUsage();
-      final benchmark = ScanBenchmark(
-        scanId:         _savedScanResult!.id!,
-        captureTopMs:   timings['record']?.inMilliseconds ?? 0,
-        captureSideMs:  0,
-        inferenceMs:    timings['inference']?.inMilliseconds ?? 0,
-        totalMs:        PerfMonitor.instance.total.inMilliseconds,
-        peakMemoryBytes: memoryBytes,
-        depthMode:      _detectedDepthMode,
-        timestamp:      DateTime.now(),
+    try {
+      final scanResult = ScanResult(
+        timestamp: DateTime.now(),
+        depthMode: _detectedDepthMode,
+        foods: resultState.foods,
+        topCameraPosition:  null,
+        topCameraTransform: null,
+        sideCameraPosition:  null,
+        sideCameraTransform: null,
       );
-      await DatabaseService.instance.insertBenchmark(benchmark);
+      await ref.read(historyProvider.notifier).addScan(scanResult);
+      if (!mounted) return;
+      await ref.read(dailyIntakeProvider.notifier).load();
+      if (!mounted) return;
+      await ref.read(streakProvider.notifier).load();
+      if (!mounted) return;
+      final history = ref.read(historyProvider);
+      if (history.scans.isNotEmpty) {
+        _savedScanResult = history.scans.first;
+        final timings     = PerfMonitor.instance.allTimings;
+        int memoryBytes = 0;
+        try {
+          memoryBytes = await _bridge.getMemoryUsage();
+        } catch (_) {}
+        if (!mounted) return;
+        final benchmark = ScanBenchmark(
+          scanId:         _savedScanResult!.id!,
+          captureTopMs:   timings['record']?.inMilliseconds ?? 0,
+          captureSideMs:  0,
+          inferenceMs:    timings['inference']?.inMilliseconds ?? 0,
+          totalMs:        PerfMonitor.instance.total.inMilliseconds,
+          peakMemoryBytes: memoryBytes,
+          depthMode:      _detectedDepthMode,
+          timestamp:      DateTime.now(),
+        );
+        await DatabaseService.instance.insertBenchmark(benchmark);
+      }
+      DebugLog.instance.log('Scan', 'Result saved to history');
+    } catch (e) {
+      DebugLog.instance.log('Scan', 'Save result error: $e');
     }
-    DebugLog.instance.log('Scan', 'Result saved to history');
   }
 
   void _retry() {

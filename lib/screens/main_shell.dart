@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/history_provider.dart';
 import '../providers/scan_state_provider.dart';
+import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_tutorial_overlay.dart';
 import 'analytics_screen.dart';
 import 'home_screen_v2.dart';
 import 'grocery_list_screen.dart';
@@ -24,6 +26,7 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell> {
   int _tabIndex = 0;
+  bool _showTutorial = false;
 
   static const _tabs = [
     HomeScreen(),
@@ -32,6 +35,26 @@ class _MainShellState extends ConsumerState<MainShell> {
     HistoryScreen(),
     SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkTutorial();
+    });
+  }
+
+  void _checkTutorial() {
+    final prefs = ref.read(userPrefsProvider);
+    if (prefs.onboardingComplete && !prefs.hasSeenAppTutorial) {
+      setState(() => _showTutorial = true);
+    }
+  }
+
+  void _dismissTutorial() {
+    ref.read(userPrefsProvider.notifier).dismissAppTutorial();
+    setState(() => _showTutorial = false);
+  }
 
   void _openScan() {
     ref.read(scanStateProvider.notifier).reset();
@@ -51,7 +74,9 @@ class _MainShellState extends ConsumerState<MainShell> {
     final historyState = ref.watch(historyProvider);
     final scanCount = historyState.scans.length;
 
-    return Scaffold(
+    return Stack(
+      children: [
+        Scaffold(
       body: IndexedStack(
         index: _tabIndex,
         children: _tabs,
@@ -97,7 +122,8 @@ class _MainShellState extends ConsumerState<MainShell> {
           ),
         ],
       ),
-      floatingActionButton: Column(
+      floatingActionButton: _tabIndex == 0
+          ? Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           FloatingActionButton.small(
@@ -117,8 +143,16 @@ class _MainShellState extends ConsumerState<MainShell> {
             label: const Text('Scan'),
           ),
         ],
-      ),
+      )
+          : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    ),
+        if (_showTutorial)
+          AppTutorialOverlay(
+            onDismiss: _dismissTutorial,
+            onNavigateToTab: (i) => setState(() => _tabIndex = i),
+          ),
+      ],
     );
   }
 }

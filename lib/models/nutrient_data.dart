@@ -67,22 +67,53 @@ class NutrientTotals {
       );
 }
 
-/// Daily Reference Values (FDA / NIH) for adults.
+/// Daily Reference Values — 2026 DRI (NIH / NASEM).
+/// Gender-specific values based on the Dietary Reference Intakes.
+/// Note: vitaminCMg stored in mg, vitaminEMg stored in mg, etc.
+/// The user-provided numbers for Vitamin C are in µg in the spec but
+/// standard DRI for Vitamin C is expressed in mg — the µg figures given
+/// (90,000 µg male, 75,000 µg female) equal 90 mg and 75 mg respectively,
+/// which matches the standard DRI.  We store everything in the same units
+/// as [NutrientTotals] (mg for Vitamin C, mg for Vitamin E).
 class NutrientDRV {
-  static const double fiberG      = 28.0;
-  static const double vitaminAUg  = 900.0;
-  static const double vitaminCMg  = 90.0;
-  static const double vitaminDUg  = 15.0;
-  static const double vitaminEMg  = 15.0;
-  static const double vitaminKUg  = 120.0;
-  static const double folateMcg   = 400.0;
-  static const double b12Mcg      = 2.4;
-  static const double calciumMg   = 1300.0;
-  static const double ironMg      = 18.0;
-  static const double magnesiumMg = 420.0;
-  static const double potassiumMg = 4700.0;
-  static const double sodiumMaxMg = 2300.0; // upper limit
-  static const double zincMg      = 11.0;
+  // Gender-neutral / shared
+  static const double fiberG   = 28.0;  // general recommendation
+  static const double b12Mcg   = 2.4;   // same for both
+  static const double folateMcg = 400.0; // same for both
+  static const double vitaminDUg = 15.0; // same for both
+  static const double vitaminEMg = 15.0; // same for both (15,000 µg = 15 mg)
+  static const double sodiumMaxMg = 1500.0; // DRI upper limit (NIH 2026)
+
+  // Male DRVs
+  static const double vitaminAUg_male  = 900.0;
+  static const double vitaminCMg_male  = 90.0;   // 90,000 µg = 90 mg
+  static const double vitaminKUg_male  = 120.0;
+  static const double calciumMg_male   = 1000.0;
+  static const double ironMg_male      = 8.0;
+  static const double magnesiumMg_male = 420.0;
+  static const double potassiumMg_male = 3400.0;
+  static const double zincMg_male      = 11.0;
+
+  // Female DRVs
+  static const double vitaminAUg_female  = 700.0;
+  static const double vitaminCMg_female  = 75.0;   // 75,000 µg = 75 mg
+  static const double vitaminKUg_female  = 90.0;
+  static const double calciumMg_female   = 1000.0;
+  static const double ironMg_female      = 18.0;
+  static const double magnesiumMg_female = 320.0;
+  static const double potassiumMg_female = 2600.0;
+  static const double zincMg_female      = 8.0;
+
+  // Legacy ungendered accessors (used by code that hasn't been updated yet,
+  // default to male values which were the old defaults).
+  static const double vitaminAUg  = vitaminAUg_male;
+  static const double vitaminCMg  = vitaminCMg_male;
+  static const double vitaminKUg  = vitaminKUg_male;
+  static const double calciumMg   = calciumMg_male;
+  static const double ironMg      = ironMg_male;
+  static const double magnesiumMg = magnesiumMg_male;
+  static const double potassiumMg = potassiumMg_male;
+  static const double zincMg      = zincMg_male;
 }
 
 /// Approximate nutrient content per 100 g by food category

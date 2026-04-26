@@ -25,6 +25,7 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     required int dailyCarbLimitG,
     required int dailyProteinTargetG,
     required int dailyFatTargetG,
+    UserGender gender = UserGender.preferNotToSay,
   }) async {
     final prefs = state.copyWith(
       name: name,
@@ -34,6 +35,7 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
       dailyCarbLimitG: dailyCarbLimitG,
       dailyProteinTargetG: dailyProteinTargetG,
       dailyFatTargetG: dailyFatTargetG,
+      gender: gender,
     );
     await update(prefs);
   }
@@ -57,6 +59,16 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
 
   Future<void> dismissScanTutorial() async {
     final prefs = state.copyWith(hasSeenScanTutorial: true);
+    await update(prefs);
+  }
+
+  Future<void> dismissAppTutorial() async {
+    final prefs = state.copyWith(hasSeenAppTutorial: true);
+    await update(prefs);
+  }
+
+  Future<void> setGender(UserGender gender) async {
+    final prefs = state.copyWith(gender: gender);
     await update(prefs);
   }
 }

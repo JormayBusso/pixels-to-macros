@@ -96,7 +96,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                 ),
                 onSubmitted: (_) {
                   _addItem();
-                  Navigator.pop(ctx);
+                  // Stay in the dialog — just clear the text field
+                  setSheetState(() {});
                 },
               ),
               const SizedBox(height: 12),
@@ -119,7 +120,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     _addItem();
-                    Navigator.pop(ctx);
+                    // Stay in the dialog — clear selection so user can add another
+                    setSheetState(() {
+                      _selectedCategory = null;
+                    });
                   },
                   child: const Text('Add'),
                 ),

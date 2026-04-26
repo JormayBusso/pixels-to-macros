@@ -15,7 +15,7 @@ final class BarcodeScannerPlugin: NSObject {
 
     // MARK: – Handle MethodChannel call
 
-    static func present(result: @escaping FlutterResult) {
+    static func present(result: @escaping FlutterResult, themeColor: UIColor? = nil) {
         DispatchQueue.main.async {
             guard let rootVC = UIApplication.shared.windows.first?.rootViewController else {
                 result(FlutterError(code: "NO_VC",
@@ -23,6 +23,7 @@ final class BarcodeScannerPlugin: NSObject {
                 return
             }
             let vc = BarcodeScanViewController()
+            vc.themeColor = themeColor ?? UIColor(red: 0.18, green: 0.78, blue: 0.45, alpha: 1)
             vc.modalPresentationStyle = .fullScreen
             vc.onResult = { nutritionJSON in
                 DispatchQueue.main.async {
@@ -43,6 +44,7 @@ private final class BarcodeScanViewController: UIViewController,
     AVCaptureMetadataOutputObjectsDelegate {
 
     var onResult: ((String?) -> Void)?
+    var themeColor: UIColor = UIColor(red: 0.18, green: 0.78, blue: 0.45, alpha: 1)
 
     private let session        = AVCaptureSession()
     private var previewLayer   : AVCaptureVideoPreviewLayer!
@@ -102,7 +104,7 @@ private final class BarcodeScanViewController: UIViewController,
         let boxW: CGFloat = 280
         let boxH: CGFloat = 180
         let box           = UIView()
-        box.layer.borderColor  = UIColor(red: 0.18, green: 0.78, blue: 0.45, alpha: 1).cgColor
+        box.layer.borderColor  = themeColor.cgColor
         box.layer.borderWidth  = 2.5
         box.layer.cornerRadius = 16
         box.translatesAutoresizingMaskIntoConstraints = false

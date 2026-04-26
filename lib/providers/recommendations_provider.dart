@@ -266,15 +266,39 @@ class RecommendationsNotifier
         ));
     }
 
-    // Universal reminders
-    recs.add(Recommendation(
-      message: 'Stay hydrated — aim for 2 litres of water per day.',
-      icon: Icons.water_drop_outlined,
-      color: Colors.blue.shade500,
-    ));
+    // Universal reminders — time-aware hydration
+    final hour = DateTime.now().hour;
+    if (hour >= 13 && kcal < kcalTarget * 0.3) {
+      recs.add(Recommendation(
+        message: 'It\'s past 1 PM and you\'ve only eaten ${kcal.round()} kcal. Don\'t skip meals!',
+        suggestion: 'Have a balanced meal with protein, carbs, and healthy fats.',
+        icon: Icons.access_time,
+        color: Colors.orange.shade700,
+      ));
+    }
+    if (hour >= 13) {
+      recs.add(Recommendation(
+        message: 'It\'s afternoon — make sure you\'ve had enough water. Aim for at least 4-6 glasses by now.',
+        suggestion: 'Carry a water bottle and sip regularly. Add lemon for flavour.',
+        icon: Icons.water_drop_outlined,
+        color: Colors.blue.shade500,
+      ));
+    } else if (hour >= 10) {
+      recs.add(Recommendation(
+        message: 'Mid-morning — have you had 2-3 glasses of water? Stay ahead of thirst.',
+        icon: Icons.water_drop_outlined,
+        color: Colors.blue.shade500,
+      ));
+    } else {
+      recs.add(Recommendation(
+        message: 'Start your day with a glass of water — aim for 2 litres today.',
+        icon: Icons.water_drop_outlined,
+        color: Colors.blue.shade500,
+      ));
+    }
 
-    // Keep at most 4 recommendations
-    state = RecommendationsState(recs: recs.take(4).toList());
+    // Keep at most 5 recommendations
+    state = RecommendationsState(recs: recs.take(5).toList());
   }
 }
 

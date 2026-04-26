@@ -83,16 +83,17 @@ extension NutritionGoalTypeX on NutritionGoalType {
   }
 }
 
-/// Default macro targets per goal.
+/// Default macro targets per goal — gender-aware.
+/// Males generally need ~200–300 kcal more per day than females.
 abstract final class GoalDefaults {
-  static int calories(NutritionGoalType t) {
+  static int calories(NutritionGoalType t, {bool male = false}) {
     switch (t) {
-      case NutritionGoalType.muscleGrowth: return 3000;
-      case NutritionGoalType.diabetes:     return 1800;
-      case NutritionGoalType.vegan:        return 2000;
-      case NutritionGoalType.weightLoss:   return 1600;
-      case NutritionGoalType.keto:         return 2000;
-      case NutritionGoalType.maintain:     return 2000;
+      case NutritionGoalType.muscleGrowth: return male ? 3300 : 2800;
+      case NutritionGoalType.diabetes:     return male ? 2000 : 1800;
+      case NutritionGoalType.vegan:        return male ? 2200 : 2000;
+      case NutritionGoalType.weightLoss:   return male ? 1800 : 1600;
+      case NutritionGoalType.keto:         return male ? 2200 : 2000;
+      case NutritionGoalType.maintain:     return male ? 2500 : 2000;
     }
   }
 

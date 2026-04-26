@@ -166,7 +166,14 @@ final class ScannerPlugin {
         case "scanBarcode":
             // Present the native barcode scanner, query OpenFoodFacts,
             // and return a JSON string (or nil on cancel/not found).
-            BarcodeScannerPlugin.present(result: result)
+            var color: UIColor? = nil
+            if let args = call.arguments as? [String: Any],
+               let r = args["r"] as? Double,
+               let g = args["g"] as? Double,
+               let b = args["b"] as? Double {
+                color = UIColor(red: r, green: g, blue: b, alpha: 1)
+            }
+            BarcodeScannerPlugin.present(result: result, themeColor: color)
 
         default:
             result(FlutterMethodNotImplemented)
