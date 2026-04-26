@@ -1214,7 +1214,7 @@ class _TabToggleButton extends StatelessWidget {
 
 // ── Meals tab ────────────────────────────────────────────────────────────────
 
-class _MealsTab extends StatelessWidget {
+class _MealsTab extends ConsumerWidget {
   const _MealsTab({
     required this.meals,
     required this.kcalMap,
