@@ -2,7 +2,7 @@ name: Build iOS IPA
 
 on:
   push:
-    branches: [master, main]
+    branches: [master, main, dev]
   workflow_dispatch:   # lets you trigger it manually from GitHub UI
 
 env:
