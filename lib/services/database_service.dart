@@ -39,7 +39,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 15,
+      version: 16,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -106,7 +106,8 @@ class DatabaseService {
         daily_fat_target_g       INTEGER NOT NULL DEFAULT 65,
         mascot_type              TEXT    NOT NULL DEFAULT 'auto',
         theme_color_seed         TEXT    NOT NULL DEFAULT 'green',
-        gender                   TEXT    NOT NULL DEFAULT 'preferNotToSay'
+        gender                   TEXT    NOT NULL DEFAULT 'preferNotToSay',
+        font_scale               REAL    NOT NULL DEFAULT 1.0
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
@@ -354,6 +355,13 @@ class DatabaseService {
       try {
         await db.execute(
           "ALTER TABLE user_preferences ADD COLUMN gender TEXT NOT NULL DEFAULT 'preferNotToSay'",
+        );
+      } catch (_) {}
+    }
+    if (oldVersion < 16) {
+      try {
+        await db.execute(
+          'ALTER TABLE user_preferences ADD COLUMN font_scale REAL NOT NULL DEFAULT 1.0',
         );
       } catch (_) {}
     }

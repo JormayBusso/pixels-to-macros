@@ -38,6 +38,7 @@ class UserPreferences {
   final MascotType mascotType;
   final AppColorSeed themeColorSeed;
   final UserGender gender;
+  final double fontScale;
 
   const UserPreferences({
     this.id,
@@ -53,6 +54,7 @@ class UserPreferences {
     this.mascotType = MascotType.auto,
     this.themeColorSeed = AppColorSeed.green,
     this.gender = UserGender.preferNotToSay,
+    this.fontScale = 1.0,
   });
 
   Map<String, dynamic> toMap() {
@@ -70,6 +72,7 @@ class UserPreferences {
       'mascot_type': mascotType.dbValue,
       'theme_color_seed': themeColorSeed.dbValue,
       'gender': gender.dbValue,
+      'font_scale': fontScale,
     };
   }
 
@@ -89,6 +92,7 @@ class UserPreferences {
       mascotType: MascotTypeX.fromDbValue(map['mascot_type'] as String?),
       themeColorSeed: AppColorSeedX.fromDbValue(map['theme_color_seed'] as String?),
       gender: UserGender.fromDbValue(map['gender'] as String?),
+      fontScale: (map['font_scale'] as num?)?.toDouble() ?? 1.0,
     );
   }
 
@@ -105,6 +109,7 @@ class UserPreferences {
     MascotType? mascotType,
     AppColorSeed? themeColorSeed,
     UserGender? gender,
+    double? fontScale,
   }) {
     return UserPreferences(
       id: id,
@@ -120,6 +125,7 @@ class UserPreferences {
       mascotType: mascotType ?? this.mascotType,
       themeColorSeed: themeColorSeed ?? this.themeColorSeed,
       gender: gender ?? this.gender,
+      fontScale: fontScale ?? this.fontScale,
     );
   }
 }

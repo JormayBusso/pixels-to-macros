@@ -273,6 +273,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        _SectionHeader('Text Size'),
+        const SizedBox(height: 12),
+        _TextSizePickerCard(),
+        const SizedBox(height: 24),
+
         _SectionHeader('Mascot'),
         const SizedBox(height: 12),
         _MascotPickerCard(),
@@ -460,6 +465,119 @@ class _InfoRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Text size picker ───────────────────────────────────────────────────────────
+
+class _TextSizePickerCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fontScale = ref.watch(userPrefsProvider.select((p) => p.fontScale));
+
+    const options = [
+      (1.0,  'Normal',      Icons.text_fields),
+      (1.18, 'Large',       Icons.format_size),
+      (1.38, 'Extra Large', Icons.text_increase),
+    ];
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Adjust text size throughout the app.',
+              style: const TextStyle(fontSize: 13, color: AppTheme.gray600),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: options.map(((double scale, String label, IconData icon) opt) {
+                final selected = (fontScale - opt.$1).abs() < 0.01;
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: GestureDetector(
+                      onTap: () => ref
+                          .read(userPrefsProvider.notifier)
+                          .setFontScale(opt.$1),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: selected ? context.primary100 : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: selected ? context.primary600 : AppTheme.gray300,
+                            width: selected ? 2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              opt.$3,
+                              size: 18 * opt.$1,
+                              color: selected ? context.primary600 : AppTheme.gray400,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              opt.$2,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: selected ? context.primary700 : AppTheme.gray500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            // Live preview
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.gray100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Preview',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.gray400,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Calories · Protein · Vitamin D',
+                    style: TextStyle(fontSize: 14, color: AppTheme.gray700),
+                  ),
+                  Text(
+                    '285 kcal  /  32 g protein',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.gray500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

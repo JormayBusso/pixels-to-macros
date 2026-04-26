@@ -11,10 +11,20 @@ class PixelsToMacrosApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = ref.watch(themeProvider);
+    final fontScale = ref.watch(
+      userPrefsProvider.select((p) => p.fontScale),
+    );
     return MaterialApp(
       title: 'Pixels to Macros',
       debugShowCheckedModeBanner: false,
       theme: theme,
+      // Apply user-selected font scale to every screen in the app
+      builder: (ctx, child) => MediaQuery(
+        data: MediaQuery.of(ctx).copyWith(
+          textScaler: TextScaler.linear(fontScale),
+        ),
+        child: child!,
+      ),
       home: const _AppGate(),
     );
   }

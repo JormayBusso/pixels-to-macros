@@ -71,6 +71,11 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     final prefs = state.copyWith(gender: gender);
     await update(prefs);
   }
+
+  Future<void> setFontScale(double scale) async {
+    final prefs = state.copyWith(fontScale: scale);
+    await update(prefs);
+  }
 }
 
 final userPrefsProvider =
