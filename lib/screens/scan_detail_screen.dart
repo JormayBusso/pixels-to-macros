@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/food_data.dart';
+import '../models/nutrition_goal.dart';
 import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
+import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';
+import '../services/database_service.dart';
 import '../services/native_bridge.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
@@ -23,11 +27,32 @@ class ScanDetailScreen extends ConsumerStatefulWidget {
 
 class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
   late ScanResult _scan;
+  Map<String, FoodData> _foodMap = const {};
 
   @override
   void initState() {
     super.initState();
     _scan = widget.scan;
+    _loadFoodMap();
+  }
+
+  Future<void> _loadFoodMap() async {
+    final foods = await DatabaseService.instance.getAllFoods();
+    if (!mounted) return;
+    setState(() {
+      _foodMap = {for (final f in foods) f.label.toLowerCase(): f};
+    });
+  }
+
+  /// Look up the FoodData for a detected label (case-insensitive).
+  FoodData? _foodFor(String label) => _foodMap[label.toLowerCase()];
+
+  /// Estimate grams from volumeCm³ using density from FoodData.
+  double _gramsFor(DetectedFood food) {
+    final fd = _foodFor(food.label);
+    if (fd == null) return food.volumeCm3; // assume density ≈ 1.0
+    final avgDensity = (fd.densityMin + fd.densityMax) / 2.0;
+    return food.volumeCm3 * avgDensity;
   }
 
   Future<void> _refresh() async {
@@ -88,6 +113,23 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
   Widget build(BuildContext context) {
     final avgTotal = (_scan.totalCaloriesMin + _scan.totalCaloriesMax) / 2;
     final margin = (_scan.totalCaloriesMax - _scan.totalCaloriesMin) / 2;
+
+    final prefs = ref.watch(userPrefsProvider);
+    final isDiabetic = prefs.nutritionGoal == NutritionGoalType.diabetes;
+    final icr = prefs.icrGramsPerUnit;
+
+    // Total carbs across the meal — only computed when needed.
+    double totalCarbsG = 0;
+    if (isDiabetic) {
+      for (final f in _scan.foods) {
+        final fd = _foodFor(f.label);
+        if (fd == null) continue;
+        totalCarbsG += fd.carbsPer100g * _gramsFor(f) / 100.0;
+      }
+    }
+    final totalBolus = (isDiabetic && totalCarbsG > 0 && icr > 0)
+        ? (totalCarbsG / icr * 10).round() / 10
+        : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -188,6 +230,65 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           ),
           const SizedBox(height: 16),
 
+          // ── Meal Bolus card (diabetes goal only) ─────────────────────
+          if (totalBolus != null) ...[
+            Card(
+              color: const Color(0xFFE3F2FD),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: Color(0xFF1976D2)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.vaccines_outlined,
+                        color: Color(0xFF1976D2), size: 26),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Suggested Meal Bolus',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF1976D2),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '${totalBolus.toStringAsFixed(1)} units',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0D47A1),
+                            ),
+                          ),
+                          Text(
+                            '${totalCarbsG.toStringAsFixed(1)} g carbs ÷ '
+                            '${icr.toStringAsFixed(0)} g/unit',
+                            style: const TextStyle(
+                                fontSize: 11, color: Color(0xFF1976D2)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                '⚠️ Carbohydrate-cover bolus only. Always confirm with your healthcare provider.',
+                style: TextStyle(fontSize: 11, color: AppTheme.gray400),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
           // ── Food items ───────────────────────────────────────────────
           Text(
             'Detected Foods',
@@ -198,18 +299,67 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          ..._scan.foods.map((f) => _FoodDetailRow(
-                food: f,
-                onEdit: () => _editFood(f),
-                onGroundTruth: () => _recordGroundTruth(f),
-              )),
+          ..._scan.foods.map((f) {
+            final fd = _foodFor(f.label);
+            final grams = _gramsFor(f);
+            final foodBolus = (isDiabetic && fd != null)
+                ? fd.bolusForGrams(grams, icr)
+                : null;
+            final row = _FoodDetailRow(
+              food: f,
+              grams: grams,
+              bolusUnits: foodBolus,
+              onEdit: () => _editFood(f),
+              onGroundTruth: () => _recordGroundTruth(f),
+            );
+            // Allow swipe-to-delete only when the food has a stable id.
+            if (f.id == null) return row;
+            return Dismissible(
+              key: ValueKey('food-${f.id}'),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 24, bottom: 8),
+                color: AppTheme.red500,
+                child: const Icon(Icons.delete_outline, color: Colors.white),
+              ),
+              confirmDismiss: (_) async {
+                return await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Remove this item?'),
+                    content: Text('Remove "${f.label}" from this scan?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Remove',
+                            style: TextStyle(color: AppTheme.red500)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              onDismissed: (_) async {
+                await ref
+                    .read(historyProvider.notifier)
+                    .deleteDetectedFood(f.id!);
+                await ref.read(dailyIntakeProvider.notifier).load();
+                await _refresh();
+              },
+              child: row,
+            );
+          }),
 
           // Tap hint
           if (_scan.foods.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4, bottom: 8),
               child: Text(
-                'Tap to edit  •  Long-press for ground truth',
+                'Tap to edit  •  Long-press for ground truth  •  Swipe ← to remove',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 11, color: AppTheme.gray400),
               ),
@@ -441,10 +591,14 @@ class _InfoRow extends StatelessWidget {
 class _FoodDetailRow extends StatelessWidget {
   const _FoodDetailRow({
     required this.food,
+    required this.grams,
+    this.bolusUnits,
     required this.onEdit,
     required this.onGroundTruth,
   });
   final DetectedFood food;
+  final double grams;
+  final double? bolusUnits;
   final VoidCallback onEdit;
   final VoidCallback onGroundTruth;
 
@@ -456,14 +610,20 @@ class _FoodDetailRow extends StatelessWidget {
         HapticFeedback.mediumImpact();
         onGroundTruth();
       },
-      child: _FoodDetailCard(food: food),
+      child: _FoodDetailCard(food: food, grams: grams, bolusUnits: bolusUnits),
     );
   }
 }
 
 class _FoodDetailCard extends StatelessWidget {
-  const _FoodDetailCard({required this.food});
+  const _FoodDetailCard({
+    required this.food,
+    required this.grams,
+    this.bolusUnits,
+  });
   final DetectedFood food;
+  final double grams;
+  final double? bolusUnits;
 
   /// Returns a color indicating uncertainty: green=low, amber=med, red=high.
   Color _uncertaintyColor(double margin, double avg, BuildContext context) {
@@ -513,12 +673,24 @@ class _FoodDetailCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${food.volumeCm3.toStringAsFixed(1)} cm³',
+                          '${grams.toStringAsFixed(0)} g  •  ${food.volumeCm3.toStringAsFixed(1)} cm³',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppTheme.gray400,
                           ),
                         ),
+                        if (bolusUnits != null && bolusUnits! > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              '💉 ${bolusUnits!.toStringAsFixed(1)} u insulin',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1976D2),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),

@@ -158,7 +158,8 @@ final class PlateDetector {
         imageWidth: Int,
         imageHeight: Int
     ) -> PlateResult? {
-        let ptr = edges.data!.assumingMemoryBound(to: UInt8.self)
+        guard let edgeData = edges.data else { return nil }
+        let ptr = edgeData.assumingMemoryBound(to: UInt8.self)
         let minR = Int(CGFloat(imageWidth) * minDiameterFraction / 2)
         let maxR = Int(CGFloat(imageWidth) * maxDiameterFraction / 2)
         let step = 4  // sample every 4th pixel for speed

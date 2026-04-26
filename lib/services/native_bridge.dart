@@ -135,4 +135,28 @@ class NativeBridge {
       return 0;
     }
   }
+
+  // ── Flashlight + ambient light (Phase 1: scan UX) ─────────────────────────
+
+  /// Toggle the device flashlight (torch). Returns true on success.
+  Future<bool> setTorch(bool on) async {
+    try {
+      final ok = await _channel.invokeMethod<bool>('setTorch', {'on': on});
+      return ok ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Returns the current ambient light intensity in lux from ARKit.
+  /// Roughly: > 600 = bright, 200-600 = normal, < 200 = dark.
+  /// Returns -1 if no estimate is available yet.
+  Future<double> getAmbientIntensity() async {
+    try {
+      final v = await _channel.invokeMethod<double>('getAmbientIntensity');
+      return v ?? -1.0;
+    } catch (_) {
+      return -1.0;
+    }
+  }
 }

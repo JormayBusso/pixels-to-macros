@@ -1,5 +1,7 @@
 ﻿import Flutter
 import Foundation
+import AVFoundation
+import UIKit
 
 /// Central MethodChannel handler.
 ///
@@ -182,8 +184,46 @@ final class ScannerPlugin {
             }
             BarcodeScannerPlugin.present(result: result, themeColor: color)
 
+        case "setTorch":
+            // Toggle the device flashlight. Args: { "on": Bool }.
+            // Returns true on success, false otherwise.
+            let on = (call.arguments as? [String: Any])?["on"] as? Bool ?? false
+            result(setTorch(on: on))
+
+        case "getAmbientIntensity":
+            // Returns ARFrame.lightEstimate.ambientIntensity in lux.
+            // ~1000 lux = neutral, < 200 lux is "dark".
+            // Returns -1 if no estimate yet.
+            if let frame = sessionManager.latestFrame,
+               let est = frame.lightEstimate {
+                result(Double(est.ambientIntensity))
+            } else {
+                result(-1.0)
+            }
+
         default:
             result(FlutterMethodNotImplemented)
+        }
+    }
+
+    // MARK: - Torch helper
+
+    /// Best-effort flashlight toggle. Returns whether we successfully changed state.
+    private static func setTorch(on: Bool) -> Bool {
+        guard let device = AVCaptureDevice.default(for: .video) else { return false }
+        guard device.hasTorch, device.isTorchAvailable else { return false }
+        do {
+            try device.lockForConfiguration()
+            defer { device.unlockForConfiguration() }
+            if on {
+                try device.setTorchModeOn(level: 1.0)
+            } else {
+                device.torchMode = .off
+            }
+            return true
+        } catch {
+            print("[ScannerPlugin] Torch toggle failed: \(error)")
+            return false
         }
     }
 

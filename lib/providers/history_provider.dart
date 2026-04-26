@@ -36,6 +36,12 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
     await DatabaseService.instance.deleteScanResult(scanId);
     await load();
   }
+
+  /// Delete a single detected food from a scan and refresh.
+  Future<void> deleteDetectedFood(int detectedFoodId) async {
+    await DatabaseService.instance.deleteDetectedFood(detectedFoodId);
+    await load();
+  }
 }
 
 final historyProvider =

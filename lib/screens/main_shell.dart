@@ -147,7 +147,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             backgroundColor: context.primary600,
             foregroundColor: Colors.white,
             icon: const Icon(Icons.camera_alt),
-            label: const Text('Scan'),
+            label: const Text('AI Scan'),
           ),
         ],
       )

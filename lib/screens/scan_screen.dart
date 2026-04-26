@@ -52,6 +52,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   ScanResult? _savedScanResult;
   int? _sessionGeneration;       // generation counter for safe stop()
 
+  /// Flashlight (torch) state and ambient light (lux) for low-light warning.
+  bool _torchOn = false;
+  double _ambientLux = -1.0;
+  int _pitchTickCounter = 0;
+
   static const _maxRecordDuration = Duration(seconds: 5);
   static const _timerInterval     = Duration(milliseconds: 80);
 
@@ -202,6 +207,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _noFoodResetTimer?.cancel();
     _isRecording = false;
     _isInferenceRunning = false;
+    // Make sure we never leave the torch on after the user leaves the screen.
+    if (_torchOn) {
+      try { _bridge.setTorch(false); } catch (_) {}
+    }
     // Use generation-aware stop so this fire-and-forget call can never
     // accidentally kill a session started by a newer ScanScreen instance.
     try {
@@ -237,6 +246,16 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     }
     if (!mounted) return;
     setState(() => _currentPitch = pitch);
+
+    // Sample ambient light every ~5 ticks (~3 Hz) — cheap.
+    _pitchTickCounter++;
+    if (_pitchTickCounter % 5 == 0) {
+      _bridge.getAmbientIntensity().then((lux) {
+        if (mounted && lux != _ambientLux) {
+          setState(() => _ambientLux = lux);
+        }
+      });
+    }
 
     final state = ref.read(scanStateProvider);
 
@@ -510,6 +529,64 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
+
+          // ── Flashlight toggle (top-right) ───────────────────────────
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 8,
+            child: IconButton(
+              icon: Icon(
+                _torchOn ? Icons.flashlight_on : Icons.flashlight_off,
+                color: _torchOn ? AppTheme.amber500 : Colors.white70,
+                size: 28,
+              ),
+              tooltip: _torchOn ? 'Turn off flashlight' : 'Turn on flashlight',
+              onPressed: () async {
+                final next = !_torchOn;
+                final ok = await _bridge.setTorch(next);
+                if (!mounted) return;
+                if (ok) {
+                  setState(() => _torchOn = next);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Flashlight unavailable on this device.'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
+
+          // ── Low-light warning banner ────────────────────────────────
+          if (_ambientLux >= 0 && _ambientLux < 200 && !_torchOn)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 56,
+              left: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.amber500),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.nightlight_round,
+                        color: AppTheme.amber500, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Low light — turn on the flashlight for better detection.',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           // ── Tutorial overlay (first scan) ───────────────────────────
           if (_showTutorial)

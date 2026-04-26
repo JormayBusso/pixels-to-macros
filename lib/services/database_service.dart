@@ -949,6 +949,13 @@ class DatabaseService {
     await db.delete('food_data', where: 'id = ?', whereArgs: [foodId]);
   }
 
+  /// Delete a single detected food from a scan (cascades to ground_truth).
+  Future<void> deleteDetectedFood(int detectedFoodId) async {
+    final db = await database;
+    await db.delete('detected_foods',
+        where: 'id = ?', whereArgs: [detectedFoodId]);
+  }
+
   // ── user_preferences CRUD ────────────────────────────────────────────────
 
   Future<UserPreferences> getUserPreferences() async {
