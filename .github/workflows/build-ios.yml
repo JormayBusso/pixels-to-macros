@@ -159,8 +159,11 @@ jobs:
       - name: Export and compile CoreML model
         run: |
           python3.11 -m venv .venv
-          source . venv/bin/activate
-          pip install "torch==2.7.0" "torchvision==0.22.0" coremltools numpy --quiet
+          # Activate the venv (no accidental space in the path)
+          . .venv/bin/activate
+          # Use the venv's python -m pip to ensure correct interpreter
+          python -m pip install --upgrade pip
+          python -m pip install "torch==2.7.0" "torchvision==0.22.0" coremltools numpy --quiet
           python training/export_coreml.py \
             --checkpoint training/output/best.pth \
             --num_classes 104 \
