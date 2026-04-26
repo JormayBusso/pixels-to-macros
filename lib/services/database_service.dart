@@ -3,6 +3,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../core/constants.dart';
+import '../models/custom_meal.dart';
 import '../models/food_data.dart';
 import '../models/grocery_item.dart';
 import '../models/ground_truth.dart';
@@ -39,7 +40,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 16,
+      version: 18,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -49,15 +50,33 @@ class DatabaseService {
     // food_data — reference table
     await db.execute('''
       CREATE TABLE food_data (
-        id               INTEGER PRIMARY KEY AUTOINCREMENT,
-        label            TEXT    NOT NULL UNIQUE,
-        density_min      REAL    NOT NULL,
-        density_max      REAL    NOT NULL,
-        kcal_per_100g    REAL    NOT NULL,
-        category         TEXT    NOT NULL,
-        protein_per_100g REAL    NOT NULL DEFAULT 0,
-        carbs_per_100g   REAL    NOT NULL DEFAULT 0,
-        fat_per_100g     REAL    NOT NULL DEFAULT 0
+        id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+        label                    TEXT    NOT NULL UNIQUE,
+        density_min              REAL    NOT NULL,
+        density_max              REAL    NOT NULL,
+        kcal_per_100g            REAL    NOT NULL,
+        category                 TEXT    NOT NULL,
+        protein_per_100g         REAL    NOT NULL DEFAULT 0,
+        carbs_per_100g           REAL    NOT NULL DEFAULT 0,
+        fat_per_100g             REAL    NOT NULL DEFAULT 0,
+        per_ml                   INTEGER NOT NULL DEFAULT 0,
+        fiber_per_100g           REAL    NOT NULL DEFAULT 0,
+        sugars_per_100g          REAL    NOT NULL DEFAULT 0,
+        saturated_fat_per_100g   REAL    NOT NULL DEFAULT 0,
+        sodium_mg_per_100g       REAL    NOT NULL DEFAULT 0,
+        cholesterol_mg_per_100g  REAL    NOT NULL DEFAULT 0,
+        vitamin_a_ug_per_100g    REAL    NOT NULL DEFAULT 0,
+        vitamin_c_mg_per_100g    REAL    NOT NULL DEFAULT 0,
+        vitamin_d_ug_per_100g    REAL    NOT NULL DEFAULT 0,
+        vitamin_e_mg_per_100g    REAL    NOT NULL DEFAULT 0,
+        vitamin_k_ug_per_100g    REAL    NOT NULL DEFAULT 0,
+        vitamin_b12_ug_per_100g  REAL    NOT NULL DEFAULT 0,
+        folate_ug_per_100g       REAL    NOT NULL DEFAULT 0,
+        calcium_mg_per_100g      REAL    NOT NULL DEFAULT 0,
+        iron_mg_per_100g         REAL    NOT NULL DEFAULT 0,
+        magnesium_mg_per_100g    REAL    NOT NULL DEFAULT 0,
+        potassium_mg_per_100g    REAL    NOT NULL DEFAULT 0,
+        zinc_mg_per_100g         REAL    NOT NULL DEFAULT 0
       )
     ''');
 
@@ -140,6 +159,27 @@ class DatabaseService {
         depth_mode        TEXT    NOT NULL,
         timestamp         TEXT    NOT NULL,
         FOREIGN KEY (scan_id) REFERENCES scan_results(id) ON DELETE CASCADE
+      )
+    ''');
+
+    // custom_meals — user-defined saved meals
+    await db.execute('''
+      CREATE TABLE custom_meals (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        name       TEXT    NOT NULL,
+        meal_type  TEXT    NOT NULL DEFAULT 'lunch',
+        created_at TEXT    NOT NULL
+      )
+    ''');
+
+    // meal_ingredients — ingredients in each saved meal
+    await db.execute('''
+      CREATE TABLE meal_ingredients (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        meal_id    INTEGER NOT NULL,
+        food_label TEXT    NOT NULL,
+        grams      REAL    NOT NULL,
+        FOREIGN KEY (meal_id) REFERENCES custom_meals(id) ON DELETE CASCADE
       )
     ''');
 
@@ -365,6 +405,63 @@ class DatabaseService {
         );
       } catch (_) {}
     }
+    if (oldVersion < 17) {
+      // Add per_ml flag to food_data
+      try {
+        await db.execute(
+          'ALTER TABLE food_data ADD COLUMN per_ml INTEGER NOT NULL DEFAULT 0',
+        );
+      } catch (_) {}
+      // Mark all existing drink entries as per_ml
+      await db.execute(
+        "UPDATE food_data SET per_ml = 1 WHERE category = 'drink'",
+      );
+      // Create custom meals tables
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS custom_meals (
+          id         INTEGER PRIMARY KEY AUTOINCREMENT,
+          name       TEXT    NOT NULL,
+          meal_type  TEXT    NOT NULL DEFAULT 'lunch',
+          created_at TEXT    NOT NULL
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS meal_ingredients (
+          id         INTEGER PRIMARY KEY AUTOINCREMENT,
+          meal_id    INTEGER NOT NULL,
+          food_label TEXT    NOT NULL,
+          grams      REAL    NOT NULL,
+          FOREIGN KEY (meal_id) REFERENCES custom_meals(id) ON DELETE CASCADE
+        )
+      ''');
+    }
+    if (oldVersion < 18) {
+      // Extended nutrient columns on food_data
+      const newCols = [
+        'fiber_per_100g           REAL NOT NULL DEFAULT 0',
+        'sugars_per_100g          REAL NOT NULL DEFAULT 0',
+        'saturated_fat_per_100g   REAL NOT NULL DEFAULT 0',
+        'sodium_mg_per_100g       REAL NOT NULL DEFAULT 0',
+        'cholesterol_mg_per_100g  REAL NOT NULL DEFAULT 0',
+        'vitamin_a_ug_per_100g    REAL NOT NULL DEFAULT 0',
+        'vitamin_c_mg_per_100g    REAL NOT NULL DEFAULT 0',
+        'vitamin_d_ug_per_100g    REAL NOT NULL DEFAULT 0',
+        'vitamin_e_mg_per_100g    REAL NOT NULL DEFAULT 0',
+        'vitamin_k_ug_per_100g    REAL NOT NULL DEFAULT 0',
+        'vitamin_b12_ug_per_100g  REAL NOT NULL DEFAULT 0',
+        'folate_ug_per_100g       REAL NOT NULL DEFAULT 0',
+        'calcium_mg_per_100g      REAL NOT NULL DEFAULT 0',
+        'iron_mg_per_100g         REAL NOT NULL DEFAULT 0',
+        'magnesium_mg_per_100g    REAL NOT NULL DEFAULT 0',
+        'potassium_mg_per_100g    REAL NOT NULL DEFAULT 0',
+        'zinc_mg_per_100g         REAL NOT NULL DEFAULT 0',
+      ];
+      for (final col in newCols) {
+        try {
+          await db.execute('ALTER TABLE food_data ADD COLUMN $col');
+        } catch (_) {}
+      }
+    }
   }
 
   /// Updates protein/carbs/fat for foods that were seeded before v8.
@@ -423,12 +520,12 @@ class DatabaseService {
       FoodData(label: 'cake',                densityMin: 0.35, densityMax: 0.55, kcalPer100g: 347, category: 'mixed',     proteinPer100g:  4.5, carbsPer100g: 55.0, fatPer100g: 14.0),
 
       // ── 11–16: Drinks ────────────────────────────────────────────────────
-      FoodData(label: 'wine',                densityMin: 0.99, densityMax: 1.02, kcalPer100g:  85, category: 'drink',     proteinPer100g:  0.1, carbsPer100g:  2.6, fatPer100g:  0.0),
-      FoodData(label: 'milkshake',           densityMin: 0.95, densityMax: 1.05, kcalPer100g: 112, category: 'drink',     proteinPer100g:  3.5, carbsPer100g: 18.0, fatPer100g:  3.0),
-      FoodData(label: 'coffee',              densityMin: 0.99, densityMax: 1.01, kcalPer100g:   2, category: 'drink',     proteinPer100g:  0.3, carbsPer100g:  0.0, fatPer100g:  0.0),
-      FoodData(label: 'juice',               densityMin: 1.00, densityMax: 1.05, kcalPer100g:  46, category: 'drink',     proteinPer100g:  0.5, carbsPer100g: 11.0, fatPer100g:  0.1),
-      FoodData(label: 'milk',                densityMin: 1.03, densityMax: 1.04, kcalPer100g:  42, category: 'drink',     proteinPer100g:  3.4, carbsPer100g:  5.0, fatPer100g:  1.0),
-      FoodData(label: 'tea',                 densityMin: 0.99, densityMax: 1.01, kcalPer100g:   1, category: 'drink',     proteinPer100g:  0.0, carbsPer100g:  0.3, fatPer100g:  0.0),
+      FoodData(label: 'wine',                densityMin: 0.99, densityMax: 1.02, kcalPer100g:  85, category: 'drink',     proteinPer100g:  0.1, carbsPer100g:  2.6, fatPer100g:  0.0, perMl: true),
+      FoodData(label: 'milkshake',           densityMin: 0.95, densityMax: 1.05, kcalPer100g: 112, category: 'drink',     proteinPer100g:  3.5, carbsPer100g: 18.0, fatPer100g:  3.0, perMl: true),
+      FoodData(label: 'coffee',              densityMin: 0.99, densityMax: 1.01, kcalPer100g:   2, category: 'drink',     proteinPer100g:  0.3, carbsPer100g:  0.0, fatPer100g:  0.0, perMl: true),
+      FoodData(label: 'juice',               densityMin: 1.00, densityMax: 1.05, kcalPer100g:  46, category: 'drink',     proteinPer100g:  0.5, carbsPer100g: 11.0, fatPer100g:  0.1, perMl: true),
+      FoodData(label: 'milk',                densityMin: 1.03, densityMax: 1.04, kcalPer100g:  42, category: 'drink',     proteinPer100g:  3.4, carbsPer100g:  5.0, fatPer100g:  1.0, perMl: true),
+      FoodData(label: 'tea',                 densityMin: 0.99, densityMax: 1.01, kcalPer100g:   1, category: 'drink',     proteinPer100g:  0.0, carbsPer100g:  0.3, fatPer100g:  0.0, perMl: true),
 
       // ── 17–23: Nuts & Legumes ────────────────────────────────────────────
       FoodData(label: 'almond',              densityMin: 0.55, densityMax: 0.65, kcalPer100g: 579, category: 'nut',       proteinPer100g: 21.0, carbsPer100g: 22.0, fatPer100g: 50.0),
@@ -736,12 +833,12 @@ class DatabaseService {
       FoodData(label: 'Tahini',              densityMin: 1.00, densityMax: 1.15, kcalPer100g: 595, category: 'mixed',     proteinPer100g: 17.0, carbsPer100g: 21.0, fatPer100g: 54.0),
 
       // Drinks (extended)
-      FoodData(label: 'Smoothie',            densityMin: 0.95, densityMax: 1.05, kcalPer100g:  60, category: 'drink',     proteinPer100g:  1.5, carbsPer100g: 13.0, fatPer100g:  0.5),
-      FoodData(label: 'Hot Chocolate',       densityMin: 1.00, densityMax: 1.05, kcalPer100g:  77, category: 'drink',     proteinPer100g:  3.5, carbsPer100g: 10.5, fatPer100g:  2.5),
-      FoodData(label: 'Lemonade',            densityMin: 1.00, densityMax: 1.05, kcalPer100g:  40, category: 'drink',     proteinPer100g:  0.0, carbsPer100g: 10.0, fatPer100g:  0.0),
-      FoodData(label: 'Beer',                densityMin: 1.00, densityMax: 1.02, kcalPer100g:  43, category: 'drink',     proteinPer100g:  0.5, carbsPer100g:  3.6, fatPer100g:  0.0),
-      FoodData(label: 'Protein Shake',       densityMin: 1.00, densityMax: 1.05, kcalPer100g:  70, category: 'drink',     proteinPer100g: 12.0, carbsPer100g:  5.0, fatPer100g:  1.0),
-      FoodData(label: 'Coconut Water',       densityMin: 1.00, densityMax: 1.02, kcalPer100g:  19, category: 'drink',     proteinPer100g:  0.7, carbsPer100g:  3.7, fatPer100g:  0.2),
+      FoodData(label: 'Smoothie',            densityMin: 0.95, densityMax: 1.05, kcalPer100g:  60, category: 'drink',     proteinPer100g:  1.5, carbsPer100g: 13.0, fatPer100g:  0.5, perMl: true),
+      FoodData(label: 'Hot Chocolate',       densityMin: 1.00, densityMax: 1.05, kcalPer100g:  77, category: 'drink',     proteinPer100g:  3.5, carbsPer100g: 10.5, fatPer100g:  2.5, perMl: true),
+      FoodData(label: 'Lemonade',            densityMin: 1.00, densityMax: 1.05, kcalPer100g:  40, category: 'drink',     proteinPer100g:  0.0, carbsPer100g: 10.0, fatPer100g:  0.0, perMl: true),
+      FoodData(label: 'Beer',                densityMin: 1.00, densityMax: 1.02, kcalPer100g:  43, category: 'drink',     proteinPer100g:  0.5, carbsPer100g:  3.6, fatPer100g:  0.0, perMl: true),
+      FoodData(label: 'Protein Shake',       densityMin: 1.00, densityMax: 1.05, kcalPer100g:  70, category: 'drink',     proteinPer100g: 12.0, carbsPer100g:  5.0, fatPer100g:  1.0, perMl: true),
+      FoodData(label: 'Coconut Water',       densityMin: 1.00, densityMax: 1.02, kcalPer100g:  19, category: 'drink',     proteinPer100g:  0.7, carbsPer100g:  3.7, fatPer100g:  0.2, perMl: true),
     ];
 
     final batch = db.batch();
@@ -964,5 +1061,67 @@ class DatabaseService {
   Future<void> clearCheckedGroceryItems() async {
     final db = await database;
     await db.delete('grocery_list', where: 'checked = 1');
+  }
+
+  // ── Custom meals ─────────────────────────────────────────────────────────
+
+  Future<List<CustomMeal>> getCustomMeals() async {
+    final db = await database;
+    final rows = await db.query('custom_meals', orderBy: 'meal_type ASC, name ASC');
+    final meals = <CustomMeal>[];
+    for (final row in rows) {
+      final id = row['id'] as int;
+      final ingRows = await db.query(
+        'meal_ingredients',
+        where: 'meal_id = ?',
+        whereArgs: [id],
+      );
+      final ingredients =
+          ingRows.map((r) => MealIngredient.fromMap(r)).toList();
+      meals.add(CustomMeal.fromMap(row, ingredients: ingredients));
+    }
+    return meals;
+  }
+
+  Future<int> insertCustomMeal(CustomMeal meal,
+      List<MealIngredient> ingredients) async {
+    final db = await database;
+    final mealId = await db.insert('custom_meals', meal.toMap());
+    final batch = db.batch();
+    for (final ing in ingredients) {
+      batch.insert('meal_ingredients', {
+        'meal_id': mealId,
+        'food_label': ing.foodLabel,
+        'grams': ing.grams,
+      });
+    }
+    await batch.commit(noResult: true);
+    return mealId;
+  }
+
+  Future<void> updateCustomMeal(CustomMeal meal,
+      List<MealIngredient> ingredients) async {
+    if (meal.id == null) return;
+    final db = await database;
+    await db.update('custom_meals', meal.toMap(),
+        where: 'id = ?', whereArgs: [meal.id]);
+    await db.delete('meal_ingredients',
+        where: 'meal_id = ?', whereArgs: [meal.id]);
+    final batch = db.batch();
+    for (final ing in ingredients) {
+      batch.insert('meal_ingredients', {
+        'meal_id': meal.id,
+        'food_label': ing.foodLabel,
+        'grams': ing.grams,
+      });
+    }
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> deleteCustomMeal(int mealId) async {
+    final db = await database;
+    await db.delete('meal_ingredients',
+        where: 'meal_id = ?', whereArgs: [mealId]);
+    await db.delete('custom_meals', where: 'id = ?', whereArgs: [mealId]);
   }
 }

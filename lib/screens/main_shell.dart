@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/history_provider.dart';
 import '../providers/scan_state_provider.dart';
-import '../providers/user_prefs_provider.dart';
-import '../theme/app_theme.dart';
+import '../providers/user_prefs_provider.dart';import '../theme/app_theme.dart';
 import '../widgets/app_tutorial_overlay.dart';
 import 'analytics_screen.dart';
 import 'home_screen_v2.dart';
@@ -53,6 +52,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   void _dismissTutorial() {
     ref.read(userPrefsProvider.notifier).dismissAppTutorial();
+    ref.read(showTourProvider.notifier).state = false;
     setState(() => _showTutorial = false);
   }
 
@@ -73,6 +73,13 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     final historyState = ref.watch(historyProvider);
     final scanCount = historyState.scans.length;
+
+    // Watch showTourProvider so we can re-show tour on demand (from Settings).
+    ref.listen<bool>(showTourProvider, (_, show) {
+      if (show && !_showTutorial) {
+        setState(() => _showTutorial = true);
+      }
+    });
 
     return Stack(
       children: [

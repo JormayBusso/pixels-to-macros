@@ -5,8 +5,7 @@ import '../models/mascot_type.dart';
 import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../providers/user_prefs_provider.dart';
-import '../services/data_export_service.dart';
-import '../services/database_service.dart';
+import '../services/data_export_service.dart';import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
 import 'eval_dashboard_screen.dart';
@@ -263,6 +262,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
             ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+        _SectionHeader('About'),
+        const SizedBox(height: 12),
+        Card(
+          child: ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: context.primary100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.tour_outlined, color: context.primary600),
+            ),
+            title: const Text('Replay App Tour',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text('Re-watch the guided feature tour'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              ref.read(userPrefsProvider.notifier).replayAppTutorial(ref);
+            },
           ),
         ),
       ],

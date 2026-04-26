@@ -9,6 +9,29 @@ class FoodData {
   final double proteinPer100g;
   final double carbsPer100g;
   final double fatPer100g;
+  /// True when nutrients are expressed per 100 ml (drinks) rather than per 100 g.
+  final bool perMl;
+
+  // Extended nutrients (barcode scan sources)
+  final double fiberPer100g;
+  final double sugarsPer100g;
+  final double saturatedFatPer100g;
+  final double sodiumMgPer100g;
+  final double cholesterolMgPer100g;
+  // Vitamins
+  final double vitaminAUgPer100g;
+  final double vitaminCMgPer100g;
+  final double vitaminDUgPer100g;
+  final double vitaminEMgPer100g;
+  final double vitaminKUgPer100g;
+  final double vitaminB12UgPer100g;
+  final double folateUgPer100g;
+  // Minerals
+  final double calciumMgPer100g;
+  final double ironMgPer100g;
+  final double magnesiumMgPer100g;
+  final double potassiumMgPer100g;
+  final double zincMgPer100g;
 
   const FoodData({
     this.id,
@@ -20,10 +43,32 @@ class FoodData {
     this.proteinPer100g = 0,
     this.carbsPer100g = 0,
     this.fatPer100g = 0,
+    this.perMl = false,
+    this.fiberPer100g = 0,
+    this.sugarsPer100g = 0,
+    this.saturatedFatPer100g = 0,
+    this.sodiumMgPer100g = 0,
+    this.cholesterolMgPer100g = 0,
+    this.vitaminAUgPer100g = 0,
+    this.vitaminCMgPer100g = 0,
+    this.vitaminDUgPer100g = 0,
+    this.vitaminEMgPer100g = 0,
+    this.vitaminKUgPer100g = 0,
+    this.vitaminB12UgPer100g = 0,
+    this.folateUgPer100g = 0,
+    this.calciumMgPer100g = 0,
+    this.ironMgPer100g = 0,
+    this.magnesiumMgPer100g = 0,
+    this.potassiumMgPer100g = 0,
+    this.zincMgPer100g = 0,
   });
+
+  /// Unit label used for display ("100 ml" for drinks, "100 g" otherwise).
+  String get unitLabel => perMl ? '100 ml' : '100 g';
 
   /// Create a [FoodData] from a SQLite row map.
   factory FoodData.fromMap(Map<String, dynamic> map) {
+    double d(String k) => (map[k] as num? ?? 0).toDouble();
     return FoodData(
       id: map['id'] as int?,
       label: map['label'] as String,
@@ -31,9 +76,27 @@ class FoodData {
       densityMax: (map['density_max'] as num).toDouble(),
       kcalPer100g: (map['kcal_per_100g'] as num).toDouble(),
       category: map['category'] as String,
-      proteinPer100g: (map['protein_per_100g'] as num? ?? 0).toDouble(),
-      carbsPer100g: (map['carbs_per_100g'] as num? ?? 0).toDouble(),
-      fatPer100g: (map['fat_per_100g'] as num? ?? 0).toDouble(),
+      proteinPer100g: d('protein_per_100g'),
+      carbsPer100g: d('carbs_per_100g'),
+      fatPer100g: d('fat_per_100g'),
+      perMl: (map['per_ml'] as int? ?? 0) == 1,
+      fiberPer100g: d('fiber_per_100g'),
+      sugarsPer100g: d('sugars_per_100g'),
+      saturatedFatPer100g: d('saturated_fat_per_100g'),
+      sodiumMgPer100g: d('sodium_mg_per_100g'),
+      cholesterolMgPer100g: d('cholesterol_mg_per_100g'),
+      vitaminAUgPer100g: d('vitamin_a_ug_per_100g'),
+      vitaminCMgPer100g: d('vitamin_c_mg_per_100g'),
+      vitaminDUgPer100g: d('vitamin_d_ug_per_100g'),
+      vitaminEMgPer100g: d('vitamin_e_mg_per_100g'),
+      vitaminKUgPer100g: d('vitamin_k_ug_per_100g'),
+      vitaminB12UgPer100g: d('vitamin_b12_ug_per_100g'),
+      folateUgPer100g: d('folate_ug_per_100g'),
+      calciumMgPer100g: d('calcium_mg_per_100g'),
+      ironMgPer100g: d('iron_mg_per_100g'),
+      magnesiumMgPer100g: d('magnesium_mg_per_100g'),
+      potassiumMgPer100g: d('potassium_mg_per_100g'),
+      zincMgPer100g: d('zinc_mg_per_100g'),
     );
   }
 
@@ -49,6 +112,24 @@ class FoodData {
       'protein_per_100g': proteinPer100g,
       'carbs_per_100g': carbsPer100g,
       'fat_per_100g': fatPer100g,
+      'per_ml': perMl ? 1 : 0,
+      'fiber_per_100g': fiberPer100g,
+      'sugars_per_100g': sugarsPer100g,
+      'saturated_fat_per_100g': saturatedFatPer100g,
+      'sodium_mg_per_100g': sodiumMgPer100g,
+      'cholesterol_mg_per_100g': cholesterolMgPer100g,
+      'vitamin_a_ug_per_100g': vitaminAUgPer100g,
+      'vitamin_c_mg_per_100g': vitaminCMgPer100g,
+      'vitamin_d_ug_per_100g': vitaminDUgPer100g,
+      'vitamin_e_mg_per_100g': vitaminEMgPer100g,
+      'vitamin_k_ug_per_100g': vitaminKUgPer100g,
+      'vitamin_b12_ug_per_100g': vitaminB12UgPer100g,
+      'folate_ug_per_100g': folateUgPer100g,
+      'calcium_mg_per_100g': calciumMgPer100g,
+      'iron_mg_per_100g': ironMgPer100g,
+      'magnesium_mg_per_100g': magnesiumMgPer100g,
+      'potassium_mg_per_100g': potassiumMgPer100g,
+      'zinc_mg_per_100g': zincMgPer100g,
     };
   }
 

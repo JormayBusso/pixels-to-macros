@@ -67,6 +67,14 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     await update(prefs);
   }
 
+  /// Resets the tutorial flag so it shows again on next launch,
+  /// and also triggers an immediate re-show via [showTourProvider].
+  Future<void> replayAppTutorial(Ref ref) async {
+    final prefs = state.copyWith(hasSeenAppTutorial: false);
+    await update(prefs);
+    ref.read(showTourProvider.notifier).state = true;
+  }
+
   Future<void> setGender(UserGender gender) async {
     final prefs = state.copyWith(gender: gender);
     await update(prefs);
@@ -82,3 +90,7 @@ final userPrefsProvider =
     StateNotifierProvider<UserPrefsNotifier, UserPreferences>(
   (ref) => UserPrefsNotifier(),
 );
+
+/// Transient flag: when set to true, [MainShell] shows the tour overlay.
+/// Reset to false after the tour is dismissed.
+final showTourProvider = StateProvider<bool>((ref) => false);

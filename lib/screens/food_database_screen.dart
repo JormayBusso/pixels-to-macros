@@ -202,9 +202,9 @@ class _FoodTile extends StatelessWidget {
                     color: context.primary700,
                   ),
                 ),
-                const Text(
-                  'kcal/100g',
-                  style: TextStyle(fontSize: 10, color: AppTheme.gray400),
+                Text(
+                  'kcal/${food.unitLabel}',
+                  style: const TextStyle(fontSize: 10, color: AppTheme.gray400),
                 ),
               ],
             ),
@@ -312,7 +312,7 @@ class _AddFoodScreenState extends State<_AddFoodScreen> {
             controller: _kcalCtrl,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
-              labelText: 'Calories per 100g',
+              labelText: 'Calories per 100g (or 100ml for drinks)',
               prefixIcon: Icon(Icons.local_fire_department),
               suffixText: 'kcal',
             ),
