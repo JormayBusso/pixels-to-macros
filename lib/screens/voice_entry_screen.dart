@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../models/custom_meal.dart';
 import '../models/food_data.dart';
 import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
@@ -30,6 +31,11 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   List<_ParsedFood> _parsed = [];
   String? _error;
   List<FoodData> _allFoods = [];
+
+  // ── Save as meal ───────────────────────────────────────────────
+  final _mealNameCtrl = TextEditingController();
+  bool _saveAsMeal = false;
+  MealType _mealType = MealType.lunch;
 
   @override
   void initState() {
@@ -163,6 +169,32 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     final validFoods = _parsed.where((p) => p.food != null).toList();
     if (validFoods.isEmpty) return;
 
+    // ── Optionally save as a custom meal ────────────────────────────
+    if (_saveAsMeal) {
+      final mealName = _mealNameCtrl.text.trim();
+      if (mealName.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a name for the meal.')),
+        );
+        return;
+      }
+
+      final meal = CustomMeal(
+        name: mealName,
+        mealType: _mealType,
+        createdAt: DateTime.now(),
+      );
+      final ingredients = validFoods
+          .map((pf) => MealIngredient(
+                mealId: 0, // will be set by insertCustomMeal
+                foodLabel: pf.food!.label,
+                grams: pf.grams,
+              ))
+          .toList();
+      await DatabaseService.instance.insertCustomMeal(meal, ingredients);
+    }
+
+    // ── Log as a scan result for today's intake ──────────────────────
     final foods = <DetectedFood>[];
     for (final pf in validFoods) {
       final food = pf.food!;
@@ -189,9 +221,10 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     await ref.read(historyProvider.notifier).load();
 
     if (mounted) {
+      final saved = _saveAsMeal ? ' • saved as "${_mealNameCtrl.text.trim()}"' : '';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ Logged ${validFoods.length} food(s) via voice'),
+          content: Text('✅ Logged ${validFoods.length} food(s) via voice$saved'),
         ),
       );
       Navigator.of(context).pop();
@@ -201,6 +234,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   @override
   void dispose() {
     _speech.stop();
+    _mealNameCtrl.dispose();
     super.dispose();
   }
 
@@ -375,13 +409,102 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
+
+                // ── Save as meal toggle ───────────────────────────────
+                Card(
+                  color: _saveAsMeal ? context.primary50 : null,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: _saveAsMeal ? context.primary400 : AppTheme.gray200,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Column(
+                      children: [
+                        // Toggle row
+                        Row(
+                          children: [
+                            Icon(Icons.bookmark_add_outlined,
+                                color: _saveAsMeal
+                                    ? context.primary600
+                                    : AppTheme.gray400,
+                                size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Save as a meal',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: _saveAsMeal
+                                      ? context.primary700
+                                      : AppTheme.gray700,
+                                ),
+                              ),
+                            ),
+                            Switch(
+                              value: _saveAsMeal,
+                              onChanged: (v) =>
+                                  setState(() => _saveAsMeal = v),
+                            ),
+                          ],
+                        ),
+                        // Name + meal type fields (only when toggled on)
+                        if (_saveAsMeal) ...[
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _mealNameCtrl,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              labelText: 'Meal name',
+                              hintText: 'e.g. My post-workout lunch',
+                              prefixIcon: Icon(Icons.restaurant_menu),
+                              isDense: true,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          // Meal type chip row
+                          Row(
+                            children: MealType.values.map((t) {
+                              final selected = t == _mealType;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ChoiceChip(
+                                  label: Text(t.displayName),
+                                  selected: selected,
+                                  onSelected: (_) =>
+                                      setState(() => _mealType = t),
+                                  selectedColor: context.primary200,
+                                  labelStyle: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: selected
+                                        ? context.primary700
+                                        : AppTheme.gray600,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // ── Log button ──────────────────────────────────────
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: _parsed.any((p) => p.food != null) ? _logAll : null,
-                    icon: const Icon(Icons.add_task),
+                    icon: Icon(_saveAsMeal ? Icons.bookmark_added : Icons.add_task),
                     label: Text(
-                      'Log ${_parsed.where((p) => p.food != null).length} food(s)',
+                      _saveAsMeal
+                          ? 'Log & Save as Meal'
+                          : 'Log ${_parsed.where((p) => p.food != null).length} food(s)',
                     ),
                   ),
                 ),
