@@ -80,6 +80,71 @@ class FoodData {
     return totalCarbs / icrGramsPerUnit;
   }
 
+  // ── Glycemic Load (GL) helpers ────────────────────────────────────────────
+
+  /// Estimated Glycaemic Index based on category + fiber.
+  /// Sources: Foster-Powell et al. (2002), Atkinson et al. (2008).
+  int get estimatedGI {
+    // High-fiber lowers GI; check fiber first.
+    if (fiberPer100g > 5) return 35;  // high fiber → lower GI
+    switch (category.toLowerCase()) {
+      // Fast / high GI
+      case 'grain':
+      case 'bread':
+      case 'rice':
+      case 'cereal':
+        return sugarsPer100g > 20 ? 72 : 60;
+      case 'drink':
+      case 'beverage':
+        return 55;
+      case 'dessert':
+      case 'sweet':
+      case 'candy':
+      case 'cake':
+        return 68;
+      case 'potato':
+      case 'starchy vegetable':
+        return 70;
+      // Medium GI
+      case 'fruit':
+        return sugarsPer100g > 15 ? 55 : 40;
+      case 'legume':
+      case 'bean':
+      case 'lentil':
+        return 30;
+      case 'dairy':
+      case 'milk':
+        return 35;
+      case 'vegetable':
+        return 25;
+      // Low GI (proteins, fats, most vegetables)
+      case 'meat':
+      case 'fish':
+      case 'seafood':
+      case 'protein':
+        return 0;
+      case 'fat':
+      case 'oil':
+      case 'nut':
+      case 'seed':
+        return 15;
+      default:
+        // Fallback: estimate from carb/fiber ratio.
+        if (carbsPer100g < 5) return 5;
+        final ratio = fiberPer100g > 0 ? carbsPer100g / fiberPer100g : 20;
+        return (ratio * 2.5).clamp(10, 75).round();
+    }
+  }
+
+  /// Glycaemic Load for [grams] of this food.
+  /// GL = (GI × available_carbs_g) / 100.
+  /// available_carbs = carbsPer100g - fiberPer100g (fiber not digested).
+  double glForGrams(double grams) {
+    final availCarbs =
+        ((carbsPer100g - fiberPer100g).clamp(0, double.infinity)) * grams / 100.0;
+    return (estimatedGI * availCarbs) / 100.0;
+  }
+
   /// Create a [FoodData] from a SQLite row map.
   factory FoodData.fromMap(Map<String, dynamic> map) {
     double d(String k) => (map[k] as num? ?? 0).toDouble();

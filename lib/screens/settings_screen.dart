@@ -304,6 +304,83 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             },
           ),
         ),
+        const SizedBox(height: 24),
+
+        _SectionHeader('Vacation Mode'),
+        const SizedBox(height: 12),
+        Consumer(
+          builder: (context, ref, _) {
+            final vacation = ref.watch(
+                userPrefsProvider.select((p) => p.vacationMode));
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.beach_access_outlined,
+                            color: Color(0xFFF57C00)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Vacation Mode',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15)),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Keeps your streak alive while you\'re away.',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.gray600),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: vacation,
+                          onChanged: (v) => ref
+                              .read(userPrefsProvider.notifier)
+                              .setVacationMode(v),
+                        ),
+                      ],
+                    ),
+                    if (vacation) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: const [
+                            Icon(Icons.info_outline,
+                                size: 14, color: Color(0xFFF57C00)),
+                            SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                '🏖️  Vacation active — your streak is protected.',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFFF57C00)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ],
     );
   }

@@ -289,7 +289,15 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
             const SizedBox(height: 16),
           ],
 
-          // ── Food items ───────────────────────────────────────────────
+          // ── GL Thermometer (diabetes goal only) ───────────────────────
+          if (isDiabetic && _scan.foods.isNotEmpty) ...[
+            _GlThermometerCard(
+              scan: _scan,
+              foodMap: _foodMap,
+              gramsForFood: _gramsFor,
+            ),
+            const SizedBox(height: 16),
+          ],
           Text(
             'Detected Foods',
             style: const TextStyle(
@@ -809,6 +817,167 @@ class _RangeRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── GL Thermometer card ───────────────────────────────────────────────────────
+
+class _GlThermometerCard extends StatelessWidget {
+  const _GlThermometerCard({
+    required this.scan,
+    required this.foodMap,
+    required this.gramsForFood,
+  });
+
+  final ScanResult scan;
+  final Map<String, FoodData> foodMap;
+  final double Function(DetectedFood) gramsForFood;
+
+  @override
+  Widget build(BuildContext context) {
+    // Compute total GL for the meal.
+    double totalGL = 0;
+    for (final f in scan.foods) {
+      final fd = foodMap[f.label.toLowerCase()];
+      if (fd != null) totalGL += fd.glForGrams(gramsForFood(f));
+    }
+
+    // GL classification:
+    //  < 10 = LOW  (cool/blue)
+    //  10-19 = MEDIUM (warm/orange)
+    //  >= 20 = HIGH (hot/red)
+    final String level;
+    final Color color;
+    final Color bgColor;
+    final String emoji;
+    final String tip;
+
+    if (totalGL < 10) {
+      level = 'Cool Meal 🧊';
+      color = const Color(0xFF1976D2);
+      bgColor = const Color(0xFFE3F2FD);
+      emoji = '🧊';
+      tip = 'Low glycaemic load — slow glucose release. '
+          'Blood sugar rise will be gradual.';
+    } else if (totalGL < 20) {
+      level = 'Warm Meal 🌤';
+      color = const Color(0xFFF57C00);
+      bgColor = const Color(0xFFFFF3E0);
+      emoji = '🌤';
+      tip = 'Moderate glycaemic load — expect a moderate glucose rise '
+          'over ~90 min.';
+    } else {
+      level = 'Hot Meal 🌶️';
+      color = const Color(0xFFD32F2F);
+      bgColor = const Color(0xFFFFEBEE);
+      emoji = '🌶️';
+      tip = 'High glycaemic load — rapid glucose spike likely. '
+          'Consider adding fibre or fat to slow absorption.';
+    }
+
+    // Scale bar: cap at GL=40 for display
+    final barFraction = (totalGL / 40.0).clamp(0.0, 1.0);
+
+    return Card(
+      color: bgColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: color),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.thermostat_outlined, color: color, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Glycaemic Load Thermometer',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Stack(
+                      children: [
+                        Container(
+                          height: 12,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF1976D2),
+                                Color(0xFFFFA726),
+                                Color(0xFFD32F2F),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          left: barFraction *
+                              (MediaQuery.of(context).size.width - 80) -
+                              6,
+                          top: 0,
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: color, width: 2),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'GL: ${totalGL.toStringAsFixed(1)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text(level,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: color)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(tip,
+                style: TextStyle(fontSize: 11, color: color)),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Text('Cool', style: TextStyle(fontSize: 10)),
+                const Spacer(),
+                const Text('🌶️ Hot', style: TextStyle(fontSize: 10)),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

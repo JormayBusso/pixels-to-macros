@@ -87,6 +87,11 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     final prefs = state.copyWith(icrGramsPerUnit: icrGramsPerUnit);
     await update(prefs);
   }
+
+  Future<void> setVacationMode(bool enabled) async {
+    final prefs = state.copyWith(vacationMode: enabled);
+    await update(prefs);
+  }
 }
 
 final userPrefsProvider =

@@ -20,6 +20,8 @@ class StreakNotifier extends StateNotifier<StreakState> {
 
   Future<void> load() async {
     final scans = await DatabaseService.instance.getAllScanResults();
+    final prefs = await DatabaseService.instance.getUserPreferences();
+    final vacation = prefs.vacationMode;
     if (scans.isEmpty) {
       state = const StreakState();
       return;
@@ -53,9 +55,10 @@ class StreakNotifier extends StateNotifier<StreakState> {
       }
     }
 
-    // If streak doesn't start from today or yesterday, it's broken
+    // If streak doesn't start from today or yesterday, it's broken — UNLESS
+    // the user has vacation mode enabled, in which case we keep the streak.
     if (!scannedToday && (sorted.isEmpty || sorted.first != yesterday)) {
-      current = 0;
+      if (!vacation) current = 0;
     }
 
     // Calculate longest streak ever

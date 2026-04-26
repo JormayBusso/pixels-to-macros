@@ -42,6 +42,8 @@ class UserPreferences {
   /// Insulin-to-Carb Ratio: grams of carbs covered by 1 unit of insulin.
   /// Used only when [nutritionGoal] == [NutritionGoalType.diabetes].
   final double icrGramsPerUnit;
+  /// When true, streaks are not broken by missed days. Persisted across app restarts.
+  final bool vacationMode;
 
   const UserPreferences({
     this.id,
@@ -59,6 +61,7 @@ class UserPreferences {
     this.gender = UserGender.preferNotToSay,
     this.fontScale = 1.0,
     this.icrGramsPerUnit = 15.0,
+    this.vacationMode = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -78,6 +81,7 @@ class UserPreferences {
       'gender': gender.dbValue,
       'font_scale': fontScale,
       'icr_grams_per_unit': icrGramsPerUnit,
+      'vacation_mode': vacationMode ? 1 : 0,
     };
   }
 
@@ -99,6 +103,7 @@ class UserPreferences {
       gender: UserGender.fromDbValue(map['gender'] as String?),
       fontScale: (map['font_scale'] as num?)?.toDouble() ?? 1.0,
       icrGramsPerUnit: (map['icr_grams_per_unit'] as num?)?.toDouble() ?? 15.0,
+      vacationMode: (map['vacation_mode'] as int?) == 1,
     );
   }
 
@@ -117,6 +122,7 @@ class UserPreferences {
     UserGender? gender,
     double? fontScale,
     double? icrGramsPerUnit,
+    bool? vacationMode,
   }) {
     return UserPreferences(
       id: id,
@@ -134,6 +140,7 @@ class UserPreferences {
       gender: gender ?? this.gender,
       fontScale: fontScale ?? this.fontScale,
       icrGramsPerUnit: icrGramsPerUnit ?? this.icrGramsPerUnit,
+      vacationMode: vacationMode ?? this.vacationMode,
     );
   }
 }

@@ -199,6 +199,64 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
 
   // ── Meal logging ────────────────────────────────────────────────────────
 
+  /// Quick-log a drink (water, juice, etc.) by volume in ml.
+  Future<void> _quickLogDrink(String label, double ml) async {
+    // Look up food entry (prefer 'water' entry or match by label).
+    FoodData food;
+    try {
+      food = _allFoods.firstWhere(
+          (f) => f.label.toLowerCase() == label.toLowerCase());
+    } catch (_) {
+      // Water fallback: 0 kcal, density ≈ 1 g/ml
+      food = FoodData(
+        label: label,
+        densityMin: 1.0,
+        densityMax: 1.0,
+        kcalPer100g: 0,
+        category: 'drink',
+        perMl: true,
+      );
+    }
+    final avgDensity = (food.densityMin + food.densityMax) / 2;
+    final volumeCm3 = ml / avgDensity;
+    final range = food.calorieRange(volumeCm3);
+    final result = ScanResult(
+      timestamp: DateTime.now(),
+      depthMode: 'manual',
+      foods: [
+        DetectedFood(
+          label: food.label,
+          volumeCm3: volumeCm3,
+          caloriesMin: range.min,
+          caloriesMax: range.max,
+        ),
+      ],
+    );
+    await ref.read(historyProvider.notifier).addScan(result);
+    await ref.read(dailyIntakeProvider.notifier).load();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${ml.round()} ml $label logged')),
+      );
+    }
+  }
+
+  /// Show the "Quick Drink" bottom sheet with glass presets + custom ml.
+  Future<void> _showDrinkSheet() {
+    return showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _DrinkSheet(
+        onLog: (label, ml) {
+          Navigator.of(ctx).pop();
+          _quickLogDrink(label, ml);
+        },
+      ),
+    );
+  }
+
   Future<void> _logMeal(CustomMeal meal) async {
     if (meal.ingredients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -439,23 +497,186 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
           food;
     }
 
-    _selectFood(food);
-
-    // Pre-fill serving grams if available from OpenFoodFacts.
-    if (result.servingGrams != null) {
-      setState(() {
-        _portionCtrl.text = result.servingGrams!.round().toString();
-        _sliderGrams = result.servingGrams!;
-        _servingConfig = null; // barcode overrides serving picker
-        _gramsOverrides[food.label] = result.servingGrams!;
-      });
-    }
-
+    // Health score sheet handles _selectFood + serving pre-fill via its buttons.
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Found: ${result.name}')),
-      );
+      await _showBarcodeHealthSheet(food: food, servingGrams: result.servingGrams);
     }
+  }
+
+  /// Compute a 0-100 health score for a barcode food.
+  /// Based on: low sat-fat/sugars/sodium = good; high fiber/protein/vitamins = good.
+  int _healthScore(FoodData food) {
+    double score = 50; // start neutral
+
+    // Good contributors (add points)
+    score += (food.fiberPer100g * 4).clamp(0, 20);           // fiber: up to +20
+    score += (food.proteinPer100g * 0.5).clamp(0, 15);       // protein: up to +15
+    score += ((food.vitaminCMgPer100g / 90) * 5).clamp(0, 5); // vit C
+    score += ((food.calciumMgPer100g / 1000) * 5).clamp(0, 5); // calcium
+
+    // Bad contributors (subtract points)
+    score -= (food.sugarsPer100g * 0.8).clamp(0, 25);         // sugars: up to -25
+    score -= (food.saturatedFatPer100g * 1.5).clamp(0, 20);   // sat fat: up to -20
+    score -= ((food.sodiumMgPer100g / 2300) * 15).clamp(0, 15); // sodium: up to -15
+    if (food.kcalPer100g > 400) score -= 10;                   // dense energy penalty
+
+    return score.round().clamp(0, 100);
+  }
+
+  Future<void> _showBarcodeHealthSheet({
+    required FoodData food,
+    double? servingGrams,
+  }) {
+    final score = _healthScore(food);
+    final Color scoreColor;
+    final String label;
+    if (score >= 70) {
+      scoreColor = const Color(0xFF388E3C);
+      label = 'Healthy';
+    } else if (score >= 40) {
+      scoreColor = const Color(0xFFF57C00);
+      label = 'Moderate';
+    } else {
+      scoreColor = const Color(0xFFD32F2F);
+      label = 'Unhealthy';
+    }
+    return showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.gray300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(food.label,
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 6),
+            Text(
+              '${food.kcalPer100g.round()} kcal  •  ${food.proteinPer100g.round()} g protein  •  '
+              '${food.carbsPer100g.round()} g carbs  •  ${food.fatPer100g.round()} g fat',
+              style: const TextStyle(fontSize: 12, color: AppTheme.gray600),
+            ),
+            const SizedBox(height: 16),
+            // ── Health score bar ──────────────────────────────────────
+            Row(
+              children: [
+                const Text('Unhealthy',
+                    style: TextStyle(fontSize: 10, color: AppTheme.gray400)),
+                const Spacer(),
+                const Text('Healthy',
+                    style: TextStyle(fontSize: 10, color: AppTheme.gray400)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Stack(
+                children: [
+                  Container(
+                    height: 14,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFFD32F2F),
+                          Color(0xFFFFA726),
+                          Color(0xFF388E3C),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Indicator
+                  FractionallySizedBox(
+                    widthFactor: (score / 100.0),
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      height: 14,
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        width: 14, height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: scoreColor, width: 2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text(
+                  '$score / 100',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: scoreColor,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: scoreColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(label,
+                      style: TextStyle(
+                          color: scoreColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _selectFood(food);
+                      if (servingGrams != null) {
+                        setState(() {
+                          _portionCtrl.text = servingGrams.round().toString();
+                          _sliderGrams = servingGrams;
+                          _gramsOverrides[food.label] = servingGrams;
+                        });
+                      }
+                    },
+                    child: const Text('Add to Log'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -476,6 +697,11 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
       appBar: AppBar(
         title: const Text('Log Food Manually'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.local_drink_outlined),
+            tooltip: 'Quick Drink',
+            onPressed: _showDrinkSheet,
+          ),
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: 'Scan barcode',
@@ -1181,6 +1407,145 @@ class _BolusRow extends StatelessWidget {
               color: AppTheme.gray900,
             )),
       ],
+    );
+  }
+}
+
+// ── Drinks Quick-Add sheet ────────────────────────────────────────────────────
+
+class _DrinkSheet extends StatefulWidget {
+  const _DrinkSheet({required this.onLog});
+  final void Function(String label, double ml) onLog;
+
+  @override
+  State<_DrinkSheet> createState() => _DrinkSheetState();
+}
+
+class _DrinkSheetState extends State<_DrinkSheet> {
+  final _customCtrl = TextEditingController();
+  String _selectedDrink = 'water';
+
+  static const _presets = [
+    ('water',     'Water'),
+    ('juice',     'Juice'),
+    ('milk',      'Milk'),
+    ('coffee',    'Coffee'),
+    ('tea',       'Tea'),
+    ('soda',      'Soda'),
+  ];
+
+  static const _sizes = [
+    (150.0,  'Small\n150 ml',   Icons.local_drink_outlined),
+    (250.0,  'Medium\n250 ml',  Icons.local_drink),
+    (400.0,  'Large\n400 ml',   Icons.coffee_outlined),
+    (500.0,  'Bottle\n500 ml',  Icons.water_drop_outlined),
+  ];
+
+  @override
+  void dispose() {
+    _customCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.gray300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text('💧 Quick Drink',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _presets.map((p) {
+                final selected = _selectedDrink == p.$1;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(p.$2),
+                    selected: selected,
+                    onSelected: (_) => setState(() => _selectedDrink = p.$1),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          GridView.count(
+            shrinkWrap: true,
+            crossAxisCount: 4,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 0.85,
+            children: _sizes.map((s) {
+              return GestureDetector(
+                onTap: () => widget.onLog(_selectedDrink, s.$1),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.gray100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.gray200),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(s.$3, size: 28, color: const Color(0xFF1976D2)),
+                      const SizedBox(height: 4),
+                      Text(s.$2,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 10)),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 14),
+          const Text('Or enter amount:',
+              style: TextStyle(fontSize: 12, color: AppTheme.gray600)),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _customCtrl,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
+                  decoration: const InputDecoration(
+                    labelText: 'ml',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton(
+                onPressed: () {
+                  final ml = double.tryParse(_customCtrl.text);
+                  if (ml != null && ml > 0) widget.onLog(_selectedDrink, ml);
+                },
+                child: const Text('Log'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
