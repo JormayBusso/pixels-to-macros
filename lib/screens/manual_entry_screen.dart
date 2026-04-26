@@ -520,6 +520,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                       child: _MealsTab(
                         meals: _meals,
                         kcalMap: {for (final f in _allFoods) f.label: f.kcalPer100g},
+                        carbsMap: {for (final f in _allFoods) f.label: f.carbsPer100g},
                         onLog: _logMeal,
                         onEdit: (meal) async {
                           final updated = await Navigator.of(context).push<bool>(
@@ -972,6 +973,7 @@ class _MealsTab extends StatelessWidget {
   const _MealsTab({
     required this.meals,
     required this.kcalMap,
+    required this.carbsMap,
     required this.onLog,
     required this.onEdit,
     required this.onDelete,
@@ -980,13 +982,14 @@ class _MealsTab extends StatelessWidget {
 
   final List<CustomMeal> meals;
   final Map<String, double> kcalMap;
+  final Map<String, double> carbsMap;
   final Future<void> Function(CustomMeal) onLog;
   final void Function(CustomMeal) onEdit;
   final void Function(CustomMeal) onDelete;
   final VoidCallback onCreate;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (meals.isEmpty) {
       return Center(
         child: Column(
@@ -1046,6 +1049,16 @@ class _MealsTab extends StatelessWidget {
 
       for (final meal in typeMeals) {
         final totalKcal = meal.totalKcal(kcalMap);
+        final totalCarbs = meal.ingredients.fold<double>(0.0, (sum, ing) {
+          final carbsPer100 = carbsMap[ing.foodLabel] ?? 0.0;
+          return sum + carbsPer100 * ing.grams / 100.0;
+        });
+        final prefs = ref.watch(userPrefsProvider);
+        final isDiabetic = prefs.nutritionGoal == NutritionGoalType.diabetes;
+        final icr = prefs.icrGramsPerUnit;
+        final bolus = (isDiabetic && totalCarbs > 0 && icr > 0)
+            ? (totalCarbs / icr * 10).round() / 10
+            : null;
         sections.add(
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
@@ -1056,7 +1069,8 @@ class _MealsTab extends StatelessWidget {
                 title: Text(meal.name,
                     style: const TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: Text(
-                  '${meal.ingredients.length} ingredient${meal.ingredients.length == 1 ? '' : 's'}  •  ${totalKcal.round()} kcal',
+                  '${meal.ingredients.length} ingredient${meal.ingredients.length == 1 ? '' : 's'}  •  ${totalKcal.round()} kcal'
+                  + (bolus != null ? '  •  ${totalCarbs.toStringAsFixed(1)} g  •  ${bolus.toStringAsFixed(1)} u' : ''),
                   style: const TextStyle(fontSize: 12),
                 ),
                 trailing: Row(
