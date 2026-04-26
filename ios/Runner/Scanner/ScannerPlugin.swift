@@ -109,19 +109,26 @@ final class ScannerPlugin {
 
         case "runVideoInference":
             DispatchQueue.global(qos: .userInitiated).async {
+                // Capture result callback — must be called exactly once.
+                var resultCalled = false
+                let safeResult: FlutterResult = { value in
+                    guard !resultCalled else { return }
+                    resultCalled = true
+                    DispatchQueue.main.async { result(value) }
+                }
+
                 do {
                     let json = try pipeline.runVideoScan(recorder: recorder)
                     recorder.releaseAll()
-                    DispatchQueue.main.async { result(json) }
+                    safeResult(json)
                 } catch {
                     recorder.releaseAll()
-                    DispatchQueue.main.async {
-                        result(FlutterError(
-                            code: "VIDEO_INFERENCE_FAILED",
-                            message: error.localizedDescription,
-                            details: nil
-                        ))
-                    }
+                    print("[ScannerPlugin] runVideoInference failed: \(error)")
+                    safeResult(FlutterError(
+                        code: "VIDEO_INFERENCE_FAILED",
+                        message: error.localizedDescription,
+                        details: nil
+                    ))
                 }
             }
 

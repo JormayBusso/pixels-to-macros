@@ -253,6 +253,7 @@ final class SegmentationService {
         var confGrid  = [[Float]](repeating: [Float](repeating: 0, count: width), count: height)
 
         let ptr = output.dataPointer.assumingMemoryBound(to: Float32.self)
+        let maxIdx = output.count   // Hard upper bound for every pointer access
 
         if numClasses > 0 {
             // Softmax output — argmax per pixel, resolve overlaps by confidence.
@@ -266,6 +267,7 @@ final class SegmentationService {
                     var bestConf: Float = -Float.infinity
                     for cls in 0..<numClasses {
                         let idx = cls * sC + r * sR + c * sCol
+                        guard idx >= 0 && idx < maxIdx else { continue }
                         let val = ptr[idx]
                         if val > bestConf {
                             bestConf = val
@@ -283,6 +285,7 @@ final class SegmentationService {
             for r in 0..<height {
                 for c in 0..<width {
                     let idx = r * sR + c * sCol
+                    guard idx >= 0 && idx < maxIdx else { continue }
                     classGrid[r][c] = Int(ptr[idx])
                     confGrid[r][c]  = 1.0
                 }

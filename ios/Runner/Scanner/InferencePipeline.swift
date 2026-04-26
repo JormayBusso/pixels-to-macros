@@ -208,8 +208,11 @@ final class InferencePipeline {
     ///
     /// Returns the same JSON format as `run(captureService:)`.
     func runVideoScan(recorder: MultiFrameRecorder) throws -> String {
+        // If no top frame was captured (e.g. recording stopped immediately),
+        // return empty rather than throwing — Dart will show "no food" UX.
         guard let topFrame = recorder.topFrame else {
-            throw PipelineError.noTopFrame
+            print("[InferencePipeline] runVideoScan: no top frame captured")
+            return "[]"
         }
 
         // ── 1. Plate detection ──────────────────────────────────────────
@@ -223,7 +226,8 @@ final class InferencePipeline {
                 plateRect: cropRect
             )
         }) else {
-            throw PipelineError.preprocessingFailed
+            print("[InferencePipeline] runVideoScan: preprocessing failed")
+            return "[]"
         }
 
         // ── 3. Segmentation ─────────────────────────────────────────────
@@ -231,6 +235,7 @@ final class InferencePipeline {
         do {
             segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
         } catch {
+            print("[InferencePipeline] runVideoScan: segmentation failed: \(error)")
             throw PipelineError.segmentationFailed(error)
         }
         guard !segments.isEmpty else { return "[]" }

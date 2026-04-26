@@ -39,6 +39,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   bool _sessionStarted   = false;
   bool _showTutorial     = false;
   bool _isRecording      = false;
+  /// True while runVideoInference is in-flight — prevents re-entry.
+  bool _isInferenceRunning = false;
+  /// Non-null while showing the "no food detected" overlay.
+  String? _noFoodMessage;
+  Timer? _noFoodResetTimer;
   double _recordProgress = 0.0;  // 0.0 – 1.0 over the recording window
   Timer? _recordTimer;
   Timer? _pitchTimer;            // polls phone orientation at ~15 fps
@@ -194,7 +199,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   void dispose() {
     _recordTimer?.cancel();
     _pitchTimer?.cancel();
+    _noFoodResetTimer?.cancel();
     _isRecording = false;
+    _isInferenceRunning = false;
     // Use generation-aware stop so this fire-and-forget call can never
     // accidentally kill a session started by a newer ScanScreen instance.
     try {
@@ -241,7 +248,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     }
 
     // Auto-stop recording when phone reaches side-view.
-    if (state == ScanState.recording && pitch > _sideViewThreshold) {
+    // Guard: don't trigger if inference is already in-flight.
+    if (state == ScanState.recording &&
+        pitch > _sideViewThreshold &&
+        !_isInferenceRunning) {
       _stopRecording();
     }
   }
@@ -285,13 +295,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   Future<void> _stopRecording() async {
-    if (!_isRecording) return;
+    if (!_isRecording || _isInferenceRunning) return;
     _recordTimer?.cancel();
     _recordTimer = null;
     if (!mounted) return;
     setState(() {
-      _isRecording    = false;
-      _recordProgress = 1.0;
+      _isRecording       = false;
+      _isInferenceRunning = true;
+      _recordProgress    = 1.0;
     });
     _hapticHeavy();
     PerfMonitor.instance.end();
@@ -300,8 +311,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     } catch (e) {
       DebugLog.instance.log('Scan', 'stopRecording error: $e');
     }
-    if (!mounted) return;
-    await _runVideoInference();
+    if (!mounted) {
+      _isInferenceRunning = false;
+      return;
+    }
+    try {
+      await _runVideoInference();
+    } catch (e, st) {
+      DebugLog.instance.log('Scan', 'Unhandled inference error: $e\n$st');
+      if (mounted) {
+        ref.read(scanStateProvider.notifier).modelFailed();
+      }
+    } finally {
+      if (mounted) setState(() => _isInferenceRunning = false);
+    }
   }
 
   Future<void> _runVideoInference() async {
@@ -309,8 +332,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     DebugLog.instance.log('Scan', 'Running video inference pipeline');
     ref.read(scanStateProvider.notifier).recordingStopped();
     PerfMonitor.instance.start('inference');
+
+    ScanResultState? result;
     try {
       await ref.read(scanResultProvider.notifier).runVideoScan();
+      if (!mounted) return;
+      result = ref.read(scanResultProvider);
     } catch (e) {
       DebugLog.instance.log('Scan', 'runVideoScan threw: $e');
       if (!mounted) return;
@@ -318,13 +345,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       ref.read(scanStateProvider.notifier).modelFailed();
       return;
     }
+
     if (!mounted) return;
     PerfMonitor.instance.end();
-    final result = ref.read(scanResultProvider);
-    if (result.noFood) {
-      // Friendly "no food" state — different from a hard model error.
+
+    if (result == null || result.noFood || (result.foods.isEmpty && result.error == null)) {
+      // No food recognised — stay on scan screen with a friendly retry message.
       _hapticError();
-      ref.read(scanStateProvider.notifier).plateNotDetected();
+      _showNoFoodOverlay();
     } else if (result.error != null) {
       DebugLog.instance.log('Scan', 'Inference error: ${result.error}');
       _hapticError();
@@ -338,6 +366,21 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       DebugLog.instance.log('Perf', PerfMonitor.instance.report());
       if (mounted) await _saveScanResult(result);
     }
+  }
+
+  /// Show a friendly "no food" banner and auto-reset to the aim state after 3 s.
+  void _showNoFoodOverlay() {
+    if (!mounted) return;
+    _noFoodResetTimer?.cancel();
+    setState(() {
+      _noFoodMessage = 'No food detected.\nMake sure the food fills the frame,\nthen scan again.';
+    });
+    _noFoodResetTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() => _noFoodMessage = null);
+      ref.read(scanStateProvider.notifier).reset();
+      ref.read(scanResultProvider.notifier).reset();
+    });
   }
 
   Future<void> _saveScanResult(ScanResultState resultState) async {
@@ -387,13 +430,17 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   void _retry() {
     _hapticLight();
     _recordTimer?.cancel();
-    _recordTimer    = null;
+    _recordTimer        = null;
     _pitchTimer?.cancel();
-    _pitchTimer     = null;
-    _isRecording    = false;
-    _recordProgress = 0.0;
-    _sessionStarted = false;
+    _pitchTimer         = null;
+    _noFoodResetTimer?.cancel();
+    _noFoodResetTimer   = null;
+    _isRecording        = false;
+    _isInferenceRunning = false;
+    _recordProgress     = 0.0;
+    _sessionStarted     = false;
     _sessionErrorDetail = null;
+    _noFoodMessage      = null;
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();
     _startSession();
@@ -467,6 +514,57 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           // ── Tutorial overlay (first scan) ───────────────────────────
           if (_showTutorial)
             ScanTutorialOverlay(onDismiss: _dismissTutorial),
+
+          // ── No-food overlay ──────────────────────────────────────────
+          if (_noFoodMessage != null)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black54,
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 32),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A1A2E),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppTheme.amber500, width: 1.5),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.no_food_outlined,
+                            size: 48, color: AppTheme.amber500),
+                        const SizedBox(height: 12),
+                        Text(
+                          _noFoodMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              height: 1.5),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Returning to scan in 3s…',
+                          style: TextStyle(
+                              color: Colors.white54, fontSize: 12),
+                        ),
+                        const SizedBox(height: 12),
+                        FilledButton(
+                          onPressed: () {
+                            _noFoodResetTimer?.cancel();
+                            setState(() => _noFoodMessage = null);
+                            ref.read(scanStateProvider.notifier).reset();
+                            ref.read(scanResultProvider.notifier).reset();
+                          },
+                          child: const Text('Scan Again Now'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
