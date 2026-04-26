@@ -67,6 +67,12 @@ class GoalMascotWidget extends StatelessWidget {
           invertStage: true,
           onTap: onTap,
         );
+      case MascotType.glass:
+        return _ImageMascot(
+          stages: const _MascotStages.glass(),
+          progress: progress,
+          onTap: onTap,
+        );
       case MascotType.auto:
         return _ImageMascot(
           stages: const _MascotStages.plant(),
@@ -168,6 +174,26 @@ class _MascotStages {
           Color(0xFFFEF3C7),
           Color(0xFFDCFCE7),
           Color(0xFFBBF7D0),
+        ];
+
+  const _MascotStages.glass()
+      : imagePaths = const [
+          'assets/mascots/empty_glass.png',
+          'assets/mascots/almost_empty_glass.png',
+          'assets/mascots/almost_full_glass.png',
+          'assets/mascots/full_glass.png',
+        ],
+        labels = const [
+          'Thirsty',
+          'Sipping',
+          'Hydrated',
+          'Fully Hydrated',
+        ],
+        bgColors = const [
+          Color(0xFFFFEBEE),
+          Color(0xFFFFF3E0),
+          Color(0xFFE3F2FD),
+          Color(0xFFBBDEFB),
         ];
 }
 

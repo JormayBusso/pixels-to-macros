@@ -38,6 +38,9 @@ dependencies:
   # HTTP client (for OpenFoodFacts barcode lookup)
   http: ^1.2.1
 
+  # Speech-to-text for voice food logging (English only)
+  speech_to_text: ^7.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -438,6 +440,23 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   // ── Barcode scanning ────────────────────────────────────────────────────
 
   Future<void> _openBarcodeScanner() async {
+    // Barcode lookup needs internet (OpenFoodFacts API).
+    // Do a quick connectivity check first.
+    try {
+      final result = await InternetAddress.lookup('world.openfoodfacts.org')
+          .timeout(const Duration(seconds: 3));
+      if (result.isEmpty || result[0].rawAddress.isEmpty) throw Exception();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Barcode scanning requires an internet connection to look up product info.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     // The native Swift side presents its own full-screen scanner UI and
     // performs the OpenFoodFacts lookup using URLSession — no Flutter
     // packages required.

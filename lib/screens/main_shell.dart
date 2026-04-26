@@ -12,6 +12,7 @@ import 'history_screen.dart';
 import 'manual_entry_screen.dart';
 import 'settings_screen.dart';
 import 'scan_screen.dart';
+import 'voice_entry_screen.dart';
 
 /// Root shell with bottom navigation: Home / Analytics / History / Settings.
 ///
@@ -133,6 +134,16 @@ class _MainShellState extends ConsumerState<MainShell> {
           ? Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          FloatingActionButton.small(
+            heroTag: 'voice',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const VoiceEntryScreen()),
+            ),
+            backgroundColor: Colors.white,
+            foregroundColor: context.primary700,
+            child: const Icon(Icons.mic),
+          ),
+          const SizedBox(height: 8),
           FloatingActionButton.small(
             heroTag: 'manual',
             onPressed: _openManualEntry,

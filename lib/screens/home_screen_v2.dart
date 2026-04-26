@@ -10,6 +10,8 @@ import '../providers/streak_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
+import 'body_map_screen.dart';
+import 'nutrient_wheel_screen.dart';
 import 'nutrition_dashboard_screen.dart';
 import 'scan_detail_screen.dart';
 
@@ -54,6 +56,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         title: const Text('Pixels to Macros'),
         actions: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const BodyMapScreen()),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: context.primary600,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.all(6),
+                child:
+                    const Icon(Icons.accessibility_new, color: Colors.white, size: 20),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const NutrientWheelScreen()),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: context.primary600,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.all(6),
+                child:
+                    const Icon(Icons.donut_small, color: Colors.white, size: 20),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: GestureDetector(
@@ -127,6 +165,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               // ── Streak card ──────────────────────────────────────────
               _StreakCard(streak: streak),
+              const SizedBox(height: 16),
+
+              // ── Hydration card ───────────────────────────────────────
+              _HydrationCard(),
               const SizedBox(height: 16),
 
               // ── Food breakdown ───────────────────────────────────────
@@ -839,6 +881,133 @@ class _RecommendationsCard extends ConsumerWidget {
                 )),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Hydration card ────────────────────────────────────────────────────────────
+
+class _HydrationCard extends ConsumerWidget {
+  const _HydrationCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs = ref.watch(userPrefsProvider);
+    final intake = prefs.waterIntakeMl;
+    final goal = prefs.dailyWaterGoalMl;
+    final progress = goal > 0 ? (intake / goal).clamp(0.0, 1.0) : 0.0;
+
+    // Pick glass image based on progress
+    final String glassAsset;
+    if (progress >= 0.75) {
+      glassAsset = 'assets/mascots/full_glass.png';
+    } else if (progress >= 0.50) {
+      glassAsset = 'assets/mascots/almost_full_glass.png';
+    } else if (progress >= 0.25) {
+      glassAsset = 'assets/mascots/almost_empty_glass.png';
+    } else {
+      glassAsset = 'assets/mascots/empty_glass.png';
+    }
+
+    final remaining = ((goal - intake) / 1000.0).clamp(0.0, 99.0);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                // Glass mascot
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.all(6),
+                  child: Image.asset(glassAsset, fit: BoxFit.contain),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${(intake / 1000).toStringAsFixed(1)} / ${(goal / 1000).toStringAsFixed(1)} L',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.gray900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          backgroundColor: const Color(0xFFBBDEFB),
+                          valueColor: const AlwaysStoppedAnimation(Color(0xFF1976D2)),
+                          minHeight: 8,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        progress >= 1.0
+                            ? '🎉 Hydration goal reached!'
+                            : '${remaining.toStringAsFixed(1)} L remaining',
+                        style: const TextStyle(fontSize: 11, color: AppTheme.gray400),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Quick-add water buttons
+            Row(
+              children: [
+                _WaterButton(label: '🥛 150 ml', ml: 150),
+                const SizedBox(width: 8),
+                _WaterButton(label: '🥤 250 ml', ml: 250),
+                const SizedBox(width: 8),
+                _WaterButton(label: '🍶 500 ml', ml: 500),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WaterButton extends ConsumerWidget {
+  const _WaterButton({required this.label, required this.ml});
+  final String label;
+  final int ml;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Expanded(
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          side: const BorderSide(color: Color(0xFF90CAF9)),
+          foregroundColor: const Color(0xFF1976D2),
+          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        onPressed: () {
+          ref.read(userPrefsProvider.notifier).addWater(ml);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('💧 +$ml ml added'),
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        },
+        child: Text(label),
       ),
     );
   }

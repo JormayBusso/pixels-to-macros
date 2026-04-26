@@ -92,6 +92,21 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     final prefs = state.copyWith(vacationMode: enabled);
     await update(prefs);
   }
+
+  Future<void> setDailyWaterGoal(int ml) async {
+    final prefs = state.copyWith(dailyWaterGoalMl: ml);
+    await update(prefs);
+  }
+
+  Future<void> addWater(int ml) async {
+    final prefs = state.copyWith(waterIntakeMl: state.waterIntakeMl + ml);
+    await update(prefs);
+  }
+
+  Future<void> resetWaterIntake() async {
+    final prefs = state.copyWith(waterIntakeMl: 0);
+    await update(prefs);
+  }
 }
 
 final userPrefsProvider =

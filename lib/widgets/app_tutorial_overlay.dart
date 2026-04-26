@@ -60,63 +60,91 @@ const _kSteps = [
   // 0 – Welcome (no spotlight)
   _Step(
     title: 'Welcome to Pixels to Macros! 👋',
-    body: "Let's take a quick 30-second tour so you know where everything is.",
+    body: "Let's take a quick tour so you know where everything is.",
     tab: 0,
   ),
   // 1 – Scan button (FAB bottom-right on Home)
   _Step(
-    title: 'Scan Your Food 📷',
-    body: 'Tap Scan to open the AI camera.\nPoint at your plate and get instant calories & macros!',
+    title: 'AI Scan 📷',
+    body: 'Tap AI Scan to open the camera.\nPoint at your plate and get instant calories & macros!\nIncludes flashlight toggle and low-light warnings.',
     tab: 0,
-    // FAB is near bottom-right; approximate position
     spot: _SpotRect(0.80, 0.88, 0.44, 0.08),
   ),
-  // 2 – Manual log (small FAB above scan)
+  // 2 – Voice entry (small FAB above manual)
+  _Step(
+    title: 'Voice Logging 🎤',
+    body: 'Tap the mic button to log food by speaking in English.\nSay "200 grams of chicken and a banana" — it matches your food database automatically.',
+    tab: 0,
+    spot: _SpotRect(0.88, 0.71, 0.14, 0.07),
+  ),
+  // 3 – Manual log (small FAB above voice)
   _Step(
     title: 'Log Food Manually ✏️',
-    body: 'The small button above Scan lets you search foods, pick from My Meals, or scan a barcode.',
+    body: 'Search foods, pick from My Meals, scan a barcode, or quick-add a drink.\nBarcode scanning shows a health score (0-100) before logging.',
     tab: 0,
     spot: _SpotRect(0.88, 0.79, 0.14, 0.07),
   ),
-  // 3 – Nutrition button (top-right leaf icon on Home)
+  // 4 – Body map icon (top-left of AppBar actions)
+  _Step(
+    title: 'Body Map 🫀',
+    body: 'Tap the body icon (top-right) to see a 2D interactive body map.\nEach organ glows based on your nutrient intake — tap to learn why!',
+    tab: 0,
+    spot: _SpotRect(0.64, 0.075, 0.13, 0.055),
+    tipBelow: true,
+  ),
+  // 5 – Nutrient wheel icon
+  _Step(
+    title: 'Nutrient Wheel 🎯',
+    body: 'Tap the donut icon to play the micronutrient collection game.\nCollect all 13 nutrients each day + see your weekly overview.',
+    tab: 0,
+    spot: _SpotRect(0.76, 0.075, 0.13, 0.055),
+    tipBelow: true,
+  ),
+  // 6 – Nutrition button (leaf icon on Home)
   _Step(
     title: "Today's Nutrition 🌿",
-    body: 'Tap the leaf icon (top-right) to see a full breakdown of vitamins, minerals, and macros.',
+    body: 'The leaf icon shows a full breakdown of vitamins, minerals, and macros.',
     tab: 0,
     spot: _SpotRect(0.88, 0.075, 0.13, 0.055),
     tipBelow: true,
   ),
-  // 4 – Analytics tab
+  // 7 – Hydration card on home screen
+  _Step(
+    title: 'Stay Hydrated 💧',
+    body: 'The hydration card on the home screen tracks your water intake.\nTap the quick-add buttons (150 / 250 / 500 ml) to log glasses throughout the day.',
+    tab: 0,
+  ),
+  // 8 – Analytics tab
   _Step(
     title: 'Analytics 📊',
     body: 'Track weekly & monthly calorie and macro trends here.',
     tab: 1,
     spot: _SpotRect(0.30, 0.965, 0.22, 0.07),
   ),
-  // 5 – Groceries tab
+  // 9 – Groceries tab
   _Step(
     title: 'Grocery List 🛒',
     body: 'Add items manually or get smart suggestions based on your scan history.',
     tab: 2,
     spot: _SpotRect(0.50, 0.965, 0.22, 0.07),
   ),
-  // 6 – Settings tab
+  // 10 – Settings tab
   _Step(
     title: 'Settings ⚙️',
-    body: 'Change your nutrition goal, color theme, mascot, text size, and more.',
+    body: 'Change your nutrition goal, color theme, mascot, text size, and more.\nDiabetes users can set ICR for bolus calculations.',
     tab: 4,
     spot: _SpotRect(0.90, 0.965, 0.22, 0.07),
   ),
-  // 7 – Nutrition goal (inside Settings – no precise spotlight, guide text)
+  // 11 – Vacation mode & advanced settings
   _Step(
-    title: 'Change Your Goal 🎯',
-    body: "In the Account tab → Nutrition Goal, you can switch between Lose Weight, Maintain, Build Muscle, etc. at any time.",
+    title: 'Vacation Mode & More 🏖️',
+    body: "Turn on Vacation Mode in Settings → Account to protect your streak while you're away.\nYou can also adjust your daily water goal and Glycemic Load thermometer (diabetes).",
     tab: 4,
   ),
-  // 8 – Outro
+  // 12 – Outro
   _Step(
     title: "You're All Set! 🚀",
-    body: "Start scanning your first meal.\n\nTip: you can replay this tour anytime from Settings → About.",
+    body: "Start scanning your first meal — or speak it!\n\nTip: you can replay this tour anytime from Settings → About.",
     tab: 0,
   ),
 ];

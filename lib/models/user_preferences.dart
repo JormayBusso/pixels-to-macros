@@ -44,6 +44,10 @@ class UserPreferences {
   final double icrGramsPerUnit;
   /// When true, streaks are not broken by missed days. Persisted across app restarts.
   final bool vacationMode;
+  /// Daily water intake goal in millilitres (default 2000 ml).
+  final int dailyWaterGoalMl;
+  /// Accumulated water intake for today in millilitres. Not persisted across days.
+  final int waterIntakeMl;
 
   const UserPreferences({
     this.id,
@@ -62,6 +66,8 @@ class UserPreferences {
     this.fontScale = 1.0,
     this.icrGramsPerUnit = 15.0,
     this.vacationMode = false,
+    this.dailyWaterGoalMl = 2000,
+    this.waterIntakeMl = 0,
   });
 
   Map<String, dynamic> toMap() {
@@ -82,6 +88,8 @@ class UserPreferences {
       'font_scale': fontScale,
       'icr_grams_per_unit': icrGramsPerUnit,
       'vacation_mode': vacationMode ? 1 : 0,
+      'daily_water_goal_ml': dailyWaterGoalMl,
+      'water_intake_ml': waterIntakeMl,
     };
   }
 
@@ -104,6 +112,8 @@ class UserPreferences {
       fontScale: (map['font_scale'] as num?)?.toDouble() ?? 1.0,
       icrGramsPerUnit: (map['icr_grams_per_unit'] as num?)?.toDouble() ?? 15.0,
       vacationMode: (map['vacation_mode'] as int?) == 1,
+      dailyWaterGoalMl: (map['daily_water_goal_ml'] as int?) ?? 2000,
+      waterIntakeMl: (map['water_intake_ml'] as int?) ?? 0,
     );
   }
 
@@ -123,6 +133,8 @@ class UserPreferences {
     double? fontScale,
     double? icrGramsPerUnit,
     bool? vacationMode,
+    int? dailyWaterGoalMl,
+    int? waterIntakeMl,
   }) {
     return UserPreferences(
       id: id,
@@ -141,6 +153,8 @@ class UserPreferences {
       fontScale: fontScale ?? this.fontScale,
       icrGramsPerUnit: icrGramsPerUnit ?? this.icrGramsPerUnit,
       vacationMode: vacationMode ?? this.vacationMode,
+      dailyWaterGoalMl: dailyWaterGoalMl ?? this.dailyWaterGoalMl,
+      waterIntakeMl: waterIntakeMl ?? this.waterIntakeMl,
     );
   }
 }
