@@ -82,6 +82,11 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     final prefs = state.copyWith(fontScale: scale);
     await update(prefs);
   }
+
+  Future<void> setIcr(double icrGramsPerUnit) async {
+    final prefs = state.copyWith(icrGramsPerUnit: icrGramsPerUnit);
+    await update(prefs);
+  }
 }
 
 final userPrefsProvider =

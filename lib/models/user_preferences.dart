@@ -39,6 +39,9 @@ class UserPreferences {
   final AppColorSeed themeColorSeed;
   final UserGender gender;
   final double fontScale;
+  /// Insulin-to-Carb Ratio: grams of carbs covered by 1 unit of insulin.
+  /// Used only when [nutritionGoal] == [NutritionGoalType.diabetes].
+  final double icrGramsPerUnit;
 
   const UserPreferences({
     this.id,
@@ -55,6 +58,7 @@ class UserPreferences {
     this.themeColorSeed = AppColorSeed.green,
     this.gender = UserGender.preferNotToSay,
     this.fontScale = 1.0,
+    this.icrGramsPerUnit = 15.0,
   });
 
   Map<String, dynamic> toMap() {
@@ -73,6 +77,7 @@ class UserPreferences {
       'theme_color_seed': themeColorSeed.dbValue,
       'gender': gender.dbValue,
       'font_scale': fontScale,
+      'icr_grams_per_unit': icrGramsPerUnit,
     };
   }
 
@@ -93,6 +98,7 @@ class UserPreferences {
       themeColorSeed: AppColorSeedX.fromDbValue(map['theme_color_seed'] as String?),
       gender: UserGender.fromDbValue(map['gender'] as String?),
       fontScale: (map['font_scale'] as num?)?.toDouble() ?? 1.0,
+      icrGramsPerUnit: (map['icr_grams_per_unit'] as num?)?.toDouble() ?? 15.0,
     );
   }
 
@@ -110,6 +116,7 @@ class UserPreferences {
     AppColorSeed? themeColorSeed,
     UserGender? gender,
     double? fontScale,
+    double? icrGramsPerUnit,
   }) {
     return UserPreferences(
       id: id,
@@ -126,6 +133,7 @@ class UserPreferences {
       themeColorSeed: themeColorSeed ?? this.themeColorSeed,
       gender: gender ?? this.gender,
       fontScale: fontScale ?? this.fontScale,
+      icrGramsPerUnit: icrGramsPerUnit ?? this.icrGramsPerUnit,
     );
   }
 }

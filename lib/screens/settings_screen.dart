@@ -226,6 +226,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _SectionHeader('Nutrition Goal'),
         const SizedBox(height: 12),
         _NutritionGoalPickerCard(),
+        const SizedBox(height: 12),
+        // ICR card — only shown for Diabetes goal
+        Consumer(
+          builder: (context, ref, _) {
+            final prefs = ref.watch(userPrefsProvider);
+            if (prefs.nutritionGoal != NutritionGoalType.diabetes) {
+              return const SizedBox.shrink();
+            }
+            return _IcrCard(
+              currentIcr: prefs.icrGramsPerUnit,
+              onChanged: (v) =>
+                  ref.read(userPrefsProvider.notifier).setIcr(v),
+            );
+          },
+        ),
         const SizedBox(height: 24),
 
         _SectionHeader('Database'),
@@ -455,6 +470,107 @@ class _SectionHeader extends StatelessWidget {
         fontSize: 16,
         fontWeight: FontWeight.w700,
         color: AppTheme.gray700,
+      ),
+    );
+  }
+}
+
+// ── ICR (Insulin-to-Carb Ratio) card ─────────────────────────────────────────
+
+class _IcrCard extends StatefulWidget {
+  const _IcrCard({required this.currentIcr, required this.onChanged});
+  final double currentIcr;
+  final ValueChanged<double> onChanged;
+
+  @override
+  State<_IcrCard> createState() => _IcrCardState();
+}
+
+class _IcrCardState extends State<_IcrCard> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.currentIcr.round().toString());
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final v = double.tryParse(_ctrl.text);
+    if (v != null && v > 0) widget.onChanged(v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: const Color(0xFFE3F2FD),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFF1976D2), width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.vaccines_outlined, color: Color(0xFF1976D2), size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Insulin-to-Carb Ratio (ICR)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: Color(0xFF1976D2),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              '1 unit of insulin covers how many grams of carbs?',
+              style: TextStyle(fontSize: 12, color: AppTheme.gray600),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                SizedBox(
+                  width: 100,
+                  child: TextField(
+                    controller: _ctrl,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    onEditingComplete: _save,
+                    decoration: const InputDecoration(
+                      labelText: 'g / unit',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton(
+                  onPressed: _save,
+                  style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1976D2)),
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '⚠️ Always confirm your ICR with your healthcare provider.',
+              style: const TextStyle(fontSize: 11, color: AppTheme.gray600),
+            ),
+          ],
+        ),
       ),
     );
   }

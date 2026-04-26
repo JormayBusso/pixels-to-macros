@@ -40,7 +40,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 18,
+      version: 19,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -126,7 +126,8 @@ class DatabaseService {
         mascot_type              TEXT    NOT NULL DEFAULT 'auto',
         theme_color_seed         TEXT    NOT NULL DEFAULT 'green',
         gender                   TEXT    NOT NULL DEFAULT 'preferNotToSay',
-        font_scale               REAL    NOT NULL DEFAULT 1.0
+        font_scale               REAL    NOT NULL DEFAULT 1.0,
+        icr_grams_per_unit       REAL    NOT NULL DEFAULT 15.0
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
@@ -461,6 +462,12 @@ class DatabaseService {
           await db.execute('ALTER TABLE food_data ADD COLUMN $col');
         } catch (_) {}
       }
+    }
+    if (oldVersion < 19) {
+      try {
+        await db.execute(
+            'ALTER TABLE user_preferences ADD COLUMN icr_grams_per_unit REAL NOT NULL DEFAULT 15.0');
+      } catch (_) {}
     }
   }
 

@@ -66,6 +66,20 @@ class FoodData {
   /// Unit label used for display ("100 ml" for drinks, "100 g" otherwise).
   String get unitLabel => perMl ? '100 ml' : '100 g';
 
+  /// Meal bolus (insulin units) per 100 g/ml of this food.
+  /// Formula: carbs / ICR.  Returns null when carbs == 0 (no bolus needed).
+  double? bolusPer100(double icrGramsPerUnit) {
+    if (carbsPer100g <= 0 || icrGramsPerUnit <= 0) return null;
+    return carbsPer100g / icrGramsPerUnit;
+  }
+
+  /// Meal bolus for a given serving weight [grams] (or ml for drinks).
+  double? bolusForGrams(double grams, double icrGramsPerUnit) {
+    if (carbsPer100g <= 0 || icrGramsPerUnit <= 0) return null;
+    final totalCarbs = carbsPer100g * grams / 100.0;
+    return totalCarbs / icrGramsPerUnit;
+  }
+
   /// Create a [FoodData] from a SQLite row map.
   factory FoodData.fromMap(Map<String, dynamic> map) {
     double d(String k) => (map[k] as num? ?? 0).toDouble();
