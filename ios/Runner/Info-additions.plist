@@ -14,6 +14,14 @@
   <key>NSCameraUsageDescription</key>
   <string>Pixels to Macros uses the camera to scan your plate and estimate food calories.</string>
 
+  <!-- Microphone (required by speech_to_text for voice logging) -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Pixels to Macros uses the microphone to listen when you log food by voice.</string>
+
+  <!-- Speech recognition (required by speech_to_text) -->
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>Pixels to Macros uses speech recognition to convert your voice into food items.</string>
+
   <!-- ARKit world tracking -->
   <key>UIRequiredDeviceCapabilities</key>
   <array>

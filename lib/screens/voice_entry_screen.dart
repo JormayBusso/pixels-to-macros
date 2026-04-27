@@ -45,49 +45,76 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   }
 
   Future<void> _loadFoods() async {
-    _allFoods = await DatabaseService.instance.getAllFoods();
+    try {
+      _allFoods = await DatabaseService.instance.getAllFoods();
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Failed to load food database: $e');
+    }
   }
 
   Future<void> _initSpeech() async {
-    _available = await _speech.initialize(
-      onError: (e) {
-        if (mounted) setState(() => _error = e.errorMsg);
-      },
-      onStatus: (status) {
-        if (status == 'done' || status == 'notListening') {
-          if (mounted) setState(() => _listening = false);
-        }
-      },
-    );
+    try {
+      _available = await _speech.initialize(
+        onError: (e) {
+          if (mounted) setState(() => _error = e.errorMsg);
+        },
+        onStatus: (status) {
+          if (status == 'done' || status == 'notListening') {
+            if (mounted) setState(() => _listening = false);
+          }
+        },
+      );
+    } catch (e) {
+      _available = false;
+      if (mounted) setState(() => _error = 'Speech recognition unavailable: $e');
+    }
     if (mounted) setState(() {});
   }
 
   void _startListening() {
-    if (!_available) return;
+    if (!_available) {
+      setState(() => _error = 'Speech recognition not available on this device.');
+      return;
+    }
     setState(() {
       _error = null;
       _listening = true;
       _transcript = '';
       _parsed = [];
     });
-    _speech.listen(
-      onResult: _onResult,
-      localeId: 'en_US', // English only
-      listenMode: ListenMode.dictation,
-      partialResults: true,
-    );
+    try {
+      _speech.listen(
+        onResult: _onResult,
+        localeId: 'en_US', // English only
+        listenMode: ListenMode.dictation,
+        partialResults: true,
+      );
+    } catch (e) {
+      setState(() {
+        _listening = false;
+        _error = 'Could not start listening: $e';
+      });
+    }
   }
 
   void _stopListening() {
-    _speech.stop();
-    setState(() => _listening = false);
+    try {
+      _speech.stop();
+    } catch (_) {}
+    if (mounted) setState(() => _listening = false);
   }
 
   void _onResult(SpeechRecognitionResult result) {
+    if (!mounted) return;
     setState(() {
       _transcript = result.recognizedWords;
       if (result.finalResult) {
-        _parsed = _parseTranscript(_transcript);
+        try {
+          _parsed = _parseTranscript(_transcript);
+        } catch (e) {
+          _error = 'Failed to parse speech: $e';
+          _parsed = [];
+        }
       }
     });
   }
@@ -166,6 +193,16 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   }
 
   Future<void> _logAll() async {
+    try {
+      await _doLogAll();
+    } catch (e, st) {
+      if (mounted) {
+        setState(() => _error = 'Log failed: $e\n\n$st');
+      }
+    }
+  }
+
+  Future<void> _doLogAll() async {
     final validFoods = _parsed.where((p) => p.food != null).toList();
     if (validFoods.isEmpty) return;
 
@@ -233,7 +270,9 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
 
   @override
   void dispose() {
-    _speech.stop();
+    try {
+      _speech.stop();
+    } catch (_) {}
     _mealNameCtrl.dispose();
     super.dispose();
   }
@@ -322,10 +361,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
               ),
               if (_error != null) ...[
                 const SizedBox(height: 8),
-                Text(
-                  _error!,
-                  style: TextStyle(fontSize: 12, color: Colors.red.shade600),
-                ),
+                _ErrorBox(error: _error!),
               ],
               const SizedBox(height: 20),
 
@@ -522,4 +558,84 @@ class _ParsedFood {
   final String? query;
   final double grams;
   const _ParsedFood({this.food, this.query, required this.grams});
+}
+
+/// Prominent, scrollable, selectable error box with a copy button.
+/// Shown whenever [error] is non-null so the developer can read and
+/// copy the exact failure message.
+class _ErrorBox extends StatelessWidget {
+  const _ErrorBox({required this.error});
+  final String error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 160),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEBEE),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.red.shade300),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 4, 0),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline,
+                    size: 16, color: Colors.red.shade700),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Error — tap & hold to copy',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red.shade700,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 16),
+                  color: Colors.red.shade700,
+                  tooltip: 'Copy error',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: error));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Error copied to clipboard'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 4),
+              ],
+            ),
+          ),
+          const Divider(height: 8),
+          // Scrollable, selectable error text
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              child: SelectableText(
+                error,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.red.shade900,
+                  fontFamily: 'monospace',
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

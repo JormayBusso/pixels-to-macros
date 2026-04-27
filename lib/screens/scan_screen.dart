@@ -254,7 +254,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         if (mounted && lux != _ambientLux) {
           setState(() => _ambientLux = lux);
         }
-      });
+      }).catchError((_) {});
     }
 
     final state = ref.read(scanStateProvider);
@@ -337,8 +337,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     try {
       await _runVideoInference();
     } catch (e, st) {
-      DebugLog.instance.log('Scan', 'Unhandled inference error: $e\n$st');
+      final msg = 'Unhandled inference error: $e';
+      DebugLog.instance.log('Scan', '$msg\n$st');
       if (mounted) {
+        setState(() => _sessionErrorDetail = msg);
         ref.read(scanStateProvider.notifier).modelFailed();
       }
     } finally {
@@ -358,8 +360,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       if (!mounted) return;
       result = ref.read(scanResultProvider);
     } catch (e) {
-      DebugLog.instance.log('Scan', 'runVideoScan threw: $e');
+      final msg = 'Inference failed: $e';
+      DebugLog.instance.log('Scan', msg);
       if (!mounted) return;
+      setState(() => _sessionErrorDetail = msg);
       _hapticError();
       ref.read(scanStateProvider.notifier).modelFailed();
       return;
@@ -422,23 +426,26 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       final history = ref.read(historyProvider);
       if (history.scans.isNotEmpty) {
         _savedScanResult = history.scans.first;
-        final timings     = PerfMonitor.instance.allTimings;
-        int memoryBytes = 0;
-        try {
-          memoryBytes = await _bridge.getMemoryUsage();
-        } catch (_) {}
-        if (!mounted) return;
-        final benchmark = ScanBenchmark(
-          scanId:         _savedScanResult!.id!,
-          captureTopMs:   timings['record']?.inMilliseconds ?? 0,
-          captureSideMs:  0,
-          inferenceMs:    timings['inference']?.inMilliseconds ?? 0,
-          totalMs:        PerfMonitor.instance.total.inMilliseconds,
-          peakMemoryBytes: memoryBytes,
-          depthMode:      _detectedDepthMode,
-          timestamp:      DateTime.now(),
-        );
-        await DatabaseService.instance.insertBenchmark(benchmark);
+        final scanId = _savedScanResult?.id;
+        if (scanId != null) {
+          final timings = PerfMonitor.instance.allTimings;
+          int memoryBytes = 0;
+          try {
+            memoryBytes = await _bridge.getMemoryUsage();
+          } catch (_) {}
+          if (!mounted) return;
+          final benchmark = ScanBenchmark(
+            scanId: scanId,
+            captureTopMs: timings['record']?.inMilliseconds ?? 0,
+            captureSideMs: 0,
+            inferenceMs: timings['inference']?.inMilliseconds ?? 0,
+            totalMs: PerfMonitor.instance.total.inMilliseconds,
+            peakMemoryBytes: memoryBytes,
+            depthMode: _detectedDepthMode,
+            timestamp: DateTime.now(),
+          );
+          await DatabaseService.instance.insertBenchmark(benchmark);
+        }
       }
       DebugLog.instance.log('Scan', 'Result saved to history');
     } catch (e) {
@@ -829,26 +836,11 @@ class _BottomPanel extends StatelessWidget {
             // Show the ACTUAL native error so the user/developer can
             // see exactly why the camera failed.
             if (sessionErrorDetail != null) ...[
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  sessionErrorDetail!,
-                  style: const TextStyle(fontSize: 11, color: Colors.white38),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+              const SizedBox(height: 8),
+              _ScanErrorBox(error: sessionErrorDetail!),
             ] else if (scanResult.error != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                scanResult.error!,
-                style: const TextStyle(fontSize: 11, color: Colors.white38),
-                textAlign: TextAlign.center,
-              ),
+              const SizedBox(height: 8),
+              _ScanErrorBox(error: scanResult.error!),
             ],
             const SizedBox(height: 16),
             Row(
@@ -1215,6 +1207,82 @@ class _OrientationIndicator extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Dark-themed error box for the scan screen (black background).
+/// Selectable text + copy button so the developer can grab the exact error.
+class _ScanErrorBox extends StatelessWidget {
+  const _ScanErrorBox({required this.error});
+  final String error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(maxHeight: 150),
+      decoration: BoxDecoration(
+        color: Colors.red.shade900.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.red.shade700),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 4, 0),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, size: 14, color: Colors.red.shade300),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Error — tap & hold to copy',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red.shade300,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.copy, size: 14, color: Colors.red.shade300),
+                  tooltip: 'Copy error',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: error));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Error copied'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 4),
+              ],
+            ),
+          ),
+          const Divider(height: 8, color: Colors.white12),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+              child: SelectableText(
+                error,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.red.shade200,
+                  fontFamily: 'monospace',
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -6,169 +6,77 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/nutrient_data.dart';
 import '../models/user_preferences.dart';
 import '../providers/daily_intake_provider.dart';
-import '../providers/history_provider.dart';
 import '../providers/user_prefs_provider.dart';
-import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 
-/// Micronutrient Wheel Collection Game + Weekly Overview.
-///
-/// Shows a colourful segmented ring where each segment represents a
-/// micronutrient.  Segments fill up as the user eats foods rich in that
-/// nutrient.  A weekly bar-chart summary sits below the wheel.
-class NutrientWheelScreen extends ConsumerStatefulWidget {
-  const NutrientWheelScreen({super.key});
+// ─────────────────────────────────────────────────────────────────────────────
+// Embeddable compact wheel widget (no Scaffold, no weekly chart)
+// Used by NutritionDashboardScreen to embed the wheel above macronutrients.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A compact view of today's micronutrient wheel that can be embedded
+/// inside any scroll view.  Shows the ring + collection count only.
+class NutrientWheelWidget extends ConsumerWidget {
+  const NutrientWheelWidget({super.key});
 
   @override
-  ConsumerState<NutrientWheelScreen> createState() =>
-      _NutrientWheelScreenState();
-}
-
-class _NutrientWheelScreenState extends ConsumerState<NutrientWheelScreen> {
-  List<_DaySummary> _weeklySummaries = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadWeekly();
-  }
-
-  Future<void> _loadWeekly() async {
-    final allScans = await DatabaseService.instance.getAllScanResults();
-    final now = DateTime.now();
-    final summaries = <_DaySummary>[];
-
-    for (int d = 6; d >= 0; d--) {
-      final day = DateTime(now.year, now.month, now.day).subtract(Duration(days: d));
-      final nextDay = day.add(const Duration(days: 1));
-
-      final dayScans = allScans.where((s) =>
-          s.timestamp.isAfter(day) && s.timestamp.isBefore(nextDay));
-
-      var totals = const NutrientTotals();
-      for (final scan in dayScans) {
-        for (final food in scan.foods) {
-          final foodData =
-              await DatabaseService.instance.getFoodByLabel(food.label);
-          if (foodData != null && foodData.kcalPer100g > 0) {
-            final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
-            final weightG = avgCal / (foodData.kcalPer100g / 100);
-            totals = totals +
-                estimateNutrientsForFood(
-                  category: foodData.category,
-                  weightG: weightG,
-                );
-          }
-        }
-      }
-      summaries.add(_DaySummary(
-        date: day,
-        totals: totals,
-        scanCount: dayScans.length,
-      ));
-    }
-
-    if (mounted) {
-      setState(() {
-        _weeklySummaries = summaries;
-        _loading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final intake = ref.watch(dailyIntakeProvider);
     final prefs = ref.watch(userPrefsProvider);
     final isMale = prefs.gender == UserGender.male;
-
     final nutrients = _buildNutrientList(intake.nutrientTotals, isMale);
     final collected = nutrients.where((n) => n.ratio >= 1.0).length;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nutrient Wheel'),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // ── Collection badge ───────────────────────────────────
-                Center(
-                  child: Column(
-                    children: [
-                      Text(
-                        '$collected / ${nutrients.length}',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          color: context.primary700,
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        child: Column(
+          children: [
+            Text(
+              '$collected / ${nutrients.length} nutrients collected today',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: context.primary700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: SizedBox(
+                width: 220,
+                height: 220,
+                child: CustomPaint(
+                  painter: _WheelPainter(nutrients: nutrients),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          collected == nutrients.length ? '🏆' : '🎯',
+                          style: const TextStyle(fontSize: 28),
                         ),
-                      ),
-                      const Text(
-                        'nutrients collected today',
-                        style: TextStyle(fontSize: 13, color: AppTheme.gray400),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // ── Wheel ──────────────────────────────────────────────
-                Center(
-                  child: SizedBox(
-                    width: 260,
-                    height: 260,
-                    child: CustomPaint(
-                      painter: _WheelPainter(nutrients: nutrients),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              collected == nutrients.length ? '🏆' : '🎯',
-                              style: const TextStyle(fontSize: 32),
-                            ),
-                            Text(
-                              collected == nutrients.length
-                                  ? 'All collected!'
-                                  : 'Keep eating!',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: collected == nutrients.length
-                                    ? context.primary700
-                                    : AppTheme.gray400,
-                              ),
-                            ),
-                          ],
+                        Text(
+                          collected == nutrients.length
+                              ? 'All collected!'
+                              : 'Keep eating!',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: collected == nutrients.length
+                                ? context.primary700
+                                : AppTheme.gray400,
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-
-                // ── Nutrient list ──────────────────────────────────────
-                ...nutrients.map((n) => _NutrientRow(nutrient: n)),
-                const SizedBox(height: 24),
-
-                // ── Weekly overview ────────────────────────────────────
-                const Text(
-                  'Weekly Overview',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.gray700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _WeeklyChart(summaries: _weeklySummaries, isMale: isMale),
-                const SizedBox(height: 40),
-              ],
+              ),
             ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -195,13 +103,6 @@ class _NutrientInfo {
   double get ratio => drv > 0 ? (current / drv).clamp(0.0, 1.0) : 0.0;
   bool get collected => ratio >= 1.0;
   int get percent => (ratio * 100).round();
-}
-
-class _DaySummary {
-  final DateTime date;
-  final NutrientTotals totals;
-  final int scanCount;
-  const _DaySummary({required this.date, required this.totals, required this.scanCount});
 }
 
 List<_NutrientInfo> _buildNutrientList(NutrientTotals t, bool isMale) {
@@ -347,81 +248,4 @@ class _NutrientRow extends StatelessWidget {
   }
 }
 
-// ── Weekly chart ─────────────────────────────────────────────────────────────
 
-class _WeeklyChart extends StatelessWidget {
-  const _WeeklyChart({required this.summaries, required this.isMale});
-  final List<_DaySummary> summaries;
-  final bool isMale;
-
-  @override
-  Widget build(BuildContext context) {
-    if (summaries.isEmpty) {
-      return const Text('No data yet.', style: TextStyle(color: AppTheme.gray400));
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Bar chart: each day gets a row with number of nutrients collected
-            ...summaries.map((s) {
-              final nutrients = _buildNutrientList(s.totals, isMale);
-              final collected = nutrients.where((n) => n.ratio >= 1.0).length;
-              final total = nutrients.length;
-              final ratio = total > 0 ? collected / total : 0.0;
-
-              const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-              final dayLabel = dayNames[s.date.weekday - 1];
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 32,
-                      child: Text(
-                        dayLabel,
-                        style: const TextStyle(fontSize: 11, color: AppTheme.gray600),
-                      ),
-                    ),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(3),
-                        child: LinearProgressIndicator(
-                          value: ratio,
-                          backgroundColor: context.primary100,
-                          valueColor: AlwaysStoppedAnimation(
-                            collected == total
-                                ? const Color(0xFF4CAF50)
-                                : context.primary400,
-                          ),
-                          minHeight: 14,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 36,
-                      child: Text(
-                        '$collected/$total',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: collected == total
-                              ? const Color(0xFF4CAF50)
-                              : AppTheme.gray600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -27,6 +27,9 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   int _tabIndex = 0;
   bool _showTutorial = false;
+  /// Scan count at the time the user last visited the History tab.
+  /// Badge is only shown when current count exceeds this.
+  int _lastSeenScanCount = 0;
 
   static const _tabs = [
     HomeScreen(),
@@ -91,7 +94,14 @@ class _MainShellState extends ConsumerState<MainShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tabIndex,
-        onDestinationSelected: (i) => setState(() => _tabIndex = i),
+        onDestinationSelected: (i) {
+          setState(() => _tabIndex = i);
+          // Clear history badge when visiting the History tab.
+          if (i == 3) {
+            final count = ref.read(historyProvider).scans.length;
+            setState(() => _lastSeenScanCount = count);
+          }
+        },
         backgroundColor: Colors.white,
         indicatorColor: context.primary100,
         destinations: [
@@ -112,13 +122,12 @@ class _MainShellState extends ConsumerState<MainShell> {
           ),
           NavigationDestination(
             icon: Badge(
-              isLabelVisible: scanCount > 0,
-              label: Text('$scanCount'),
+              isLabelVisible: scanCount > _lastSeenScanCount,
+              label: Text('${scanCount - _lastSeenScanCount}'),
               child: const Icon(Icons.history_outlined),
             ),
             selectedIcon: Badge(
-              isLabelVisible: scanCount > 0,
-              label: Text('$scanCount'),
+              isLabelVisible: false,
               child: Icon(Icons.history, color: context.primary700),
             ),
             label: 'History',
@@ -133,31 +142,59 @@ class _MainShellState extends ConsumerState<MainShell> {
       floatingActionButton: _tabIndex == 0
           ? Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          FloatingActionButton.small(
+          // ── AI Speech (voice) ─────────────────────────────────
+          FloatingActionButton.extended(
             heroTag: 'voice',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const VoiceEntryScreen()),
             ),
             backgroundColor: Colors.white,
             foregroundColor: context.primary700,
-            child: const Icon(Icons.mic),
+            elevation: 2,
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.mic, size: 22),
+                Positioned(
+                  right: -5,
+                  bottom: -5,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: context.primary600,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.auto_awesome,
+                        size: 9, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            label: const Text('AI Speech',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           ),
           const SizedBox(height: 8),
-          FloatingActionButton.small(
+          // ── Manual Log ────────────────────────────────────────
+          FloatingActionButton.extended(
             heroTag: 'manual',
             onPressed: _openManualEntry,
             backgroundColor: Colors.white,
             foregroundColor: context.primary700,
-            child: const Icon(Icons.edit_note),
+            elevation: 2,
+            icon: const Icon(Icons.edit_note, size: 22),
+            label: const Text('Manual Log',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           ),
           const SizedBox(height: 8),
+          // ── AI Scan ───────────────────────────────────────────
           FloatingActionButton.extended(
             heroTag: 'scan',
             onPressed: _openScan,
             backgroundColor: context.primary600,
             foregroundColor: Colors.white,
-            icon: const Icon(Icons.camera_alt),
+            icon: const Icon(Icons.auto_awesome),
             label: const Text('AI Scan'),
           ),
         ],

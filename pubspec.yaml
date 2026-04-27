@@ -59,3 +59,4 @@ flutter:
 
   assets:
     - assets/mascots/
+    - assets/anatomy_body.png

@@ -89,21 +89,13 @@ const _kSteps = [
     title: 'Body Map 🫀',
     body: 'Tap the body icon (top-right) to see a 2D interactive body map.\nEach organ glows based on your nutrient intake — tap to learn why!',
     tab: 0,
-    spot: _SpotRect(0.64, 0.075, 0.13, 0.055),
+    spot: _SpotRect(0.70, 0.075, 0.13, 0.055),
     tipBelow: true,
   ),
-  // 5 – Nutrient wheel icon
-  _Step(
-    title: 'Nutrient Wheel 🎯',
-    body: 'Tap the donut icon to play the micronutrient collection game.\nCollect all 13 nutrients each day + see your weekly overview.',
-    tab: 0,
-    spot: _SpotRect(0.76, 0.075, 0.13, 0.055),
-    tipBelow: true,
-  ),
-  // 6 – Nutrition button (leaf icon on Home)
+  // 5 – Nutrition button (leaf icon on Home)
   _Step(
     title: "Today's Nutrition 🌿",
-    body: 'The leaf icon shows a full breakdown of vitamins, minerals, and macros.',
+    body: 'The leaf icon shows a full breakdown of vitamins, minerals, macros and your micronutrient wheel.',
     tab: 0,
     spot: _SpotRect(0.88, 0.075, 0.13, 0.055),
     tipBelow: true,
@@ -206,23 +198,27 @@ class _AppTutorialOverlayState extends State<AppTutorialOverlay>
       opacity: _fade,
       child: Stack(
         children: [
-          // ── Spotlight overlay ─────────────────────────────────────────────
-          if (step.spot != null)
-            ScaleTransition(
-              scale: _spotScale,
-              child: CustomPaint(
-                size: size,
-                painter: _SpotlightPainter(
-                  spot: step.spot!,
-                  screenSize: size,
-                ),
-              ),
-            )
-          else
-            // Full dark overlay when no spotlight
-            Container(color: Colors.black.withValues(alpha: 0.78)),
+          // ── Full-screen dark overlay (always blocks touches) ──────────
+          Positioned.fill(
+            child: GestureDetector(
+              // Absorb all taps on the dimmed area so nothing behind fires.
+              onTap: () {},
+              child: step.spot != null
+                  ? ScaleTransition(
+                      scale: _spotScale,
+                      child: CustomPaint(
+                        size: size,
+                        painter: _SpotlightPainter(
+                          spot: step.spot!,
+                          screenSize: size,
+                        ),
+                      ),
+                    )
+                  : Container(color: Colors.black.withValues(alpha: 0.82)),
+            ),
+          ),
 
-          // ── Skip button ───────────────────────────────────────────────────
+          // ── Skip button ───────────────────────────────────────────────
           SafeArea(
             child: Align(
               alignment: Alignment.topRight,
@@ -237,7 +233,7 @@ class _AppTutorialOverlayState extends State<AppTutorialOverlay>
             ),
           ),
 
-          // ── Tooltip card ──────────────────────────────────────────────────
+          // ── Tooltip card ──────────────────────────────────────────────
           _TooltipCard(
             step: step,
             stepIndex: _step,
@@ -276,20 +272,28 @@ class _SpotlightPainter extends CustomPainter {
     );
 
     // Dark overlay with cutout
-    final paint = Paint()..color = Colors.black.withValues(alpha: 0.78);
+    final paint = Paint()..color = Colors.black.withValues(alpha: 0.82);
     final path = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
       ..addRRect(rect)
       ..fillType = PathFillType.evenOdd;
     canvas.drawPath(path, paint);
 
-    // Highlight ring
+    // Bright highlight ring around the spotlight
     canvas.drawRRect(
       rect,
       Paint()
-        ..color = Colors.white.withValues(alpha: 0.35)
+        ..color = Colors.white.withValues(alpha: 0.85)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5,
+        ..strokeWidth = 3.5,
+    );
+    // Outer glow
+    canvas.drawRRect(
+      rect.inflate(6),
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.20)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 8,
     );
   }
 

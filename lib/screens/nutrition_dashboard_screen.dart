@@ -6,6 +6,7 @@ import '../models/user_preferences.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
+import 'nutrient_wheel_screen.dart';
 
 /// Full nutrition breakdown: macros + vitamins + minerals.
 /// Navigate here by tapping the mascot on the home screen.
@@ -36,6 +37,11 @@ class NutritionDashboardScreen extends ConsumerWidget {
                   calorieGoal: prefs.dailyCalorieGoal,
                   scanCount: intake.scanCount,
                 ),
+                const SizedBox(height: 8),
+
+                // ── Nutrient Wheel (today's micronutrient overview) ───────
+                const _SectionHeader('Micronutrient Wheel'),
+                const NutrientWheelWidget(),
                 const SizedBox(height: 8),
 
                 // ── Macronutrients ────────────────────────────────────────
@@ -112,7 +118,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: const Text('☀️', style: TextStyle(fontSize: 16)),
+                        icon: const Text('🌞', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin D',
                         current: intake.nutrientTotals.vitaminDUg,
                         drv: NutrientDRV.vitaminDUg,

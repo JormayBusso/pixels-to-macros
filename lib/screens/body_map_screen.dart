@@ -33,18 +33,30 @@ class BodyMapScreen extends ConsumerWidget {
 
           return Stack(
             children: [
-              // Background silhouette
-              Center(
-                child: SizedBox(
-                  width: w * 0.55,
-                  height: h * 0.85,
-                  child: CustomPaint(
-                    painter: _SilhouettePainter(),
-                    size: Size(w * 0.55, h * 0.85),
+              // ── Background anatomy image (greyscale) ────────────────
+              Positioned.fill(
+                child: Center(
+                  child: SizedBox(
+                    width: w * 0.60,
+                    height: h * 0.82,
+                    child: ColorFiltered(
+                      // Convert to greyscale so the coloured organ glows
+                      // are clearly visible against a neutral grey base.
+                      colorFilter: const ColorFilter.matrix(<double>[
+                        0.2126, 0.7152, 0.0722, 0, 0,
+                        0.2126, 0.7152, 0.0722, 0, 0,
+                        0.2126, 0.7152, 0.0722, 0, 0,
+                        0,      0,      0,      1, 0,
+                      ]),
+                      child: Image.asset(
+                        'assets/anatomy_body.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
               ),
-              // Tappable regions
+              // ── Tappable organ regions (coloured glow overlays) ──────
               ...regions.map((r) {
                 final left = w * r.cx - (r.size / 2);
                 final top = h * r.cy - (r.size / 2);
@@ -61,13 +73,13 @@ class BodyMapScreen extends ConsumerWidget {
                       height: r.size,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: color.withValues(alpha: 0.35),
-                        border: Border.all(color: color, width: 2),
+                        color: color.withValues(alpha: 0.40),
+                        border: Border.all(color: color, width: 2.5),
                         boxShadow: [
                           BoxShadow(
-                            color: color.withValues(alpha: 0.4),
-                            blurRadius: r.score > 0.7 ? 16 : 6,
-                            spreadRadius: r.score > 0.7 ? 4 : 1,
+                            color: color.withValues(alpha: 0.55),
+                            blurRadius: r.score > 0.7 ? 20 : 8,
+                            spreadRadius: r.score > 0.7 ? 5 : 2,
                           ),
                         ],
                       ),
@@ -81,7 +93,7 @@ class BodyMapScreen extends ConsumerWidget {
                   ),
                 );
               }),
-              // Legend at bottom
+              // ── Legend ───────────────────────────────────────────────
               Positioned(
                 bottom: 16,
                 left: 16,
@@ -92,9 +104,10 @@ class BodyMapScreen extends ConsumerWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _LegendDot(color: Colors.red, label: 'Low'),
+                        _LegendDot(color: Colors.red.shade700, label: 'Low / Over'),
                         _LegendDot(color: Colors.orange, label: 'Moderate'),
-                        _LegendDot(color: Colors.green, label: 'Good'),
+                        _LegendDot(color: Colors.yellow.shade700, label: 'Good'),
+                        _LegendDot(color: Colors.green, label: 'Great'),
                       ],
                     ),
                   ),
@@ -193,9 +206,13 @@ class BodyMapScreen extends ConsumerWidget {
 }
 
 Color _scoreColor(double score) {
-  if (score >= 0.75) return const Color(0xFF4CAF50);
-  if (score >= 0.40) return const Color(0xFFFF9800);
-  return const Color(0xFFE53935);
+  // Transitions: red (low) → orange → yellow → green (good)
+  // then back to red if way over the daily dose (>1.6)
+  if (score > 1.6) return const Color(0xFFB71C1C); // way over → deep red
+  if (score >= 1.0) return const Color(0xFF4CAF50); // ≥100%  → green
+  if (score >= 0.7) return const Color(0xFF9CCC65); // 70-99% → light green
+  if (score >= 0.4) return const Color(0xFFFF9800); // 40-69% → orange
+  return const Color(0xFFE53935);                   // <40%   → red
 }
 
 // ── Region definitions ───────────────────────────────────────────────────────
@@ -252,7 +269,7 @@ List<_BodyRegion> _buildRegions(NutrientTotals t, bool isMale) {
       label: 'Brain',
       emoji: '🧠',
       cx: 0.50, cy: 0.08,
-      score: avg([b12, folate, iron]).clamp(0, 1),
+      score: avg([b12, folate, iron]).clamp(0.0, 2.0),
       explanation: 'B12 and folate support nerve function and cognitive health. Iron carries oxygen to the brain.',
       nutrients: [
         _NutrientRatio('B12', b12),
@@ -265,7 +282,7 @@ List<_BodyRegion> _buildRegions(NutrientTotals t, bool isMale) {
       emoji: '👁️',
       cx: 0.38, cy: 0.12,
       size: 40,
-      score: avg([vitA, vitC, zinc]).clamp(0, 1),
+      score: avg([vitA, vitC, zinc]).clamp(0.0, 2.0),
       explanation: 'Vitamin A is essential for vision. Vitamin C and zinc protect against age-related macular degeneration.',
       nutrients: [
         _NutrientRatio('Vitamin A', vitA),
@@ -277,7 +294,7 @@ List<_BodyRegion> _buildRegions(NutrientTotals t, bool isMale) {
       label: 'Heart',
       emoji: '❤️',
       cx: 0.56, cy: 0.30,
-      score: avg([potassium, mag, vitE]).clamp(0, 1),
+      score: avg([potassium, mag, vitE]).clamp(0.0, 2.0),
       explanation: 'Potassium regulates heartbeat. Magnesium relaxes blood vessels. Vitamin E prevents oxidative damage to cells.',
       nutrients: [
         _NutrientRatio('Potassium', potassium),
@@ -290,7 +307,7 @@ List<_BodyRegion> _buildRegions(NutrientTotals t, bool isMale) {
       emoji: '🫁',
       cx: 0.44, cy: 0.30,
       size: 44,
-      score: avg([vitC, vitE, vitA]).clamp(0, 1),
+      score: avg([vitC, vitE, vitA]).clamp(0.0, 2.0),
       explanation: 'Vitamin C protects lung tissue. Vitamin E and A are antioxidants that defend against inflammation.',
       nutrients: [
         _NutrientRatio('Vitamin C', vitC),
@@ -303,7 +320,7 @@ List<_BodyRegion> _buildRegions(NutrientTotals t, bool isMale) {
       emoji: '🫘',
       cx: 0.40, cy: 0.40,
       size: 42,
-      score: avg([vitE, vitK, b12]).clamp(0, 1),
+      score: avg([vitE, vitK, b12]).clamp(0.0, 2.0),
       explanation: 'The liver stores vitamins and detoxifies the body. Vitamin K is synthesised here and supports blood clotting.',
       nutrients: [
         _NutrientRatio('Vitamin E', vitE),
@@ -315,7 +332,7 @@ List<_BodyRegion> _buildRegions(NutrientTotals t, bool isMale) {
       label: 'Gut',
       emoji: '🦠',
       cx: 0.50, cy: 0.50,
-      score: avg([fiber, mag, potassium]).clamp(0, 1),
+      score: avg([fiber, mag, potassium]).clamp(0.0, 2.0),
       explanation: 'Dietary fiber feeds healthy gut bacteria and aids digestion. Magnesium helps with muscle contractions in the intestines.',
       nutrients: [
         _NutrientRatio('Fiber', fiber),
@@ -327,7 +344,7 @@ List<_BodyRegion> _buildRegions(NutrientTotals t, bool isMale) {
       label: 'Bones',
       emoji: '🦴',
       cx: 0.60, cy: 0.60,
-      score: avg([calcium, vitD, vitK]).clamp(0, 1),
+      score: avg([calcium, vitD, vitK]).clamp(0.0, 2.0),
       explanation: 'Calcium builds bone density. Vitamin D helps absorb calcium. Vitamin K directs calcium to bones instead of arteries.',
       nutrients: [
         _NutrientRatio('Calcium', calcium),
@@ -339,7 +356,7 @@ List<_BodyRegion> _buildRegions(NutrientTotals t, bool isMale) {
       label: 'Muscles',
       emoji: '💪',
       cx: 0.32, cy: 0.55,
-      score: avg([mag, potassium, calcium]).clamp(0, 1),
+      score: avg([mag, potassium, calcium]).clamp(0.0, 2.0),
       explanation: 'Magnesium and potassium prevent cramps and support muscle contraction. Calcium triggers muscle fibers.',
       nutrients: [
         _NutrientRatio('Magnesium', mag),
@@ -352,7 +369,7 @@ List<_BodyRegion> _buildRegions(NutrientTotals t, bool isMale) {
       emoji: '✨',
       cx: 0.68, cy: 0.42,
       size: 40,
-      score: avg([vitC, vitE, zinc]).clamp(0, 1),
+      score: avg([vitC, vitE, zinc]).clamp(0.0, 2.0),
       explanation: 'Vitamin C produces collagen for skin elasticity. Vitamin E protects against UV damage. Zinc helps wound healing.',
       nutrients: [
         _NutrientRatio('Vitamin C', vitC),
@@ -365,7 +382,7 @@ List<_BodyRegion> _buildRegions(NutrientTotals t, bool isMale) {
       emoji: '🩸',
       cx: 0.38, cy: 0.68,
       size: 40,
-      score: avg([iron, b12, folate]).clamp(0, 1),
+      score: avg([iron, b12, folate]).clamp(0.0, 2.0),
       explanation: 'Iron is the core of haemoglobin. B12 and folate are needed to produce healthy red blood cells.',
       nutrients: [
         _NutrientRatio('Iron', iron),
@@ -378,7 +395,7 @@ List<_BodyRegion> _buildRegions(NutrientTotals t, bool isMale) {
       emoji: '🛡️',
       cx: 0.62, cy: 0.20,
       size: 40,
-      score: avg([vitC, vitD, zinc]).clamp(0, 1),
+      score: avg([vitC, vitD, zinc]).clamp(0.0, 2.0),
       explanation: 'Vitamin C, D, and zinc are the big three for immune defence. They help white blood cells fight infections.',
       nutrients: [
         _NutrientRatio('Vitamin C', vitC),
@@ -387,83 +404,6 @@ List<_BodyRegion> _buildRegions(NutrientTotals t, bool isMale) {
       ],
     ),
   ];
-}
-
-// ── Silhouette painter ───────────────────────────────────────────────────────
-
-class _SilhouettePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFE0E0E0)
-      ..style = PaintingStyle.fill;
-
-    final w = size.width;
-    final h = size.height;
-
-    // Simple human silhouette using basic shapes
-    // Head
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(w * 0.5, h * 0.08), width: w * 0.18, height: h * 0.09),
-      paint,
-    );
-    // Neck
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset(w * 0.5, h * 0.14), width: w * 0.08, height: h * 0.04),
-      paint,
-    );
-    // Torso
-    final torsoPath = Path()
-      ..moveTo(w * 0.32, h * 0.16)
-      ..lineTo(w * 0.68, h * 0.16)
-      ..lineTo(w * 0.65, h * 0.52)
-      ..lineTo(w * 0.35, h * 0.52)
-      ..close();
-    canvas.drawPath(torsoPath, paint);
-    // Left arm
-    final leftArm = Path()
-      ..moveTo(w * 0.32, h * 0.17)
-      ..lineTo(w * 0.18, h * 0.35)
-      ..lineTo(w * 0.15, h * 0.50)
-      ..lineTo(w * 0.21, h * 0.51)
-      ..lineTo(w * 0.24, h * 0.36)
-      ..lineTo(w * 0.34, h * 0.22)
-      ..close();
-    canvas.drawPath(leftArm, paint);
-    // Right arm
-    final rightArm = Path()
-      ..moveTo(w * 0.68, h * 0.17)
-      ..lineTo(w * 0.82, h * 0.35)
-      ..lineTo(w * 0.85, h * 0.50)
-      ..lineTo(w * 0.79, h * 0.51)
-      ..lineTo(w * 0.76, h * 0.36)
-      ..lineTo(w * 0.66, h * 0.22)
-      ..close();
-    canvas.drawPath(rightArm, paint);
-    // Left leg
-    final leftLeg = Path()
-      ..moveTo(w * 0.35, h * 0.52)
-      ..lineTo(w * 0.30, h * 0.80)
-      ..lineTo(w * 0.28, h * 0.92)
-      ..lineTo(w * 0.38, h * 0.92)
-      ..lineTo(w * 0.40, h * 0.80)
-      ..lineTo(w * 0.48, h * 0.52)
-      ..close();
-    canvas.drawPath(leftLeg, paint);
-    // Right leg
-    final rightLeg = Path()
-      ..moveTo(w * 0.52, h * 0.52)
-      ..lineTo(w * 0.60, h * 0.80)
-      ..lineTo(w * 0.62, h * 0.92)
-      ..lineTo(w * 0.72, h * 0.92)
-      ..lineTo(w * 0.70, h * 0.80)
-      ..lineTo(w * 0.65, h * 0.52)
-      ..close();
-    canvas.drawPath(rightLeg, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ── Legend dot ────────────────────────────────────────────────────────────────

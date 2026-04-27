@@ -11,7 +11,6 @@ import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
 import 'body_map_screen.dart';
-import 'nutrient_wheel_screen.dart';
 import 'nutrition_dashboard_screen.dart';
 import 'scan_detail_screen.dart';
 
@@ -71,24 +70,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 padding: const EdgeInsets.all(6),
                 child:
                     const Icon(Icons.accessibility_new, color: Colors.white, size: 20),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const NutrientWheelScreen()),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: context.primary600,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.all(6),
-                child:
-                    const Icon(Icons.donut_small, color: Colors.white, size: 20),
               ),
             ),
           ),
@@ -911,6 +892,7 @@ class _HydrationCard extends ConsumerWidget {
     }
 
     final remaining = ((goal - intake) / 1000.0).clamp(0.0, 99.0);
+    final percent = (progress * 100).round();
 
     return Card(
       child: Padding(
@@ -936,7 +918,7 @@ class _HydrationCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${(intake / 1000).toStringAsFixed(1)} / ${(goal / 1000).toStringAsFixed(1)} L',
+                        '${(intake / 1000).toStringAsFixed(1)} / ${(goal / 1000).toStringAsFixed(1)} L  ($percent%)',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -963,6 +945,13 @@ class _HydrationCard extends ConsumerWidget {
                     ],
                   ),
                 ),
+                // Goal adjust button
+                IconButton(
+                  icon: const Icon(Icons.tune, size: 20),
+                  color: AppTheme.gray400,
+                  tooltip: 'Adjust water goal',
+                  onPressed: () => _showGoalDialog(context, ref, goal),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -975,6 +964,59 @@ class _HydrationCard extends ConsumerWidget {
                 const SizedBox(width: 8),
                 _WaterButton(label: '🍶 500 ml', ml: 500),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showGoalDialog(BuildContext context, WidgetRef ref, int currentGoal) {
+    // Slider value in ml (2000-3500, steps of 250)
+    int tempGoal = currentGoal.clamp(2000, 3500);
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Daily Water Goal'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${(tempGoal / 1000).toStringAsFixed(1)} L',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1976D2),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Slider(
+                value: tempGoal.toDouble(),
+                min: 2000,
+                max: 3500,
+                divisions: 6,
+                label: '${(tempGoal / 1000).toStringAsFixed(1)} L',
+                onChanged: (v) =>
+                    setDialogState(() => tempGoal = v.round()),
+              ),
+              const Text(
+                'Min 2.0 L · Max 3.5 L',
+                style: TextStyle(fontSize: 11, color: AppTheme.gray400),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                ref.read(userPrefsProvider.notifier).setDailyWaterGoal(tempGoal);
+                Navigator.pop(ctx);
+              },
+              child: const Text('Save'),
             ),
           ],
         ),
