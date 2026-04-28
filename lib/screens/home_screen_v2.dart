@@ -914,7 +914,18 @@ class _HydrationCard extends ConsumerWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text(
+              'Hydration',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1565C0),
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 10),
             Row(
               children: [
                 // Glass mascot

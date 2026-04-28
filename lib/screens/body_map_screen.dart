@@ -7,11 +7,10 @@ import '../providers/daily_intake_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
 
-/// 2D interactive body map.
+/// 2D interactive body map — anatomy style.
 ///
-/// Shows a front-facing human silhouette with tappable body regions.
-/// Each region glows based on how well the user has met the nutrient
-/// DRVs that benefit that body part.  Tap a region to see details.
+/// Shows a greyed-out human silhouette with body regions colored directly
+/// on the figure (no emojis).  Text labels with lines point to each area.
 class BodyMapScreen extends ConsumerWidget {
   const BodyMapScreen({super.key});
 
@@ -31,17 +30,21 @@ class BodyMapScreen extends ConsumerWidget {
           final w = constraints.maxWidth;
           final h = constraints.maxHeight;
 
+          // The body image is centered at 60% width, 82% height
+          final imgW = w * 0.60;
+          final imgH = h * 0.82;
+          final imgLeft = (w - imgW) / 2;
+          final imgTop = (h - imgH) / 2;
+
           return Stack(
             children: [
-              // ── Background anatomy image (greyscale) ────────────────
+              // ── Background anatomy image (greyscale) ──────────────
               Positioned.fill(
                 child: Center(
                   child: SizedBox(
-                    width: w * 0.60,
-                    height: h * 0.82,
+                    width: imgW,
+                    height: imgH,
                     child: ColorFiltered(
-                      // Convert to greyscale so the coloured organ glows
-                      // are clearly visible against a neutral grey base.
                       colorFilter: const ColorFilter.matrix(<double>[
                         0.2126, 0.7152, 0.0722, 0, 0,
                         0.2126, 0.7152, 0.0722, 0, 0,
@@ -56,44 +59,72 @@ class BodyMapScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              // ── Tappable organ regions (coloured glow overlays) ──────
+
+              // ── Colored region spots on the body ──────────────────
               ...regions.map((r) {
-                final left = w * r.cx - (r.size / 2);
-                final top = h * r.cy - (r.size / 2);
+                // cx/cy are relative to the full screen, but the body image is
+                // centered — convert region coords to body-image coords then
+                // back to screen coords.
+                final sx = imgLeft + r.cx * imgW;
+                final sy = imgTop + r.cy * imgH;
                 final color = _scoreColor(r.score);
+                final spotSize = r.size * 0.55; // smaller than emoji circles
 
                 return Positioned(
-                  left: left,
-                  top: top,
+                  left: sx - spotSize / 2,
+                  top: sy - spotSize / 2,
                   child: GestureDetector(
                     onTap: () => _showDetail(context, r),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 400),
-                      width: r.size,
-                      height: r.size,
+                      width: spotSize,
+                      height: spotSize,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: color.withValues(alpha: 0.40),
-                        border: Border.all(color: color, width: 2.5),
+                        color: color.withValues(alpha: 0.72),
+                        border: Border.all(color: color, width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: color.withValues(alpha: 0.55),
-                            blurRadius: r.score > 0.7 ? 20 : 8,
-                            spreadRadius: r.score > 0.7 ? 5 : 2,
+                            color: color.withValues(alpha: 0.50),
+                            blurRadius: r.score > 0.7 ? 16 : 6,
+                            spreadRadius: r.score > 0.7 ? 4 : 1,
                           ),
                         ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          r.emoji,
-                          style: const TextStyle(fontSize: 18),
-                        ),
                       ),
                     ),
                   ),
                 );
               }),
-              // ── Legend ───────────────────────────────────────────────
+
+              // ── Text labels with lines ────────────────────────────
+              ...regions.map((r) {
+                final sx = imgLeft + r.cx * imgW;
+                final sy = imgTop + r.cy * imgH;
+                final color = _scoreColor(r.score);
+                // Labels on the left side if cx < 0.5, else right
+                final isLeft = r.cx < 0.50;
+                final labelX = isLeft ? 4.0 : w - 4.0;
+                final labelW = imgLeft - 12;
+
+                return Positioned(
+                  left: isLeft ? 4 : (sx + 8),
+                  top: sy - 10,
+                  width: isLeft ? (sx - 16) : (w - sx - 16),
+                  child: GestureDetector(
+                    onTap: () => _showDetail(context, r),
+                    child: CustomPaint(
+                      painter: _LineLabelPainter(
+                        color: color,
+                        isLeft: isLeft,
+                        label: r.label,
+                      ),
+                      size: Size(isLeft ? (sx - 16) : (w - sx - 16), 20),
+                    ),
+                  ),
+                );
+              }),
+
+              // ── Legend ───────────────────────────────────────────
               Positioned(
                 bottom: 16,
                 left: 16,
@@ -134,7 +165,15 @@ class BodyMapScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Text(region.emoji, style: const TextStyle(fontSize: 28)),
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _scoreColor(region.score).withValues(alpha: 0.2),
+                    border: Border.all(color: _scoreColor(region.score), width: 2),
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -204,6 +243,59 @@ class BodyMapScreen extends ConsumerWidget {
     );
   }
 }
+
+/// Draws a short horizontal line + label text.
+/// [isLeft] — line goes right-to-left (label on left, line to right toward body).
+class _LineLabelPainter extends CustomPainter {
+  final Color color;
+  final bool isLeft;
+  final String label;
+
+  _LineLabelPainter({
+    required this.color,
+    required this.isLeft,
+    required this.label,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.8)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+
+    final lineY = size.height / 2;
+    if (isLeft) {
+      // Line from right edge (body) toward the label text on the left
+      canvas.drawLine(Offset(size.width, lineY), Offset(size.width - 20, lineY), paint);
+    } else {
+      // Line from left edge (body) toward label on the right
+      canvas.drawLine(Offset(0, lineY), Offset(20, lineY), paint);
+    }
+
+    final tp = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      textDirection: isLeft ? TextDirection.rtl : TextDirection.ltr,
+      maxLines: 1,
+    );
+    tp.layout(maxWidth: size.width - 24);
+
+    final textX = isLeft ? (size.width - 24 - tp.width) : 24.0;
+    tp.paint(canvas, Offset(textX, lineY - tp.height / 2));
+  }
+
+  @override
+  bool shouldRepaint(_LineLabelPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.label != label;
+}
+
 
 Color _scoreColor(double score) {
   // Transitions: red (low) → orange → yellow → green (good)

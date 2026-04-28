@@ -728,10 +728,13 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: SafeArea(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
                 children: [
                   // ── Tab toggle: Search Food | My Meals ─────────────
                   Padding(
@@ -1020,6 +1023,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                     ),
                 ],
               ),
+      ),
       ),
     );
   }

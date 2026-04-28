@@ -67,12 +67,6 @@ class GoalMascotWidget extends StatelessWidget {
           invertStage: true,
           onTap: onTap,
         );
-      case MascotType.glass:
-        return _ImageMascot(
-          stages: const _MascotStages.glass(),
-          progress: progress,
-          onTap: onTap,
-        );
       case MascotType.auto:
         return _ImageMascot(
           stages: const _MascotStages.plant(),

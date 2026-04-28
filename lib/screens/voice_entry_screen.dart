@@ -128,8 +128,16 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     // 1. Convert word-numbers to digits
     final converted = _wordNumbersToDigits(lower);
 
-    // 2. Split on "and", commas, "with"
-    var segments = converted.split(RegExp(r'\s*(?:,\s*|(?:^|\s)and\s+|(?:^|\s)with\s+)'));
+    // 2. Strip filler phrases ("also", "i have", "i had", "i ate", "also i have", etc.)
+    // These appear naturally in speech but carry no food/quantity meaning.
+    final fillerPhrases = RegExp(
+      r'\b(also\s+i\s+(have|had|ate|got|eat)|i\s+(have|had|ate|got|eat)|also\s+have|also\s+had|also\s+ate|\balso\b)\s+',
+      caseSensitive: false,
+    );
+    final defiltered = converted.replaceAll(fillerPhrases, '');
+
+    // 3. Split on "and", commas, "with"
+    var segments = defiltered.split(RegExp(r'\s*(?:,\s*|(?:^|\s)and\s+|(?:^|\s)with\s+)'));
 
     // 3. Further split when a digit immediately precedes a food name
     //    e.g. "2 bananas 1 apple" -> ["2 bananas", "1 apple"]
@@ -156,7 +164,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       double? grams;
       String foodQuery = seg;
 
-      final qMatch = RegExp(r'^(\d+(?:\.\d+)?)\s*(g|grams?|ml|pieces?|servings?|cups?|slices?)?\s*(?:of\s+)?(.+)$')
+      final qMatch = RegExp(r'^(\d+(?:\.\d+)?)\s*(g|grams?|ml|pieces?|servings?|cups?|slices?|handfuls?)?\s*(?:of\s+)?(.+)$')
           .firstMatch(seg);
       if (qMatch != null) {
         final qty = double.tryParse(qMatch.group(1)!) ?? 100;
@@ -168,6 +176,8 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         } else if (unit.startsWith('cup')) {
           grams = qty * 240;
         } else if (unit.startsWith('slice')) {
+          grams = qty * 30;
+        } else if (unit.startsWith('handful')) {
           grams = qty * 30;
         } else if (unit.startsWith('g') || unit.startsWith('ml')) {
           grams = qty;
@@ -181,6 +191,13 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       if (foodQuery.startsWith('a ') || foodQuery.startsWith('an ')) {
         foodQuery = foodQuery.replaceFirst(RegExp(r'^an?\s+'), '');
         grams ??= 120;
+      }
+
+      // Handle bare "handful of ..." without a leading number
+      final handfulMatch = RegExp(r'^handfuls?\s+(?:of\s+)?(.+)$').firstMatch(foodQuery);
+      if (handfulMatch != null) {
+        foodQuery = handfulMatch.group(1)!.trim();
+        grams ??= 30;
       }
 
       grams ??= 100;
@@ -217,7 +234,11 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
           }
         }
 
-        if (matched < queryWords.length) continue;
+        // For multi-word queries, require ALL words to match (prevents "protein powder"
+        // from matching "protein bar" when user said "protein powder")
+        if (queryWords.length > 1 && matched < queryWords.length) continue;
+        // For single-word queries, still require at least 1 match
+        if (queryWords.length == 1 && matched == 0) continue;
 
         final unmatched = fWords
             .where((fw) => !queryWords.any(

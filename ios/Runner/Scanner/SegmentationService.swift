@@ -253,7 +253,17 @@ final class SegmentationService {
         var confGrid  = [[Float]](repeating: [Float](repeating: 0, count: width), count: height)
 
         let ptr = output.dataPointer.assumingMemoryBound(to: Float32.self)
-        let maxIdx = output.count   // Hard upper bound for every pointer access
+        // Compute the actual addressable element count from the underlying buffer.
+        // output.count is the *logical* element count, but stride-based indexing
+        // can reach beyond that when the layout is non-contiguous.
+        let bufferLen: Int = {
+            var maxOffset = 0
+            for dim in 0..<shape.count {
+                maxOffset += (shape[dim] - 1) * strides[dim]
+            }
+            return maxOffset + 1
+        }()
+        let maxIdx = bufferLen
 
         if numClasses > 0 {
             // Softmax output — argmax per pixel, resolve overlaps by confidence.

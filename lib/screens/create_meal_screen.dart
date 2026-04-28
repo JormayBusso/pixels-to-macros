@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/custom_meal.dart';
 import '../models/food_data.dart';
+import '../services/barcode_lookup_service.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 
@@ -148,9 +151,12 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
             TextButton(onPressed: _save, child: const Text('Save')),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
               children: [
                 // ── Meal name + type ──────────────────────────────────
                 Padding(
@@ -302,6 +308,7 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
                 ),
               ],
             ),
+      ),
     );
   }
 
@@ -415,6 +422,56 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
     });
   }
 
+  Future<void> _scanBarcode() async {
+    // Connectivity check
+    try {
+      final result = await InternetAddress.lookup('world.openfoodfacts.org')
+          .timeout(const Duration(seconds: 3));
+      if (result.isEmpty || result[0].rawAddress.isEmpty) throw Exception();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Barcode scanning requires internet.')),
+      );
+      return;
+    }
+
+    final result = await BarcodeLookupService.instance.scanAndLookup();
+    if (result == null || !mounted) return;
+
+    // Add to DB if not already present
+    var existing = await DatabaseService.instance.getFoodByLabel(result.name);
+    if (existing == null) {
+      final lowerName = result.name.toLowerCase();
+      final isDrink = const [
+        'water', 'juice', 'drink', 'cola', 'soda', 'milk', 'tea', 'coffee',
+      ].any((kw) => lowerName.contains(kw));
+
+      final food = FoodData(
+        label: result.name,
+        densityMin: isDrink ? 0.99 : 0.80,
+        densityMax: isDrink ? 1.05 : 1.00,
+        kcalPer100g: result.kcalPer100g,
+        category: isDrink ? 'drink' : 'mixed',
+        proteinPer100g: result.proteinPer100g,
+        carbsPer100g: result.carbsPer100g,
+        fatPer100g: result.fatPer100g,
+        perMl: isDrink,
+        fiberPer100g: result.fiberPer100g,
+        sugarsPer100g: result.sugarsPer100g,
+        saturatedFatPer100g: result.saturatedFatPer100g,
+        sodiumMgPer100g: result.sodiumMgPer100g,
+      );
+      await DatabaseService.instance.insertFood(food);
+      existing = await DatabaseService.instance.getFoodByLabel(result.name);
+    }
+
+    if (!mounted) return;
+    final grams = result.servingGrams ?? 100.0;
+    widget.onAdded(result.name, grams);
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final maxH = MediaQuery.of(context).size.height * 0.85;
@@ -441,17 +498,29 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
                 style:
                     TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
-            // Search
-            TextField(
-              controller: _searchCtrl,
-              onChanged: _filter,
-              autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'Search food…',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
+            // Search + barcode
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: _filter,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      hintText: 'Search food…',
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.qr_code_scanner),
+                  tooltip: 'Scan barcode',
+                  onPressed: _scanBarcode,
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             // List
@@ -512,6 +581,7 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: () {
+                      FocusScope.of(context).unfocus();
                       final g =
                           double.tryParse(_gramsCtrl.text) ?? 100.0;
                       widget.onAdded(_selected!.label, g);

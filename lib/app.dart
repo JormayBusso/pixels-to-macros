@@ -4,6 +4,7 @@ import 'providers/theme_provider.dart';
 import 'providers/user_prefs_provider.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/intro_video_screen.dart';
 import 'services/debug_log.dart';
 
 class PixelsToMacrosApp extends ConsumerWidget {
@@ -27,7 +28,7 @@ class PixelsToMacrosApp extends ConsumerWidget {
           ),
           child: child!,
         ),
-        home: const _AppGate(),
+        home: const IntroVideoScreen(nextScreen: _AppGate()),
       );
     } catch (e) {
       DebugLog.instance.log('App', 'Root build error: $e');

@@ -44,6 +44,9 @@ dependencies:
   # Local notifications (water & food reminders)
   flutter_local_notifications: ^18.0.1
 
+  # Intro/splash video player
+  video_player: ^2.9.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -63,6 +66,7 @@ flutter:
   assets:
     - assets/mascots/
     - assets/anatomy_body.png
+    - assets/ptm_enter.mp4
     - assets/Calcium.png
     - assets/Iron.png
     - assets/Magnesium.png

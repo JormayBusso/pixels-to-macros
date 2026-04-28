@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 ///
 /// [auto] — use the mascot that fits the user's nutrition goal.
 /// All other values override the goal-based default.
-enum MascotType { auto, gorilla, plant, flame, sugar, glass }
+enum MascotType { auto, gorilla, plant, flame, sugar }
 
 extension MascotTypeX on MascotType {
   String get dbValue => name; // 'auto', 'gorilla', …
@@ -16,7 +16,6 @@ extension MascotTypeX on MascotType {
       case MascotType.plant:    return 'Plant 🌱';
       case MascotType.flame:    return 'Flame 🔥';
       case MascotType.sugar:    return 'Sugar Cube 🍬';
-      case MascotType.glass:    return 'Water Glass 💧';
     }
   }
 
@@ -27,7 +26,6 @@ extension MascotTypeX on MascotType {
       case MascotType.plant:    return '🌱';
       case MascotType.flame:    return '🔥';
       case MascotType.sugar:    return '🍬';
-      case MascotType.glass:    return '💧';
     }
   }
 
@@ -37,7 +35,7 @@ extension MascotTypeX on MascotType {
       case 'plant':    return MascotType.plant;
       case 'flame':    return MascotType.flame;
       case 'sugar':    return MascotType.sugar;
-      case 'glass':    return MascotType.glass;
+      case 'glass':    return MascotType.auto; // glass removed, fall back to auto
       default:         return MascotType.auto;
     }
   }
