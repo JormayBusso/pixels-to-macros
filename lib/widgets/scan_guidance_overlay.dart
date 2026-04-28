@@ -449,6 +449,7 @@ class _AnimatedArrow extends StatelessWidget {
 
 /// Convenience animated builder without a child parameter.
 class _AnimBuilder extends AnimatedWidget {
+  // ignore: unused_element_parameter
   const _AnimBuilder({super.key, required super.listenable, required this.builder});
   final Widget Function(BuildContext, Widget?) builder;
 

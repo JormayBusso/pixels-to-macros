@@ -184,8 +184,6 @@ class _BarChart extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final barWidth = (constraints.maxWidth / days.length) - 4;
-
         return Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: days.map((d) {

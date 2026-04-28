@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -77,7 +76,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ref.read(scanStateProvider.notifier).reset();
-        _startSession();
+        // Only start session immediately if no tutorial is shown.
+        // If tutorial is shown, _startSession is called from _dismissTutorial.
+        if (!_showTutorial) _startSession();
       }
     });
     _checkTutorial();
@@ -85,14 +86,30 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   void _checkTutorial() {
     final prefs = ref.read(userPrefsProvider);
-    if (!prefs.hasSeenScanTutorial) {
-      setState(() => _showTutorial = true);
-    }
+    // Assign directly — no setState needed, widget hasn't built yet.
+    _showTutorial = !prefs.hasSeenScanTutorial;
   }
 
   void _dismissTutorial() {
-    ref.read(userPrefsProvider.notifier).dismissScanTutorial();
-    setState(() => _showTutorial = false);
+    // Guard: do nothing if the widget is already gone.
+    if (!mounted) return;
+    try {
+      ref.read(userPrefsProvider.notifier).dismissScanTutorial();
+      setState(() => _showTutorial = false);
+      _startSession();
+    } catch (e, st) {
+      DebugLog.instance.log('ScanTutorial', 'Dismiss error: $e\n$st');
+      // Never crash — just return the user to the home screen.
+      _safePopToHome();
+    }
+  }
+
+  /// Pops all routes back to the first (home) route without throwing.
+  void _safePopToHome() {
+    if (!mounted) return;
+    try {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (_) {}
   }
 
   String? _sessionErrorDetail;       // actual error text for UI
@@ -733,8 +750,15 @@ class _BottomPanel extends StatelessWidget {
             ),
 
           // ── Processing ────────────────────────────────────────────
-          if (scanState == ScanState.calculating)
+          if (scanState == ScanState.calculating) ...[
             const _ProcessingIndicator(text: 'Building 3-D model…'),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: onClose,
+              child: const Text('Cancel',
+                  style: TextStyle(color: Colors.white60, fontSize: 14)),
+            ),
+          ],
 
           // ── Done → results + confidence ───────────────────────────
           if (scanState == ScanState.done) ...[
@@ -1049,44 +1073,6 @@ class _RecordButton extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ScanButton extends StatelessWidget {
-  const _ScanButton({
-    required this.label,
-    required this.icon,
-    required this.enabled,
-    required this.onPressed,
-    this.color,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool enabled;
-  final VoidCallback onPressed;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = color ?? context.primary500;
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton.icon(
-        icon: Icon(icon),
-        label: Text(label),
-        onPressed: enabled ? onPressed : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: c,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: c.withValues(alpha: 0.3),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      ),
     );
   }
 }

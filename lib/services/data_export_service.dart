@@ -3,7 +3,6 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
 import '../models/scan_result.dart';
-import '../models/scan_benchmark.dart';
 import '../models/ground_truth.dart';
 import '../services/database_service.dart';
 

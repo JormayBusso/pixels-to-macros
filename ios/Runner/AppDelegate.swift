@@ -20,11 +20,6 @@ import Flutter
         // FlutterViewController (which can fail silently in some build configs).
         if let scannerReg = registrar(forPlugin: "ScannerPlugin") {
             ScannerPlugin.register(with: scannerReg.messenger())
-        } else {
-            // Fallback: direct cast (should never be needed but keeps us safe)
-            if let vc = window?.rootViewController as? FlutterViewController {
-                ScannerPlugin.register(with: vc.binaryMessenger)
-            }
         }
 
         // ── Register the live AR camera platform view ──────────────────────

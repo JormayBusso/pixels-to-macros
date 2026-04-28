@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/mascot_type.dart';
 import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
+import '../providers/scroll_trigger_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';import '../services/database_service.dart';
 import '../theme/app_theme.dart';
@@ -25,6 +26,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _passwordCtrl;
   bool _obscurePassword = true;
   int _foodCount = 0;
+  final _accountScrollController = ScrollController();
+  int _lastVacationTrigger = 0;
 
   @override
   void initState() {
@@ -46,6 +49,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _nameCtrl.dispose();
     _goalCtrl.dispose();
     _passwordCtrl.dispose();
+    _accountScrollController.dispose();
     super.dispose();
   }
 
@@ -78,6 +82,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final vacationTrigger = ref.watch(scrollToVacationProvider);
+    if (vacationTrigger != _lastVacationTrigger) {
+      _lastVacationTrigger = vacationTrigger;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_accountScrollController.hasClients) {
+          _accountScrollController.animateTo(
+            650,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
     return DefaultTabController(
       length: 4,
       child: Scaffold(
@@ -116,6 +133,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildAccountTab() {
     return ListView(
+      controller: _accountScrollController,
       padding: const EdgeInsets.all(16),
       children: [
         _SectionHeader('Profile'),

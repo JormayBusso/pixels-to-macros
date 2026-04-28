@@ -27,10 +27,11 @@ class NativeBridge {
 
   /// Start the ARKit session on the native side.
   /// Returns the session generation number (for generation-aware stop).
+  /// Times out after 15 s to prevent startup hangs.
   Future<int> startSession() async {
-    // startSession now returns the generation number directly,
-    // avoiding a second round-trip for getSessionGeneration.
-    final gen = await _channel.invokeMethod<int>('startSession');
+    final gen = await _channel
+        .invokeMethod<int>('startSession')
+        .timeout(const Duration(seconds: 15));
     return gen ?? 0;
   }
 
@@ -72,8 +73,11 @@ class NativeBridge {
 
   /// Run full pipeline: segmentation → depth → volume → calories.
   /// Returns JSON list of detected foods with volumes.
+  /// Times out after 30 s to prevent UI freezes.
   Future<List<Map<String, dynamic>>> runInference() async {
-    final raw = await _channel.invokeMethod<String>('runInference');
+    final raw = await _channel
+        .invokeMethod<String>('runInference')
+        .timeout(const Duration(seconds: 30));
     if (raw == null) return [];
     final list = jsonDecode(raw) as List;
     return list.cast<Map<String, dynamic>>();
@@ -82,8 +86,11 @@ class NativeBridge {
   // ── Video recording ──────────────────────────────────────────────────────
 
   /// Start sampling ARKit frames (~10 fps) for a video-sweep scan.
+  /// Times out after 10 s.
   Future<void> startRecording() async {
-    await _channel.invokeMethod<void>('startRecording');
+    await _channel
+        .invokeMethod<void>('startRecording')
+        .timeout(const Duration(seconds: 10));
   }
 
   /// Stop frame sampling. Must be followed by [runVideoInference].
@@ -93,8 +100,11 @@ class NativeBridge {
 
   /// Run multi-frame 3-D reconstruction + segmentation on the recorded sweep.
   /// Returns the same JSON list format as [runInference].
+  /// Times out after 30 s to prevent UI freezes.
   Future<List<Map<String, dynamic>>> runVideoInference() async {
-    final raw = await _channel.invokeMethod<String>('runVideoInference');
+    final raw = await _channel
+        .invokeMethod<String>('runVideoInference')
+        .timeout(const Duration(seconds: 30));
     if (raw == null) return [];
     final list = jsonDecode(raw) as List;
     return list.cast<Map<String, dynamic>>();

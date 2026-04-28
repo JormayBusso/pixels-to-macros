@@ -850,28 +850,24 @@ class _GlThermometerCard extends StatelessWidget {
     final String level;
     final Color color;
     final Color bgColor;
-    final String emoji;
     final String tip;
 
     if (totalGL < 10) {
       level = 'Cool Meal 🧊';
       color = const Color(0xFF1976D2);
       bgColor = const Color(0xFFE3F2FD);
-      emoji = '🧊';
       tip = 'Low glycaemic load — slow glucose release. '
           'Blood sugar rise will be gradual.';
     } else if (totalGL < 20) {
       level = 'Warm Meal 🌤';
       color = const Color(0xFFF57C00);
       bgColor = const Color(0xFFFFF3E0);
-      emoji = '🌤';
       tip = 'Moderate glycaemic load — expect a moderate glucose rise '
           'over ~90 min.';
     } else {
       level = 'Hot Meal 🌶️';
       color = const Color(0xFFD32F2F);
       bgColor = const Color(0xFFFFEBEE);
-      emoji = '🌶️';
       tip = 'High glycaemic load — rapid glucose spike likely. '
           'Consider adding fibre or fat to slow absorption.';
     }

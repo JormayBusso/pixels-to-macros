@@ -5,7 +5,6 @@ import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/goal_mascot_widget.dart';
 
 /// First-launch onboarding: collects name, goal type, and macro targets.
 class OnboardingScreen extends ConsumerStatefulWidget {

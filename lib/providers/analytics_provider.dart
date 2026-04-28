@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/scan_result.dart';
 import '../services/database_service.dart';
 
 /// Daily calorie summary for analytics.

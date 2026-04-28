@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/food_data.dart';
 import '../models/scan_result.dart';
 import '../services/database_service.dart';
 import '../services/debug_log.dart';

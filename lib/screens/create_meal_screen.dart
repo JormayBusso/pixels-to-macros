@@ -27,7 +27,6 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
 
   // Food database for search
   List<FoodData> _allFoods = [];
-  List<FoodData> _filtered = [];
   final _searchCtrl = TextEditingController();
   bool _loading = true;
   bool _saving = false;
@@ -43,7 +42,6 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
     final meal = widget.meal;
     setState(() {
       _allFoods = foods;
-      _filtered = foods;
       _loading = false;
       if (meal != null) {
         _nameCtrl.text = meal.name;
@@ -65,23 +63,12 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
     super.dispose();
   }
 
-  void _filter(String q) {
-    setState(() {
-      _filtered = q.isEmpty
-          ? _allFoods
-          : _allFoods
-              .where((f) => f.label.toLowerCase().contains(q.toLowerCase()))
-              .toList();
-    });
-  }
-
   void _removeIngredient(int index) {
     setState(() => _ingredients.removeAt(index));
   }
 
   void _showAddIngredientSheet() {
     _searchCtrl.clear();
-    _filtered = List.of(_allFoods);
 
     showModalBottomSheet(
       context: context,

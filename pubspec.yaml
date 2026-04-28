@@ -33,13 +33,16 @@ dependencies:
   image_picker: ^1.1.2
 
   # Barcode scanning
-  mobile_scanner: ^6.0.2
+  mobile_scanner: ^7.0.0
 
   # HTTP client (for OpenFoodFacts barcode lookup)
   http: ^1.2.1
 
   # Speech-to-text for voice food logging (English only)
   speech_to_text: ^7.0.0
+
+  # Local notifications (water & food reminders)
+  flutter_local_notifications: ^18.0.1
 
 dev_dependencies:
   flutter_test:
@@ -60,3 +63,9 @@ flutter:
   assets:
     - assets/mascots/
     - assets/anatomy_body.png
+    - assets/Calcium.png
+    - assets/Iron.png
+    - assets/Magnesium.png
+    - assets/Potassium.png
+    - assets/Sodium.png
+    - assets/Zink.png

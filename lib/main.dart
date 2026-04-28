@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,13 +30,59 @@ Future<void> main() async {
     return true;
   };
 
+  // ── Replace red crash screen with a friendly "go back" widget ───────────
+  // If any widget's build() throws, Flutter shows this instead of crashing.
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    DebugLog.instance.log(
+      'Widget',
+      'Build error: ${details.exception}\n${details.stack ?? ""}',
+    );
+    return Material(
+      color: Colors.white,
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  size: 64,
+                  color: Colors.orange,
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'This screen ran into an error.',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Please press Back to return to the home screen.',
+                  style: TextStyle(fontSize: 15, color: Colors.black54),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  };
+
   DebugLog.instance.log('App', 'Starting Pixels to Macros');
 
   try {
-    await DatabaseService.instance.database;
+    await DatabaseService.instance.database
+        .timeout(const Duration(seconds: 10));
     DebugLog.instance.log('App', 'Database initialized');
   } catch (e) {
-    DebugLog.instance.log('App', 'Database init failed: $e');
+    DebugLog.instance.log('App', 'Database init failed (will retry later): $e');
   }
 
   runApp(

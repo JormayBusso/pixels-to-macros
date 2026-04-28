@@ -17,7 +17,6 @@ class NutritionDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final intake = ref.watch(dailyIntakeProvider);
     final prefs  = ref.watch(userPrefsProvider);
-    final isMale = prefs.gender == UserGender.male;
     final isFemale = prefs.gender == UserGender.female;
 
     return Scaffold(
@@ -118,7 +117,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: const Text('🌞', style: TextStyle(fontSize: 16)),
+                        icon: const Text('☀️', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin D',
                         current: intake.nutrientTotals.vitaminDUg,
                         drv: NutrientDRV.vitaminDUg,
@@ -168,7 +167,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       _NutrientRow(
-                        icon: _ElementIcon('Ca', const Color(0xFFE5E4E2)),
+                        icon: Image.asset('assets/Calcium.png', width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Calcium',
                         current: intake.nutrientTotals.calciumMg,
                         drv: isFemale ? NutrientDRV.calciumMg_female : NutrientDRV.calciumMg_male,
@@ -176,7 +175,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('Fe', const Color(0xFF7A7A78)),
+                        icon: Image.asset('assets/Iron.png', width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Iron',
                         current: intake.nutrientTotals.ironMg,
                         drv: isFemale ? NutrientDRV.ironMg_female : NutrientDRV.ironMg_male,
@@ -184,7 +183,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('Mg', const Color(0xFFDCDEDD)),
+                        icon: Image.asset('assets/Magnesium.png', width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Magnesium',
                         current: intake.nutrientTotals.magnesiumMg,
                         drv: isFemale ? NutrientDRV.magnesiumMg_female : NutrientDRV.magnesiumMg_male,
@@ -192,7 +191,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('K', const Color(0xFFB5B7B5)),
+                        icon: Image.asset('assets/Potassium.png', width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Potassium',
                         current: intake.nutrientTotals.potassiumMg,
                         drv: isFemale ? NutrientDRV.potassiumMg_female : NutrientDRV.potassiumMg_male,
@@ -200,7 +199,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('Na', const Color(0xFFC6C8C7)),
+                        icon: Image.asset('assets/Sodium.png', width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Sodium',
                         current: intake.nutrientTotals.sodiumMg,
                         drv: NutrientDRV.sodiumMaxMg,
@@ -209,7 +208,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: _ElementIcon('Zn', const Color(0xFFBAC4C8)),
+                        icon: Image.asset('assets/Zink.png', width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Zinc',
                         current: intake.nutrientTotals.zincMg,
                         drv: isFemale ? NutrientDRV.zincMg_female : NutrientDRV.zincMg_male,

@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/ground_truth.dart';
-import '../models/scan_result.dart';
 import '../services/database_service.dart';
 
 /// A single paired observation: predicted vs actual.

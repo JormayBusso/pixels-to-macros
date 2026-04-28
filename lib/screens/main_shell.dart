@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/history_provider.dart';
 import '../providers/scan_state_provider.dart';
-import '../providers/user_prefs_provider.dart';import '../theme/app_theme.dart';
+import '../providers/user_prefs_provider.dart';
+import '../services/notification_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_tutorial_overlay.dart';
 import 'analytics_screen.dart';
 import 'home_screen_v2.dart';
@@ -44,7 +46,14 @@ class _MainShellState extends ConsumerState<MainShell> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkTutorial();
+      _initNotifications();
     });
+  }
+
+  Future<void> _initNotifications() async {
+    await NotificationService.instance.initialize();
+    final prefs = ref.read(userPrefsProvider);
+    await NotificationService.instance.scheduleReminders(prefs: prefs);
   }
 
   void _checkTutorial() {
@@ -145,57 +154,86 @@ class _MainShellState extends ConsumerState<MainShell> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // ── AI Speech (voice) ─────────────────────────────────
-          FloatingActionButton.extended(
-            heroTag: 'voice',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const VoiceEntryScreen()),
-            ),
-            backgroundColor: Colors.white,
-            foregroundColor: context.primary700,
-            elevation: 2,
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.mic, size: 22),
-                Positioned(
-                  right: -5,
-                  bottom: -5,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: context.primary600,
-                      shape: BoxShape.circle,
+          SizedBox(
+            width: 145,
+            child: FloatingActionButton.extended(
+              heroTag: 'voice',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const VoiceEntryScreen()),
+              ),
+              backgroundColor: Colors.white,
+              foregroundColor: context.primary700,
+              elevation: 2,
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.mic, size: 22),
+                  Positioned(
+                    right: -5,
+                    bottom: -5,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: context.primary600,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.auto_awesome,
+                          size: 9, color: Colors.white),
                     ),
-                    child: const Icon(Icons.auto_awesome,
-                        size: 9, color: Colors.white),
                   ),
-                ),
-              ],
+                ],
+              ),
+              label: const Text('AI Speech',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             ),
-            label: const Text('AI Speech',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           ),
           const SizedBox(height: 8),
           // ── Manual Log ────────────────────────────────────────
-          FloatingActionButton.extended(
-            heroTag: 'manual',
-            onPressed: _openManualEntry,
-            backgroundColor: Colors.white,
-            foregroundColor: context.primary700,
-            elevation: 2,
-            icon: const Icon(Icons.edit_note, size: 22),
-            label: const Text('Manual Log',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          SizedBox(
+            width: 145,
+            child: FloatingActionButton.extended(
+              heroTag: 'manual',
+              onPressed: _openManualEntry,
+              backgroundColor: Colors.white,
+              foregroundColor: context.primary700,
+              elevation: 2,
+              icon: const Icon(Icons.edit_note, size: 22),
+              label: const Text('Manual Log',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            ),
           ),
           const SizedBox(height: 8),
           // ── AI Scan ───────────────────────────────────────────
-          FloatingActionButton.extended(
-            heroTag: 'scan',
-            onPressed: _openScan,
-            backgroundColor: context.primary600,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.auto_awesome),
-            label: const Text('AI Scan'),
+          SizedBox(
+            width: 145,
+            child: FloatingActionButton.extended(
+              heroTag: 'scan',
+              onPressed: _openScan,
+              backgroundColor: context.primary600,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.camera_alt, size: 22),
+                  Positioned(
+                    right: -5,
+                    bottom: -5,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.auto_awesome,
+                          size: 9, color: context.primary600),
+                    ),
+                  ),
+                ],
+              ),
+              label: const Text('AI Scan',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            ),
           ),
         ],
       )

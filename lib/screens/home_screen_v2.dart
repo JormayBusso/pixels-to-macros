@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/mascot_type.dart';
 import '../models/nutrition_goal.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/recommendations_provider.dart';
 import '../providers/streak_provider.dart';
+import '../providers/scroll_trigger_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
@@ -25,11 +25,19 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _initialLoading = true;
+  final _scrollController = ScrollController();
+  int _lastHydrationTrigger = 0;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -46,6 +54,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final intake = ref.watch(dailyIntakeProvider);
     final history = ref.watch(historyProvider);
     final streak = ref.watch(streakProvider);
+    final hydrationTrigger = ref.watch(scrollToHydrationProvider);
+
+    // Scroll to hydration card when the tour fires the trigger
+    if (hydrationTrigger != _lastHydrationTrigger) {
+      _lastHydrationTrigger = hydrationTrigger;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            600,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
 
     final greeting = prefs.name.isNotEmpty
         ? 'Hi, ${prefs.name}!'
@@ -111,6 +134,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: RefreshIndicator(
           onRefresh: _loadData,
           child: ListView(
+            controller: _scrollController,
             padding: const EdgeInsets.all(16),
             children: [
               // ── Greeting ─────────────────────────────────────────────
@@ -619,7 +643,6 @@ class _GoalProgressCard extends StatelessWidget {
     final goal     = prefs.nutritionGoal as NutritionGoalType;
     final kcalGoal = (prefs.dailyCalorieGoal as int).toDouble();
     final carbLim  = (prefs.dailyCarbLimitG as int).toDouble();
-    final protGoal = (prefs.dailyProteinTargetG as int).toDouble();
     final fatGoal  = (prefs.dailyFatTargetG as int).toDouble();
 
     final kcalProgress = kcalGoal > 0 ? intake.caloriesAvg / kcalGoal : 0.0;
@@ -634,13 +657,6 @@ class _GoalProgressCard extends StatelessWidget {
     final diabetesStress = (carbStress.clamp(0.0, 1.5) * 0.50 +
                             fatStress.clamp(0.0, 1.5)  * 0.30 +
                             kcalProgress.clamp(0.0, 1.5) * 0.20);
-
-    // For keto use carb stress; for diabetes use composite unhealthy score; for others use calorie progress
-    final mascotProgress = switch (goal) {
-      NutritionGoalType.keto     => carbStress,
-      NutritionGoalType.diabetes => diabetesStress,
-      _                          => kcalProgress,
-    };
 
     return Card(
       clipBehavior: Clip.antiAlias,
