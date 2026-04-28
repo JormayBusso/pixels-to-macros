@@ -495,19 +495,22 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   Widget build(BuildContext context) {
     final scanState = ref.watch(scanStateProvider);
     final scanResult = ref.watch(scanResultProvider);
+    final isProcessing = scanState == ScanState.calculating || scanState == ScanState.done;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
           // ── Live AR camera preview ───────────────────────────────────
-          // Always show the ARKit camera platform view so the background is
-          // never a plain black container.  The native ARSCNView handles the
-          // "no session yet" case internally (shows black until the session
-          // starts, then auto-connects via the arSessionDidStart notification).
-          const Positioned.fill(
-            child: UiKitView(viewType: 'com.pixelstomacros/ar_camera'),
-          ),
+          // Hide the platform view during inference/done so Flutter widgets
+          // (close button, cancel) can receive touches unobstructed.
+          // ARKit inference runs on a background Swift thread independently.
+          if (!isProcessing)
+            const Positioned.fill(
+              child: UiKitView(viewType: 'com.pixelstomacros/ar_camera'),
+            )
+          else
+            const Positioned.fill(child: ColoredBox(color: Colors.black)),
 
           // ── Guidance overlay ─────────────────────────────────────────
           ScanGuidanceOverlay(scanState: scanState, currentPitch: _currentPitch),
@@ -517,30 +520,36 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             bottom: 0,
             left: 0,
             right: 0,
-            child: _BottomPanel(
-              scanState: scanState,
-              scanResult: scanResult,
-              sessionStarted: _sessionStarted,
-              sessionErrorDetail: _sessionErrorDetail,
-              depthMode: _detectedDepthMode,
-              timings: PerfMonitor.instance.allTimings,
-              isRecording: _isRecording,
-              recordProgress: _recordProgress,
-              currentPitch: _currentPitch,
-              onStartRecord: _startRecording,
-              onStopRecord: _stopRecording,
-              onRetry: _retry,
-              onClose: () => Navigator.of(context).pop(),
-              onViewDetails: _savedScanResult != null
-                  ? () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ScanDetailScreen(scan: _savedScanResult!),
-                        ),
-                      );
-                    }
-                  : null,
+            child: Material(
+              color: Colors.transparent,
+              child: _BottomPanel(
+                scanState: scanState,
+                scanResult: scanResult,
+                sessionStarted: _sessionStarted,
+                sessionErrorDetail: _sessionErrorDetail,
+                depthMode: _detectedDepthMode,
+                timings: PerfMonitor.instance.allTimings,
+                isRecording: _isRecording,
+                recordProgress: _recordProgress,
+                currentPitch: _currentPitch,
+                onStartRecord: _startRecording,
+                onStopRecord: _stopRecording,
+                onRetry: _retry,
+                onClose: () {
+                  _isInferenceRunning = false;
+                  Navigator.of(context).pop();
+                },
+                onViewDetails: _savedScanResult != null
+                    ? () {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ScanDetailScreen(scan: _savedScanResult!),
+                          ),
+                        );
+                      }
+                    : null,
+              ),
             ),
           ),
 
@@ -548,9 +557,15 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             left: 8,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white70, size: 28),
-              onPressed: () => Navigator.of(context).pop(),
+            child: Material(
+              color: Colors.transparent,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white70, size: 28),
+                onPressed: () {
+                  _isInferenceRunning = false;
+                  Navigator.of(context).pop();
+                },
+              ),
             ),
           ),
 
@@ -558,28 +573,31 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             right: 8,
-            child: IconButton(
-              icon: Icon(
-                _torchOn ? Icons.flashlight_on : Icons.flashlight_off,
-                color: _torchOn ? AppTheme.amber500 : Colors.white70,
-                size: 28,
+            child: Material(
+              color: Colors.transparent,
+              child: IconButton(
+                icon: Icon(
+                  _torchOn ? Icons.flashlight_on : Icons.flashlight_off,
+                  color: _torchOn ? AppTheme.amber500 : Colors.white70,
+                  size: 28,
+                ),
+                tooltip: _torchOn ? 'Turn off flashlight' : 'Turn on flashlight',
+                onPressed: () async {
+                  final next = !_torchOn;
+                  final ok = await _bridge.setTorch(next);
+                  if (!mounted) return;
+                  if (ok) {
+                    setState(() => _torchOn = next);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Flashlight unavailable on this device.'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
               ),
-              tooltip: _torchOn ? 'Turn off flashlight' : 'Turn on flashlight',
-              onPressed: () async {
-                final next = !_torchOn;
-                final ok = await _bridge.setTorch(next);
-                if (!mounted) return;
-                if (ok) {
-                  setState(() => _torchOn = next);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Flashlight unavailable on this device.'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                }
-              },
             ),
           ),
 

@@ -84,16 +84,33 @@ final class ScannerPlugin {
 
         case "runInference":
             DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    let json = try pipeline.run(captureService: captureService)
-                    DispatchQueue.main.async { result(json) }
-                } catch {
-                    DispatchQueue.main.async {
+                var swiftError: Error? = nil
+                var jsonResult: String? = nil
+                var objcException: NSException? = nil
+                let ok = tryCatchObjC({
+                    do {
+                        jsonResult = try pipeline.run(captureService: captureService)
+                    } catch {
+                        swiftError = error
+                    }
+                }, &objcException)
+                DispatchQueue.main.async {
+                    if let json = jsonResult {
+                        result(json)
+                    } else if !ok, let ex = objcException {
                         result(FlutterError(
                             code: "INFERENCE_FAILED",
-                            message: error.localizedDescription,
+                            message: "\(ex.name.rawValue): \(ex.reason ?? \"unknown\")",
                             details: nil
                         ))
+                    } else if let err = swiftError {
+                        result(FlutterError(
+                            code: "INFERENCE_FAILED",
+                            message: err.localizedDescription,
+                            details: nil
+                        ))
+                    } else {
+                        result(FlutterError(code: "INFERENCE_FAILED", message: "Unknown error", details: nil))
                     }
                 }
             }
@@ -119,18 +136,35 @@ final class ScannerPlugin {
                     DispatchQueue.main.async { result(value) }
                 }
 
-                do {
-                    let json = try pipeline.runVideoScan(recorder: recorder)
-                    recorder.releaseAll()
+                var swiftError: Error? = nil
+                var jsonResult: String? = nil
+                var objcException: NSException? = nil
+                let ok = tryCatchObjC({
+                    do {
+                        jsonResult = try pipeline.runVideoScan(recorder: recorder)
+                    } catch {
+                        swiftError = error
+                    }
+                }, &objcException)
+                recorder.releaseAll()
+                if let json = jsonResult {
                     safeResult(json)
-                } catch {
-                    recorder.releaseAll()
-                    print("[ScannerPlugin] runVideoInference failed: \(error)")
+                } else if !ok, let ex = objcException {
+                    print("[ScannerPlugin] runVideoInference ObjC exception: \(ex)")
                     safeResult(FlutterError(
                         code: "VIDEO_INFERENCE_FAILED",
-                        message: error.localizedDescription,
+                        message: "\(ex.name.rawValue): \(ex.reason ?? \"unknown\")",
                         details: nil
                     ))
+                } else if let err = swiftError {
+                    print("[ScannerPlugin] runVideoInference failed: \(err)")
+                    safeResult(FlutterError(
+                        code: "VIDEO_INFERENCE_FAILED",
+                        message: err.localizedDescription,
+                        details: nil
+                    ))
+                } else {
+                    safeResult(FlutterError(code: "VIDEO_INFERENCE_FAILED", message: "Unknown error", details: nil))
                 }
             }
 
