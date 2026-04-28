@@ -98,9 +98,10 @@ final class ScannerPlugin {
                     if let json = jsonResult {
                         result(json)
                     } else if !ok, let ex = objcException {
+                        let reason = ex.reason ?? "unknown"
                         result(FlutterError(
                             code: "INFERENCE_FAILED",
-                            message: "\(ex.name.rawValue): \(ex.reason ?? \"unknown\")",
+                            message: "\(ex.name.rawValue): \(reason)",
                             details: nil
                         ))
                     } else if let err = swiftError {
@@ -150,10 +151,11 @@ final class ScannerPlugin {
                 if let json = jsonResult {
                     safeResult(json)
                 } else if !ok, let ex = objcException {
-                    print("[ScannerPlugin] runVideoInference ObjC exception: \(ex)")
+                    let reason = ex.reason ?? "unknown"
+                    print("[ScannerPlugin] runVideoInference ObjC exception: \(ex.name.rawValue): \(reason)")
                     safeResult(FlutterError(
                         code: "VIDEO_INFERENCE_FAILED",
-                        message: "\(ex.name.rawValue): \(ex.reason ?? \"unknown\")",
+                        message: "\(ex.name.rawValue): \(reason)",
                         details: nil
                     ))
                 } else if let err = swiftError {
