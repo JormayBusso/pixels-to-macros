@@ -6,7 +6,8 @@ import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../providers/scroll_trigger_provider.dart';
 import '../providers/user_prefs_provider.dart';
-import '../services/data_export_service.dart';import '../services/database_service.dart';
+import '../services/data_export_service.dart';
+import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
 import 'eval_dashboard_screen.dart';
@@ -28,6 +29,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   int _foodCount = 0;
   final _accountScrollController = ScrollController();
   int _lastVacationTrigger = 0;
+  int _lastWeeklyReviewTrigger = 0;
 
   @override
   void initState() {
@@ -83,12 +85,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final vacationTrigger = ref.watch(scrollToVacationProvider);
+    final weeklyReviewTrigger = ref.watch(scrollToWeeklyReviewProvider);
     if (vacationTrigger != _lastVacationTrigger) {
       _lastVacationTrigger = vacationTrigger;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_accountScrollController.hasClients) {
           _accountScrollController.animateTo(
             650,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
+    if (weeklyReviewTrigger != _lastWeeklyReviewTrigger) {
+      _lastWeeklyReviewTrigger = weeklyReviewTrigger;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_accountScrollController.hasClients) {
+          _accountScrollController.animateTo(
+            560,
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOut,
           );
@@ -114,18 +129,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           onTap: () => FocusScope.of(context).unfocus(),
           child: SafeArea(
             child: TabBarView(
-            children: [
-              // ── Account tab ──────────────────────────────────────────
-              _buildAccountTab(),
-              // ── Appearance tab ───────────────────────────────────────
-              _buildAppearanceTab(),
-              // ── Privacy tab ──────────────────────────────────────────
-              _buildPrivacyTab(),
-              // ── Evaluation tab ───────────────────────────────────────
-              _buildEvaluationTab(),
-            ],
+              children: [
+                // ── Account tab ──────────────────────────────────────────
+                _buildAccountTab(),
+                // ── Appearance tab ───────────────────────────────────────
+                _buildAppearanceTab(),
+                // ── Privacy tab ──────────────────────────────────────────
+                _buildPrivacyTab(),
+                // ── Evaluation tab ───────────────────────────────────────
+                _buildEvaluationTab(),
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );
@@ -254,8 +269,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             }
             return _IcrCard(
               currentIcr: prefs.icrGramsPerUnit,
-              onChanged: (v) =>
-                  ref.read(userPrefsProvider.notifier).setIcr(v),
+              onChanged: (v) => ref.read(userPrefsProvider.notifier).setIcr(v),
             );
           },
         ),
@@ -278,7 +292,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _InfoRow(
                   icon: Icons.storage,
                   label: 'Database version',
-                  value: '12',
+                  value: '24',
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
@@ -324,12 +338,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 24),
 
+        _SectionHeader('Weekly Review'),
+        const SizedBox(height: 12),
+        const _WeeklyBadgeRecapCard(),
+        const SizedBox(height: 24),
+
         _SectionHeader('Vacation Mode'),
         const SizedBox(height: 12),
         Consumer(
           builder: (context, ref, _) {
-            final vacation = ref.watch(
-                userPrefsProvider.select((p) => p.vacationMode));
+            final vacation =
+                ref.watch(userPrefsProvider.select((p) => p.vacationMode));
             return Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -353,8 +372,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               const Text(
                                 'Keeps your streak alive while you\'re away.',
                                 style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.gray600),
+                                    fontSize: 12, color: AppTheme.gray600),
                               ),
                             ],
                           ),
@@ -385,8 +403,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               child: Text(
                                 '🏖️  Vacation active — your streak is protected.',
                                 style: TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFFF57C00)),
+                                    fontSize: 11, color: Color(0xFFF57C00)),
                               ),
                             ),
                           ],
@@ -411,12 +428,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SizedBox(height: 12),
         _TextSizePickerCard(),
         const SizedBox(height: 24),
-
         _SectionHeader('Mascot'),
         const SizedBox(height: 12),
         _MascotPickerCard(),
         const SizedBox(height: 24),
-
         _SectionHeader('App Color Theme'),
         const SizedBox(height: 12),
         _ThemeColorPickerCard(),
@@ -476,7 +491,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
         const SizedBox(height: 24),
-
         _SectionHeader('About'),
         const SizedBox(height: 12),
         Card(
@@ -543,7 +557,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                 ),
-
               ],
             ),
           ),
@@ -616,7 +629,8 @@ class _IcrCardState extends State<_IcrCard> {
           children: [
             Row(
               children: const [
-                Icon(Icons.vaccines_outlined, color: Color(0xFF1976D2), size: 20),
+                Icon(Icons.vaccines_outlined,
+                    color: Color(0xFF1976D2), size: 20),
                 SizedBox(width: 8),
                 Text(
                   'Insulin-to-Carb Ratio (ICR)',
@@ -704,6 +718,70 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+class _WeeklyBadgeRecapCard extends ConsumerWidget {
+  const _WeeklyBadgeRecapCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(
+      userPrefsProvider.select((prefs) => prefs.weeklyBadgeRecapEnabled),
+    );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: context.primary100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.workspace_premium_outlined,
+                color: context.primary700,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Weekly Badge Recap',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.gray900,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Show badges earned last week on the first app start of each new week.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.gray600,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: enabled,
+              onChanged: (value) => ref
+                  .read(userPrefsProvider.notifier)
+                  .setWeeklyBadgeRecapEnabled(value),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Text size picker ───────────────────────────────────────────────────────────
 
 class _TextSizePickerCard extends ConsumerWidget {
@@ -712,8 +790,8 @@ class _TextSizePickerCard extends ConsumerWidget {
     final fontScale = ref.watch(userPrefsProvider.select((p) => p.fontScale));
 
     const options = [
-      (1.0,  'Normal',      Icons.text_fields),
-      (1.18, 'Large',       Icons.format_size),
+      (1.0, 'Normal', Icons.text_fields),
+      (1.18, 'Large', Icons.format_size),
       (1.38, 'Extra Large', Icons.text_increase),
     ];
 
@@ -729,7 +807,8 @@ class _TextSizePickerCard extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             Row(
-              children: options.map(((double scale, String label, IconData icon) opt) {
+              children: options
+                  .map(((double scale, String label, IconData icon) opt) {
                 final selected = (fontScale - opt.$1).abs() < 0.01;
                 return Expanded(
                   child: Padding(
@@ -745,7 +824,9 @@ class _TextSizePickerCard extends ConsumerWidget {
                           color: selected ? context.primary100 : Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: selected ? context.primary600 : AppTheme.gray300,
+                            color: selected
+                                ? context.primary600
+                                : AppTheme.gray300,
                             width: selected ? 2 : 1,
                           ),
                         ),
@@ -754,7 +835,9 @@ class _TextSizePickerCard extends ConsumerWidget {
                             Icon(
                               opt.$3,
                               size: 18 * opt.$1,
-                              color: selected ? context.primary600 : AppTheme.gray400,
+                              color: selected
+                                  ? context.primary600
+                                  : AppTheme.gray400,
                             ),
                             const SizedBox(height: 6),
                             Text(
@@ -763,7 +846,9 @@ class _TextSizePickerCard extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: selected ? context.primary700 : AppTheme.gray400,
+                                color: selected
+                                    ? context.primary700
+                                    : AppTheme.gray400,
                               ),
                             ),
                           ],
@@ -842,8 +927,8 @@ class _NutritionGoalPickerCard extends ConsumerWidget {
               children: NutritionGoalType.values.map((goal) {
                 final selected = current == goal;
                 return ChoiceChip(
-                  avatar: Text(goal.emoji,
-                      style: const TextStyle(fontSize: 16)),
+                  avatar:
+                      Text(goal.emoji, style: const TextStyle(fontSize: 16)),
                   label: Text(goal.label),
                   selected: selected,
                   selectedColor: goal.lightColor,
@@ -855,9 +940,7 @@ class _NutritionGoalPickerCard extends ConsumerWidget {
                       dailyProteinTargetG: GoalDefaults.proteinTargetG(goal),
                       dailyFatTargetG: GoalDefaults.fatTargetG(goal),
                     );
-                    await ref
-                        .read(userPrefsProvider.notifier)
-                        .update(updated);
+                    await ref.read(userPrefsProvider.notifier).update(updated);
                   },
                 );
               }).toList(),
@@ -879,7 +962,7 @@ class _MascotPickerCard extends ConsumerStatefulWidget {
 class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
   @override
   Widget build(BuildContext context) {
-    final prefs   = ref.watch(userPrefsProvider);
+    final prefs = ref.watch(userPrefsProvider);
     final current = prefs.mascotType;
 
     return Card(
@@ -917,8 +1000,7 @@ class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
               children: MascotType.values.map((mt) {
                 final selected = current == mt;
                 return ChoiceChip(
-                  avatar: Text(mt.emoji,
-                      style: const TextStyle(fontSize: 16)),
+                  avatar: Text(mt.emoji, style: const TextStyle(fontSize: 16)),
                   label: Text(mt.label),
                   selected: selected,
                   onSelected: (_) async {
@@ -940,7 +1022,7 @@ class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
 class _ThemeColorPickerCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final prefs   = ref.watch(userPrefsProvider);
+    final prefs = ref.watch(userPrefsProvider);
     final current = prefs.themeColorSeed;
 
     return Card(
@@ -961,11 +1043,8 @@ class _ThemeColorPickerCard extends ConsumerWidget {
                 final selected = current == seed;
                 return GestureDetector(
                   onTap: () async {
-                    final updated =
-                        prefs.copyWith(themeColorSeed: seed);
-                    await ref
-                        .read(userPrefsProvider.notifier)
-                        .update(updated);
+                    final updated = prefs.copyWith(themeColorSeed: seed);
+                    await ref.read(userPrefsProvider.notifier).update(updated);
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
@@ -975,9 +1054,7 @@ class _ThemeColorPickerCard extends ConsumerWidget {
                       color: seed.color,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: selected
-                            ? AppTheme.gray900
-                            : Colors.transparent,
+                        color: selected ? AppTheme.gray900 : Colors.transparent,
                         width: 3,
                       ),
                       boxShadow: selected
@@ -991,8 +1068,7 @@ class _ThemeColorPickerCard extends ConsumerWidget {
                           : [],
                     ),
                     child: selected
-                        ? const Icon(Icons.check,
-                            color: Colors.white, size: 22)
+                        ? const Icon(Icons.check, color: Colors.white, size: 22)
                         : null,
                   ),
                 );

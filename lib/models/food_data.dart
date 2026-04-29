@@ -9,6 +9,7 @@ class FoodData {
   final double proteinPer100g;
   final double carbsPer100g;
   final double fatPer100g;
+
   /// True when nutrients are expressed per 100 ml (drinks) rather than per 100 g.
   final bool perMl;
 
@@ -66,6 +67,25 @@ class FoodData {
   /// Unit label used for display ("100 ml" for drinks, "100 g" otherwise).
   String get unitLabel => perMl ? '100 ml' : '100 g';
 
+  /// True when the row carries product-specific vitamin/mineral data instead
+  /// of only the required calorie and macro fields.
+  bool get hasMicronutrientData => [
+        fiberPer100g,
+        sodiumMgPer100g,
+        vitaminAUgPer100g,
+        vitaminCMgPer100g,
+        vitaminDUgPer100g,
+        vitaminEMgPer100g,
+        vitaminKUgPer100g,
+        vitaminB12UgPer100g,
+        folateUgPer100g,
+        calciumMgPer100g,
+        ironMgPer100g,
+        magnesiumMgPer100g,
+        potassiumMgPer100g,
+        zincMgPer100g,
+      ].any((value) => value > 0);
+
   /// Meal bolus (insulin units) per 100 g/ml of this food.
   /// Formula: carbs / ICR.  Returns null when carbs == 0 (no bolus needed).
   double? bolusPer100(double icrGramsPerUnit) {
@@ -86,7 +106,7 @@ class FoodData {
   /// Sources: Foster-Powell et al. (2002), Atkinson et al. (2008).
   int get estimatedGI {
     // High-fiber lowers GI; check fiber first.
-    if (fiberPer100g > 5) return 35;  // high fiber → lower GI
+    if (fiberPer100g > 5) return 35; // high fiber → lower GI
     switch (category.toLowerCase()) {
       // Fast / high GI
       case 'grain':
@@ -141,7 +161,9 @@ class FoodData {
   /// available_carbs = carbsPer100g - fiberPer100g (fiber not digested).
   double glForGrams(double grams) {
     final availCarbs =
-        ((carbsPer100g - fiberPer100g).clamp(0, double.infinity)) * grams / 100.0;
+        ((carbsPer100g - fiberPer100g).clamp(0, double.infinity)) *
+            grams /
+            100.0;
     return (estimatedGI * availCarbs) / 100.0;
   }
 

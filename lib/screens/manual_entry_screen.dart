@@ -96,9 +96,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
         final config = getServingConfig(food.label);
         _servingConfig = config;
         _servingCount = 1;
-        _selectedSizeIndex = config != null
-            ? (config.sizes.length > 1 ? 1 : 0)
-            : 0;
+        _selectedSizeIndex =
+            config != null ? (config.sizes.length > 1 ? 1 : 0) : 0;
         if (config != null) {
           final grams = config.totalGrams(
               _servingCount, config.sizes[_selectedSizeIndex]);
@@ -116,8 +115,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
 
   void _updateServingGrams() {
     if (_servingConfig == null) return;
-    final grams = _servingConfig!.totalGrams(
-        _servingCount, _servingConfig!.sizes[_selectedSizeIndex]);
+    final grams = _servingConfig!
+        .totalGrams(_servingCount, _servingConfig!.sizes[_selectedSizeIndex]);
     setState(() {
       _portionCtrl.text = grams.round().toString();
       _sliderGrams = grams;
@@ -201,64 +200,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
 
   // ── Meal logging ────────────────────────────────────────────────────────
 
-  /// Quick-log a drink (water, juice, etc.) by volume in ml.
-  Future<void> _quickLogDrink(String label, double ml) async {
-    // Look up food entry (prefer 'water' entry or match by label).
-    FoodData food;
-    try {
-      food = _allFoods.firstWhere(
-          (f) => f.label.toLowerCase() == label.toLowerCase());
-    } catch (_) {
-      // Water fallback: 0 kcal, density ≈ 1 g/ml
-      food = FoodData(
-        label: label,
-        densityMin: 1.0,
-        densityMax: 1.0,
-        kcalPer100g: 0,
-        category: 'drink',
-        perMl: true,
-      );
-    }
-    final avgDensity = (food.densityMin + food.densityMax) / 2;
-    final volumeCm3 = ml / avgDensity;
-    final range = food.calorieRange(volumeCm3);
-    final result = ScanResult(
-      timestamp: DateTime.now(),
-      depthMode: 'manual',
-      foods: [
-        DetectedFood(
-          label: food.label,
-          volumeCm3: volumeCm3,
-          caloriesMin: range.min,
-          caloriesMax: range.max,
-        ),
-      ],
-    );
-    await ref.read(historyProvider.notifier).addScan(result);
-    await ref.read(dailyIntakeProvider.notifier).load();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${ml.round()} ml $label logged')),
-      );
-    }
-  }
-
-  /// Show the "Quick Drink" bottom sheet with glass presets + custom ml.
-  Future<void> _showDrinkSheet() {
-    return showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => _DrinkSheet(
-        onLog: (label, ml) {
-          Navigator.of(ctx).pop();
-          _quickLogDrink(label, ml);
-        },
-      ),
-    );
-  }
-
   Future<void> _logMeal(CustomMeal meal) async {
     if (meal.ingredients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -319,8 +260,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-              '${meal.name} logged — $totalCal kcal'),
+          content: Text('${meal.name} logged — $totalCal kcal'),
         ),
       );
       Navigator.of(context).pop();
@@ -349,7 +289,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
             // Handle
             Center(
               child: Container(
-                width: 36, height: 4,
+                width: 36,
+                height: 4,
                 decoration: BoxDecoration(
                   color: AppTheme.gray300,
                   borderRadius: BorderRadius.circular(2),
@@ -362,7 +303,10 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 16),
-            _BolusRow(icon: Icons.grain, label: 'Carbohydrates', value: '${totalCarbs.toStringAsFixed(1)} g'),
+            _BolusRow(
+                icon: Icons.grain,
+                label: 'Carbohydrates',
+                value: '${totalCarbs.toStringAsFixed(1)} g'),
             const Divider(height: 20),
             Container(
               padding: const EdgeInsets.all(14),
@@ -450,7 +394,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('⚠️ Barcode scanning requires an internet connection to look up product info.'),
+          content: Text(
+              '⚠️ Barcode scanning requires an internet connection to look up product info.'),
           duration: Duration(seconds: 4),
         ),
       );
@@ -461,12 +406,12 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     // performs the OpenFoodFacts lookup using URLSession — no Flutter
     // packages required.
     final themeColor = context.primary500;
-    final result = await BarcodeLookupService.instance.scanAndLookup(themeColor: themeColor);
+    final result = await BarcodeLookupService.instance
+        .scanAndLookup(themeColor: themeColor);
     if (result == null || !mounted) return;
 
     // Check if food is already in our database.
-    final existing =
-        await DatabaseService.instance.getFoodByLabel(result.name);
+    final existing = await DatabaseService.instance.getFoodByLabel(result.name);
     FoodData food;
     if (existing != null) {
       food = existing;
@@ -474,9 +419,27 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
       // Heuristic: treat as a drink if the name contains common beverage words.
       final lowerName = result.name.toLowerCase();
       final isDrink = const [
-        'water', 'juice', 'drink', 'cola', 'soda', 'beer', 'wine', 'milk',
-        'tea', 'coffee', 'smoothie', 'shake', 'lemonade', 'espresso', 'latte',
-        'beverage', 'nectar', 'syrup', 'liqueur', 'spirit', 'cocktail',
+        'water',
+        'juice',
+        'drink',
+        'cola',
+        'soda',
+        'beer',
+        'wine',
+        'milk',
+        'tea',
+        'coffee',
+        'smoothie',
+        'shake',
+        'lemonade',
+        'espresso',
+        'latte',
+        'beverage',
+        'nectar',
+        'syrup',
+        'liqueur',
+        'spirit',
+        'cocktail',
       ].any((kw) => lowerName.contains(kw));
 
       // Add the barcode food to the database with all available nutrients.
@@ -512,13 +475,14 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
       // Reload the list.
       await _loadFoods();
       // Re-fetch so we get the id.
-      food = (await DatabaseService.instance.getFoodByLabel(result.name)) ??
-          food;
+      food =
+          (await DatabaseService.instance.getFoodByLabel(result.name)) ?? food;
     }
 
     // Health score sheet handles _selectFood + serving pre-fill via its buttons.
     if (mounted) {
-      await _showBarcodeHealthSheet(food: food, servingGrams: result.servingGrams);
+      await _showBarcodeHealthSheet(
+          food: food, servingGrams: result.servingGrams);
     }
   }
 
@@ -528,16 +492,18 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     double score = 50; // start neutral
 
     // Good contributors (add points)
-    score += (food.fiberPer100g * 4).clamp(0, 20);           // fiber: up to +20
-    score += (food.proteinPer100g * 0.5).clamp(0, 15);       // protein: up to +15
+    score += (food.fiberPer100g * 4).clamp(0, 20); // fiber: up to +20
+    score += (food.proteinPer100g * 0.5).clamp(0, 15); // protein: up to +15
     score += ((food.vitaminCMgPer100g / 90) * 5).clamp(0, 5); // vit C
     score += ((food.calciumMgPer100g / 1000) * 5).clamp(0, 5); // calcium
 
     // Bad contributors (subtract points)
-    score -= (food.sugarsPer100g * 0.8).clamp(0, 25);         // sugars: up to -25
-    score -= (food.saturatedFatPer100g * 1.5).clamp(0, 20);   // sat fat: up to -20
-    score -= ((food.sodiumMgPer100g / 2300) * 15).clamp(0, 15); // sodium: up to -15
-    if (food.kcalPer100g > 400) score -= 10;                   // dense energy penalty
+    score -= (food.sugarsPer100g * 0.8).clamp(0, 25); // sugars: up to -25
+    score -=
+        (food.saturatedFatPer100g * 1.5).clamp(0, 20); // sat fat: up to -20
+    score -=
+        ((food.sodiumMgPer100g / 2300) * 15).clamp(0, 15); // sodium: up to -15
+    if (food.kcalPer100g > 400) score -= 10; // dense energy penalty
 
     return score.round().clamp(0, 100);
   }
@@ -572,7 +538,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
           children: [
             Center(
               child: Container(
-                width: 36, height: 4,
+                width: 36,
+                height: 4,
                 decoration: BoxDecoration(
                   color: AppTheme.gray300,
                   borderRadius: BorderRadius.circular(2),
@@ -581,8 +548,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
             ),
             const SizedBox(height: 14),
             Text(food.label,
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w800)),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
             Text(
               '${food.kcalPer100g.round()} kcal  •  ${food.proteinPer100g.round()} g protein  •  '
@@ -625,7 +592,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                       height: 14,
                       alignment: Alignment.centerRight,
                       child: Container(
-                        width: 14, height: 14,
+                        width: 14,
+                        height: 14,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
@@ -650,8 +618,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: scoreColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -717,11 +685,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
         title: const Text('Log Food Manually'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.local_drink_outlined),
-            tooltip: 'Quick Drink',
-            onPressed: _showDrinkSheet,
-          ),
-          IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: 'Scan barcode',
             onPressed: _openBarcodeScanner,
@@ -735,295 +698,318 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : Column(
-                children: [
-                  // ── Tab toggle: Search Food | My Meals ─────────────
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _TabToggleButton(
-                            label: 'Search Food',
-                            icon: Icons.search,
-                            active: !_showMeals,
-                            onTap: () => setState(() => _showMeals = false),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _TabToggleButton(
-                            label: 'My Meals',
-                            icon: Icons.restaurant_menu,
-                            active: _showMeals,
-                            onTap: () => setState(() => _showMeals = true),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  if (_showMeals) ...[
-                    // ── Meals list ────────────────────────────────────
-                    Expanded(
-                      child: _MealsTab(
-                        meals: _meals,
-                        kcalMap: {for (final f in _allFoods) f.label: f.kcalPer100g},
-                        carbsMap: {for (final f in _allFoods) f.label: f.carbsPer100g},
-                        onLog: _logMeal,
-                        onEdit: (meal) async {
-                          final updated = await Navigator.of(context).push<bool>(
-                            MaterialPageRoute(
-                              builder: (_) => CreateMealScreen(meal: meal),
-                            ),
-                          );
-                          if (updated == true) await _loadFoods();
-                        },
-                        onDelete: (meal) async {
-                          if (meal.id != null) {
-                            await DatabaseService.instance
-                                .deleteCustomMeal(meal.id!);
-                            await _loadFoods();
-                          }
-                        },
-                        onCreate: () async {
-                          final created = await Navigator.of(context).push<bool>(
-                            MaterialPageRoute(
-                              builder: (_) => const CreateMealScreen(),
-                            ),
-                          );
-                          if (created == true) await _loadFoods();
-                        },
-                      ),
-                    ),
-                  ] else ...[
-                    // ── Search field ──────────────────────────────────
+                  children: [
+                    // ── Tab toggle: Search Food | My Meals ─────────────
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                      child: TextField(
-                        controller: _searchCtrl,
-                        onChanged: _filter,
-                        decoration: const InputDecoration(
-                          hintText: 'Search food…',
-                          prefixIcon: Icon(Icons.search),
-                        ),
-                      ),
-                    ),
-
-                    // ── Food list ─────────────────────────────────────
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _filtered.length,
-                        itemBuilder: (context, i) {
-                          final food = _filtered[i];
-                          final isSelected = _selectedLabels.contains(food.label);
-                          final isActive = _activeFood?.label == food.label;
-                          return Card(
-                            color: isActive
-                                ? context.primary50
-                                : (isSelected
-                                    ? context.primary50.withValues(alpha: 0.5)
-                                    : null),
-                            child: ListTile(
-                              leading: _categoryIcon(food.category),
-                              title: Text(
-                                food.label,
-                                style: TextStyle(
-                                  fontWeight: isSelected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                ),
-                              ),
-                              subtitle: Text(
-                                isDiabetic && food.bolusPer100(icr) != null
-                                    ? '${food.kcalPer100g.round()} kcal / ${food.unitLabel}  •  '
-                                      '${food.bolusPer100(icr)!.toStringAsFixed(1)} u insulin'
-                                    : '${food.kcalPer100g.round()} kcal / ${food.unitLabel}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.gray400,
-                                ),
-                              ),
-                              trailing: isSelected
-                                  ? Icon(Icons.check_circle,
-                                      color: context.primary600)
-                                  : Icon(Icons.circle_outlined,
-                                      color: AppTheme.gray300),
-                              onTap: () => _selectFood(food),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-
-                  // ── Portion + save bar ──────────────────────────────
-                  if (!_showMeals && _selectedLabels.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border(
-                          top: BorderSide(color: context.primary100),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: Row(
                         children: [
-                          // Selected count
-                          if (_selectedLabels.length > 1)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.check_circle, size: 16, color: context.primary600),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '${_selectedLabels.length} items selected',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: context.primary700,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                          Expanded(
+                            child: _TabToggleButton(
+                              label: 'Search Food',
+                              icon: Icons.search,
+                              active: !_showMeals,
+                              onTap: () => setState(() => _showMeals = false),
                             ),
-                          if (_activeFood != null) ...[
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _activeFood!.label,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (calPreview != null)
-                                    Text(
-                                      '≈ ${calPreview.round()} kcal',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: context.primary700,
-                                      ),
-                                    ),
-                                  if (isDiabetic && _activeFood != null) ...[
-                                    Builder(builder: (ctx) {
-                                      final grams = double.tryParse(_portionCtrl.text) ?? 0;
-                                      final bolus = _activeFood!.bolusForGrams(grams, icr);
-                                      if (bolus == null || bolus <= 0) return const SizedBox.shrink();
-                                      return Text(
-                                        '💉 ${bolus.toStringAsFixed(1)} u',
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF1976D2),
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                ],
-                              ),
-                            ],
                           ),
-                          const SizedBox(height: 12),
-
-                          // ── Serving picker for countable foods ──────
-                          if (_servingConfig != null) ...[
-                            _ServingPicker(
-                              config: _servingConfig!,
-                              count: _servingCount,
-                              selectedSizeIndex: _selectedSizeIndex,
-                              onCountChanged: (c) {
-                                _servingCount = c;
-                                _updateServingGrams();
-                              },
-                              onSizeChanged: (i) {
-                                _selectedSizeIndex = i;
-                                _updateServingGrams();
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-
-                          // ── Gram/ml slider ─────────────────────────
-                          Row(
-                            children: [
-                              SizedBox(
-                                width: 80,
-                                child: TextField(
-                                  controller: _portionCtrl,
-                                  keyboardType: TextInputType.number,
-                                  onChanged: _onPortionTextChanged,
-                                  decoration: InputDecoration(
-                                    suffixText: _activeFood?.perMl == true ? 'ml' : 'g',
-                                    labelText: _activeFood?.perMl == true ? 'ml' : 'Grams',
-                                    isDense: true,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Slider(
-                                  value: _sliderGrams.clamp(0, 1000),
-                                  min: 0,
-                                  max: 1000,
-                                  divisions: 200,
-                                  label: _activeFood?.perMl == true
-                                      ? '${_sliderGrams.round()}ml'
-                                      : '${_sliderGrams.round()}g',
-                                  onChanged: _onSliderChanged,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          // Quick portion buttons
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [50, 100, 150, 200, 300].map((g) => Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 3),
-                                  child: _PortionChip(
-                                    grams: g,
-                                    label: _activeFood?.perMl == true ? '${g}ml' : '${g}g',
-                                    active:
-                                        _portionCtrl.text == g.toString(),
-                                    onTap: () {
-                                      _portionCtrl.text = g.toString();
-                                      setState(() {
-                                        _sliderGrams = g.toDouble();
-                                        if (_activeFood != null) {
-                                          _gramsOverrides[_activeFood!.label] = g.toDouble();
-                                        }
-                                      });
-                                    },
-                                  ),
-                                )).toList(),
-                          ),
-                          ],
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.add),
-                              label: Text('+ Log Food (${_selectedLabels.length})'),
-                              onPressed: _save,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _TabToggleButton(
+                              label: 'My Meals',
+                              icon: Icons.restaurant_menu,
+                              active: _showMeals,
+                              onTap: () => setState(() => _showMeals = true),
                             ),
                           ),
                         ],
                       ),
                     ),
-                ],
-              ),
-      ),
+
+                    if (_showMeals) ...[
+                      // ── Meals list ────────────────────────────────────
+                      Expanded(
+                        child: _MealsTab(
+                          meals: _meals,
+                          kcalMap: {
+                            for (final f in _allFoods) f.label: f.kcalPer100g
+                          },
+                          carbsMap: {
+                            for (final f in _allFoods) f.label: f.carbsPer100g
+                          },
+                          onLog: _logMeal,
+                          onEdit: (meal) async {
+                            final updated =
+                                await Navigator.of(context).push<bool>(
+                              MaterialPageRoute(
+                                builder: (_) => CreateMealScreen(meal: meal),
+                              ),
+                            );
+                            if (updated == true) await _loadFoods();
+                          },
+                          onDelete: (meal) async {
+                            if (meal.id != null) {
+                              await DatabaseService.instance
+                                  .deleteCustomMeal(meal.id!);
+                              await _loadFoods();
+                            }
+                          },
+                          onCreate: () async {
+                            final created =
+                                await Navigator.of(context).push<bool>(
+                              MaterialPageRoute(
+                                builder: (_) => const CreateMealScreen(),
+                              ),
+                            );
+                            if (created == true) await _loadFoods();
+                          },
+                        ),
+                      ),
+                    ] else ...[
+                      // ── Search field ──────────────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                        child: TextField(
+                          controller: _searchCtrl,
+                          onChanged: _filter,
+                          decoration: const InputDecoration(
+                            hintText: 'Search food…',
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                        ),
+                      ),
+
+                      // ── Food list ─────────────────────────────────────
+                      Expanded(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _filtered.length,
+                          itemBuilder: (context, i) {
+                            final food = _filtered[i];
+                            final isSelected =
+                                _selectedLabels.contains(food.label);
+                            final isActive = _activeFood?.label == food.label;
+                            return Card(
+                              color: isActive
+                                  ? context.primary50
+                                  : (isSelected
+                                      ? context.primary50.withValues(alpha: 0.5)
+                                      : null),
+                              child: ListTile(
+                                leading: _categoryIcon(food.category),
+                                title: Text(
+                                  food.label,
+                                  style: TextStyle(
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  isDiabetic && food.bolusPer100(icr) != null
+                                      ? '${food.kcalPer100g.round()} kcal / ${food.unitLabel}  •  '
+                                          '${food.bolusPer100(icr)!.toStringAsFixed(1)} u insulin'
+                                      : '${food.kcalPer100g.round()} kcal / ${food.unitLabel}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.gray400,
+                                  ),
+                                ),
+                                trailing: isSelected
+                                    ? Icon(Icons.check_circle,
+                                        color: context.primary600)
+                                    : Icon(Icons.circle_outlined,
+                                        color: AppTheme.gray300),
+                                onTap: () => _selectFood(food),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+
+                    // ── Portion + save bar ──────────────────────────────
+                    if (!_showMeals && _selectedLabels.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border(
+                            top: BorderSide(color: context.primary100),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Selected count
+                            if (_selectedLabels.length > 1)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.check_circle,
+                                        size: 16, color: context.primary600),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${_selectedLabels.length} items selected',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: context.primary700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (_activeFood != null) ...[
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _activeFood!.label,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (calPreview != null)
+                                        Text(
+                                          '≈ ${calPreview.round()} kcal',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                            color: context.primary700,
+                                          ),
+                                        ),
+                                      if (isDiabetic &&
+                                          _activeFood != null) ...[
+                                        Builder(builder: (ctx) {
+                                          final grams = double.tryParse(
+                                                  _portionCtrl.text) ??
+                                              0;
+                                          final bolus = _activeFood!
+                                              .bolusForGrams(grams, icr);
+                                          if (bolus == null || bolus <= 0)
+                                            return const SizedBox.shrink();
+                                          return Text(
+                                            '💉 ${bolus.toStringAsFixed(1)} u',
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF1976D2),
+                                            ),
+                                          );
+                                        }),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+
+                              // ── Serving picker for countable foods ──────
+                              if (_servingConfig != null) ...[
+                                _ServingPicker(
+                                  config: _servingConfig!,
+                                  count: _servingCount,
+                                  selectedSizeIndex: _selectedSizeIndex,
+                                  onCountChanged: (c) {
+                                    _servingCount = c;
+                                    _updateServingGrams();
+                                  },
+                                  onSizeChanged: (i) {
+                                    _selectedSizeIndex = i;
+                                    _updateServingGrams();
+                                  },
+                                ),
+                                const SizedBox(height: 8),
+                              ],
+
+                              // ── Gram/ml slider ─────────────────────────
+                              Row(
+                                children: [
+                                  SizedBox(
+                                    width: 80,
+                                    child: TextField(
+                                      controller: _portionCtrl,
+                                      keyboardType: TextInputType.number,
+                                      onChanged: _onPortionTextChanged,
+                                      decoration: InputDecoration(
+                                        suffixText: _activeFood?.perMl == true
+                                            ? 'ml'
+                                            : 'g',
+                                        labelText: _activeFood?.perMl == true
+                                            ? 'ml'
+                                            : 'Grams',
+                                        isDense: true,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Slider(
+                                      value: _sliderGrams.clamp(0, 1000),
+                                      min: 0,
+                                      max: 1000,
+                                      divisions: 200,
+                                      label: _activeFood?.perMl == true
+                                          ? '${_sliderGrams.round()}ml'
+                                          : '${_sliderGrams.round()}g',
+                                      onChanged: _onSliderChanged,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              // Quick portion buttons
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [50, 100, 150, 200, 300]
+                                    .map((g) => Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 3),
+                                          child: _PortionChip(
+                                            grams: g,
+                                            label: _activeFood?.perMl == true
+                                                ? '${g}ml'
+                                                : '${g}g',
+                                            active: _portionCtrl.text ==
+                                                g.toString(),
+                                            onTap: () {
+                                              _portionCtrl.text = g.toString();
+                                              setState(() {
+                                                _sliderGrams = g.toDouble();
+                                                if (_activeFood != null) {
+                                                  _gramsOverrides[_activeFood!
+                                                      .label] = g.toDouble();
+                                                }
+                                              });
+                                            },
+                                          ),
+                                        ))
+                                    .toList(),
+                              ),
+                            ],
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.add),
+                                label: Text(
+                                    '+ Log Food (${_selectedLabels.length})'),
+                                onPressed: _save,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -1093,8 +1079,7 @@ class _ServingPicker extends StatelessWidget {
             ),
             Text(
               '$count',
-              style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
             IconButton(
               icon: const Icon(Icons.add_circle_outline),
@@ -1198,8 +1183,7 @@ class _TabToggleButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon,
-                size: 16,
-                color: active ? Colors.white : AppTheme.gray400),
+                size: 16, color: active ? Colors.white : AppTheme.gray400),
             const SizedBox(width: 6),
             Text(
               label,
@@ -1313,13 +1297,14 @@ class _MealsTab extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
             child: Card(
               child: ListTile(
-                contentPadding:
-                    const EdgeInsets.fromLTRB(16, 8, 8, 8),
+                contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
                 title: Text(meal.name,
                     style: const TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: Text(
-                  '${meal.ingredients.length} ingredient${meal.ingredients.length == 1 ? '' : 's'}  •  ${totalKcal.round()} kcal'
-                  + (bolus != null ? '  •  ${totalCarbs.toStringAsFixed(1)} g  •  ${bolus.toStringAsFixed(1)} u' : ''),
+                  '${meal.ingredients.length} ingredient${meal.ingredients.length == 1 ? '' : 's'}  •  ${totalKcal.round()} kcal' +
+                      (bolus != null
+                          ? '  •  ${totalCarbs.toStringAsFixed(1)} g  •  ${bolus.toStringAsFixed(1)} u'
+                          : ''),
                   style: const TextStyle(fontSize: 12),
                 ),
                 trailing: Row(
@@ -1339,8 +1324,7 @@ class _MealsTab extends ConsumerWidget {
                     FilledButton(
                       style: FilledButton.styleFrom(
                           minimumSize: const Size(60, 36),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 12)),
                       onPressed: () => onLog(meal),
                       child: const Text('Log'),
                     ),
@@ -1385,8 +1369,8 @@ class _MealsTab extends ConsumerWidget {
               child: const Text('Cancel')),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child:
-                  const Text('Delete', style: TextStyle(color: AppTheme.red500))),
+              child: const Text('Delete',
+                  style: TextStyle(color: AppTheme.red500))),
         ],
       ),
     );
@@ -1430,145 +1414,6 @@ class _BolusRow extends StatelessWidget {
               color: AppTheme.gray900,
             )),
       ],
-    );
-  }
-}
-
-// ── Drinks Quick-Add sheet ────────────────────────────────────────────────────
-
-class _DrinkSheet extends StatefulWidget {
-  const _DrinkSheet({required this.onLog});
-  final void Function(String label, double ml) onLog;
-
-  @override
-  State<_DrinkSheet> createState() => _DrinkSheetState();
-}
-
-class _DrinkSheetState extends State<_DrinkSheet> {
-  final _customCtrl = TextEditingController();
-  String _selectedDrink = 'water';
-
-  static const _presets = [
-    ('water',     'Water'),
-    ('juice',     'Juice'),
-    ('milk',      'Milk'),
-    ('coffee',    'Coffee'),
-    ('tea',       'Tea'),
-    ('soda',      'Soda'),
-  ];
-
-  static const _sizes = [
-    (150.0,  'Small\n150 ml',   Icons.local_drink_outlined),
-    (250.0,  'Medium\n250 ml',  Icons.local_drink),
-    (400.0,  'Large\n400 ml',   Icons.coffee_outlined),
-    (500.0,  'Bottle\n500 ml',  Icons.water_drop_outlined),
-  ];
-
-  @override
-  void dispose() {
-    _customCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 36, height: 4,
-              decoration: BoxDecoration(
-                color: AppTheme.gray300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          const Text('💧 Quick Drink',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: _presets.map((p) {
-                final selected = _selectedDrink == p.$1;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(p.$2),
-                    selected: selected,
-                    onSelected: (_) => setState(() => _selectedDrink = p.$1),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          GridView.count(
-            shrinkWrap: true,
-            crossAxisCount: 4,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            childAspectRatio: 0.85,
-            children: _sizes.map((s) {
-              return GestureDetector(
-                onTap: () => widget.onLog(_selectedDrink, s.$1),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.gray100,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.gray200),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(s.$3, size: 28, color: const Color(0xFF1976D2)),
-                      const SizedBox(height: 4),
-                      Text(s.$2,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 10)),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 14),
-          const Text('Or enter amount:',
-              style: TextStyle(fontSize: 12, color: AppTheme.gray600)),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _customCtrl,
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(
-                    labelText: 'ml',
-                    isDense: true,
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              FilledButton(
-                onPressed: () {
-                  final ml = double.tryParse(_customCtrl.text);
-                  if (ml != null && ml > 0) widget.onLog(_selectedDrink, ml);
-                },
-                child: const Text('Log'),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

@@ -234,20 +234,21 @@ final class InferencePipeline {
             segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
         } catch {
             print("[InferencePipeline] runVideoScan: segmentation failed: \(error)")
-            return makeWholePlateFallbackJSON(
-                topFrame: topFrame,
-                plate: plate,
-                recorder: recorder,
-                reason: "segmentation_failed"
-            )
+            return "[]"
         }
         guard !segments.isEmpty else {
-            return makeWholePlateFallbackJSON(
-                topFrame: topFrame,
-                plate: plate,
-                recorder: recorder,
-                reason: "no_segments"
-            )
+            return "[]"
+        }
+
+        guard passesFoodPresenceGate(
+            segments: segments,
+            topFrame: topFrame,
+            recorder: recorder,
+            maskWidth: preprocessor.modelInputWidth,
+            maskHeight: preprocessor.modelInputHeight
+        ) else {
+            print("[InferencePipeline] runVideoScan: rejected as no-food / implausible food scene")
+            return "[]"
         }
 
         // ── 4. Multi-frame depth fusion ─────────────────────────────────
@@ -315,9 +316,11 @@ final class InferencePipeline {
         // ── 7. Serialise to JSON ────────────────────────────────────────
         var payload = [[String: Any]]()
         for seg in segments {
+            let volume = volumes[seg.label] ?? 0
+            guard volume >= 3.0 else { continue }
             var d = [String: Any]()
             d["label"]       = seg.label
-            d["volume_cm3"]  = round((volumes[seg.label] ?? 0) * 10) / 10
+            d["volume_cm3"]  = round(volume * 10) / 10
             d["pixel_count"] = seg.pixelCount
             d["confidence"]  = round(Double(seg.confidence) * 1000) / 1000
             d["frames_used"] = recorder.lightFrames.count
@@ -326,6 +329,8 @@ final class InferencePipeline {
             d["depth_avg_m"] = 0.0
             payload.append(d)
         }
+
+        guard !payload.isEmpty else { return "[]" }
 
         guard let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
               let json = String(data: data, encoding: .utf8)
@@ -340,6 +345,37 @@ final class InferencePipeline {
         print("─────────────────────────────────────────")
 
         return json
+    }
+
+    private func passesFoodPresenceGate(
+        segments: [SegmentationService.SegmentedObject],
+        topFrame: FrameCaptureService.CapturedFrame,
+        recorder: MultiFrameRecorder,
+        maskWidth: Int,
+        maskHeight: Int
+    ) -> Bool {
+        let maskPixels = max(1, maskWidth * maskHeight)
+        let foodPixels = segments.reduce(0) { $0 + $1.pixelCount }
+        let foodFraction = Double(foodPixels) / Double(maskPixels)
+        let largestFraction = Double(segments.first?.pixelCount ?? 0) / Double(maskPixels)
+        let avgConfidence = segments.reduce(Float(0)) { $0 + $1.confidence } /
+            Float(max(segments.count, 1))
+
+        if foodFraction < 0.012 { return false }
+        if foodFraction > 0.70 && segments.count >= 2 { return false }
+        if segments.count >= 3 && largestFraction < foodFraction * 0.46 { return false }
+        if avgConfidence < 0.58 { return false }
+
+        let hasDepth = topFrame.depthBuffer != nil || recorder.hasDepthData
+        if hasDepth {
+            guard let heightCm = estimateFoodHeightCmIfAvailable(
+                topFrame: topFrame,
+                recorder: recorder
+            ) else { return false }
+            if heightCm < 0.7 { return false }
+        }
+
+        return true
     }
 
     /// Fallback when voxel labelling cannot produce usable volumes. This still
@@ -381,45 +417,10 @@ final class InferencePipeline {
         return volumes
     }
 
-    /// Last-resort fallback used when the segmentation model itself fails or
-    /// returns no food. It estimates one mixed-food volume from the known plate
-    /// size and depth variation across the top-to-side video sweep.
-    private func makeWholePlateFallbackJSON(
-        topFrame: FrameCaptureService.CapturedFrame,
-        plate: PlateDetector.PlateResult,
-        recorder: MultiFrameRecorder,
-        reason: String
-    ) -> String {
-        let heightCm = estimateFoodHeightCm(topFrame: topFrame, recorder: recorder)
-        let plateRadiusCm = Double(PlateDetector.defaultDiameterCm / 2.0)
-        let plateAreaCm2 = Double.pi * plateRadiusCm * plateRadiusCm
-        let fillFraction = plate.detected ? 0.28 : 0.22
-        let volumeCm3 = max(80.0, min(900.0, plateAreaCm2 * fillFraction * heightCm))
-
-        let payload: [[String: Any]] = [[
-            "label": "others",
-            "volume_cm3": round(volumeCm3 * 10) / 10,
-            "pixel_count": Int(Double(preprocessor.modelInputWidth * preprocessor.modelInputHeight) * fillFraction),
-            "confidence": 0.25,
-            "frames_used": recorder.lightFrames.count,
-            "depth_min_m": 0.0,
-            "depth_max_m": 0.0,
-            "depth_avg_m": 0.0,
-            "fallback_reason": reason,
-        ]]
-
-        guard let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
-              let json = String(data: data, encoding: .utf8)
-        else { return "[]" }
-
-        print("[InferencePipeline] fallback estimate: \(String(format: "%.1f", volumeCm3)) cm3, reason=\(reason)")
-        return json
-    }
-
-    private func estimateFoodHeightCm(
+    private func estimateFoodHeightCmIfAvailable(
         topFrame: FrameCaptureService.CapturedFrame,
         recorder: MultiFrameRecorder
-    ) -> Double {
+    ) -> Double? {
         var heights: [Double] = []
         if let depth = topFrame.depthBuffer,
            let height = estimateHeightCm(from: depth) {
@@ -430,7 +431,7 @@ final class InferencePipeline {
                 heights.append(height)
             }
         }
-        return heights.max() ?? 2.5
+        return heights.max()
     }
 
     private func estimateHeightCm(from depthBuffer: CVPixelBuffer) -> Double? {

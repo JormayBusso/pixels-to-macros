@@ -68,3 +68,4 @@ logs/
 *.mlmodelc/
 *.onnx
 *.tflite
+training/output/last_checkpoint.pth

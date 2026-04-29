@@ -31,11 +31,12 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
       duration: const Duration(milliseconds: 150),
     );
 
-    // Fade-in for the video so it doesn't pop in abruptly.
+    // Keep the video visible as soon as the first frame is available.
     _fadeIn = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: Duration.zero,
     );
+    _fadeIn.value = 1;
 
     // Zoom animation controller — duration will be updated to match the
     // video's duration once it's known.
@@ -50,7 +51,7 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
     // video_player on iOS can't resolve asset paths that contain spaces
     // (they are URL-encoded as %20 inside the bundle).  We copy the asset
     // bytes to a temp file with a plain name and play from there instead.
-        _initVideo(); // Initialize video
+    _initVideo(); // Initialize video
   }
 
   Future<void> _initVideo() async {
@@ -61,15 +62,12 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
       _controller = ctrl;
       ctrl.addListener(_onVideoTick);
 
-      // Start playback immediately (play will begin once the controller
-      // has buffered/initialized). This reduces the visible gap between
-      // app launch and the first frame.
-      ctrl.setLooping(false);
-      ctrl.play();
-      _fadeIn.forward();
-
+      await ctrl.setLooping(false);
       await ctrl.initialize();
       if (!mounted) return;
+
+      setState(() {});
+      await ctrl.play();
 
       // Update zoom duration to follow the video (cap to 12s to avoid
       // excessively long zooms on long videos). Use 90% of the video
@@ -77,13 +75,13 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
       // we fade out.
       final vidDur = ctrl.value.duration;
       final zoomDur = Duration(
-          milliseconds: (vidDur.inMilliseconds * 0.9).clamp(400, 12000).toInt());
+          milliseconds:
+              (vidDur.inMilliseconds * 0.9).clamp(400, 12000).toInt());
       _zoomController.duration = zoomDur;
       _zoomAnimation = Tween(begin: 1.0, end: 1.12).animate(
         CurvedAnimation(parent: _zoomController, curve: Curves.easeOut),
       );
 
-      setState(() {}); // rebuild so UI shows the controller
       await _zoomController.forward();
     } catch (_) {
       if (mounted) _navigateNow();

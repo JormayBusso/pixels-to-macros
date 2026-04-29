@@ -10,7 +10,7 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
 
   Future<void> load() async {
     final prefs = await DatabaseService.instance.getUserPreferences();
-    state = prefs;
+    state = await _normaliseDailyHydration(prefs);
   }
 
   Future<void> update(UserPreferences prefs) async {
@@ -94,18 +94,69 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
   }
 
   Future<void> setDailyWaterGoal(int ml) async {
-    final prefs = state.copyWith(dailyWaterGoalMl: ml);
+    final current = await _normaliseDailyHydration(state);
+    final prefs = current.copyWith(dailyWaterGoalMl: ml);
     await update(prefs);
   }
 
   Future<void> addWater(int ml) async {
-    final prefs = state.copyWith(waterIntakeMl: state.waterIntakeMl + ml);
+    await changeWater(ml);
+  }
+
+  Future<void> removeWater(int ml) async {
+    await changeWater(-ml);
+  }
+
+  Future<void> changeWater(int deltaMl) async {
+    final current = await _normaliseDailyHydration(state);
+    final nextMl = (current.waterIntakeMl + deltaMl).clamp(0, 20000).toInt();
+    final prefs = current.copyWith(
+      waterIntakeMl: nextMl,
+      waterIntakeDate: _todayKey(),
+    );
     await update(prefs);
   }
 
   Future<void> resetWaterIntake() async {
-    final prefs = state.copyWith(waterIntakeMl: 0);
+    final prefs = state.copyWith(
+      waterIntakeMl: 0,
+      waterIntakeDate: _todayKey(),
+    );
     await update(prefs);
+  }
+
+  Future<void> markHistorySeen(int newestScanId) async {
+    if (newestScanId <= state.lastSeenHistoryScanId) return;
+    final prefs = state.copyWith(lastSeenHistoryScanId: newestScanId);
+    await update(prefs);
+  }
+
+  Future<void> setWeeklyBadgeRecapEnabled(bool enabled) async {
+    final prefs = state.copyWith(weeklyBadgeRecapEnabled: enabled);
+    await update(prefs);
+  }
+
+  Future<void> markWeeklyBadgeRecapSeen(String weekKey) async {
+    if (weekKey == state.lastWeeklyBadgeRecapWeek) return;
+    final prefs = state.copyWith(lastWeeklyBadgeRecapWeek: weekKey);
+    await update(prefs);
+  }
+
+  Future<UserPreferences> _normaliseDailyHydration(
+    UserPreferences prefs,
+  ) async {
+    final today = _todayKey();
+    if (prefs.waterIntakeDate == today) return prefs;
+
+    final reset = prefs.copyWith(waterIntakeMl: 0, waterIntakeDate: today);
+    await DatabaseService.instance.saveUserPreferences(reset);
+    return reset;
+  }
+
+  static String _todayKey() {
+    final now = DateTime.now();
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${now.year}-${two(now.month)}-${two(now.day)}';
   }
 }
 

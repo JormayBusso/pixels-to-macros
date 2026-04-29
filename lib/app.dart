@@ -5,6 +5,7 @@ import 'providers/user_prefs_provider.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/intro_video_screen.dart';
+import 'services/app_recovery_service.dart';
 import 'services/debug_log.dart';
 
 class PixelsToMacrosApp extends ConsumerWidget {
@@ -20,6 +21,8 @@ class PixelsToMacrosApp extends ConsumerWidget {
       return MaterialApp(
         title: 'Pixels to Macros',
         debugShowCheckedModeBanner: false,
+        navigatorKey: AppRecoveryService.navigatorKey,
+        scaffoldMessengerKey: AppRecoveryService.scaffoldMessengerKey,
         theme: theme,
         // Apply user-selected font scale to every screen in the app
         builder: (ctx, child) => MediaQuery(
@@ -33,6 +36,8 @@ class PixelsToMacrosApp extends ConsumerWidget {
     } catch (e) {
       DebugLog.instance.log('App', 'Root build error: $e');
       return MaterialApp(
+        navigatorKey: AppRecoveryService.navigatorKey,
+        scaffoldMessengerKey: AppRecoveryService.scaffoldMessengerKey,
         home: _RecoveryScreen(onRetry: () {
           // Force a full rebuild by invalidating providers
           ref.invalidate(themeProvider);
@@ -62,7 +67,11 @@ class _AppGateState extends ConsumerState<_AppGate> {
   }
 
   Future<void> _load() async {
-    if (mounted) setState(() { _loading = true; _loadFailed = false; });
+    if (mounted)
+      setState(() {
+        _loading = true;
+        _loadFailed = false;
+      });
     try {
       await ref
           .read(userPrefsProvider.notifier)
@@ -70,7 +79,11 @@ class _AppGateState extends ConsumerState<_AppGate> {
           .timeout(const Duration(seconds: 10));
     } catch (e) {
       DebugLog.instance.log('App', 'Startup load failed: $e');
-      if (mounted) setState(() { _loading = false; _loadFailed = true; });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _loadFailed = true;
+        });
       return;
     }
     if (mounted) setState(() => _loading = false);

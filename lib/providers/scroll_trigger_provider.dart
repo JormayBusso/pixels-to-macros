@@ -5,3 +5,6 @@ final scrollToHydrationProvider = StateProvider<int>((ref) => 0);
 
 /// Increment this to trigger SettingsScreen to scroll to the Vacation Mode card.
 final scrollToVacationProvider = StateProvider<int>((ref) => 0);
+
+/// Increment this to trigger SettingsScreen to scroll to the Weekly Review card.
+final scrollToWeeklyReviewProvider = StateProvider<int>((ref) => 0);

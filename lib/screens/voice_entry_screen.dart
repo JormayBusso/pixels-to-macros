@@ -38,6 +38,47 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   bool _saveAsMeal = false;
   MealType _mealType = MealType.lunch;
 
+  static const _foodAliases = {
+    'nut': 'mixed nuts',
+    'nuts': 'mixed nuts',
+    'mixed nut': 'mixed nuts',
+    'blueberries': 'blueberry',
+    'strawberries': 'strawberry',
+    'thee': 'tea',
+  };
+
+  static const _speechStopWords = {
+    'i',
+    'we',
+    'did',
+    'do',
+    'just',
+    'also',
+    'then',
+    'please',
+    'log',
+    'logged',
+    'add',
+    'ate',
+    'eat',
+    'eaten',
+    'had',
+    'have',
+    'having',
+    'consumed',
+    'and',
+    'with',
+    'of',
+    'a',
+    'an',
+    'the',
+    'some',
+    'bit',
+    'little',
+    'full',
+    'hand',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -67,14 +108,17 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       );
     } catch (e) {
       _available = false;
-      if (mounted) setState(() => _error = 'Speech recognition unavailable: $e');
+      if (mounted) {
+        setState(() => _error = 'Speech recognition unavailable: $e');
+      }
     }
     if (mounted) setState(() {});
   }
 
   void _startListening() {
     if (!_available) {
-      setState(() => _error = 'Speech recognition not available on this device.');
+      setState(
+          () => _error = 'Speech recognition not available on this device.');
       return;
     }
     setState(() {
@@ -123,33 +167,36 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   /// NLP parser: handles word-numbers, plurals, smart segmentation.
   List<_ParsedFood> _parseTranscript(String text) {
     final results = <_ParsedFood>[];
-    final lower = text.toLowerCase().replaceAll(RegExp(r'[^\w\s,]'), '');
+    final lower = text
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^\w\s,]'), ' ')
+        .replaceAll(RegExp(r'\bhand\s+fulls?\b'), 'handful')
+        .replaceAll(RegExp(r'\bhand\s+fuls?\b'), 'handful');
 
     // 1. Convert word-numbers to digits
     final converted = _wordNumbersToDigits(lower);
 
-    // 2. Strip filler phrases ("also", "i have", "i had", "i ate", "also i have", etc.)
-    // These appear naturally in speech but carry no food/quantity meaning.
-    final fillerPhrases = RegExp(
-      r'\b(also\s+i\s+(have|had|ate|got|eat)|i\s+(have|had|ate|got|eat)|also\s+have|also\s+had|also\s+ate|\balso\b)\s+',
-      caseSensitive: false,
-    );
-    final defiltered = converted.replaceAll(fillerPhrases, '');
+    // 2. Strip speech boilerplate before segmentation.
+    final defiltered = _stripSpeechFillers(converted);
 
-    // 3. Split on "and", commas, "with"
-    var segments = defiltered.split(RegExp(r'\s*(?:,\s*|(?:^|\s)and\s+|(?:^|\s)with\s+)'));
+    // 3. Split on connectors that usually separate foods.
+    var segments = defiltered.split(
+      RegExp(r'\s*(?:,\s*|(?:^|\s)(?:and|plus|with)\s+)'),
+    );
 
     // 3. Further split when a digit immediately precedes a food name
     //    e.g. "2 bananas 1 apple" -> ["2 bananas", "1 apple"]
     final refined = <String>[];
     for (var seg in segments) {
-      seg = seg.trim();
+      seg = _cleanFoodSegment(seg);
       if (seg.isEmpty) continue;
-      final parts = seg.splitMapJoin(
-        RegExp(r'(?<=\S)\s+(?=\d+\s)'),
-        onMatch: (m) => '\x00',
-        onNonMatch: (s) => s,
-      ).split('\x00');
+      final parts = seg
+          .splitMapJoin(
+            RegExp(r'(?<=\S)\s+(?=\d+\s)'),
+            onMatch: (m) => '\x00',
+            onNonMatch: (s) => s,
+          )
+          .split('\x00');
       for (final p in parts) {
         final t = p.trim();
         if (t.isNotEmpty) refined.add(t);
@@ -164,7 +211,8 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       double? grams;
       String foodQuery = seg;
 
-      final qMatch = RegExp(r'^(\d+(?:\.\d+)?)\s*(g|grams?|ml|pieces?|servings?|cups?|slices?|handfuls?)?\s*(?:of\s+)?(.+)$')
+      final qMatch = RegExp(
+              r'^(\d+(?:\.\d+)?)\s*(g|grams?|ml|pieces?|servings?|cups?|slices?|handfuls?)?\s*(?:of\s+)?(.+)$')
           .firstMatch(seg);
       if (qMatch != null) {
         final qty = double.tryParse(qMatch.group(1)!) ?? 100;
@@ -187,31 +235,35 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         }
       }
 
-      // Handle "a/an" prefix
+      // Handle bare "handful of ..." without a leading number
+      final handfulMatch = RegExp(r'^(?:an?\s+)?handfuls?\s+(?:of\s+)?(.+)$')
+          .firstMatch(foodQuery);
+      if (handfulMatch != null) {
+        foodQuery = handfulMatch.group(1)!.trim();
+        grams = 30;
+      }
+
+      // Handle "a/an" prefix for countable single foods.
       if (foodQuery.startsWith('a ') || foodQuery.startsWith('an ')) {
         foodQuery = foodQuery.replaceFirst(RegExp(r'^an?\s+'), '');
         grams ??= 120;
       }
 
-      // Handle bare "handful of ..." without a leading number
-      final handfulMatch = RegExp(r'^handfuls?\s+(?:of\s+)?(.+)$').firstMatch(foodQuery);
-      if (handfulMatch != null) {
-        foodQuery = handfulMatch.group(1)!.trim();
-        grams ??= 30;
-      }
-
       grams ??= 100;
 
-      // 5. Strip trailing plural 's' for matching
-      foodQuery = _depluralize(foodQuery);
+      // 5. Strip filler residue, apply aliases, and depluralize for matching.
+      foodQuery = _normaliseFoodQuery(foodQuery);
+      if (foodQuery.isEmpty || _isNoiseFoodQuery(foodQuery)) continue;
 
       // 6. Fuzzy match against food DB
       FoodData? match;
       int bestScore = -999;
       final queryWords = foodQuery
           .split(' ')
-          .where((w) => w.length > 1)
+          .where((w) => w.length > 1 && !_speechStopWords.contains(w))
           .toList();
+
+      if (queryWords.isEmpty) continue;
 
       for (final f in _allFoods) {
         final fLabel = f.label.toLowerCase();
@@ -228,8 +280,10 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         int matched = 0;
         for (final qw in queryWords) {
           if (fWords.any((fw) =>
-              fw.contains(qw) || qw.contains(fw) ||
-              _depluralize(fw) == qw || fw == _depluralize(qw))) {
+              fw.contains(qw) ||
+              qw.contains(fw) ||
+              _depluralize(fw) == qw ||
+              fw == _depluralize(qw))) {
             matched++;
           }
         }
@@ -241,15 +295,17 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         if (queryWords.length == 1 && matched == 0) continue;
 
         final unmatched = fWords
-            .where((fw) => !queryWords.any(
-                (qw) => fw.contains(qw) || qw.contains(fw) ||
-                    _depluralize(fw) == qw || fw == _depluralize(qw)))
+            .where((fw) => !queryWords.any((qw) =>
+                fw.contains(qw) ||
+                qw.contains(fw) ||
+                _depluralize(fw) == qw ||
+                fw == _depluralize(qw)))
             .length;
 
         final score = matched * 10 - unmatched * 5;
         if (score > bestScore) {
           bestScore = score;
-          match     = f;
+          match = f;
         }
       }
 
@@ -263,14 +319,83 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     return results;
   }
 
+  static String _stripSpeechFillers(String text) {
+    var out = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final phrasePatterns = [
+      RegExp(
+          r'\b(?:i|we)\s+(?:did\s+)?(?:just\s+)?(?:ate|eat|eaten|had|have|got|consumed)\b'),
+      RegExp(r'\b(?:i|we)\s+(?:would\s+like\s+to\s+)?(?:log|add)\b'),
+      RegExp(
+          r'\b(?:also|then)\s+(?:i|we)?\s*(?:did\s+)?(?:ate|eat|had|have|got)?\b'),
+      RegExp(r'\bplease\s+(?:log|add)\b'),
+    ];
+    for (final pattern in phrasePatterns) {
+      out = out.replaceAll(pattern, ' ');
+    }
+    return out.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  static String _cleanFoodSegment(String segment) {
+    var out = segment.replaceAll(RegExp(r'\s+'), ' ').trim();
+    var changed = true;
+    while (changed) {
+      final before = out;
+      out = out
+          .replaceFirst(RegExp(r'^(?:and|also|then|plus|with)\s+'), '')
+          .replaceFirst(RegExp(r'^(?:i|we)\s+(?:did\s+)?'), '')
+          .replaceFirst(
+              RegExp(r'^(?:ate|eat|eaten|had|have|got|consumed)\s+'), '')
+          .replaceFirst(RegExp(r'^(?:please\s+)?(?:log|add)\s+'), '')
+          .trim();
+      changed = out != before;
+    }
+    return out;
+  }
+
+  static String _normaliseFoodQuery(String query) {
+    var out = query
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r'\b(?:some|the)\b'), ' ')
+        .trim();
+    out = out
+        .split(' ')
+        .map(_depluralize)
+        .where((word) => word.isNotEmpty)
+        .join(' ')
+        .trim();
+    return _foodAliases[out] ?? out;
+  }
+
+  static bool _isNoiseFoodQuery(String query) {
+    final words = query.split(' ').where((word) => word.isNotEmpty).toList();
+    if (words.isEmpty) return true;
+    return words.every(_speechStopWords.contains);
+  }
+
   /// Map spoken word-numbers to digits so the quantity regex can pick them up.
   static String _wordNumbersToDigits(String text) {
     const map = {
-      'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
-      'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
-      'ten': '10', 'eleven': '11', 'twelve': '12', 'thirteen': '13',
-      'fourteen': '14', 'fifteen': '15', 'twenty': '20', 'thirty': '30',
-      'forty': '40', 'fifty': '50', 'hundred': '100',
+      'zero': '0',
+      'one': '1',
+      'two': '2',
+      'three': '3',
+      'four': '4',
+      'five': '5',
+      'six': '6',
+      'seven': '7',
+      'eight': '8',
+      'nine': '9',
+      'ten': '10',
+      'eleven': '11',
+      'twelve': '12',
+      'thirteen': '13',
+      'fourteen': '14',
+      'fifteen': '15',
+      'twenty': '20',
+      'thirty': '30',
+      'forty': '40',
+      'fifty': '50',
+      'hundred': '100',
       'half': '0.5',
     };
     var out = text;
@@ -285,8 +410,11 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     if (word.length < 4) return word;
     if (word.endsWith('ies')) return '${word.substring(0, word.length - 3)}y';
     if (word.endsWith('ves')) return '${word.substring(0, word.length - 3)}f';
-    if (word.endsWith('ses') || word.endsWith('xes') || word.endsWith('zes') ||
-        word.endsWith('ches') || word.endsWith('shes')) {
+    if (word.endsWith('ses') ||
+        word.endsWith('xes') ||
+        word.endsWith('zes') ||
+        word.endsWith('ches') ||
+        word.endsWith('shes')) {
       return word.substring(0, word.length - 2);
     }
     if (word.endsWith('s') && !word.endsWith('ss')) {
@@ -361,10 +489,12 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     await ref.read(historyProvider.notifier).load();
 
     if (mounted) {
-      final saved = _saveAsMeal ? ' • saved as "${_mealNameCtrl.text.trim()}"' : '';
+      final saved =
+          _saveAsMeal ? ' • saved as "${_mealNameCtrl.text.trim()}"' : '';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ Logged ${validFoods.length} food(s) via voice$saved'),
+          content:
+              Text('✅ Logged ${validFoods.length} food(s) via voice$saved'),
         ),
       );
       Navigator.of(context).pop();
@@ -437,9 +567,8 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                   height: _listening ? 100 : 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _listening
-                        ? Colors.red.shade400
-                        : context.primary600,
+                    color:
+                        _listening ? Colors.red.shade400 : context.primary600,
                     boxShadow: _listening
                         ? [
                             BoxShadow(
@@ -459,7 +588,9 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _listening ? 'Listening…' : (_available ? 'Tap to speak' : 'Initialising…'),
+                _listening
+                    ? 'Listening…'
+                    : (_available ? 'Tap to speak' : 'Initialising…'),
                 style: const TextStyle(fontSize: 13, color: AppTheme.gray400),
               ),
               if (_error != null) ...[
@@ -510,7 +641,8 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                             matched ? p.food!.label : 'Unknown: "${p.query}"',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: matched ? AppTheme.gray900 : AppTheme.red700,
+                              color:
+                                  matched ? AppTheme.gray900 : AppTheme.red700,
                             ),
                           ),
                           subtitle: Text(
@@ -555,11 +687,13 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
-                      color: _saveAsMeal ? context.primary400 : AppTheme.gray200,
+                      color:
+                          _saveAsMeal ? context.primary400 : AppTheme.gray200,
                     ),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Column(
                       children: [
                         // Toggle row
@@ -585,8 +719,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                             ),
                             Switch(
                               value: _saveAsMeal,
-                              onChanged: (v) =>
-                                  setState(() => _saveAsMeal = v),
+                              onChanged: (v) => setState(() => _saveAsMeal = v),
                             ),
                           ],
                         ),
@@ -638,8 +771,10 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: _parsed.any((p) => p.food != null) ? _logAll : null,
-                    icon: Icon(_saveAsMeal ? Icons.bookmark_added : Icons.add_task),
+                    onPressed:
+                        _parsed.any((p) => p.food != null) ? _logAll : null,
+                    icon: Icon(
+                        _saveAsMeal ? Icons.bookmark_added : Icons.add_task),
                     label: Text(
                       _saveAsMeal
                           ? 'Log & Save as Meal'
@@ -688,8 +823,7 @@ class _ErrorBox extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 8, 4, 0),
             child: Row(
               children: [
-                Icon(Icons.error_outline,
-                    size: 16, color: Colors.red.shade700),
+                Icon(Icons.error_outline, size: 16, color: Colors.red.shade700),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(

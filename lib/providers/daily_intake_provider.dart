@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/nutrient_data.dart';
 import '../models/scan_result.dart';
+import '../services/app_recovery_service.dart';
 import '../services/database_service.dart';
+import '../services/debug_log.dart';
 
 /// Today's aggregated calorie and macro intake from all scans.
 class DailyIntake {
@@ -37,61 +39,68 @@ class DailyIntakeNotifier extends StateNotifier<DailyIntake> {
   Future<void> load() async {
     state = const DailyIntake(loading: true);
 
-    final allScans = await DatabaseService.instance.getAllScanResults();
-    final now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day);
+    try {
+      final allScans = await DatabaseService.instance.getAllScanResults();
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
 
-    final todayScans = allScans.where(
-      (s) => s.timestamp.isAfter(todayStart),
-    );
+      final todayScans = allScans.where(
+        (s) => s.timestamp.isAfter(todayStart),
+      );
 
-    double minSum = 0;
-    double maxSum = 0;
-    double proteinSum = 0;
-    double carbsSum = 0;
-    double fatSum = 0;
-    var nutrientSum = const NutrientTotals();
-    final allFoods = <DetectedFood>[];
+      double minSum = 0;
+      double maxSum = 0;
+      double proteinSum = 0;
+      double carbsSum = 0;
+      double fatSum = 0;
+      var nutrientSum = const NutrientTotals();
+      final allFoods = <DetectedFood>[];
 
-    for (final scan in todayScans) {
-      minSum += scan.totalCaloriesMin;
-      maxSum += scan.totalCaloriesMax;
-      allFoods.addAll(scan.foods);
+      for (final scan in todayScans) {
+        minSum += scan.totalCaloriesMin;
+        maxSum += scan.totalCaloriesMax;
+        allFoods.addAll(scan.foods);
 
-      // Estimate macros from food DB lookup
-      for (final food in scan.foods) {
-        // Map legacy model labels (e.g. "chicken duck" → "chicken").
-        var lookupLabel = food.label;
-        const aliases = {'chicken duck': 'chicken'};
-        if (aliases.containsKey(lookupLabel.toLowerCase())) {
-          lookupLabel = aliases[lookupLabel.toLowerCase()]!;
-        }
-        final foodData =
-            await DatabaseService.instance.getFoodByLabel(lookupLabel);
-        if (foodData != null && foodData.kcalPer100g > 0) {
-          final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
-          final weightG = avgCal / (foodData.kcalPer100g / 100);
-          proteinSum  += weightG * foodData.proteinPer100g / 100;
-          carbsSum    += weightG * foodData.carbsPer100g   / 100;
-          fatSum      += weightG * foodData.fatPer100g     / 100;
-          nutrientSum  = nutrientSum + estimateNutrientsForFood(
-            category: foodData.category,
-            weightG: weightG,
-          );
+        // Estimate macros from food DB lookup
+        for (final food in scan.foods) {
+          // Map legacy model labels (e.g. "chicken duck" → "chicken").
+          var lookupLabel = food.label;
+          const aliases = {'chicken duck': 'chicken'};
+          if (aliases.containsKey(lookupLabel.toLowerCase())) {
+            lookupLabel = aliases[lookupLabel.toLowerCase()]!;
+          }
+          final foodData =
+              await DatabaseService.instance.getFoodByLabel(lookupLabel);
+          if (foodData != null && foodData.kcalPer100g > 0) {
+            final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
+            final weightG = avgCal / (foodData.kcalPer100g / 100);
+            proteinSum += weightG * foodData.proteinPer100g / 100;
+            carbsSum += weightG * foodData.carbsPer100g / 100;
+            fatSum += weightG * foodData.fatPer100g / 100;
+            nutrientSum = nutrientSum +
+                nutrientsForFood(
+                  food: foodData,
+                  weightG: weightG,
+                );
+          }
         }
       }
-    }
 
-    state = DailyIntake(
-      caloriesMin: minSum,
-      caloriesMax: maxSum,
-      scanCount: todayScans.length,
-      foods: allFoods,
-      proteinG: proteinSum,
-      carbsG: carbsSum,
-      fatG: fatSum,
-      nutrientTotals: nutrientSum,
-    );
+      state = DailyIntake(
+        caloriesMin: minSum,
+        caloriesMax: maxSum,
+        scanCount: todayScans.length,
+        foods: allFoods,
+        proteinG: proteinSum,
+        carbsG: carbsSum,
+        fatG: fatSum,
+        nutrientTotals: nutrientSum,
+      );
+    } catch (e, st) {
+      DebugLog.instance.log('DailyIntake', 'Load failed: $e\n$st');
+      state = const DailyIntake();
+      AppRecoveryService.recover(e, st, source: 'Daily intake');
+    }
   }
 }
 

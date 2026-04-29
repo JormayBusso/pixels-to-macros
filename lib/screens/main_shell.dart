@@ -1,12 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/history_provider.dart';
 import '../providers/scan_state_provider.dart';
 import '../providers/user_prefs_provider.dart';
+import '../services/app_recovery_service.dart';
+import '../services/debug_log.dart';
 import '../services/notification_service.dart';
+import '../services/weekly_badge_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_tutorial_overlay.dart';
+import '../widgets/weekly_badge_recap_sheet.dart';
 import 'analytics_screen.dart';
 import 'home_screen_v2.dart';
 import 'grocery_list_screen.dart';
@@ -29,9 +35,8 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   int _tabIndex = 0;
   bool _showTutorial = false;
-  /// Scan count at the time the user last visited the History tab.
-  /// Badge is only shown when current count exceeds this.
-  int _lastSeenScanCount = 0;
+  bool _checkedWeeklyBadgeRecap = false;
+  late final VoidCallback _recoveryListener;
 
   static const _tabs = [
     HomeScreen(),
@@ -44,29 +49,89 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void initState() {
     super.initState();
+    _recoveryListener = () {
+      if (!mounted || _tabIndex == 0) return;
+      setState(() => _tabIndex = 0);
+    };
+    AppRecoveryService.homeRecoverySignal.addListener(_recoveryListener);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkTutorial();
-      _initNotifications();
+      final showingTutorial = _checkTutorial();
+      unawaited(_initNotifications());
+      if (!showingTutorial) {
+        unawaited(_checkWeeklyBadgeRecap());
+      }
     });
   }
 
-  Future<void> _initNotifications() async {
-    await NotificationService.instance.initialize();
-    final prefs = ref.read(userPrefsProvider);
-    await NotificationService.instance.scheduleReminders(prefs: prefs);
+  @override
+  void dispose() {
+    AppRecoveryService.homeRecoverySignal.removeListener(_recoveryListener);
+    super.dispose();
   }
 
-  void _checkTutorial() {
+  Future<void> _initNotifications() async {
+    try {
+      await NotificationService.instance.initialize();
+      final prefs = ref.read(userPrefsProvider);
+      await NotificationService.instance.scheduleReminders(prefs: prefs);
+    } catch (e, st) {
+      DebugLog.instance.log('Notifications', 'Initialization failed: $e\n$st');
+      AppRecoveryService.recover(e, st, source: 'Notifications');
+    }
+  }
+
+  bool _checkTutorial() {
     final prefs = ref.read(userPrefsProvider);
     if (prefs.onboardingComplete && !prefs.hasSeenAppTutorial) {
       setState(() => _showTutorial = true);
+      return true;
     }
+    return false;
   }
 
   void _dismissTutorial() {
     ref.read(userPrefsProvider.notifier).dismissAppTutorial();
     ref.read(showTourProvider.notifier).state = false;
     setState(() => _showTutorial = false);
+    unawaited(_checkWeeklyBadgeRecap());
+  }
+
+  Future<void> _checkWeeklyBadgeRecap() async {
+    try {
+      if (_checkedWeeklyBadgeRecap) return;
+      _checkedWeeklyBadgeRecap = true;
+
+      final prefs = ref.read(userPrefsProvider);
+      if (!prefs.onboardingComplete || !prefs.weeklyBadgeRecapEnabled) return;
+
+      final recap = await WeeklyBadgeService.instance.buildPreviousWeekRecap(
+        prefs: prefs,
+      );
+      if (!mounted) return;
+
+      final latestPrefs = ref.read(userPrefsProvider);
+      if (latestPrefs.lastWeeklyBadgeRecapWeek == recap.currentWeekKey) return;
+
+      if (recap.badges.isNotEmpty) {
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => WeeklyBadgeRecapSheet(recap: recap),
+        );
+      }
+
+      if (!mounted) return;
+      await ref
+          .read(userPrefsProvider.notifier)
+          .markWeeklyBadgeRecapSeen(recap.currentWeekKey);
+    } catch (e, st) {
+      DebugLog.instance.log('WeeklyBadges', 'Recap failed: $e\n$st');
+      AppRecoveryService.recover(e, st, source: 'Weekly badges');
+    }
   }
 
   void _openScan() {
@@ -85,7 +150,11 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   Widget build(BuildContext context) {
     final historyState = ref.watch(historyProvider);
-    final scanCount = historyState.scans.length;
+    final prefs = ref.watch(userPrefsProvider);
+    final lastSeenScanId = prefs.lastSeenHistoryScanId;
+    final unseenCount = historyState.scans
+        .where((scan) => (scan.id ?? 0) > lastSeenScanId)
+        .length;
 
     // Watch showTourProvider so we can re-show tour on demand (from Settings).
     ref.listen<bool>(showTourProvider, (_, show) {
@@ -97,149 +166,162 @@ class _MainShellState extends ConsumerState<MainShell> {
     return Stack(
       children: [
         Scaffold(
-      body: IndexedStack(
-        index: _tabIndex,
-        children: _tabs,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tabIndex,
-        onDestinationSelected: (i) {
-          setState(() => _tabIndex = i);
-          // Clear history badge when visiting the History tab.
-          if (i == 3) {
-            final count = ref.read(historyProvider).scans.length;
-            setState(() => _lastSeenScanCount = count);
-          }
-        },
-        backgroundColor: Colors.white,
-        indicatorColor: context.primary100,
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home, color: context.primary700),
-            label: 'Home',
+          body: IndexedStack(
+            index: _tabIndex,
+            children: _tabs,
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart, color: context.primary700),
-            label: 'Analytics',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.shopping_cart_outlined),
-            selectedIcon: Icon(Icons.shopping_cart, color: context.primary700),
-            label: 'Groceries',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: scanCount > _lastSeenScanCount,
-              label: Text('${scanCount - _lastSeenScanCount}'),
-              child: const Icon(Icons.history_outlined),
-            ),
-            selectedIcon: Badge(
-              isLabelVisible: false,
-              child: Icon(Icons.history, color: context.primary700),
-            ),
-            label: 'History',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings, color: context.primary700),
-            label: 'Settings',
-          ),
-        ],
-      ),
-      floatingActionButton: _tabIndex == 0
-          ? Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // ── AI Speech (voice) ─────────────────────────────────
-          SizedBox(
-            width: 125,
-            child: FloatingActionButton.extended(
-              heroTag: 'voice',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const VoiceEntryScreen()),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _tabIndex,
+            onDestinationSelected: (i) {
+              setState(() => _tabIndex = i);
+              // Clear history badge when visiting the History tab.
+              if (i == 3) {
+                final newestId = ref.read(historyProvider).scans.isEmpty
+                    ? 0
+                    : (ref.read(historyProvider).scans.first.id ?? 0);
+                if (newestId > 0) {
+                  unawaited(
+                    ref
+                        .read(userPrefsProvider.notifier)
+                        .markHistorySeen(newestId),
+                  );
+                }
+              }
+            },
+            backgroundColor: Colors.white,
+            indicatorColor: context.primary100,
+            destinations: [
+              NavigationDestination(
+                icon: const Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home, color: context.primary700),
+                label: 'Home',
               ),
-              backgroundColor: Colors.white,
-              foregroundColor: context.primary700,
-              elevation: 2,
-              icon: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Icon(Icons.mic, size: 20),
-                  Positioned(
-                    right: -5,
-                    bottom: -5,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: context.primary600,
-                        shape: BoxShape.circle,
+              NavigationDestination(
+                icon: const Icon(Icons.bar_chart_outlined),
+                selectedIcon: Icon(Icons.bar_chart, color: context.primary700),
+                label: 'Analytics',
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.shopping_cart_outlined),
+                selectedIcon:
+                    Icon(Icons.shopping_cart, color: context.primary700),
+                label: 'Groceries',
+              ),
+              NavigationDestination(
+                icon: Badge(
+                  isLabelVisible: unseenCount > 0,
+                  label: Text('$unseenCount'),
+                  child: const Icon(Icons.history_outlined),
+                ),
+                selectedIcon: Badge(
+                  isLabelVisible: false,
+                  child: Icon(Icons.history, color: context.primary700),
+                ),
+                label: 'History',
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings, color: context.primary700),
+                label: 'Settings',
+              ),
+            ],
+          ),
+          floatingActionButton: _tabIndex == 0
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // ── AI Speech (voice) ─────────────────────────────────
+                    SizedBox(
+                      width: 125,
+                      child: FloatingActionButton.extended(
+                        heroTag: 'voice',
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const VoiceEntryScreen()),
+                        ),
+                        backgroundColor: Colors.white,
+                        foregroundColor: context.primary700,
+                        elevation: 2,
+                        icon: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.mic, size: 20),
+                            Positioned(
+                              right: -5,
+                              bottom: -5,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: context.primary600,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.auto_awesome,
+                                    size: 8, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                        label: const Text('AI Speech',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 12)),
                       ),
-                      child: const Icon(Icons.auto_awesome,
-                          size: 8, color: Colors.white),
                     ),
-                  ),
-                ],
-              ),
-              label: const Text('AI Speech',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-            ),
-          ),
-          const SizedBox(height: 8),
-          // ── Manual Log ────────────────────────────────────────
-          SizedBox(
-            width: 125,
-            child: FloatingActionButton.extended(
-              heroTag: 'manual',
-              onPressed: _openManualEntry,
-              backgroundColor: Colors.white,
-              foregroundColor: context.primary700,
-              elevation: 2,
-              icon: const Icon(Icons.edit_note, size: 20),
-              label: const Text('Manual Log',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-            ),
-          ),
-          const SizedBox(height: 8),
-          // ── AI Scan ───────────────────────────────────────────
-          SizedBox(
-            width: 125,
-            child: FloatingActionButton.extended(
-              heroTag: 'scan',
-              onPressed: _openScan,
-              backgroundColor: context.primary600,
-              foregroundColor: Colors.white,
-              elevation: 4,
-              icon: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Icon(Icons.camera_alt, size: 20),
-                  Positioned(
-                    right: -5,
-                    bottom: -5,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
+                    const SizedBox(height: 8),
+                    // ── Manual Log ────────────────────────────────────────
+                    SizedBox(
+                      width: 125,
+                      child: FloatingActionButton.extended(
+                        heroTag: 'manual',
+                        onPressed: _openManualEntry,
+                        backgroundColor: Colors.white,
+                        foregroundColor: context.primary700,
+                        elevation: 2,
+                        icon: const Icon(Icons.edit_note, size: 20),
+                        label: const Text('Manual Log',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 12)),
                       ),
-                      child: Icon(Icons.auto_awesome,
-                          size: 8, color: context.primary600),
                     ),
-                  ),
-                ],
-              ),
-              label: const Text('AI Scan',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-            ),
-          ),
-        ],
-      )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-    ),
+                    const SizedBox(height: 8),
+                    // ── AI Scan ───────────────────────────────────────────
+                    SizedBox(
+                      width: 125,
+                      child: FloatingActionButton.extended(
+                        heroTag: 'scan',
+                        onPressed: _openScan,
+                        backgroundColor: context.primary600,
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        icon: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.camera_alt, size: 20),
+                            Positioned(
+                              right: -5,
+                              bottom: -5,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.auto_awesome,
+                                    size: 8, color: context.primary600),
+                              ),
+                            ),
+                          ],
+                        ),
+                        label: const Text('AI Scan',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 12)),
+                      ),
+                    ),
+                  ],
+                )
+              : null,
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        ),
         if (_showTutorial)
           AppTutorialOverlay(
             onDismiss: _dismissTutorial,

@@ -24,12 +24,17 @@ For Layout B a 70/15/15 random split is applied.
 from __future__ import annotations
 
 import os
+import random
 from pathlib import Path
 from typing import Callable
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 from torch.utils.data import Dataset
+
+
+IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 
 class FoodSeg103Dataset(Dataset):
@@ -42,12 +47,14 @@ class FoodSeg103Dataset(Dataset):
         transform: Callable | None = None,
         target_size: tuple[int, int] = (513, 513),
         seed: int = 42,
+        augment: bool = False,
     ):
         self.root = Path(root)
         self.transform = transform
         self.target_size = target_size
+        self.augment = augment
 
-        # ── Detect layout ────────────────────────────────────────────────────
+        # Detect layout.
         official_train = self.root / "Images" / "img_dir" / "train"
         official_test  = self.root / "Images" / "img_dir" / "test"
         flat_images    = self.root / "Images"
@@ -66,7 +73,7 @@ class FoodSeg103Dataset(Dataset):
 
         self.label_map = self._load_labels()
 
-    # ── Layout A: official FoodSeg103 ────────────────────────────────────────
+    # Layout A: official FoodSeg103.
     def _init_official(self, split: str, train_dir: Path, test_dir: Path) -> None:
         ann_train = self.root / "Annotations" / "ann_dir" / "train"
         ann_test  = self.root / "Annotations" / "ann_dir" / "test"
@@ -89,7 +96,7 @@ class FoodSeg103Dataset(Dataset):
         else:
             raise ValueError(f"Unknown split: {split}")
 
-    # ── Layout B: flat/mini layout ────────────────────────────────────────────
+    # Layout B: flat/mini layout.
     def _init_flat(self, split: str, images_dir: Path, seed: int) -> None:
         masks_dir = self.root / "Masks"
 
@@ -117,7 +124,7 @@ class FoodSeg103Dataset(Dataset):
             masks_dir / p.with_suffix(".png").name for p in self.image_paths
         ]
 
-    # ── Label map ─────────────────────────────────────────────────────────────
+    # Label map.
     def _load_labels(self) -> dict[int, str]:
         label_file = self.root / "category_id.txt"
         labels = {0: "background"}
@@ -139,15 +146,19 @@ class FoodSeg103Dataset(Dataset):
 
     def __getitem__(self, idx: int) -> dict:
         img = Image.open(self.image_paths[idx]).convert("RGB")
-        img = img.resize(self.target_size, Image.BILINEAR)
 
         mask_path = self.mask_paths[idx]
         if mask_path.exists():
             mask = Image.open(mask_path)
-            mask = mask.resize(self.target_size, Image.NEAREST)
-            mask = np.array(mask, dtype=np.int64)
         else:
-            mask = np.zeros((self.target_size[1], self.target_size[0]), dtype=np.int64)
+            mask = Image.new("L", img.size, 0)
+
+        if self.augment:
+            img, mask = self._augment_pair(img, mask)
+
+        img = img.resize(self.target_size, Image.BILINEAR)
+        mask = mask.resize(self.target_size, Image.NEAREST)
+        mask = np.array(mask, dtype=np.int64)
 
         img_np = np.array(img, dtype=np.float32) / 255.0
 
@@ -155,6 +166,8 @@ class FoodSeg103Dataset(Dataset):
             transformed = self.transform(image=img_np, mask=mask)
             img_np = transformed["image"]
             mask   = transformed["mask"]
+
+        img_np = (img_np - IMAGENET_MEAN) / IMAGENET_STD
 
         img_tensor = np.transpose(img_np, (2, 0, 1)).astype(np.float32)
 
@@ -167,4 +180,50 @@ class FoodSeg103Dataset(Dataset):
     @property
     def num_classes(self) -> int:
         return max(self.label_map.keys()) + 1
+
+    @staticmethod
+    def _augment_pair(img: Image.Image, mask: Image.Image) -> tuple[Image.Image, Image.Image]:
+        if random.random() < 0.5:
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+            mask = mask.transpose(Image.FLIP_LEFT_RIGHT)
+
+        if random.random() < 0.75:
+            angle = random.uniform(-8, 8)
+            img = img.rotate(angle, resample=Image.BILINEAR, fillcolor=(0, 0, 0))
+            mask = mask.rotate(angle, resample=Image.NEAREST, fillcolor=0)
+
+        if random.random() < 0.70:
+            img = ImageEnhance.Brightness(img).enhance(random.uniform(0.82, 1.20))
+            img = ImageEnhance.Contrast(img).enhance(random.uniform(0.82, 1.22))
+            img = ImageEnhance.Color(img).enhance(random.uniform(0.82, 1.18))
+
+        if random.random() < 0.30:
+            img = img.filter(ImageFilter.GaussianBlur(radius=random.uniform(0.1, 0.6)))
+
+        if random.random() < 0.65:
+            img, mask = FoodSeg103Dataset._random_zoom(img, mask)
+
+        return img, mask
+
+    @staticmethod
+    def _random_zoom(img: Image.Image, mask: Image.Image) -> tuple[Image.Image, Image.Image]:
+        width, height = img.size
+        scale = random.uniform(0.86, 1.22)
+        new_size = (max(1, int(width * scale)), max(1, int(height * scale)))
+        img_resized = img.resize(new_size, Image.BILINEAR)
+        mask_resized = mask.resize(new_size, Image.NEAREST)
+
+        if scale >= 1.0:
+            left = random.randint(0, max(0, new_size[0] - width))
+            top = random.randint(0, max(0, new_size[1] - height))
+            box = (left, top, left + width, top + height)
+            return img_resized.crop(box), mask_resized.crop(box)
+
+        canvas = Image.new("RGB", (width, height), (0, 0, 0))
+        mask_canvas = Image.new("L", (width, height), 0)
+        left = random.randint(0, width - new_size[0])
+        top = random.randint(0, height - new_size[1])
+        canvas.paste(img_resized, (left, top))
+        mask_canvas.paste(mask_resized, (left, top))
+        return canvas, mask_canvas
 

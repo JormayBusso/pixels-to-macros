@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/food_data.dart';
+import '../models/nutrient_data.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 
@@ -21,7 +22,15 @@ class _FoodDatabaseScreenState extends ConsumerState<FoodDatabaseScreen> {
   bool _loading = true;
 
   static const _categories = [
-    'all', 'fruit', 'vegetable', 'grain', 'protein', 'dairy', 'mixed',
+    'all',
+    'fruit',
+    'vegetable',
+    'grain',
+    'protein',
+    'dairy',
+    'mixed',
+    'drink',
+    'snack',
   ];
 
   @override
@@ -32,6 +41,7 @@ class _FoodDatabaseScreenState extends ConsumerState<FoodDatabaseScreen> {
 
   Future<void> _load() async {
     final foods = await DatabaseService.instance.getAllFoods();
+    if (!mounted) return;
     setState(() {
       _allFoods = foods;
       _loading = false;
@@ -52,9 +62,11 @@ class _FoodDatabaseScreenState extends ConsumerState<FoodDatabaseScreen> {
   }
 
   void _openAddFood() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const _AddFoodScreen()),
-    ).then((_) => _load());
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(builder: (_) => const _AddFoodScreen()),
+        )
+        .then((_) => _load());
   }
 
   @override
@@ -74,7 +86,6 @@ class _FoodDatabaseScreenState extends ConsumerState<FoodDatabaseScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // ── Search ─────────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                   child: TextField(
@@ -88,8 +99,6 @@ class _FoodDatabaseScreenState extends ConsumerState<FoodDatabaseScreen> {
                     ),
                   ),
                 ),
-
-                // ── Category chips ─────────────────────────────────────
                 SizedBox(
                   height: 44,
                   child: ListView(
@@ -113,8 +122,6 @@ class _FoodDatabaseScreenState extends ConsumerState<FoodDatabaseScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-
-                // ── Count ──────────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
@@ -138,8 +145,6 @@ class _FoodDatabaseScreenState extends ConsumerState<FoodDatabaseScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-
-                // ── Food list ──────────────────────────────────────────
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -158,60 +163,167 @@ class _FoodDatabaseScreenState extends ConsumerState<FoodDatabaseScreen> {
 
 class _FoodTile extends StatelessWidget {
   const _FoodTile({required this.food});
+
   final FoodData food;
 
   @override
   Widget build(BuildContext context) {
+    final nutrients = nutrientsPer100gForFood(food);
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            _categoryBadge(context, food.category),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _openDetails(context),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              _categoryBadge(context, food.category),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      food.label,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Density: ${food.densityMin}–${food.densityMax} g/cm³',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.gray400,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _NutrientPill(label: '${_fmt(food.proteinPer100g)}g P'),
+                        _NutrientPill(label: '${_fmt(food.carbsPer100g)}g C'),
+                        _NutrientPill(label: '${_fmt(food.fatPer100g)}g F'),
+                        if (nutrients.hasAnyValue) ...[
+                          _NutrientPill(
+                            label: '${_fmt(nutrients.fiberG)}g fiber',
+                          ),
+                          _NutrientPill(
+                            label: '${_fmt(nutrients.vitaminCMg)}mg C',
+                          ),
+                          _NutrientPill(
+                            label: '${_fmt(nutrients.calciumMg)}mg Ca',
+                          ),
+                          _NutrientPill(
+                            label: '${_fmt(nutrients.ironMg)}mg Fe',
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    food.label,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                    '${food.kcalPer100g.round()}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: context.primary700,
                     ),
                   ),
-                  const SizedBox(height: 2),
                   Text(
-                    'Density: ${food.densityMin}–${food.densityMax} g/cm³',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.gray400,
-                    ),
+                    'kcal/${food.unitLabel}',
+                    style:
+                        const TextStyle(fontSize: 10, color: AppTheme.gray400),
                   ),
+                  const SizedBox(height: 8),
+                  Icon(Icons.chevron_right, color: context.primary600),
                 ],
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${food.kcalPer100g.round()}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: context.primary700,
-                  ),
-                ),
-                Text(
-                  'kcal/${food.unitLabel}',
-                  style: const TextStyle(fontSize: 10, color: AppTheme.gray400),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  void _openDetails(BuildContext context) {
+    final nutrients = nutrientsPer100gForFood(food);
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            children: [
+              Text(
+                food.label,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'per ${food.unitLabel}',
+                style: const TextStyle(color: AppTheme.gray400),
+              ),
+              const SizedBox(height: 20),
+              _DetailSection(
+                title: 'Macros',
+                rows: [
+                  ('Calories', '${_fmt(food.kcalPer100g)} kcal'),
+                  ('Protein', '${_fmt(food.proteinPer100g)} g'),
+                  ('Carbs', '${_fmt(food.carbsPer100g)} g'),
+                  ('Fat', '${_fmt(food.fatPer100g)} g'),
+                  ('Fiber', '${_fmt(nutrients.fiberG)} g'),
+                  ('Sodium', '${_fmt(nutrients.sodiumMg)} mg'),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _DetailSection(
+                title: 'Vitamins',
+                rows: [
+                  ('Vitamin A', '${_fmt(nutrients.vitaminAUg)} μg'),
+                  ('Vitamin C', '${_fmt(nutrients.vitaminCMg)} mg'),
+                  ('Vitamin D', '${_fmt(nutrients.vitaminDUg)} μg'),
+                  ('Vitamin E', '${_fmt(nutrients.vitaminEMg)} mg'),
+                  ('Vitamin K', '${_fmt(nutrients.vitaminKUg)} μg'),
+                  ('Folate', '${_fmt(nutrients.folateMcg)} μg'),
+                  ('Vitamin B12', '${_fmt(nutrients.b12Mcg)} μg'),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _DetailSection(
+                title: 'Minerals',
+                rows: [
+                  ('Calcium', '${_fmt(nutrients.calciumMg)} mg'),
+                  ('Iron', '${_fmt(nutrients.ironMg)} mg'),
+                  ('Magnesium', '${_fmt(nutrients.magnesiumMg)} mg'),
+                  ('Potassium', '${_fmt(nutrients.potassiumMg)} mg'),
+                  ('Zinc', '${_fmt(nutrients.zincMg)} mg'),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  static String _fmt(double value) {
+    if (value == value.roundToDouble()) return value.round().toString();
+    if (value >= 10) return value.toStringAsFixed(0);
+    return value.toStringAsFixed(1);
   }
 
   Widget _categoryBadge(BuildContext context, String category) {
@@ -221,6 +333,8 @@ class _FoodTile extends StatelessWidget {
       'grain' => (AppTheme.amber100, AppTheme.amber700, Icons.grain),
       'protein' => (AppTheme.red100, AppTheme.red700, Icons.egg),
       'dairy' => (AppTheme.amber100, AppTheme.amber500, Icons.water_drop),
+      'drink' => (context.primary100, context.primary700, Icons.local_drink),
+      'snack' => (AppTheme.amber100, AppTheme.amber700, Icons.cookie),
       'mixed' => (AppTheme.gray100, AppTheme.gray700, Icons.restaurant),
       _ => (AppTheme.gray100, AppTheme.gray400, Icons.circle),
     };
@@ -232,7 +346,76 @@ class _FoodTile extends StatelessWidget {
   }
 }
 
-// ── Add custom food screen ──────────────────────────────────────────────────
+class _NutrientPill extends StatelessWidget {
+  const _NutrientPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTheme.gray100,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: AppTheme.gray700,
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailSection extends StatelessWidget {
+  const _DetailSection({required this.title, required this.rows});
+
+  final String title;
+  final List<(String, String)> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.gray700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        for (final row in rows)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    row.$1,
+                    style: const TextStyle(color: AppTheme.gray600),
+                  ),
+                ),
+                Text(
+                  row.$2,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.gray900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
 
 class _AddFoodScreen extends StatefulWidget {
   const _AddFoodScreen();
@@ -249,7 +432,14 @@ class _AddFoodScreenState extends State<_AddFoodScreen> {
   String _category = 'mixed';
 
   static const _categories = [
-    'fruit', 'vegetable', 'grain', 'protein', 'dairy', 'mixed',
+    'fruit',
+    'vegetable',
+    'grain',
+    'protein',
+    'dairy',
+    'mixed',
+    'drink',
+    'snack',
   ];
 
   Future<void> _save() async {
@@ -344,9 +534,9 @@ class _AddFoodScreenState extends State<_AddFoodScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'Category',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppTheme.gray700,

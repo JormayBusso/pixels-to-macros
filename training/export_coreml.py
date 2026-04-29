@@ -31,24 +31,36 @@ from train import get_model
 
 
 class _SegmentationWrapper(torch.nn.Module):
-    """Unwrap the DeepLabV3 output dict so tracing produces a plain tensor."""
+    """Normalise image input and unwrap DeepLabV3 output for Core ML tracing."""
 
     def __init__(self, model: torch.nn.Module) -> None:
         super().__init__()
         self.model = model
+        self.register_buffer(
+            "mean",
+            torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1),
+        )
+        self.register_buffer(
+            "std",
+            torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1),
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = (x - self.mean) / self.std
         return self.model(x)["out"]
 
 
 def load_model(checkpoint: Path, num_classes: int) -> tuple[torch.nn.Module, int]:
     """Load checkpoint, auto-detect num_classes, return wrapped model."""
-    state = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    state = payload.get("model_state", payload) if isinstance(payload, dict) else payload
 
     detected = state["classifier.4.weight"].shape[0]
     if detected != num_classes:
-        print(f"[export] Checkpoint has {detected} classes; "
-              f"overriding --num_classes {num_classes} → {detected}")
+        print(
+            f"[export] Checkpoint has {detected} classes; "
+            f"overriding --num_classes {num_classes} -> {detected}"
+        )
         num_classes = detected
 
     model = get_model(num_classes, pretrained=False)
@@ -57,7 +69,9 @@ def load_model(checkpoint: Path, num_classes: int) -> tuple[torch.nn.Module, int
         print(f"[export] Ignored unexpected keys: {unexpected}")
 
     model.eval()
-    return _SegmentationWrapper(model), num_classes
+    wrapper = _SegmentationWrapper(model)
+    wrapper.eval()
+    return wrapper, num_classes
 
 
 def convert_coreml(
@@ -66,13 +80,14 @@ def convert_coreml(
     img_size: int,
     output: Path,
 ) -> Path:
-    """Trace PyTorch model → CoreML (.mlpackage) with FP16 weights."""
-    dummy = torch.randn(1, 3, img_size, img_size)
+    """Trace PyTorch model to CoreML (.mlpackage) with FP16 weights."""
+    model.eval()
+    dummy = torch.rand(1, 3, img_size, img_size)
 
     with torch.no_grad():
         traced = torch.jit.trace(model, dummy)
 
-    print(f"[export] TorchScript trace complete.")
+    print("[export] TorchScript trace complete.")
 
     mlmodel = ct.convert(
         traced,
@@ -100,7 +115,7 @@ def convert_coreml(
     print(f"CoreML exported: {mlpackage_path} ({size_mb:.1f} MB)")
 
     if size_mb > 30:
-        print("⚠️  WARNING: Model exceeds 30 MB. Consider a smaller backbone.")
+        print("WARNING: Model exceeds 30 MB. Consider a smaller backbone.")
 
     return mlpackage_path
 
@@ -119,7 +134,7 @@ def main() -> None:
     model, num_classes = load_model(Path(args.checkpoint), args.num_classes)
     convert_coreml(model, num_classes, args.img_size, output)
 
-    print("\n✅ Done.")
+    print("\nDone.")
 
 
 if __name__ == "__main__":

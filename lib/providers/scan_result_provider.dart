@@ -66,7 +66,7 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
 
       if (rawVolumes.isEmpty) {
         state = const ScanResultState(
-          error: 'No food detected — try again with a clearer view.',
+          noFood: true,
         );
         return;
       }
@@ -141,9 +141,9 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
       if (rawVolumes.isEmpty) {
         DebugLog.instance.log(
           'VideoScan',
-          'Native video inference returned empty; using editable mixed-food estimate.',
+          'Native video inference returned empty; treating scan as no food.',
         );
-        state = ScanResultState(foods: [await _fallbackDetectedFood()]);
+        state = const ScanResultState(noFood: true);
         return;
       }
 
@@ -158,6 +158,21 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
         final confidence = (vol['confidence'] as num?)?.toDouble();
         final framesUsed = (vol['frames_used'] as num?)?.toInt() ?? 0;
         final fallbackReason = vol['fallback_reason'] as String?;
+
+        if (!_passesDetectionGate(
+          label: label,
+          volumeCm3: volumeCm3,
+          pixelCount: pixelCount,
+          confidence: confidence,
+          fallbackReason: fallbackReason,
+        )) {
+          DebugLog.instance.log(
+            'VideoScan',
+            'Rejected $label as low-confidence/no-food candidate '
+                '($volumeCm3 cm³, $pixelCount px, conf $confidence)',
+          );
+          continue;
+        }
 
         final foodData = await db.getFoodByLabel(label);
         final double calMin;
@@ -190,30 +205,35 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
       }
 
       if (foods.isEmpty) {
-        state = ScanResultState(foods: [await _fallbackDetectedFood()]);
+        state = const ScanResultState(noFood: true);
       } else {
         state = ScanResultState(foods: foods);
       }
     } catch (e) {
       DebugLog.instance.log(
         'VideoScan',
-        'Native video inference failed; using editable fallback estimate: $e',
+        'Native video inference failed: $e',
       );
-      state = ScanResultState(foods: [await _fallbackDetectedFood()]);
+      state = ScanResultState(error: e.toString());
     }
   }
 
-  Future<DetectedFood> _fallbackDetectedFood() async {
-    const label = 'others';
-    const volumeCm3 = 320.0;
-    final foodData = await DatabaseService.instance.getFoodByLabel(label);
-    final calories = foodData?.calorieRange(volumeCm3);
-    return DetectedFood(
-      label: label,
-      volumeCm3: volumeCm3,
-      caloriesMin: calories?.min ?? 180,
-      caloriesMax: calories?.max ?? 430,
-    );
+  bool _passesDetectionGate({
+    required String label,
+    required double volumeCm3,
+    required int pixelCount,
+    required double? confidence,
+    required String? fallbackReason,
+  }) {
+    if (fallbackReason != null) return false;
+    if (label.toLowerCase() == 'background') return false;
+    if (volumeCm3 < 3.0) return false;
+    if (pixelCount < 450) return false;
+    if (confidence != null && confidence < 0.55) return false;
+    if (label.toLowerCase() == 'others' && (confidence ?? 0) < 0.72) {
+      return false;
+    }
+    return true;
   }
 
   void reset() => state = const ScanResultState();

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,7 +44,7 @@ class _SpotRect {
   const _SpotRect(this.cx, this.cy, this.w, this.h, {this.r = 0.06});
 }
 
-enum _ScrollTarget { none, hydration, vacation }
+enum _ScrollTarget { none, hydration, weeklyReview, vacation }
 
 class _Step {
   final String title;
@@ -73,28 +74,32 @@ const _kSteps = [
   // 1 – AI Scan button (extended FAB, bottom-right)
   _Step(
     title: 'AI Scan 📷',
-    body: 'Tap AI Scan to open the camera.\nPoint at your plate and get instant calories & macros!\nIncludes flashlight toggle and low-light warnings.',
+    body:
+        'Tap AI Scan to open the camera.\nPoint at your plate and get instant calories & macros!\nIncludes flashlight toggle and low-light warnings.',
     tab: 0,
     spot: _SpotRect(0.76, 0.85, 0.42, 0.07),
   ),
   // 2 – AI Speech (extended FAB, above manual)
   _Step(
     title: 'AI Speech 🎤',
-    body: 'Tap AI Speech to log food by voice in English.\nSay "200 grams of chicken and a banana" — it matches your food database automatically.',
+    body:
+        'Tap AI Speech to log food by voice in English.\nSay "200 grams of chicken and a banana" — it matches your food database automatically.',
     tab: 0,
     spot: _SpotRect(0.76, 0.70, 0.42, 0.07),
   ),
   // 3 – Manual Log (extended FAB, above voice)
   _Step(
     title: 'Log Food Manually ✏️',
-    body: 'Search foods, pick from My Meals, scan a barcode, or quick-add a drink.\nBarcode scanning shows a health score (0-100) before logging.',
+    body:
+        'Search foods, pick from My Meals, or scan a barcode.\nBarcode scanning shows a health score (0-100) before logging.',
     tab: 0,
     spot: _SpotRect(0.76, 0.78, 0.42, 0.07),
   ),
   // 4 – Body map icon (AppBar action, left of nutrition)
   _Step(
     title: 'Body Map 🫀',
-    body: 'Tap the body icon (top-right) to see a 2D interactive body map.\nEach organ glows based on your nutrient intake — tap to learn why!',
+    body:
+        'Tap the body icon to open the anatomy map.\nBrain, eyes, heart, lungs, gut, bones, muscles, skin, blood, and immune regions are tappable and color-coded from your nutrient intake.',
     tab: 0,
     spot: _SpotRect(0.82, 0.09, 0.11, 0.065),
     tipBelow: true,
@@ -102,7 +107,8 @@ const _kSteps = [
   // 5 – Nutrition button (leaf icon, rightmost AppBar action)
   _Step(
     title: "Today's Nutrition 🌿",
-    body: 'The leaf icon shows a full breakdown of vitamins, minerals, macros and your micronutrient wheel.',
+    body:
+        'The leaf icon opens your full nutrition dashboard with macros, vitamins, minerals, and the upgraded micronutrient wheel.',
     tab: 0,
     spot: _SpotRect(0.93, 0.09, 0.11, 0.065),
     tipBelow: true,
@@ -110,7 +116,8 @@ const _kSteps = [
   // 6 – Hydration card (scrolls home screen to show it)
   _Step(
     title: 'Stay Hydrated 💧',
-    body: 'The hydration card tracks your daily water intake.\nTap 150 / 250 / 500 ml to quickly log glasses throughout the day.',
+    body:
+        'The hydration card tracks your daily water intake.\nUse the plus button for water, coffee, tea, and other drinks.',
     tab: 0,
     spot: _SpotRect(0.50, 0.60, 0.90, 0.18),
     scroll: _ScrollTarget.hydration,
@@ -125,21 +132,33 @@ const _kSteps = [
   // 8 – Groceries tab
   _Step(
     title: 'Grocery List 🛒',
-    body: 'Add items manually or get smart suggestions based on your scan history.',
+    body:
+        'Add items manually or get smart suggestions based on your scan history.',
     tab: 2,
     spot: _SpotRect(0.50, 0.955, 0.18, 0.065),
   ),
   // 9 – Settings tab
   _Step(
     title: 'Settings ⚙️',
-    body: 'Change your nutrition goal, color theme, mascot, text size, and more.\nDiabetes users can set ICR for bolus calculations.',
+    body:
+        'Change your nutrition goal, color theme, mascot, text size, weekly badge recap, and more.\nDiabetes users can set ICR for bolus calculations.',
     tab: 4,
     spot: _SpotRect(0.90, 0.955, 0.18, 0.065),
+  ),
+  // 10 – Weekly badge recap setting
+  _Step(
+    title: 'Weekly Badges 🏅',
+    body:
+        'At the start of each week, the app can show the badges you earned last week.\nUse this setting to turn that recap on or off.',
+    tab: 4,
+    spot: _SpotRect(0.50, 0.52, 0.90, 0.16),
+    scroll: _ScrollTarget.weeklyReview,
   ),
   // 10 – Vacation mode (scrolls to it in Settings)
   _Step(
     title: 'Vacation Mode 🏖️',
-    body: "Protect your streak while you're away.\nTap the toggle to activate Vacation Mode.\nYou can also adjust your daily water goal and Glycemic Load settings here.",
+    body:
+        "Protect your streak while you're away.\nTap the toggle to activate Vacation Mode.\nYou can also adjust your daily water goal and Glycemic Load settings here.",
     tab: 4,
     spot: _SpotRect(0.50, 0.52, 0.90, 0.16),
     scroll: _ScrollTarget.vacation,
@@ -147,7 +166,8 @@ const _kSteps = [
   // 12 – Outro
   _Step(
     title: "You're All Set! 🚀",
-    body: "Start scanning your first meal — or speak it!\n\nTip: you can replay this tour anytime from Settings → About.",
+    body:
+        "Start scanning your first meal — or speak it!\n\nTip: you can replay this tour anytime from Settings → About.",
     tab: 0,
   ),
 ];
@@ -187,10 +207,12 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
       widget.onNavigateToTab(step.tab);
       if (step.scroll == _ScrollTarget.hydration) {
         ref.read(scrollToHydrationProvider.notifier).state++;
+      } else if (step.scroll == _ScrollTarget.weeklyReview) {
+        ref.read(scrollToWeeklyReviewProvider.notifier).state++;
       } else if (step.scroll == _ScrollTarget.vacation) {
         ref.read(scrollToVacationProvider.notifier).state++;
       }
-      _ctrl.forward();
+      unawaited(_ctrl.forward());
     } else {
       await _ctrl.reverse();
       widget.onDismiss();
@@ -232,7 +254,8 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
             child: Align(
               alignment: Alignment.topRight,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: TextButton(
                   onPressed: _skip,
                   child: const Text('Skip',
@@ -271,9 +294,9 @@ class _HighlightPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final cx = spot.cx * size.width;
     final cy = spot.cy * size.height;
-    final w  = spot.w  * size.width;
-    final h  = spot.h  * size.height;
-    final r  = spot.r  * math.min(size.width, size.height);
+    final w = spot.w * size.width;
+    final h = spot.h * size.height;
+    final r = spot.r * math.min(size.width, size.height);
 
     // Full dark overlay
     canvas.drawRect(
@@ -286,8 +309,8 @@ class _HighlightPainter extends CustomPainter {
       Rect.fromCenter(center: Offset(cx, cy), width: w + 12, height: h + 12),
       Radius.circular(r),
     );
-    canvas.drawRRect(highlightRect,
-        Paint()..color = Colors.white.withValues(alpha: 0.07));
+    canvas.drawRRect(
+        highlightRect, Paint()..color = Colors.white.withValues(alpha: 0.07));
 
     // Clean white border around the target
     canvas.drawRRect(
@@ -427,5 +450,3 @@ class _TooltipCard extends StatelessWidget {
     );
   }
 }
-
-

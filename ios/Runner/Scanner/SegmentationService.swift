@@ -432,6 +432,11 @@ final class SegmentationService {
 
         // Build SegmentedObject per class
         var objects: [SegmentedObject] = []
+        let totalPixels = max(1, width * height)
+        let minPixels = max(450, Int(Double(totalPixels) * 0.006))
+        let minConfidence: Float = totalClasses == SegmentationService.miniLabelMap.count
+            ? 0.62
+            : 0.52
         for (cls, pixels) in classPixels {
             var mask = [[UInt8]](repeating: [UInt8](repeating: 0, count: width), count: height)
             var sumR = 0, sumC = 0
@@ -443,6 +448,10 @@ final class SegmentationService {
                 sumConf += p.conf
             }
             let count = pixels.count
+            let avgConfidence = sumConf / Float(max(count, 1))
+            guard count >= minPixels, avgConfidence >= minConfidence else {
+                continue
+            }
             let label = label(for: cls, totalClasses: totalClasses)
             objects.append(SegmentedObject(
                 label: label,
@@ -450,7 +459,7 @@ final class SegmentationService {
                 mask: mask,
                 pixelCount: count,
                 centroid: (row: sumR / max(count, 1), col: sumC / max(count, 1)),
-                confidence: sumConf / Float(max(count, 1))
+                confidence: avgConfidence
             ))
         }
 

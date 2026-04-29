@@ -10,11 +10,15 @@ enum UserGender {
   String get dbValue => name;
   String get label {
     switch (this) {
-      case UserGender.male:           return 'Male';
-      case UserGender.female:         return 'Female';
-      case UserGender.preferNotToSay: return 'Prefer not to say';
+      case UserGender.male:
+        return 'Male';
+      case UserGender.female:
+        return 'Female';
+      case UserGender.preferNotToSay:
+        return 'Prefer not to say';
     }
   }
+
   static UserGender fromDbValue(String? v) {
     return UserGender.values.firstWhere(
       (e) => e.name == v,
@@ -39,15 +43,31 @@ class UserPreferences {
   final AppColorSeed themeColorSeed;
   final UserGender gender;
   final double fontScale;
+
   /// Insulin-to-Carb Ratio: grams of carbs covered by 1 unit of insulin.
   /// Used only when [nutritionGoal] == [NutritionGoalType.diabetes].
   final double icrGramsPerUnit;
+
   /// When true, streaks are not broken by missed days. Persisted across app restarts.
   final bool vacationMode;
+
   /// Daily water intake goal in millilitres (default 2000 ml).
   final int dailyWaterGoalMl;
-  /// Accumulated water intake for today in millilitres. Not persisted across days.
+
+  /// Accumulated fluid intake for today in millilitres. Reset when the day changes.
   final int waterIntakeMl;
+
+  /// Local calendar day for [waterIntakeMl], formatted yyyy-mm-dd.
+  final String waterIntakeDate;
+
+  /// Newest scan id the user has seen in the History tab.
+  final int lastSeenHistoryScanId;
+
+  /// Shows the previous week's earned badges on the first app launch of a new week.
+  final bool weeklyBadgeRecapEnabled;
+
+  /// Current-week key, formatted yyyy-mm-dd for that week's Monday, already recapped.
+  final String lastWeeklyBadgeRecapWeek;
 
   const UserPreferences({
     this.id,
@@ -68,6 +88,10 @@ class UserPreferences {
     this.vacationMode = false,
     this.dailyWaterGoalMl = 2000,
     this.waterIntakeMl = 0,
+    this.waterIntakeDate = '',
+    this.lastSeenHistoryScanId = 0,
+    this.weeklyBadgeRecapEnabled = true,
+    this.lastWeeklyBadgeRecapWeek = '',
   });
 
   Map<String, dynamic> toMap() {
@@ -90,6 +114,10 @@ class UserPreferences {
       'vacation_mode': vacationMode ? 1 : 0,
       'daily_water_goal_ml': dailyWaterGoalMl,
       'water_intake_ml': waterIntakeMl,
+      'water_intake_date': waterIntakeDate,
+      'last_seen_history_scan_id': lastSeenHistoryScanId,
+      'weekly_badge_recap_enabled': weeklyBadgeRecapEnabled ? 1 : 0,
+      'last_weekly_badge_recap_week': lastWeeklyBadgeRecapWeek,
     };
   }
 
@@ -101,19 +129,25 @@ class UserPreferences {
       onboardingComplete: (map['onboarding_complete'] as int?) == 1,
       hasSeenScanTutorial: (map['has_seen_scan_tutorial'] as int?) == 1,
       hasSeenAppTutorial: (map['has_seen_app_tutorial'] as int?) == 1,
-      nutritionGoal: NutritionGoalTypeX.fromDbValue(
-          map['nutrition_goal'] as String?),
+      nutritionGoal:
+          NutritionGoalTypeX.fromDbValue(map['nutrition_goal'] as String?),
       dailyCarbLimitG: (map['daily_carb_limit_g'] as int?) ?? 250,
       dailyProteinTargetG: (map['daily_protein_target_g'] as int?) ?? 80,
       dailyFatTargetG: (map['daily_fat_target_g'] as int?) ?? 65,
       mascotType: MascotTypeX.fromDbValue(map['mascot_type'] as String?),
-      themeColorSeed: AppColorSeedX.fromDbValue(map['theme_color_seed'] as String?),
+      themeColorSeed:
+          AppColorSeedX.fromDbValue(map['theme_color_seed'] as String?),
       gender: UserGender.fromDbValue(map['gender'] as String?),
       fontScale: (map['font_scale'] as num?)?.toDouble() ?? 1.0,
       icrGramsPerUnit: (map['icr_grams_per_unit'] as num?)?.toDouble() ?? 15.0,
       vacationMode: (map['vacation_mode'] as int?) == 1,
       dailyWaterGoalMl: (map['daily_water_goal_ml'] as int?) ?? 2000,
       waterIntakeMl: (map['water_intake_ml'] as int?) ?? 0,
+      waterIntakeDate: map['water_intake_date'] as String? ?? '',
+      lastSeenHistoryScanId: (map['last_seen_history_scan_id'] as int?) ?? 0,
+      weeklyBadgeRecapEnabled: (map['weekly_badge_recap_enabled'] as int?) != 0,
+      lastWeeklyBadgeRecapWeek:
+          map['last_weekly_badge_recap_week'] as String? ?? '',
     );
   }
 
@@ -135,6 +169,10 @@ class UserPreferences {
     bool? vacationMode,
     int? dailyWaterGoalMl,
     int? waterIntakeMl,
+    String? waterIntakeDate,
+    int? lastSeenHistoryScanId,
+    bool? weeklyBadgeRecapEnabled,
+    String? lastWeeklyBadgeRecapWeek,
   }) {
     return UserPreferences(
       id: id,
@@ -155,6 +193,13 @@ class UserPreferences {
       vacationMode: vacationMode ?? this.vacationMode,
       dailyWaterGoalMl: dailyWaterGoalMl ?? this.dailyWaterGoalMl,
       waterIntakeMl: waterIntakeMl ?? this.waterIntakeMl,
+      waterIntakeDate: waterIntakeDate ?? this.waterIntakeDate,
+      lastSeenHistoryScanId:
+          lastSeenHistoryScanId ?? this.lastSeenHistoryScanId,
+      weeklyBadgeRecapEnabled:
+          weeklyBadgeRecapEnabled ?? this.weeklyBadgeRecapEnabled,
+      lastWeeklyBadgeRecapWeek:
+          lastWeeklyBadgeRecapWeek ?? this.lastWeeklyBadgeRecapWeek,
     );
   }
 }
