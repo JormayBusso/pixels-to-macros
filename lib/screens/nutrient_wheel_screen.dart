@@ -8,7 +8,6 @@ import '../models/user_preferences.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
-import 'nutrition_dashboard_screen.dart';
 
 class NutrientWheelWidget extends ConsumerWidget {
   const NutrientWheelWidget({super.key});
@@ -21,25 +20,29 @@ class NutrientWheelWidget extends ConsumerWidget {
       intake.nutrientTotals,
       prefs.gender == UserGender.male,
     );
-    final onTarget = nutrients.where((n) => n.rawRatio >= 0.95).length;
-    final low = nutrients.where((n) => n.rawRatio < 0.60).length;
+    final onTarget =
+        nutrients.where((nutrient) => nutrient.rawRatio >= 0.95).length;
+    final low = nutrients.where((nutrient) => nutrient.rawRatio < 0.60).length;
     final score = nutrients.isEmpty
         ? 0
         : (nutrients
-                    .map((n) => n.ratio)
+                    .map((nutrient) => nutrient.ratio)
                     .fold<double>(0, (sum, ratio) => sum + ratio) /
                 nutrients.length *
                 100)
             .round();
-    final focus = [...nutrients]
-      ..sort((a, b) => a.rawRatio.compareTo(b.rawRatio));
 
-    return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const NutritionDashboardScreen()),
-      ),
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: InkWell(
+        onTap: () => _showNutrientDetails(
+          context,
+          nutrients: nutrients,
+          score: score,
+          onTarget: onTarget,
+          low: low,
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -97,7 +100,6 @@ class NutrientWheelWidget extends ConsumerWidget {
                     onTarget: onTarget,
                     low: low,
                     total: nutrients.length,
-                    focus: focus.take(3).toList(),
                   );
 
                   if (wide) {
@@ -124,6 +126,26 @@ class NutrientWheelWidget extends ConsumerWidget {
       ),
     );
   }
+
+  void _showNutrientDetails(
+    BuildContext context, {
+    required List<_NutrientInfo> nutrients,
+    required int score,
+    required int onTarget,
+    required int low,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => _WheelDetailSheet(
+        nutrients: nutrients,
+        score: score,
+        onTarget: onTarget,
+        low: low,
+      ),
+    );
+  }
 }
 
 class _NutrientInfo {
@@ -131,15 +153,19 @@ class _NutrientInfo {
     required this.name,
     required this.current,
     required this.drv,
-    required this.icon,
+    required this.unit,
     required this.color,
+    this.emoji,
+    this.assetPath,
   });
 
   final String name;
   final double current;
   final double drv;
-  final IconData icon;
+  final String unit;
   final Color color;
+  final String? emoji;
+  final String? assetPath;
 
   double get rawRatio => drv > 0 ? current / drv : 0;
   double get ratio => rawRatio.clamp(0.0, 1.0);
@@ -156,103 +182,134 @@ class _NutrientInfo {
     if (rawRatio >= 0.60) return AppTheme.amber600;
     return AppTheme.red500;
   }
+
+  String fmt(double value) {
+    if (value == 0) return '0';
+    if (value < 10) return value.toStringAsFixed(1);
+    return value.round().toString();
+  }
+
+  Widget iconWidget({double size = 18}) {
+    final path = assetPath;
+    if (path != null) {
+      return Image.asset(path, width: size, height: size, fit: BoxFit.contain);
+    }
+    return Text(
+      emoji ?? '',
+      style: TextStyle(fontSize: size, height: 1),
+      textAlign: TextAlign.center,
+    );
+  }
 }
 
-List<_NutrientInfo> _buildNutrientList(NutrientTotals t, bool isMale) {
+List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
   return [
     _NutrientInfo(
-      name: 'Fiber',
-      current: t.fiberG,
+      name: 'Dietary Fiber',
+      emoji: '🌾',
+      current: totals.fiberG,
       drv: NutrientDRV.fiberG,
-      icon: Icons.grass_outlined,
+      unit: 'g',
       color: const Color(0xFF7A5C3A),
     ),
     _NutrientInfo(
       name: 'Vitamin A',
-      current: t.vitaminAUg,
+      emoji: '🥕',
+      current: totals.vitaminAUg,
       drv: isMale ? NutrientDRV.vitaminAUg_male : NutrientDRV.vitaminAUg_female,
-      icon: Icons.visibility_outlined,
+      unit: 'μg',
       color: const Color(0xFFE7811D),
     ),
     _NutrientInfo(
       name: 'Vitamin C',
-      current: t.vitaminCMg,
+      emoji: '🍊',
+      current: totals.vitaminCMg,
       drv: isMale ? NutrientDRV.vitaminCMg_male : NutrientDRV.vitaminCMg_female,
-      icon: Icons.shield_outlined,
+      unit: 'mg',
       color: const Color(0xFFD6A600),
     ),
     _NutrientInfo(
       name: 'Vitamin D',
-      current: t.vitaminDUg,
+      emoji: '☀️',
+      current: totals.vitaminDUg,
       drv: NutrientDRV.vitaminDUg,
-      icon: Icons.wb_sunny_outlined,
+      unit: 'μg',
       color: const Color(0xFFC79000),
     ),
     _NutrientInfo(
       name: 'Vitamin E',
-      current: t.vitaminEMg,
+      emoji: '🌻',
+      current: totals.vitaminEMg,
       drv: NutrientDRV.vitaminEMg,
-      icon: Icons.spa_outlined,
+      unit: 'mg',
       color: const Color(0xFF4C8C3A),
     ),
     _NutrientInfo(
       name: 'Vitamin K',
-      current: t.vitaminKUg,
+      emoji: '🥬',
+      current: totals.vitaminKUg,
       drv: isMale ? NutrientDRV.vitaminKUg_male : NutrientDRV.vitaminKUg_female,
-      icon: Icons.eco_outlined,
+      unit: 'μg',
       color: const Color(0xFF2F7D32),
     ),
     _NutrientInfo(
-      name: 'Folate',
-      current: t.folateMcg,
+      name: 'Folate (B9)',
+      emoji: '🫘',
+      current: totals.folateMcg,
       drv: NutrientDRV.folateMcg,
-      icon: Icons.local_florist_outlined,
+      unit: 'μg',
       color: const Color(0xFF43A047),
     ),
     _NutrientInfo(
       name: 'Vitamin B12',
-      current: t.b12Mcg,
+      emoji: '🥩',
+      current: totals.b12Mcg,
       drv: NutrientDRV.b12Mcg,
-      icon: Icons.bloodtype_outlined,
+      unit: 'μg',
       color: const Color(0xFFC2185B),
     ),
     _NutrientInfo(
       name: 'Calcium',
-      current: t.calciumMg,
+      assetPath: 'assets/Calcium.png',
+      current: totals.calciumMg,
       drv: isMale ? NutrientDRV.calciumMg_male : NutrientDRV.calciumMg_female,
-      icon: Icons.accessibility_new_outlined,
+      unit: 'mg',
       color: const Color(0xFF78909C),
     ),
     _NutrientInfo(
       name: 'Iron',
-      current: t.ironMg,
+      assetPath: 'assets/Iron.png',
+      current: totals.ironMg,
       drv: isMale ? NutrientDRV.ironMg_male : NutrientDRV.ironMg_female,
-      icon: Icons.blur_circular_outlined,
+      unit: 'mg',
       color: const Color(0xFFB71C1C),
     ),
     _NutrientInfo(
       name: 'Magnesium',
-      current: t.magnesiumMg,
+      assetPath: 'assets/Magnesium.png',
+      current: totals.magnesiumMg,
       drv: isMale
           ? NutrientDRV.magnesiumMg_male
           : NutrientDRV.magnesiumMg_female,
-      icon: Icons.bolt_outlined,
+      unit: 'mg',
       color: const Color(0xFF7B1FA2),
     ),
     _NutrientInfo(
       name: 'Potassium',
-      current: t.potassiumMg,
+      assetPath: 'assets/Potassium.png',
+      current: totals.potassiumMg,
       drv: isMale
           ? NutrientDRV.potassiumMg_male
           : NutrientDRV.potassiumMg_female,
-      icon: Icons.monitor_heart_outlined,
+      unit: 'mg',
       color: const Color(0xFFEF6C00),
     ),
     _NutrientInfo(
       name: 'Zinc',
-      current: t.zincMg,
+      assetPath: 'assets/Zink.png',
+      current: totals.zincMg,
       drv: isMale ? NutrientDRV.zincMg_male : NutrientDRV.zincMg_female,
-      icon: Icons.healing_outlined,
+      unit: 'mg',
       color: const Color(0xFF00838F),
     ),
   ];
@@ -317,6 +374,7 @@ class _WheelWithLabels extends StatelessWidget {
           child: Tooltip(
             message: '${nutrient.name} · ${nutrient.percent}%',
             child: Container(
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
@@ -331,7 +389,9 @@ class _WheelWithLabels extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Icon(nutrient.icon, size: 16, color: nutrient.color),
+              child: nutrient.iconWidget(
+                size: nutrient.assetPath == null ? 16 : 22,
+              ),
             ),
           ),
         ),
@@ -457,57 +517,39 @@ class _NutrientWheelDetails extends StatelessWidget {
     required this.onTarget,
     required this.low,
     required this.total,
-    required this.focus,
   });
 
   final int onTarget;
   final int low;
   final int total;
-  final List<_NutrientInfo> focus;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _StatBox(
-                label: 'On target',
-                value: '$onTarget',
-                color: context.primary600,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _StatBox(
-                label: 'Needs work',
-                value: '$low',
-                color: low == 0 ? context.primary600 : AppTheme.amber600,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _StatBox(
-                label: 'Tracked',
-                value: '$total',
-                color: AppTheme.gray700,
-              ),
-            ),
-          ],
+        Expanded(
+          child: _StatBox(
+            label: 'On target',
+            value: '$onTarget',
+            color: context.primary600,
+          ),
         ),
-        const SizedBox(height: 14),
-        const Text(
-          'Priority nutrients',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatBox(
+            label: 'Needs work',
+            value: '$low',
+            color: low == 0 ? context.primary600 : AppTheme.amber600,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatBox(
+            label: 'Tracked',
+            value: '$total',
             color: AppTheme.gray700,
           ),
         ),
-        const SizedBox(height: 8),
-        ...focus.map((nutrient) => _FocusRow(nutrient: nutrient)),
       ],
     );
   }
@@ -561,8 +603,91 @@ class _StatBox extends StatelessWidget {
   }
 }
 
-class _FocusRow extends StatelessWidget {
-  const _FocusRow({required this.nutrient});
+class _WheelDetailSheet extends StatelessWidget {
+  const _WheelDetailSheet({
+    required this.nutrients,
+    required this.score,
+    required this.onTarget,
+    required this.low,
+  });
+
+  final List<_NutrientInfo> nutrients;
+  final int score;
+  final int onTarget;
+  final int low;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: context.primary100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.radar_outlined, color: context.primary700),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Micronutrient Details',
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.gray900,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Today\'s vitamin and mineral coverage',
+                      style: TextStyle(fontSize: 12, color: AppTheme.gray400),
+                    ),
+                  ],
+                ),
+              ),
+              _ScorePill(score: score),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _StatBox(
+                  label: 'On target',
+                  value: '$onTarget',
+                  color: context.primary600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _StatBox(
+                  label: 'Needs work',
+                  value: '$low',
+                  color: low == 0 ? context.primary600 : AppTheme.amber600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...nutrients.map((nutrient) => _WheelDetailRow(nutrient: nutrient)),
+        ],
+      ),
+    );
+  }
+}
+
+class _WheelDetailRow extends StatelessWidget {
+  const _WheelDetailRow({required this.nutrient});
 
   final _NutrientInfo nutrient;
 
@@ -570,37 +695,55 @@ class _FocusRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = nutrient.statusColor(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
           Container(
-            width: 30,
-            height: 30,
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: nutrient.color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(nutrient.icon, size: 17, color: nutrient.color),
+            child: nutrient.iconWidget(
+              size: nutrient.assetPath == null ? 18 : 26,
+            ),
           ),
-          const SizedBox(width: 9),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  nutrient.name,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.gray700,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        nutrient.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.gray700,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${nutrient.fmt(nutrient.current)} / ${nutrient.fmt(nutrient.drv)} ${nutrient.unit}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.gray400,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(999),
                   child: LinearProgressIndicator(
                     value: nutrient.ratio,
-                    minHeight: 5,
+                    minHeight: 6,
                     backgroundColor: AppTheme.gray100,
                     valueColor: AlwaysStoppedAnimation(color),
                   ),
@@ -610,7 +753,7 @@ class _FocusRow extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           SizedBox(
-            width: 60,
+            width: 58,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -626,10 +769,7 @@ class _FocusRow extends StatelessWidget {
                   nutrient.status,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppTheme.gray400,
-                  ),
+                  style: const TextStyle(fontSize: 10, color: AppTheme.gray400),
                 ),
               ],
             ),

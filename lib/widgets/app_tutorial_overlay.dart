@@ -77,7 +77,7 @@ const _kSteps = [
     body:
         'Tap AI Scan to open the camera.\nPoint at your plate and get instant calories & macros!\nIncludes flashlight toggle and low-light warnings.',
     tab: 0,
-    spot: _SpotRect(0.76, 0.85, 0.42, 0.07),
+    spot: _SpotRect(0.80, 0.85, 0.34, 0.065, r: 0.04),
   ),
   // 2 – AI Speech (extended FAB, above manual)
   _Step(
@@ -85,7 +85,7 @@ const _kSteps = [
     body:
         'Tap AI Speech to log food by voice in English.\nSay "200 grams of chicken and a banana" — it matches your food database automatically.',
     tab: 0,
-    spot: _SpotRect(0.76, 0.70, 0.42, 0.07),
+    spot: _SpotRect(0.80, 0.70, 0.34, 0.065, r: 0.04),
   ),
   // 3 – Manual Log (extended FAB, above voice)
   _Step(
@@ -93,7 +93,7 @@ const _kSteps = [
     body:
         'Search foods, pick from My Meals, or scan a barcode.\nBarcode scanning shows a health score (0-100) before logging.',
     tab: 0,
-    spot: _SpotRect(0.76, 0.78, 0.42, 0.07),
+    spot: _SpotRect(0.80, 0.775, 0.34, 0.065, r: 0.04),
   ),
   // 4 – Body map icon (AppBar action, left of nutrition)
   _Step(
@@ -101,7 +101,7 @@ const _kSteps = [
     body:
         'Tap the body icon to open the anatomy map.\nBrain, eyes, heart, lungs, gut, bones, muscles, skin, blood, and immune regions are tappable and color-coded from your nutrient intake.',
     tab: 0,
-    spot: _SpotRect(0.82, 0.09, 0.11, 0.065),
+    spot: _SpotRect(0.82, 0.09, 0.105, 0.06, r: 0.035),
     tipBelow: true,
   ),
   // 5 – Nutrition button (leaf icon, rightmost AppBar action)
@@ -110,7 +110,7 @@ const _kSteps = [
     body:
         'The leaf icon opens your full nutrition dashboard with macros, vitamins, minerals, and the upgraded micronutrient wheel.',
     tab: 0,
-    spot: _SpotRect(0.93, 0.09, 0.11, 0.065),
+    spot: _SpotRect(0.935, 0.09, 0.105, 0.06, r: 0.035),
     tipBelow: true,
   ),
   // 6 – Hydration card (scrolls home screen to show it)
@@ -119,7 +119,7 @@ const _kSteps = [
     body:
         'The hydration card tracks your daily water intake.\nUse the plus button for water, coffee, tea, and other drinks.',
     tab: 0,
-    spot: _SpotRect(0.50, 0.60, 0.90, 0.18),
+    spot: _SpotRect(0.76, 0.535, 0.12, 0.06, r: 0.035),
     scroll: _ScrollTarget.hydration,
   ),
   // 7 – Analytics tab
@@ -127,7 +127,7 @@ const _kSteps = [
     title: 'Analytics 📊',
     body: 'Track weekly & monthly calorie and macro trends here.',
     tab: 1,
-    spot: _SpotRect(0.30, 0.955, 0.18, 0.065),
+    spot: _SpotRect(0.30, 0.955, 0.18, 0.06, r: 0.03),
   ),
   // 8 – Groceries tab
   _Step(
@@ -135,7 +135,7 @@ const _kSteps = [
     body:
         'Add items manually or get smart suggestions based on your scan history.',
     tab: 2,
-    spot: _SpotRect(0.50, 0.955, 0.18, 0.065),
+    spot: _SpotRect(0.50, 0.955, 0.18, 0.06, r: 0.03),
   ),
   // 9 – Settings tab
   _Step(
@@ -143,7 +143,7 @@ const _kSteps = [
     body:
         'Change your nutrition goal, color theme, mascot, text size, weekly badge recap, and more.\nDiabetes users can set ICR for bolus calculations.',
     tab: 4,
-    spot: _SpotRect(0.90, 0.955, 0.18, 0.065),
+    spot: _SpotRect(0.90, 0.955, 0.18, 0.06, r: 0.03),
   ),
   // 10 – Weekly badge recap setting
   _Step(
@@ -151,23 +151,23 @@ const _kSteps = [
     body:
         'At the start of each week, the app can show the badges you earned last week.\nUse this setting to turn that recap on or off.',
     tab: 4,
-    spot: _SpotRect(0.50, 0.52, 0.90, 0.16),
+    spot: _SpotRect(0.86, 0.52, 0.18, 0.07, r: 0.035),
     scroll: _ScrollTarget.weeklyReview,
   ),
   // 10 – Vacation mode (scrolls to it in Settings)
   _Step(
     title: 'Vacation Mode 🏖️',
     body:
-        "Protect your streak while you're away.\nTap the toggle to activate Vacation Mode.\nYou can also adjust your daily water goal and Glycemic Load settings here.",
+        'Protect your streak while you\'re away.\nTap the toggle to activate Vacation Mode.\nYou can also adjust your daily water goal and Glycemic Load settings here.',
     tab: 4,
-    spot: _SpotRect(0.50, 0.52, 0.90, 0.16),
+    spot: _SpotRect(0.86, 0.52, 0.18, 0.07, r: 0.035),
     scroll: _ScrollTarget.vacation,
   ),
   // 12 – Outro
   _Step(
-    title: "You're All Set! 🚀",
+    title: 'You\'re All Set! 🚀',
     body:
-        "Start scanning your first meal — or speak it!\n\nTip: you can replay this tour anytime from Settings → About.",
+        'Start scanning your first meal — or speak it!\n\nTip: you can replay this tour anytime from Settings → About.',
     tab: 0,
   ),
 ];
@@ -281,7 +281,7 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Highlight painter: dims everything, draws a clean border over the target
+// Highlight painter: dims everything except the target cutout.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _HighlightPainter extends CustomPainter {
@@ -298,28 +298,22 @@ class _HighlightPainter extends CustomPainter {
     final h = spot.h * size.height;
     final r = spot.r * math.min(size.width, size.height);
 
-    // Full dark overlay
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = Colors.black.withValues(alpha: 0.78),
-    );
-
-    // Subtle tint to slightly reveal the target area
-    final highlightRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx, cy), width: w + 12, height: h + 12),
+    final bounds = Offset.zero & size;
+    final cutout = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(cx, cy), width: w + 10, height: h + 10),
       Radius.circular(r),
     );
-    canvas.drawRRect(
-        highlightRect, Paint()..color = Colors.white.withValues(alpha: 0.07));
 
-    // Clean white border around the target
-    canvas.drawRRect(
-      highlightRect,
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.88)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5,
+    canvas.saveLayer(bounds, Paint());
+    canvas.drawRect(
+      bounds,
+      Paint()..color = Colors.black.withValues(alpha: 0.78),
     );
+    canvas.drawRRect(
+      cutout,
+      Paint()..blendMode = BlendMode.clear,
+    );
+    canvas.restore();
   }
 
   @override
