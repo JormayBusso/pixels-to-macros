@@ -155,7 +155,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         children: [
           // ── AI Speech (voice) ─────────────────────────────────
           SizedBox(
-            width: 145,
+            width: 125,
             child: FloatingActionButton.extended(
               heroTag: 'voice',
               onPressed: () => Navigator.of(context).push(
@@ -167,7 +167,7 @@ class _MainShellState extends ConsumerState<MainShell> {
               icon: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  const Icon(Icons.mic, size: 22),
+                  const Icon(Icons.mic, size: 20),
                   Positioned(
                     right: -5,
                     bottom: -5,
@@ -178,34 +178,34 @@ class _MainShellState extends ConsumerState<MainShell> {
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.auto_awesome,
-                          size: 9, color: Colors.white),
+                          size: 8, color: Colors.white),
                     ),
                   ),
                 ],
               ),
               label: const Text('AI Speech',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
             ),
           ),
           const SizedBox(height: 8),
           // ── Manual Log ────────────────────────────────────────
           SizedBox(
-            width: 145,
+            width: 125,
             child: FloatingActionButton.extended(
               heroTag: 'manual',
               onPressed: _openManualEntry,
               backgroundColor: Colors.white,
               foregroundColor: context.primary700,
               elevation: 2,
-              icon: const Icon(Icons.edit_note, size: 22),
+              icon: const Icon(Icons.edit_note, size: 20),
               label: const Text('Manual Log',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
             ),
           ),
           const SizedBox(height: 8),
           // ── AI Scan ───────────────────────────────────────────
           SizedBox(
-            width: 145,
+            width: 125,
             child: FloatingActionButton.extended(
               heroTag: 'scan',
               onPressed: _openScan,
@@ -215,7 +215,7 @@ class _MainShellState extends ConsumerState<MainShell> {
               icon: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  const Icon(Icons.camera_alt, size: 22),
+                  const Icon(Icons.camera_alt, size: 20),
                   Positioned(
                     right: -5,
                     bottom: -5,
@@ -226,13 +226,13 @@ class _MainShellState extends ConsumerState<MainShell> {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(Icons.auto_awesome,
-                          size: 9, color: context.primary600),
+                          size: 8, color: context.primary600),
                     ),
                   ),
                 ],
               ),
               label: const Text('AI Scan',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
             ),
           ),
         ],

@@ -49,10 +49,6 @@ final class InferencePipeline {
 
         // ── 2. Plate detection (on top frame) ───────────────────────────
         let plate = plateDetector.detect(in: topFrame.pixelBuffer)
-        let pxPerCm = plateDetector.pixelsPerCm(
-            plate: plate,
-            frameWidth: CVPixelBufferGetWidth(topFrame.pixelBuffer)
-        )
 
         // ── 3. Preprocess RGB for CoreML ────────────────────────────────
         guard let preprocessedRGB = autoreleasepool(invoking: {
@@ -119,10 +115,12 @@ final class InferencePipeline {
         let depthAvg = depthCount > 0 ? depthSum / Float(depthCount) : 0
 
         // ── 7. Volume calculation ───────────────────────────────────────
+        let maskPixelsPerCm = CGFloat(preprocessor.modelInputWidth) /
+            PlateDetector.defaultDiameterCm
         let volumes = volumeCalculator.calculate(
             objects: segments,
             depthBuffer: preprocessedDepth,
-            pixelsPerCm: pxPerCm,
+            pixelsPerCm: maskPixelsPerCm,
             maskWidth: preprocessor.modelInputWidth,
             maskHeight: preprocessor.modelInputHeight
         )
@@ -236,9 +234,21 @@ final class InferencePipeline {
             segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
         } catch {
             print("[InferencePipeline] runVideoScan: segmentation failed: \(error)")
-            throw PipelineError.segmentationFailed(error)
+            return makeWholePlateFallbackJSON(
+                topFrame: topFrame,
+                plate: plate,
+                recorder: recorder,
+                reason: "segmentation_failed"
+            )
         }
-        guard !segments.isEmpty else { return "[]" }
+        guard !segments.isEmpty else {
+            return makeWholePlateFallbackJSON(
+                topFrame: topFrame,
+                plate: plate,
+                recorder: recorder,
+                reason: "no_segments"
+            )
+        }
 
         // ── 4. Multi-frame depth fusion ─────────────────────────────────
         let fusion = DepthFusion()
@@ -282,35 +292,24 @@ final class InferencePipeline {
         )
 
         // ── 6. Volumes ──────────────────────────────────────────────────
+        let fusedVolumes = fusion.totalOccupiedVoxels > 10 ? fusion.allVolumes() : [:]
         let volumes: [String: Double]
-        if fusion.totalOccupiedVoxels > 10 {
-            volumes = fusion.allVolumes()
-        } else {
-            // No real depth data: fall back to single-frame plate heuristic.
-            let pxPerCm = plateDetector.pixelsPerCm(
-                plate: plate,
-                frameWidth: CVPixelBufferGetWidth(topFrame.pixelBuffer)
+        if fusedVolumes.values.contains(where: { $0 > 1.0 }) {
+            var mergedVolumes = fallbackVolumes(
+                segments: segments,
+                topFrame: topFrame,
+                cropRect: cropRect
             )
-            let preprocessedDepth: CVPixelBuffer? = topFrame.depthBuffer.flatMap { depth in
-                autoreleasepool {
-                    preprocessor.preprocessDepth(
-                        depthBuffer:  depth,
-                        plateRect:    cropRect,
-                        outputWidth:  preprocessor.modelInputWidth,
-                        outputHeight: preprocessor.modelInputHeight
-                    )
-                }
+            for (label, volume) in fusedVolumes where volume > 1.0 {
+                mergedVolumes[label] = volume
             }
-            let fallback = volumeCalculator.calculate(
-                objects:    segments,
-                depthBuffer: preprocessedDepth,
-                pixelsPerCm: pxPerCm,
-                maskWidth:  preprocessor.modelInputWidth,
-                maskHeight: preprocessor.modelInputHeight
+            volumes = mergedVolumes
+        } else {
+            volumes = fallbackVolumes(
+                segments: segments,
+                topFrame: topFrame,
+                cropRect: cropRect
             )
-            var vols: [String: Double] = [:]
-            for v in fallback { vols[v.label, default: 0] += v.volumeCm3 }
-            volumes = vols
         }
 
         // ── 7. Serialise to JSON ────────────────────────────────────────
@@ -341,5 +340,130 @@ final class InferencePipeline {
         print("─────────────────────────────────────────")
 
         return json
+    }
+
+    /// Fallback when voxel labelling cannot produce usable volumes. This still
+    /// uses the top-frame segmentation mask plus depth/plate geometry, so the
+    /// scan returns a useful editable estimate instead of a hard error.
+    private func fallbackVolumes(
+        segments: [SegmentationService.SegmentedObject],
+        topFrame: FrameCaptureService.CapturedFrame,
+        cropRect: CGRect?
+    ) -> [String: Double] {
+        let preprocessedDepth: CVPixelBuffer? = topFrame.depthBuffer.flatMap { depth in
+            autoreleasepool {
+                preprocessor.preprocessDepth(
+                    depthBuffer:  depth,
+                    plateRect:    cropRect,
+                    outputWidth:  preprocessor.modelInputWidth,
+                    outputHeight: preprocessor.modelInputHeight
+                )
+            }
+        }
+
+        let pixelsPerCm = CGFloat(preprocessor.modelInputWidth) /
+            PlateDetector.defaultDiameterCm
+        let fallback = volumeCalculator.calculate(
+            objects:     segments,
+            depthBuffer: preprocessedDepth,
+            pixelsPerCm: pixelsPerCm,
+            maskWidth:   preprocessor.modelInputWidth,
+            maskHeight:  preprocessor.modelInputHeight
+        )
+
+        let pixelAreaCm2 = pow(1.0 / Double(pixelsPerCm), 2)
+        var volumes: [String: Double] = [:]
+        for volume in fallback {
+            // Ensure tiny/flat depth maps still produce an editable portion.
+            let minimumVolume = Double(volume.pixelCount) * pixelAreaCm2 * 1.0
+            volumes[volume.label, default: 0] += max(volume.volumeCm3, minimumVolume)
+        }
+        return volumes
+    }
+
+    /// Last-resort fallback used when the segmentation model itself fails or
+    /// returns no food. It estimates one mixed-food volume from the known plate
+    /// size and depth variation across the top-to-side video sweep.
+    private func makeWholePlateFallbackJSON(
+        topFrame: FrameCaptureService.CapturedFrame,
+        plate: PlateDetector.PlateResult,
+        recorder: MultiFrameRecorder,
+        reason: String
+    ) -> String {
+        let heightCm = estimateFoodHeightCm(topFrame: topFrame, recorder: recorder)
+        let plateRadiusCm = Double(PlateDetector.defaultDiameterCm / 2.0)
+        let plateAreaCm2 = Double.pi * plateRadiusCm * plateRadiusCm
+        let fillFraction = plate.detected ? 0.28 : 0.22
+        let volumeCm3 = max(80.0, min(900.0, plateAreaCm2 * fillFraction * heightCm))
+
+        let payload: [[String: Any]] = [[
+            "label": "others",
+            "volume_cm3": round(volumeCm3 * 10) / 10,
+            "pixel_count": Int(Double(preprocessor.modelInputWidth * preprocessor.modelInputHeight) * fillFraction),
+            "confidence": 0.25,
+            "frames_used": recorder.lightFrames.count,
+            "depth_min_m": 0.0,
+            "depth_max_m": 0.0,
+            "depth_avg_m": 0.0,
+            "fallback_reason": reason,
+        ]]
+
+        guard let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
+              let json = String(data: data, encoding: .utf8)
+        else { return "[]" }
+
+        print("[InferencePipeline] fallback estimate: \(String(format: "%.1f", volumeCm3)) cm3, reason=\(reason)")
+        return json
+    }
+
+    private func estimateFoodHeightCm(
+        topFrame: FrameCaptureService.CapturedFrame,
+        recorder: MultiFrameRecorder
+    ) -> Double {
+        var heights: [Double] = []
+        if let depth = topFrame.depthBuffer,
+           let height = estimateHeightCm(from: depth) {
+            heights.append(height)
+        }
+        for frame in recorder.lightFrames.prefix(6) {
+            if let height = estimateHeightCm(from: frame.depthBuffer) {
+                heights.append(height)
+            }
+        }
+        return heights.max() ?? 2.5
+    }
+
+    private func estimateHeightCm(from depthBuffer: CVPixelBuffer) -> Double? {
+        CVPixelBufferLockBaseAddress(depthBuffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(depthBuffer, .readOnly) }
+
+        let width = CVPixelBufferGetWidth(depthBuffer)
+        let height = CVPixelBufferGetHeight(depthBuffer)
+        let rowBytes = CVPixelBufferGetBytesPerRow(depthBuffer)
+        guard let base = CVPixelBufferGetBaseAddress(depthBuffer) else { return nil }
+        let ptr = base.assumingMemoryBound(to: Float32.self)
+        let floatsPerRow = rowBytes / MemoryLayout<Float32>.stride
+
+        let minRow = height / 4
+        let maxRow = height * 3 / 4
+        let minCol = width / 4
+        let maxCol = width * 3 / 4
+        var values: [Float] = []
+        for row in Swift.stride(from: minRow, to: maxRow, by: 4) {
+            for col in Swift.stride(from: minCol, to: maxCol, by: 4) {
+                let depth = ptr[row * floatsPerRow + col]
+                if depth > 0.05 && depth < 1.5 {
+                    values.append(depth)
+                }
+            }
+        }
+
+        guard values.count >= 20 else { return nil }
+        values.sort()
+        let near = values[max(0, values.count / 10)]
+        let far = values[min(values.count - 1, values.count * 9 / 10)]
+        let heightCm = Double(max(0, far - near) * 100.0)
+        guard heightCm >= 0.5 else { return nil }
+        return min(8.0, max(0.8, heightCm))
     }
 }

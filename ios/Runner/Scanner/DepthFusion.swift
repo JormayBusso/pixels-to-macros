@@ -64,6 +64,7 @@ final class DepthFusion {
         let fy = cameraIntrinsics.columns.1.y * sy
         let cx = cameraIntrinsics.columns.2.x * sx
         let cy = cameraIntrinsics.columns.2.y * sy
+        guard abs(fx) > 0.0001, abs(fy) > 0.0001 else { return }
 
         for row in Swift.stride(from: 0, to: dH, by: stride) {
             for col in Swift.stride(from: 0, to: dW, by: stride) {

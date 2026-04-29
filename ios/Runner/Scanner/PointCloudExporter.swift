@@ -1,5 +1,6 @@
 import CoreVideo
 import Foundation
+import simd
 
 /// Generates a PLY-format 3D point cloud from a depth buffer and
 /// optional segmentation mask (Part 15).
@@ -52,8 +53,49 @@ final class PointCloudExporter {
         let rgbW = CVPixelBufferGetWidth(rgbBuffer)
         let rgbH = CVPixelBufferGetHeight(rgbBuffer)
         let rgbRowBytes = CVPixelBufferGetBytesPerRow(rgbBuffer)
-        guard let rgbBase = CVPixelBufferGetBaseAddress(rgbBuffer) else { return nil }
-        let rgbPtr = rgbBase.assumingMemoryBound(to: UInt8.self)
+        let rgbBase = CVPixelBufferGetBaseAddress(rgbBuffer)
+        let rgbPtr = rgbBase?.assumingMemoryBound(to: UInt8.self)
+        let planeCount = CVPixelBufferGetPlaneCount(rgbBuffer)
+        let yPlane = planeCount >= 2
+            ? CVPixelBufferGetBaseAddressOfPlane(rgbBuffer, 0)?.assumingMemoryBound(to: UInt8.self)
+            : nil
+        let cbcrPlane = planeCount >= 2
+            ? CVPixelBufferGetBaseAddressOfPlane(rgbBuffer, 1)?.assumingMemoryBound(to: UInt8.self)
+            : nil
+        let yRowBytes = planeCount >= 2 ? CVPixelBufferGetBytesPerRowOfPlane(rgbBuffer, 0) : 0
+        let cbcrRowBytes = planeCount >= 2 ? CVPixelBufferGetBytesPerRowOfPlane(rgbBuffer, 1) : 0
+        let cbcrW = planeCount >= 2 ? CVPixelBufferGetWidthOfPlane(rgbBuffer, 1) : 0
+        let cbcrH = planeCount >= 2 ? CVPixelBufferGetHeightOfPlane(rgbBuffer, 1) : 0
+
+        func clampByte(_ value: Float) -> UInt8 {
+            UInt8(max(0, min(255, Int(value.rounded()))))
+        }
+
+        func sampleColour(row: Int, col: Int) -> (r: UInt8, g: UInt8, b: UInt8) {
+            if let rgbPtr, planeCount == 0 {
+                let bytesPerPixel = max(rgbRowBytes / max(rgbW, 1), 4)
+                let offset = row * rgbRowBytes + col * bytesPerPixel
+                let b = rgbPtr[offset]
+                let g = rgbPtr[offset + 1]
+                let r = rgbPtr[offset + 2]
+                return (r, g, b)
+            }
+
+            if let yPlane, let cbcrPlane, cbcrW > 0, cbcrH > 0 {
+                let y = Float(yPlane[row * yRowBytes + col])
+                let uvCol = min(col / 2, cbcrW - 1)
+                let uvRow = min(row / 2, cbcrH - 1)
+                let uvOffset = uvRow * cbcrRowBytes + uvCol * 2
+                let cb = Float(cbcrPlane[uvOffset]) - 128.0
+                let cr = Float(cbcrPlane[uvOffset + 1]) - 128.0
+                let r = y + 1.402 * cr
+                let g = y - 0.344136 * cb - 0.714136 * cr
+                let b = y + 1.772 * cb
+                return (clampByte(r), clampByte(g), clampByte(b))
+            }
+
+            return (220, 220, 220)
+        }
 
         // Camera intrinsics — extract focal length and principal point
         let fx: Float = intrinsics.count >= 9 ? intrinsics[0] : 500
@@ -90,15 +132,10 @@ final class PointCloudExporter {
                 let rgbCol = min(Int(Float(col) * Float(rgbW) / Float(depthW)), rgbW - 1)
                 let rgbRow = min(Int(Float(row) * Float(rgbH) / Float(depthH)), rgbH - 1)
 
-                let bytesPerPixel = rgbRowBytes / rgbW
-                let pixelOffset = rgbRow * rgbRowBytes + rgbCol * bytesPerPixel
+                let colour = sampleColour(row: rgbRow, col: rgbCol)
 
-                // BGRA format — common for iOS camera buffers
-                let b = rgbPtr[pixelOffset]
-                let g = rgbPtr[pixelOffset + 1]
-                let r = rgbPtr[pixelOffset + 2]
-
-                points.append(Point3D(x: x, y: y, z: z, r: r, g: g, b: b))
+                points.append(Point3D(x: x, y: y, z: z,
+                                      r: colour.r, g: colour.g, b: colour.b))
             }
         }
 
@@ -141,6 +178,40 @@ final class PointCloudExporter {
             intr.columns.0.x, intr.columns.0.y, intr.columns.0.z,
             intr.columns.1.x, intr.columns.1.y, intr.columns.1.z,
             intr.columns.2.x, intr.columns.2.y, intr.columns.2.z,
+        ]
+
+        return generatePLY(
+            depthBuffer: depthBuffer,
+            rgbBuffer: topFrame.pixelBuffer,
+            intrinsics: intrinsics
+        )
+    }
+
+    /// Generate a PLY from the most recent video-sweep recording.
+    /// The top RGB frame supplies colour; top-frame depth is preferred, with
+    /// the first depth sweep frame as a fallback.
+    func exportFromRecorder(recorder: MultiFrameRecorder) -> String? {
+        guard let topFrame = recorder.topFrame else { return nil }
+
+        let depthBuffer: CVPixelBuffer?
+        let intrinsicsMatrix: simd_float3x3
+        if let topDepth = topFrame.depthBuffer {
+            depthBuffer = topDepth
+            intrinsicsMatrix = topFrame.cameraIntrinsics
+        } else if let firstDepthFrame = recorder.lightFrames.first {
+            depthBuffer = firstDepthFrame.depthBuffer
+            intrinsicsMatrix = firstDepthFrame.cameraIntrinsics
+        } else {
+            depthBuffer = nil
+            intrinsicsMatrix = topFrame.cameraIntrinsics
+        }
+
+        guard let depthBuffer else { return nil }
+
+        let intrinsics: [Float] = [
+            intrinsicsMatrix.columns.0.x, intrinsicsMatrix.columns.0.y, intrinsicsMatrix.columns.0.z,
+            intrinsicsMatrix.columns.1.x, intrinsicsMatrix.columns.1.y, intrinsicsMatrix.columns.1.z,
+            intrinsicsMatrix.columns.2.x, intrinsicsMatrix.columns.2.y, intrinsicsMatrix.columns.2.z,
         ]
 
         return generatePLY(

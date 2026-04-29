@@ -36,8 +36,25 @@ final class SegmentationService {
     private var model: VNCoreMLModel?
     private let modelLock = NSLock()
 
-    /// Label map — index 0 is background, 1–103 are FoodSeg103 classes.
+    /// Label map for the full FoodSeg103 model. The app can also ship a
+    /// smaller thesis/demo model, so label lookup is selected from the model's
+    /// output class count at parse time.
     private(set) var labelMap: [Int: String] = SegmentationService.buildLabelMap()
+
+    /// Labels for the bundled 10-class mini model generated from
+    /// data/FoodSeg103_mini/category_id.txt.
+    private static let miniLabelMap: [Int: String] = [
+        0: "background",
+        1: "apple",
+        2: "rice",
+        3: "chicken",
+        4: "bread",
+        5: "salad",
+        6: "pasta",
+        7: "egg",
+        8: "fish",
+        9: "potato",
+    ]
 
     private static func buildLabelMap() -> [Int: String] {
         var m = [Int: String]()
@@ -215,44 +232,64 @@ final class SegmentationService {
 
     // MARK: – Output parsing
 
-    /// Parse the MLMultiArray argmax grid into per-class binary masks.
-    ///
-    /// The model outputs shape [1, numClasses, H, W] (softmax probabilities)
-    /// or [1, H, W] (argmax class indices).
+    /// Parse the MLMultiArray logits/probabilities into per-class binary masks.
+    /// Supports channels-first [1, C, H, W], channels-last [1, H, W, C],
+    /// [1, H, W] argmax, and [H, W] argmax outputs.
     private func parseSegmentationOutput(_ output: MLMultiArray) -> [SegmentedObject] {
         let shape = output.shape.map { $0.intValue }
-
-        // Determine grid dimensions
-        let (height, width, numClasses): (Int, Int, Int)
-        if shape.count == 4 {
-            // [1, C, H, W]
-            numClasses = shape[1]
-            height = shape[2]
-            width = shape[3]
-        } else if shape.count == 3 {
-            // [1, H, W] — argmax indices
-            numClasses = 0
-            height = shape[1]
-            width = shape[2]
-        } else {
-            return []
-        }
 
         // Strides from the array's own metadata — avoids assuming contiguous layout.
         let strides = output.strides.map { $0.intValue }
 
-        // We only support Float32 output (our mlprogram exports Float32 I/O).
-        guard output.dataType == .float32 else {
-            // Unexpected type — fall back to safe (slow) subscript access.
-            return parseSegmentationOutputSafe(output,
-                height: height, width: width, numClasses: numClasses)
+        var height = 0
+        var width = 0
+        var numClasses = 0
+        var classOffset: ((Int, Int, Int) -> Int)?
+        var argmaxOffset: ((Int, Int) -> Int)?
+
+        if shape.count == 4 {
+            // [1, C, H, W] or [1, H, W, C]
+            if shape[1] <= 256 && shape[2] > 1 && shape[3] > 1 {
+                numClasses = shape[1]
+                height = shape[2]
+                width = shape[3]
+                let sC = strides[1]
+                let sR = strides[2]
+                let sCol = strides[3]
+                classOffset = { cls, row, col in cls * sC + row * sR + col * sCol }
+            } else if shape[3] <= 256 && shape[1] > 1 && shape[2] > 1 {
+                numClasses = shape[3]
+                height = shape[1]
+                width = shape[2]
+                let sR = strides[1]
+                let sCol = strides[2]
+                let sC = strides[3]
+                classOffset = { cls, row, col in row * sR + col * sCol + cls * sC }
+            } else {
+                return []
+            }
+        } else if shape.count == 3 {
+            // [1, H, W] argmax indices.
+            height = shape[1]
+            width = shape[2]
+            let sR = strides[1]
+            let sCol = strides[2]
+            argmaxOffset = { row, col in row * sR + col * sCol }
+        } else if shape.count == 2 {
+            // [H, W] argmax indices.
+            height = shape[0]
+            width = shape[1]
+            let sR = strides[0]
+            let sCol = strides[1]
+            argmaxOffset = { row, col in row * sR + col * sCol }
+        } else {
+            return []
         }
 
         // Build class-index grid + confidence grid
         var classGrid = [[Int]](repeating: [Int](repeating: 0, count: width), count: height)
         var confGrid  = [[Float]](repeating: [Float](repeating: 0, count: width), count: height)
 
-        let ptr = output.dataPointer.assumingMemoryBound(to: Float32.self)
         // Compute the actual addressable element count from the underlying buffer.
         // output.count is the *logical* element count, but stride-based indexing
         // can reach beyond that when the layout is non-contiguous.
@@ -265,20 +302,45 @@ final class SegmentationService {
         }()
         let maxIdx = bufferLen
 
-        if numClasses > 0 {
+        let valueAt: (Int) -> Float
+        switch output.dataType {
+        case .float32:
+            let ptr = output.dataPointer.assumingMemoryBound(to: Float32.self)
+            valueAt = { idx in
+                guard idx >= 0 && idx < maxIdx else { return -Float.greatestFiniteMagnitude }
+                return ptr[idx]
+            }
+        case .float16:
+            let ptr = output.dataPointer.assumingMemoryBound(to: Float16.self)
+            valueAt = { idx in
+                guard idx >= 0 && idx < maxIdx else { return -Float.greatestFiniteMagnitude }
+                return Float(ptr[idx])
+            }
+        case .double:
+            let ptr = output.dataPointer.assumingMemoryBound(to: Double.self)
+            valueAt = { idx in
+                guard idx >= 0 && idx < maxIdx else { return -Float.greatestFiniteMagnitude }
+                return Float(ptr[idx])
+            }
+        case .int32:
+            let ptr = output.dataPointer.assumingMemoryBound(to: Int32.self)
+            valueAt = { idx in
+                guard idx >= 0 && idx < maxIdx else { return 0 }
+                return Float(ptr[idx])
+            }
+        @unknown default:
+            return parseSegmentationOutputSafe(output,
+                height: height, width: width, numClasses: numClasses)
+        }
+
+        if let classOffset, numClasses > 0 {
             // Softmax output — argmax per pixel, resolve overlaps by confidence.
-            // Use strides[1/2/3] so non-contiguous layouts are handled correctly.
-            let sC = strides.count == 4 ? strides[1] : strides[0]
-            let sR = strides.count == 4 ? strides[2] : strides[1]
-            let sCol = strides.count == 4 ? strides[3] : strides[2]
             for r in 0..<height {
                 for c in 0..<width {
                     var bestClass = 0
                     var bestConf: Float = -Float.infinity
                     for cls in 0..<numClasses {
-                        let idx = cls * sC + r * sR + c * sCol
-                        guard idx >= 0 && idx < maxIdx else { continue }
-                        let val = ptr[idx]
+                        let val = valueAt(classOffset(cls, r, c))
                         if val > bestConf {
                             bestConf = val
                             bestClass = cls
@@ -288,22 +350,19 @@ final class SegmentationService {
                     confGrid[r][c]  = bestConf
                 }
             }
-        } else {
+        } else if let argmaxOffset {
             // Argmax indices directly
-            let sR   = strides.count == 3 ? strides[1] : strides[0]
-            let sCol = strides.count == 3 ? strides[2] : strides[1]
             for r in 0..<height {
                 for c in 0..<width {
-                    let idx = r * sR + c * sCol
-                    guard idx >= 0 && idx < maxIdx else { continue }
-                    classGrid[r][c] = Int(ptr[idx])
+                    classGrid[r][c] = max(0, Int(valueAt(argmaxOffset(r, c))))
                     confGrid[r][c]  = 1.0
                 }
             }
         }
 
         return buildObjects(classGrid: classGrid, confGrid: confGrid,
-                            height: height, width: width)
+                            height: height, width: width,
+                            totalClasses: numClasses)
     }
 
     /// Safe fallback that uses `MLMultiArray`'s subscript (handles any data type).
@@ -344,13 +403,22 @@ final class SegmentationService {
         }
 
         return buildObjects(classGrid: classGrid, confGrid: confGrid,
-                            height: height, width: width)
+                            height: height, width: width,
+                            totalClasses: numClasses)
+    }
+
+    private func label(for classIndex: Int, totalClasses: Int) -> String {
+        if totalClasses == SegmentationService.miniLabelMap.count {
+            return SegmentationService.miniLabelMap[classIndex] ?? "others"
+        }
+        return labelMap[classIndex] ?? "others"
     }
 
     /// Convert per-pixel class/confidence grids into `SegmentedObject` list.
     private func buildObjects(
         classGrid: [[Int]], confGrid: [[Float]],
-        height: Int, width: Int
+        height: Int, width: Int,
+        totalClasses: Int
     ) -> [SegmentedObject] {
         // Group pixels by class
         var classPixels: [Int: [(row: Int, col: Int, conf: Float)]] = [:]
@@ -375,7 +443,7 @@ final class SegmentationService {
                 sumConf += p.conf
             }
             let count = pixels.count
-            let label = labelMap[cls] ?? "food_\(cls)"
+            let label = label(for: cls, totalClasses: totalClasses)
             objects.append(SegmentedObject(
                 label: label,
                 classIndex: cls,

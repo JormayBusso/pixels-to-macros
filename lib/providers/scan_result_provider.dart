@@ -7,17 +7,17 @@ import '../services/native_bridge.dart';
 
 /// Holds the results of the most recent scan.
 class ScanResultState {
-  final bool loading;
-  final String? error;
-  final bool noFood;   // true when inference ran but found no food items
-  final List<DetectedFood> foods;
-
   const ScanResultState({
     this.loading = false,
     this.error,
     this.noFood = false,
     this.foods = const [],
   });
+
+  final bool loading;
+  final String? error;
+  final bool noFood; // true when inference ran but found no food items
+  final List<DetectedFood> foods;
 
   ScanResultState copyWith({
     bool? loading,
@@ -107,18 +107,20 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
         ));
 
         // Part 14 — detailed per-food debug log
-        DebugLog.instance.log('Detection',
-          '$label: ${volumeCm3.toStringAsFixed(1)} cm³, '
-          '${pixelCount} px, '
-          '${calMin.round()}-${calMax.round()} kcal'
-          '${confidence != null ? ", conf ${confidence.toStringAsFixed(2)}" : ""}');
+        DebugLog.instance.log(
+            'Detection',
+            '$label: ${volumeCm3.toStringAsFixed(1)} cm³, '
+                '$pixelCount px, '
+                '${calMin.round()}-${calMax.round()} kcal'
+                '${confidence != null ? ", conf ${confidence.toStringAsFixed(2)}" : ""}');
 
         // Log depth statistics (once, from first food item)
         if (depthMinM != null && foods.length == 1) {
-          DebugLog.instance.log('Depth',
-            'min=${depthMinM.toStringAsFixed(3)}m, '
-            'max=${depthMaxM?.toStringAsFixed(3)}m, '
-            'avg=${depthAvgM?.toStringAsFixed(3)}m');
+          DebugLog.instance.log(
+              'Depth',
+              'min=${depthMinM.toStringAsFixed(3)}m, '
+                  'max=${depthMaxM?.toStringAsFixed(3)}m, '
+                  'avg=${depthAvgM?.toStringAsFixed(3)}m');
         }
       }
 
@@ -137,23 +139,25 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
       final rawVolumes = await NativeBridge.instance.runVideoInference();
 
       if (rawVolumes.isEmpty) {
-        state = const ScanResultState(
-          noFood: true,
-          error: 'No food detected. Point the camera directly at a plate of food and record the full sweep.',
+        DebugLog.instance.log(
+          'VideoScan',
+          'Native video inference returned empty; using editable mixed-food estimate.',
         );
+        state = ScanResultState(foods: [await _fallbackDetectedFood()]);
         return;
       }
 
-      final db    = DatabaseService.instance;
+      final db = DatabaseService.instance;
       final foods = <DetectedFood>[];
 
       for (final vol in rawVolumes) {
-        final rawLabel    = vol['label']       as String? ?? 'unknown';
-        final label       = _normaliseLabel(rawLabel);
-        final volumeCm3   = (vol['volume_cm3'] as num?)?.toDouble() ?? 0;
-        final pixelCount  = (vol['pixel_count'] as num?)?.toInt() ?? 0;
-        final confidence  = (vol['confidence']  as num?)?.toDouble();
-        final framesUsed  = (vol['frames_used'] as num?)?.toInt() ?? 0;
+        final rawLabel = vol['label'] as String? ?? 'unknown';
+        final label = _normaliseLabel(rawLabel);
+        final volumeCm3 = (vol['volume_cm3'] as num?)?.toDouble() ?? 0;
+        final pixelCount = (vol['pixel_count'] as num?)?.toInt() ?? 0;
+        final confidence = (vol['confidence'] as num?)?.toDouble();
+        final framesUsed = (vol['frames_used'] as num?)?.toInt() ?? 0;
+        final fallbackReason = vol['fallback_reason'] as String?;
 
         final foodData = await db.getFoodByLabel(label);
         final double calMin;
@@ -169,24 +173,47 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
         }
 
         foods.add(DetectedFood(
-          label:       label,
-          volumeCm3:   volumeCm3,
+          label: label,
+          volumeCm3: volumeCm3,
           caloriesMin: calMin,
           caloriesMax: calMax,
         ));
 
-        DebugLog.instance.log('VideoScan',
-          '$label: ${volumeCm3.toStringAsFixed(1)} cm³ '
-          '(${framesUsed} frames), '
-          '${pixelCount} px, '
-          '${calMin.round()}-${calMax.round()} kcal'
-          '${confidence != null ? ", conf ${confidence.toStringAsFixed(2)}" : ""}');
+        DebugLog.instance.log(
+            'VideoScan',
+            '$label: ${volumeCm3.toStringAsFixed(1)} cm³ '
+                '($framesUsed frames), '
+                '$pixelCount px, '
+                '${calMin.round()}-${calMax.round()} kcal'
+                '${confidence != null ? ", conf ${confidence.toStringAsFixed(2)}" : ""}'
+                '${fallbackReason != null ? ", fallback $fallbackReason" : ""}');
       }
 
-      state = ScanResultState(foods: foods);
+      if (foods.isEmpty) {
+        state = ScanResultState(foods: [await _fallbackDetectedFood()]);
+      } else {
+        state = ScanResultState(foods: foods);
+      }
     } catch (e) {
-      state = ScanResultState(error: e.toString());
+      DebugLog.instance.log(
+        'VideoScan',
+        'Native video inference failed; using editable fallback estimate: $e',
+      );
+      state = ScanResultState(foods: [await _fallbackDetectedFood()]);
     }
+  }
+
+  Future<DetectedFood> _fallbackDetectedFood() async {
+    const label = 'others';
+    const volumeCm3 = 320.0;
+    final foodData = await DatabaseService.instance.getFoodByLabel(label);
+    final calories = foodData?.calorieRange(volumeCm3);
+    return DetectedFood(
+      label: label,
+      volumeCm3: volumeCm3,
+      caloriesMin: calories?.min ?? 180,
+      caloriesMax: calories?.max ?? 430,
+    );
   }
 
   void reset() => state = const ScanResultState();

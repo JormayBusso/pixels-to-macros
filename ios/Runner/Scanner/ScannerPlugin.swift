@@ -24,6 +24,9 @@ final class ScannerPlugin {
     private static let pointCloudExporter = PointCloudExporter()
     /// Accumulates frames during a video-sweep recording session.
     private static let recorder = MultiFrameRecorder()
+    /// PLY snapshot from the most recent video sweep. The recorder releases
+    /// buffers after inference, so export keeps this lightweight text copy.
+    private static var lastVideoPLY: String?
 
     // MARK: - Registration
 
@@ -119,6 +122,7 @@ final class ScannerPlugin {
         case "startRecording":
             // Must run on main thread — Timer requires a RunLoop.
             DispatchQueue.main.async {
+                lastVideoPLY = nil
                 recorder.startRecording(sessionManager: sessionManager)
                 result(nil)
             }
@@ -143,6 +147,7 @@ final class ScannerPlugin {
                 let ok = tryCatchObjC({
                     do {
                         jsonResult = try pipeline.runVideoScan(recorder: recorder)
+                        lastVideoPLY = pointCloudExporter.exportFromRecorder(recorder: recorder)
                     } catch {
                         swiftError = error
                     }
@@ -174,7 +179,7 @@ final class ScannerPlugin {
             DispatchQueue.global(qos: .userInitiated).async {
                 let ply = pointCloudExporter.exportFromCapture(
                     captureService: captureService
-                )
+                ) ?? lastVideoPLY
                 DispatchQueue.main.async {
                     if let ply {
                         result(ply)

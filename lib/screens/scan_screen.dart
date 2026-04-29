@@ -35,21 +35,24 @@ class ScanScreen extends ConsumerStatefulWidget {
 
 class _ScanScreenState extends ConsumerState<ScanScreen> {
   final _bridge = NativeBridge.instance;
-  bool _sessionStarted   = false;
-  bool _showTutorial     = false;
-  bool _isRecording      = false;
+  bool _sessionStarted = false;
+  bool _showTutorial = false;
+  bool _isRecording = false;
+
   /// True while runVideoInference is in-flight — prevents re-entry.
   bool _isInferenceRunning = false;
+
   /// Non-null while showing the "no food detected" overlay.
   String? _noFoodMessage;
   Timer? _noFoodResetTimer;
-  double _recordProgress = 0.0;  // 0.0 – 1.0 over the recording window
+  double _recordProgress = 0.0; // 0.0 – 1.0 over the recording window
   Timer? _recordTimer;
-  Timer? _pitchTimer;            // polls phone orientation at ~15 fps
-  double _currentPitch   = 0.0;  // radians: -π/2 = top, 0 = horizontal
+  DateTime? _recordStartedAt;
+  Timer? _pitchTimer; // polls phone orientation at ~15 fps
+  double _currentPitch = 0.0; // radians: -π/2 = top, 0 = horizontal
   String _detectedDepthMode = 'unknown';
   ScanResult? _savedScanResult;
-  int? _sessionGeneration;       // generation counter for safe stop()
+  int? _sessionGeneration; // generation counter for safe stop()
 
   /// Flashlight (torch) state and ambient light (lux) for low-light warning.
   bool _torchOn = false;
@@ -57,13 +60,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   int _pitchTickCounter = 0;
 
   static const _maxRecordDuration = Duration(seconds: 5);
-  static const _timerInterval     = Duration(milliseconds: 80);
+  static const _minRecordDuration = Duration(milliseconds: 1600);
+  static const _timerInterval = Duration(milliseconds: 80);
 
   /// Pitch thresholds (radians).
   /// Top-view:  pitch < -80° = -1.396 rad → phone is nearly flat / pointing straight down.
   /// Side-view: pitch > -10° = -0.175 rad → phone is nearly vertical (upright).
-  static const double _topViewThreshold  = -1.396;  // -80° — truly horizontal
-  static const double _sideViewThreshold = -0.175;  // -10° — nearly vertical
+  static const double _topViewThreshold = -1.396; // -80° — truly horizontal
+  static const double _sideViewThreshold = -0.175; // -10° — nearly vertical
 
   @override
   void initState() {
@@ -112,12 +116,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     } catch (_) {}
   }
 
-  String? _sessionErrorDetail;       // actual error text for UI
+  String? _sessionErrorDetail; // actual error text for UI
 
   Future<void> _startSession() async {
     // Stop any previous session, using the generation counter so only
     // the correct session is stopped.
-    try { await _bridge.stopSession(generation: _sessionGeneration); } catch (_) {}
+    try {
+      await _bridge.stopSession(generation: _sessionGeneration);
+    } catch (_) {}
 
     try {
       // ── 1. Dart-side camera permission (belt) ─────────────────────────
@@ -153,7 +159,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       // ── 4. Upgrade to depth config in the background ──────────────────
       // The session started with a bare config (no depth/mesh) to maximise
       // startup reliability.  Now that frames are flowing, add depth.
-      _bridge.upgradeDepthConfig();
+      unawaited(_bridge.upgradeDepthConfig());
 
       if (mounted) {
         setState(() {
@@ -226,7 +232,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _isInferenceRunning = false;
     // Make sure we never leave the torch on after the user leaves the screen.
     if (_torchOn) {
-      try { _bridge.setTorch(false); } catch (_) {}
+      try {
+        _bridge.setTorch(false);
+      } catch (_) {}
     }
     // Use generation-aware stop so this fire-and-forget call can never
     // accidentally kill a session started by a newer ScanScreen instance.
@@ -267,11 +275,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     // Sample ambient light every ~5 ticks (~3 Hz) — cheap.
     _pitchTickCounter++;
     if (_pitchTickCounter % 5 == 0) {
-      _bridge.getAmbientIntensity().then((lux) {
+      unawaited(_bridge.getAmbientIntensity().then((lux) {
         if (mounted && lux != _ambientLux) {
           setState(() => _ambientLux = lux);
         }
-      }).catchError((_) {});
+      }).catchError((_) {}));
     }
 
     final state = ref.read(scanStateProvider);
@@ -279,16 +287,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     // Auto-start recording when phone points down (top-view).
     if (state == ScanState.waitingForTopView && pitch < _topViewThreshold) {
       ref.read(scanStateProvider.notifier).topViewDetected();
-      _startRecording();
+      unawaited(_startRecording());
       return;
     }
 
     // Auto-stop recording when phone reaches side-view.
     // Guard: don't trigger if inference is already in-flight.
+    final hasEnoughSweep = _recordStartedAt == null ||
+        DateTime.now().difference(_recordStartedAt!) >= _minRecordDuration;
+
     if (state == ScanState.recording &&
         pitch > _sideViewThreshold &&
+        hasEnoughSweep &&
         !_isInferenceRunning) {
-      _stopRecording();
+      unawaited(_stopRecording());
     }
   }
 
@@ -298,9 +310,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     if (_isRecording || !mounted) return;
     _hapticMedium();
     setState(() {
-      _isRecording    = true;
+      _isRecording = true;
       _recordProgress = 0.0;
     });
+    _recordStartedAt = DateTime.now();
     ref.read(scanStateProvider.notifier).startedRecording();
     try {
       PerfMonitor.instance.start('record');
@@ -310,17 +323,21 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       _hapticError();
       if (!mounted) return;
       setState(() => _isRecording = false);
+      _recordStartedAt = null;
       ref.read(scanStateProvider.notifier).reset();
       return;
     }
 
     // Recording stops automatically when the phone reaches vertical (side-view).
     // The max-duration timer is a safety fallback only.
-    final totalTicks = _maxRecordDuration.inMilliseconds ~/
-        _timerInterval.inMilliseconds;
+    final totalTicks =
+        _maxRecordDuration.inMilliseconds ~/ _timerInterval.inMilliseconds;
     var tick = 0;
     _recordTimer = Timer.periodic(_timerInterval, (t) {
-      if (!mounted) { t.cancel(); return; }
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
       tick++;
       if (mounted) setState(() => _recordProgress = tick / totalTicks);
       if (tick >= totalTicks) {
@@ -332,14 +349,19 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   Future<void> _stopRecording() async {
     if (!_isRecording || _isInferenceRunning) return;
+    if (_recordStartedAt != null &&
+        DateTime.now().difference(_recordStartedAt!) < _minRecordDuration) {
+      return;
+    }
     _recordTimer?.cancel();
     _recordTimer = null;
     if (!mounted) return;
     setState(() {
-      _isRecording       = false;
+      _isRecording = false;
       _isInferenceRunning = true;
-      _recordProgress    = 1.0;
+      _recordProgress = 1.0;
     });
+    _recordStartedAt = null;
     _hapticHeavy();
     PerfMonitor.instance.end();
     try {
@@ -389,7 +411,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     if (!mounted) return;
     PerfMonitor.instance.end();
 
-    if (result == null || result.noFood || (result.foods.isEmpty && result.error == null)) {
+    if (result == null ||
+        result.noFood ||
+        (result.foods.isEmpty && result.error == null)) {
       // No food recognised — stay on scan screen with a friendly retry message.
       _hapticError();
       _showNoFoodOverlay();
@@ -398,9 +422,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       _hapticError();
       ref.read(scanStateProvider.notifier).modelFailed();
     } else {
-      DebugLog.instance.log('Scan',
+      DebugLog.instance.log(
+          'Scan',
           'Inference done: ${result.foods.length} items, '
-          '${result.totalCaloriesMin.round()}-${result.totalCaloriesMax.round()} kcal');
+              '${result.totalCaloriesMin.round()}-${result.totalCaloriesMax.round()} kcal');
       _hapticSuccess();
       ref.read(scanStateProvider.notifier).calculationDone();
       DebugLog.instance.log('Perf', PerfMonitor.instance.report());
@@ -413,7 +438,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     if (!mounted) return;
     _noFoodResetTimer?.cancel();
     setState(() {
-      _noFoodMessage = 'No food detected.\nMake sure the food fills the frame,\nthen scan again.';
+      _noFoodMessage =
+          'No food detected.\nMake sure the food fills the frame,\nthen scan again.';
     });
     _noFoodResetTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted) return;
@@ -429,9 +455,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         timestamp: DateTime.now(),
         depthMode: _detectedDepthMode,
         foods: resultState.foods,
-        topCameraPosition:  null,
+        topCameraPosition: null,
         topCameraTransform: null,
-        sideCameraPosition:  null,
+        sideCameraPosition: null,
         sideCameraTransform: null,
       );
       await ref.read(historyProvider.notifier).addScan(scanResult);
@@ -473,17 +499,18 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   void _retry() {
     _hapticLight();
     _recordTimer?.cancel();
-    _recordTimer        = null;
+    _recordTimer = null;
+    _recordStartedAt = null;
     _pitchTimer?.cancel();
-    _pitchTimer         = null;
+    _pitchTimer = null;
     _noFoodResetTimer?.cancel();
-    _noFoodResetTimer   = null;
-    _isRecording        = false;
+    _noFoodResetTimer = null;
+    _isRecording = false;
     _isInferenceRunning = false;
-    _recordProgress     = 0.0;
-    _sessionStarted     = false;
+    _recordProgress = 0.0;
+    _sessionStarted = false;
     _sessionErrorDetail = null;
-    _noFoodMessage      = null;
+    _noFoodMessage = null;
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();
     _startSession();
@@ -495,7 +522,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   Widget build(BuildContext context) {
     final scanState = ref.watch(scanStateProvider);
     final scanResult = ref.watch(scanResultProvider);
-    final isProcessing = scanState == ScanState.calculating || scanState == ScanState.done;
+    final isProcessing =
+        scanState == ScanState.calculating || scanState == ScanState.done;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -513,7 +541,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             const Positioned.fill(child: ColoredBox(color: Colors.black)),
 
           // ── Guidance overlay ─────────────────────────────────────────
-          ScanGuidanceOverlay(scanState: scanState, currentPitch: _currentPitch),
+          ScanGuidanceOverlay(
+              scanState: scanState, currentPitch: _currentPitch),
 
           // ── Bottom action panel ─────────────────────────────────────
           Positioned(
@@ -581,11 +610,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                   color: _torchOn ? AppTheme.amber500 : Colors.white70,
                   size: 28,
                 ),
-                tooltip: _torchOn ? 'Turn off flashlight' : 'Turn on flashlight',
+                tooltip:
+                    _torchOn ? 'Turn off flashlight' : 'Turn on flashlight',
                 onPressed: () async {
                   final next = !_torchOn;
                   final ok = await _bridge.setTorch(next);
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   if (ok) {
                     setState(() => _torchOn = next);
                   } else {
@@ -608,14 +638,15 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               left: 16,
               right: 16,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.65),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.amber500),
                 ),
-                child: Row(
-                  children: const [
+                child: const Row(
+                  children: [
                     Icon(Icons.nightlight_round,
                         color: AppTheme.amber500, size: 18),
                     SizedBox(width: 8),
@@ -631,8 +662,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             ),
 
           // ── Tutorial overlay (first scan) ───────────────────────────
-          if (_showTutorial)
-            ScanTutorialOverlay(onDismiss: _dismissTutorial),
+          if (_showTutorial) ScanTutorialOverlay(onDismiss: _dismissTutorial),
 
           // ── No-food overlay ──────────────────────────────────────────
           if (_noFoodMessage != null)
@@ -658,15 +688,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                           _noFoodMessage!,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              height: 1.5),
+                              color: Colors.white, fontSize: 15, height: 1.5),
                         ),
                         const SizedBox(height: 16),
                         const Text(
                           'Returning to scan in 3s…',
-                          style: TextStyle(
-                              color: Colors.white54, fontSize: 12),
+                          style: TextStyle(color: Colors.white54, fontSize: 12),
                         ),
                         const SizedBox(height: 12),
                         FilledButton(
@@ -733,7 +760,10 @@ class _BottomPanel extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(
-        24, 20, 24, MediaQuery.of(context).padding.bottom + 20,
+        24,
+        20,
+        24,
+        MediaQuery.of(context).padding.bottom + 20,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -797,11 +827,13 @@ class _BottomPanel extends StatelessWidget {
                 if (timings.isNotEmpty)
                   _InfoChipDark(
                     icon: Icons.timer,
-                    label: '${timings.values.fold(Duration.zero, (a, b) => a + b).inMilliseconds}ms total',
+                    label:
+                        '${timings.values.fold(Duration.zero, (a, b) => a + b).inMilliseconds}ms total',
                   ),
                 _InfoChipDark(
                   icon: Icons.restaurant,
-                  label: '${scanResult.foods.length} item${scanResult.foods.length == 1 ? '' : 's'}',
+                  label:
+                      '${scanResult.foods.length} item${scanResult.foods.length == 1 ? '' : 's'}',
                 ),
               ],
             ),
@@ -859,7 +891,8 @@ class _BottomPanel extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: onViewDetails ?? onClose,
-                    child: Text(onViewDetails != null ? 'View Details' : 'Done'),
+                    child:
+                        Text(onViewDetails != null ? 'View Details' : 'Done'),
                   ),
                 ),
               ],
@@ -921,18 +954,18 @@ class _StateProgressRow extends StatelessWidget {
 
   static const _steps = [
     (ScanState.waitingForTopView, 'Aim'),
-    (ScanState.recording,     'Record'),
-    (ScanState.calculating,   'Analyse'),
-    (ScanState.done,          'Done'),
+    (ScanState.recording, 'Record'),
+    (ScanState.calculating, 'Analyse'),
+    (ScanState.done, 'Done'),
   ];
 
   int get _activeIndex {
     return switch (state) {
       ScanState.waitingForTopView => 0,
-      ScanState.readyToRecord     => 0,
-      ScanState.recording         => 1,
-      ScanState.calculating       => 2,
-      ScanState.done              => 3,
+      ScanState.readyToRecord => 0,
+      ScanState.recording => 1,
+      ScanState.calculating => 2,
+      ScanState.done => 3,
       _ => -1, // error
     };
   }
@@ -1030,7 +1063,7 @@ class _RecordButton extends StatelessWidget {
 
   final bool enabled;
   final bool isRecording;
-  final double progress;   // 0.0 – 1.0
+  final double progress; // 0.0 – 1.0
   final VoidCallback onPressed;
 
   @override
@@ -1067,7 +1100,9 @@ class _RecordButton extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isRecording
                         ? AppTheme.red500
-                        : (enabled ? context.primary500 : context.primary500.withValues(alpha: 0.3)),
+                        : (enabled
+                            ? context.primary500
+                            : context.primary500.withValues(alpha: 0.3)),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -1083,7 +1118,7 @@ class _RecordButton extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           isRecording
-              ? '${((1.0 - progress) * 2).ceil()}s remaining'
+              ? '${((1.0 - progress) * _ScanScreenState._maxRecordDuration.inSeconds).ceil()}s remaining'
               : (enabled ? 'Tap to scan' : 'Starting camera…'),
           style: TextStyle(
             fontSize: 12,
@@ -1157,7 +1192,7 @@ class _OrientationIndicator extends StatelessWidget {
     required this.sessionStarted,
   });
 
-  final double pitch;       // radians: -π/2 = top-view, 0 = horizontal
+  final double pitch; // radians: -π/2 = top-view, 0 = horizontal
   final bool sessionStarted;
 
   @override
