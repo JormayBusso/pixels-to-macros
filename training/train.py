@@ -36,6 +36,7 @@ from torchvision.models.segmentation import (
     deeplabv3_resnet101,
 )
 from tqdm import tqdm
+import sys
 
 from dataset import FoodSeg103Dataset
 
@@ -232,7 +233,9 @@ def train_one_epoch(
 ) -> float:
     model.train()
     total_loss = 0.0
-    for batch in tqdm(loader, desc="  Train", leave=False):
+    seen = 0
+    pbar = tqdm(loader, desc="  Train", leave=False)
+    for i, batch in enumerate(pbar, start=1):
         images, masks = batch_to_tensors(batch, device)
         optimizer.zero_grad(set_to_none=True)
 
@@ -253,7 +256,17 @@ def train_one_epoch(
                 torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
             optimizer.step()
 
-        total_loss += loss.item() * images.size(0)
+        batch_n = images.size(0)
+        total_loss += loss.item() * batch_n
+        seen += batch_n
+
+        # Periodically print running loss so Colab/tee shows live progress
+        if i % 20 == 0 or seen == len(loader.dataset):
+            running_loss = total_loss / max(seen, 1)
+            lr = optimizer.param_groups[0]["lr"]
+            pbar.set_postfix({"loss": f"{running_loss:.4f}", "lr": f"{lr:.1e}"})
+            print(f"[Train] batch {i}/{len(loader)} loss={running_loss:.4f} lr={lr:.1e}", flush=True)
+
     return total_loss / len(loader.dataset)
 
 
@@ -268,16 +281,25 @@ def evaluate(
     model.eval()
     total_loss = 0.0
     confusion = np.zeros((num_classes, num_classes), dtype=np.int64)
+    seen = 0
 
-    for batch in tqdm(loader, desc="  Val  ", leave=False):
+    pbar = tqdm(loader, desc="  Val  ", leave=False)
+    for i, batch in enumerate(pbar, start=1):
         images, masks = batch_to_tensors(batch, device)
         output = model(images)["out"].contiguous()
         loss = criterion(output, masks)
-        total_loss += loss.item() * images.size(0)
+        batch_n = images.size(0)
+        total_loss += loss.item() * batch_n
+        seen += batch_n
 
         preds = output.argmax(dim=1).cpu().numpy()
         targets = masks.cpu().numpy()
         confusion += confusion_matrix(preds, targets, num_classes)
+
+        if i % 20 == 0 or seen == len(loader.dataset):
+            running_loss = total_loss / max(seen, 1)
+            pbar.set_postfix({"loss": f"{running_loss:.4f}"})
+            print(f"[Val] batch {i}/{len(loader)} loss={running_loss:.4f}", flush=True)
 
     avg_loss = total_loss / len(loader.dataset)
     miou, pixel_acc = metrics_from_confusion(confusion)
