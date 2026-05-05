@@ -142,4 +142,98 @@ class NotificationService {
     final n = DateTime.now();
     return DateTime(n.year, n.month, n.day, hour.clamp(0, 23));
   }
+
+  // ── Smart Personalized Notification (1/day max) ──────────────────────────
+
+  static const _insightChannelId = 'daily_insight';
+  static const _insightChannelName = 'Daily Insight';
+
+  /// Schedule a single personalized insight notification at 9 AM tomorrow.
+  ///
+  /// Call after scan or at end of day. Only sends 1 notification/day.
+  /// [yesterdayCalories] and [yesterdayProteinG] come from the analytics
+  /// provider; pass 0 if unknown (notification will be generic).
+  Future<void> scheduleSmartInsight({
+    required int calorieGoal,
+    required int proteinGoal,
+    required double yesterdayCalories,
+    required double yesterdayProteinG,
+    required int currentStreak,
+  }) async {
+    if (!_initialized) await initialize();
+
+    // Cancel any previous insight notification.
+    await _plugin.cancel(300);
+
+    final title = _pickInsightTitle(
+      calorieGoal: calorieGoal,
+      proteinGoal: proteinGoal,
+      yesterdayCalories: yesterdayCalories,
+      yesterdayProteinG: yesterdayProteinG,
+      currentStreak: currentStreak,
+    );
+    final body = _pickInsightBody(
+      calorieGoal: calorieGoal,
+      proteinGoal: proteinGoal,
+      yesterdayCalories: yesterdayCalories,
+      yesterdayProteinG: yesterdayProteinG,
+      currentStreak: currentStreak,
+    );
+
+    // Schedule for 9 AM tomorrow.
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final scheduledDate = DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9);
+
+    await _scheduleOnce(
+      id: 300,
+      title: title,
+      body: body,
+      scheduledDate: scheduledDate,
+      channelId: _insightChannelId,
+      channelName: _insightChannelName,
+    );
+  }
+
+  String _pickInsightTitle({
+    required int calorieGoal,
+    required int proteinGoal,
+    required double yesterdayCalories,
+    required double yesterdayProteinG,
+    required int currentStreak,
+  }) {
+    if (currentStreak >= 7) return '🔥 $currentStreak-day streak!';
+    if (yesterdayCalories > 0 && (yesterdayCalories - calorieGoal).abs() < calorieGoal * 0.05) {
+      return '🎯 Perfect day yesterday!';
+    }
+    if (yesterdayProteinG > 0 && yesterdayProteinG < proteinGoal * 0.7) {
+      return '💪 Protein tip';
+    }
+    if (yesterdayCalories > calorieGoal * 1.15) {
+      return '📊 Quick check-in';
+    }
+    return '👋 Good morning!';
+  }
+
+  String _pickInsightBody({
+    required int calorieGoal,
+    required int proteinGoal,
+    required double yesterdayCalories,
+    required double yesterdayProteinG,
+    required int currentStreak,
+  }) {
+    if (currentStreak >= 7) {
+      return 'Keep it up! Scan your first meal to extend your streak.';
+    }
+    if (yesterdayCalories > 0 && (yesterdayCalories - calorieGoal).abs() < calorieGoal * 0.05) {
+      return 'You nailed your ${calorieGoal} kcal goal yesterday. Let\'s repeat today!';
+    }
+    if (yesterdayProteinG > 0 && yesterdayProteinG < proteinGoal * 0.7) {
+      return 'Yesterday you got ${yesterdayProteinG.round()}g protein (goal: ${proteinGoal}g). Try adding eggs or Greek yogurt today.';
+    }
+    if (yesterdayCalories > calorieGoal * 1.15) {
+      return 'Yesterday was ${yesterdayCalories.round()} kcal (${((yesterdayCalories / calorieGoal - 1) * 100).round()}% over). A lighter breakfast can balance things out.';
+    }
+    return 'Ready to log today\'s meals? Your streak is $currentStreak days.';
+  }
 }
+

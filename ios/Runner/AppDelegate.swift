@@ -30,6 +30,24 @@ import Flutter
             cameraReg.register(cameraFactory, withId: ARCameraPreviewFactory.viewType)
         }
 
+        // ── Eliminate the white flash between LaunchScreen and Flutter ────
+        // The OS LaunchScreen.storyboard is black with the app icon. As soon
+        // as Flutter takes over, the underlying UIWindow defaults to white,
+        // which can flash for ~50-150 ms before the first Dart frame paints.
+        // Force the window background to black so the handoff is invisible
+        // (Instagram-style instant content).
+        if #available(iOS 13.0, *) {
+            // Multi-scene: paint each connected window black.
+            for scene in application.connectedScenes {
+                if let windowScene = scene as? UIWindowScene {
+                    for window in windowScene.windows {
+                        window.backgroundColor = .black
+                    }
+                }
+            }
+        }
+        window?.backgroundColor = .black
+
         return result
     }
 }

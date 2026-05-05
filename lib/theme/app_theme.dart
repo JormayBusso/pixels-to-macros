@@ -23,8 +23,10 @@ class AppTheme {
   static const Color gray200 = Color(0xFFE5E7EB);
   static const Color gray300 = Color(0xFFD1D5DB);
   static const Color gray400 = Color(0xFF9CA3AF);
+  static const Color gray500 = Color(0xFF6B7280);
   static const Color gray600 = Color(0xFF4B5563);
   static const Color gray700 = Color(0xFF374151);
+  static const Color gray800 = Color(0xFF1F2937);
   static const Color gray900 = Color(0xFF111827);
 
   static const Color amber100 = Color(0xFFFEF3C7);
@@ -177,6 +179,7 @@ extension ThemeColors on BuildContext {
   Color get primary50  => Color.alphaBlend(_seed.withValues(alpha: 0.04), Colors.white);
   Color get primary100 => Color.alphaBlend(_seed.withValues(alpha: 0.10), Colors.white);
   Color get primary200 => Color.alphaBlend(_seed.withValues(alpha: 0.20), Colors.white);
+  Color get primary300 => Color.alphaBlend(_seed.withValues(alpha: 0.35), Colors.white);
 
   /// Medium shades — icons, badges, active states.
   Color get primary400 => Color.alphaBlend(_seed.withValues(alpha: 0.55), Colors.white);

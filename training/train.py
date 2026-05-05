@@ -1,8 +1,13 @@
 """
-Train a DeepLabV3 MobileNetV3-Large model for food segmentation.
+Train a semantic segmentation model for food segmentation.
+
+Supported architectures (--model flag):
+  mobilenet   – DeepLabV3 MobileNetV3-Large (lightweight, fast)
+  resnet101   – DeepLabV3 ResNet-101 (much stronger backbone)
+  segformer   – SegFormer-B3 (transformer-based, HuggingFace)
 
 Usage:
-    python training/train.py --data_dir ./data/FoodSeg103 --epochs 80
+    python training/train.py --data_dir ./data/FoodSeg103 --epochs 100 --model resnet101 --img_size 640
 
 Outputs:
     training/output/best.pth             - best validation weights
@@ -26,25 +31,91 @@ from PIL import Image
 from torch.utils.data import DataLoader
 from torchvision.models.segmentation import (
     DeepLabV3_MobileNet_V3_Large_Weights,
+    DeepLabV3_ResNet101_Weights,
     deeplabv3_mobilenet_v3_large,
+    deeplabv3_resnet101,
 )
 from tqdm import tqdm
 
 from dataset import FoodSeg103Dataset
 
 
-def get_model(num_classes: int, pretrained: bool = True) -> nn.Module:
+def get_model(num_classes: int, pretrained: bool = True, arch: str = "resnet101") -> nn.Module:
+    """Build segmentation model by architecture name."""
+    if arch == "segformer":
+        return _get_segformer(num_classes, pretrained)
+    elif arch == "resnet101":
+        return _get_deeplabv3_resnet101(num_classes, pretrained)
+    else:  # mobilenet
+        return _get_deeplabv3_mobilenet(num_classes, pretrained)
+
+
+def _get_deeplabv3_mobilenet(num_classes: int, pretrained: bool) -> nn.Module:
     weights = DeepLabV3_MobileNet_V3_Large_Weights.DEFAULT if pretrained else None
     model = deeplabv3_mobilenet_v3_large(weights=weights)
-
     in_channels = model.classifier[4].in_channels
     model.classifier[4] = nn.Conv2d(in_channels, num_classes, kernel_size=1)
-
     if model.aux_classifier is not None:
         aux_in = model.aux_classifier[4].in_channels
         model.aux_classifier[4] = nn.Conv2d(aux_in, num_classes, kernel_size=1)
-
     return model
+
+
+def _get_deeplabv3_resnet101(num_classes: int, pretrained: bool) -> nn.Module:
+    weights = DeepLabV3_ResNet101_Weights.DEFAULT if pretrained else None
+    model = deeplabv3_resnet101(weights=weights)
+    in_channels = model.classifier[4].in_channels
+    model.classifier[4] = nn.Conv2d(in_channels, num_classes, kernel_size=1)
+    if model.aux_classifier is not None:
+        aux_in = model.aux_classifier[4].in_channels
+        model.aux_classifier[4] = nn.Conv2d(aux_in, num_classes, kernel_size=1)
+    return model
+
+
+def _get_segformer(num_classes: int, pretrained: bool) -> nn.Module:
+    """SegFormer-B3 from HuggingFace transformers, wrapped for compatibility."""
+    try:
+        from transformers import SegformerForSemanticSegmentation, SegformerConfig
+    except ImportError:
+        raise ImportError("Install transformers: pip install transformers")
+
+    if pretrained:
+        model = SegformerForSemanticSegmentation.from_pretrained(
+            "nvidia/segformer-b3-finetuned-ade-512-512",
+            num_labels=num_classes,
+            ignore_mismatched_sizes=True,
+        )
+    else:
+        config = SegformerConfig(
+            num_labels=num_classes,
+            depths=[3, 4, 18, 3],
+            hidden_sizes=[64, 128, 320, 512],
+            decoder_hidden_size=256,
+        )
+        model = SegformerForSemanticSegmentation(config)
+
+    return _SegFormerWrapper(model)
+
+
+class _SegFormerWrapper(nn.Module):
+    """Wraps HF SegFormer to match torchvision segmentation model interface.
+
+    Input:  (B, 3, H, W) normalised tensors
+    Output: dict with key 'out' → (B, num_classes, H, W)
+    """
+
+    def __init__(self, hf_model):
+        super().__init__()
+        self.hf_model = hf_model
+
+    def forward(self, pixel_values):
+        outputs = self.hf_model(pixel_values=pixel_values)
+        logits = outputs.logits  # (B, num_classes, H/4, W/4)
+        # Upsample to input resolution
+        logits = F.interpolate(
+            logits, size=pixel_values.shape[2:], mode="bilinear", align_corners=False
+        )
+        return {"out": logits}
 
 
 class SoftDiceLoss(nn.Module):
@@ -214,8 +285,14 @@ def evaluate(
 
 
 def set_backbone_trainable(model: nn.Module, trainable: bool) -> None:
-    for param in model.backbone.parameters():
-        param.requires_grad = trainable
+    if isinstance(model, _SegFormerWrapper):
+        # Freeze encoder layers for SegFormer
+        encoder = model.hf_model.segformer
+        for param in encoder.parameters():
+            param.requires_grad = trainable
+    elif hasattr(model, "backbone"):
+        for param in model.backbone.parameters():
+            param.requires_grad = trainable
 
 
 def _collate(batch):
@@ -229,13 +306,16 @@ def _collate(batch):
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train food segmentation model")
     parser.add_argument("--data_dir", type=str, required=True)
-    parser.add_argument("--epochs", type=int, default=80)
-    parser.add_argument("--batch_size", type=int, default=6)
-    parser.add_argument("--lr", type=float, default=5e-4)
+    parser.add_argument("--model", type=str, default="resnet101",
+                        choices=["mobilenet", "resnet101", "segformer"],
+                        help="Model architecture")
+    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--output_dir", type=str, default="training/output")
-    parser.add_argument("--img_size", type=int, default=513)
-    parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument("--patience", type=int, default=14)
+    parser.add_argument("--img_size", type=int, default=640)
+    parser.add_argument("--num_workers", type=int, default=2)
+    parser.add_argument("--patience", type=int, default=20)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--freeze_backbone_epochs", type=int, default=1)
     parser.add_argument("--label_smoothing", type=float, default=0.03)
@@ -291,7 +371,8 @@ def main() -> None:
         collate_fn=_collate,
     )
 
-    model = get_model(num_classes, pretrained=not args.no_pretrained).to(device)
+    print(f"Model: {args.model}")
+    model = get_model(num_classes, pretrained=not args.no_pretrained, arch=args.model).to(device)
     set_backbone_trainable(model, args.freeze_backbone_epochs <= 0)
 
     class_weights = None
@@ -313,11 +394,54 @@ def main() -> None:
     if args.resume:
         payload = torch.load(args.resume, map_location=device)
         state = payload.get("model_state", payload)
-        model.load_state_dict(state, strict=False)
-        if "optimizer_state" in payload:
-            optimizer.load_state_dict(payload["optimizer_state"])
-        if "scheduler_state" in payload:
-            scheduler.load_state_dict(payload["scheduler_state"])
+
+        # Safely copy matching parameters only. This allows resuming from
+        # checkpoints trained with a different number of classes (classifier
+        # heads will be skipped and remain freshly initialized).
+        model_state = model.state_dict()
+        compatible = {}
+        skipped = []
+        for k, v in state.items():
+            if k not in model_state:
+                skipped.append((k, getattr(v, "shape", None), None))
+                continue
+            target_shape = tuple(model_state[k].shape)
+            src_shape = tuple(v.shape) if hasattr(v, "shape") else None
+            if src_shape == target_shape:
+                compatible[k] = v
+            else:
+                skipped.append((k, src_shape, target_shape))
+
+        if compatible:
+            model_state.update(compatible)
+            model.load_state_dict(model_state)
+        else:
+            print("Warning: no compatible parameters found in checkpoint; using model defaults.")
+
+        if skipped:
+            print(f"Skipped {len(skipped)} incompatible state_dict keys when resuming:")
+            for k, src, tgt in skipped:
+                print(f"  - {k}: checkpoint={src} model={tgt}")
+
+        # Try loading optimizer/scheduler state where possible. If we skipped
+        # any parameters due to shape mismatches (e.g., different classifier
+        # head sizes), do NOT load optimizer/scheduler state because it maps
+        # by parameter IDs and will corrupt state for newly initialized
+        # parameters.
+        if skipped:
+            print("Skipping optimizer/scheduler state load due to incompatible checkpoint parameters.")
+        else:
+            if "optimizer_state" in payload:
+                try:
+                    optimizer.load_state_dict(payload["optimizer_state"])
+                except Exception as e:
+                    print(f"Warning: could not load optimizer state: {e}")
+            if "scheduler_state" in payload:
+                try:
+                    scheduler.load_state_dict(payload["scheduler_state"])
+                except Exception as e:
+                    print(f"Warning: could not load scheduler state: {e}")
+
         start_epoch = int(payload.get("epoch", 0)) + 1
         best_miou = float(payload.get("best_miou", 0.0))
         metrics = list(payload.get("metrics", []))

@@ -335,19 +335,49 @@ final class SegmentationService {
 
         if let classOffset, numClasses > 0 {
             // Softmax output — argmax per pixel, resolve overlaps by confidence.
+            // We also compute a true softmax probability and the top-1 vs top-2
+            // margin so downstream gates can reject low-margin ("could be
+            // anything") pixels rather than trusting raw logits.
             for r in 0..<height {
                 for c in 0..<width {
                     var bestClass = 0
-                    var bestConf: Float = -Float.infinity
+                    var bestVal: Float = -Float.infinity
+                    var secondVal: Float = -Float.infinity
+                    // Pass 1: argmax + second-best logit.
                     for cls in 0..<numClasses {
                         let val = valueAt(classOffset(cls, r, c))
-                        if val > bestConf {
-                            bestConf = val
+                        if val > bestVal {
+                            secondVal = bestVal
+                            bestVal = val
                             bestClass = cls
+                        } else if val > secondVal {
+                            secondVal = val
                         }
                     }
+                    // Pass 2: numerically-stable softmax probability of the
+                    // winning class. Using true probabilities (rather than the
+                    // raw logit value the previous code stored) makes the
+                    // confidence threshold meaningful across models and stops
+                    // the labeler over-trusting confident-but-wrong outputs.
+                    var sumExp: Float = 0
+                    for cls in 0..<numClasses {
+                        sumExp += expf(valueAt(classOffset(cls, r, c)) - bestVal)
+                    }
+                    let prob: Float = sumExp > 0 ? 1.0 / sumExp : 1.0
+                    // Margin between top-1 and top-2 logits — small margins
+                    // mean the pixel could plausibly belong to several
+                    // classes, which is a strong hallucination signal on the
+                    // 10-class mini model where every non-food pixel gets
+                    // forced into one of the food classes.
+                    let margin = bestVal - secondVal
                     classGrid[r][c] = bestClass
-                    confGrid[r][c]  = bestConf
+                    // Encode margin into the stored confidence by attenuating
+                    // probability when the margin is tiny (< 0.5 in logit
+                    // space). This pushes ambiguous pixels below the gate.
+                    let marginScale: Float = margin >= 1.5 ? 1.0
+                        : margin <= 0.0 ? 0.4
+                        : 0.4 + (margin / 1.5) * 0.6
+                    confGrid[r][c]  = prob * marginScale
                 }
             }
         } else if let argmaxOffset {
@@ -430,13 +460,26 @@ final class SegmentationService {
             }
         }
 
-        // Build SegmentedObject per class
+        // Build SegmentedObject per class.
+        // Tightened thresholds (May 2026): the mini 10-class model needs to
+        // be very strict to avoid hallucinating food on non-food scenes —
+        // ML Kit's food-presence gate in InferencePipeline is the first line
+        // of defence, but a stricter per-class floor here catches the case
+        // where ML Kit accepts the scene but the segmentation hardly agrees.
         var objects: [SegmentedObject] = []
         let totalPixels = max(1, width * height)
-        let minPixels = max(450, Int(Double(totalPixels) * 0.006))
-        let minConfidence: Float = totalClasses == SegmentationService.miniLabelMap.count
-            ? 0.62
-            : 0.52
+        let isMiniModel = totalClasses == SegmentationService.miniLabelMap.count
+        let minPixels = max(
+            isMiniModel ? 600 : 450,
+            Int(Double(totalPixels) * (isMiniModel ? 0.008 : 0.006))
+        )
+        // Confidence is now a true softmax probability (see parse step)
+        // attenuated by top-1 vs top-2 margin. We keep floors low here
+        // because the ML Kit food-presence gate in InferencePipeline is
+        // the primary hallucination defence. Over-filtering here causes
+        // the mini model to reject valid out-of-vocabulary foods (e.g.
+        // banana, tomato) before the ML Kit label-override can fix them.
+        let minConfidence: Float = isMiniModel ? 0.35 : 0.40
         for (cls, pixels) in classPixels {
             var mask = [[UInt8]](repeating: [UInt8](repeating: 0, count: width), count: height)
             var sumR = 0, sumC = 0

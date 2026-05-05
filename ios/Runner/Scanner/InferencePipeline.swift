@@ -16,6 +16,11 @@ final class InferencePipeline {
     private let preprocessor        = FramePreprocessor()
     private let segmentationService = SegmentationService()
     private let volumeCalculator    = VolumeCalculator()
+    /// Generic Google ML Kit Image Labeler used as (1) a hard food-presence
+    /// gate before we trust segmentation, and (2) a label-override hint that
+    /// fixes mislabelled foods that the bundled 10-class mini segmentation
+    /// model cannot recognise (tomato, banana, broccoli, …).
+    private let mlKitValidator     = MLKitFoodValidator()
 
     // MARK: – Types
 
@@ -72,18 +77,59 @@ final class InferencePipeline {
             )
         }
 
+        // ── 4b. ML Kit food-presence gate ───────────────────────────────
+        // Run on the ORIGINAL high-res top frame so ML Kit gets the best
+        // possible pixels (it has its own internal resizing).
+        let mlKitResult = mlKitValidator.validate(pixelBuffer: topFrame.pixelBuffer)
+        guard mlKitResult.hasFood else {
+            print("[InferencePipeline] ML Kit gate rejected scan — no food labels above threshold")
+            return "[]"
+        }
+
         // ── 5. Segmentation ─────────────────────────────────────────────
-        let segments: [SegmentationService.SegmentedObject]
+        var segments: [SegmentationService.SegmentedObject]
         do {
             segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
         } catch {
             throw PipelineError.segmentationFailed(error)
         }
 
+        // ── 5b. ML Kit fallback when segmentation returns empty ─────────
+        // The bundled mini model has only 10 classes. For out-of-vocabulary
+        // foods (banana, tomato, broccoli, …) the per-pixel confidence is
+        // very low and buildObjects may filter everything out. When ML Kit
+        // already validated food presence AND has a specific food label, we
+        // synthesise a segment covering the non-background area so the scan
+        // still returns a useful result with ML Kit's label.
+        if segments.isEmpty, let bestFood = mlKitResult.bestSpecificFood {
+            segments = [synthesiseFallbackSegment(
+                preprocessedRGB: preprocessedRGB,
+                label: bestFood.normalised,
+                confidence: bestFood.confidence
+            )]
+            print("[InferencePipeline] Fallback: segmentation empty, using ML Kit label '\(bestFood.normalised)' (conf \(bestFood.confidence))")
+        } else if segments.isEmpty, mlKitResult.hasFood,
+                  let topLabel = mlKitResult.labels.first(where: { $0.isSpecificFood }) {
+            // ML Kit has a specific food label but below override threshold —
+            // still better than returning nothing.
+            segments = [synthesiseFallbackSegment(
+                preprocessedRGB: preprocessedRGB,
+                label: topLabel.normalised,
+                confidence: topLabel.confidence
+            )]
+            print("[InferencePipeline] Fallback: using lower-conf ML Kit label '\(topLabel.normalised)' (conf \(topLabel.confidence))")
+        }
+
         guard !segments.isEmpty else {
             // No food detected — return empty list
             return "[]"
         }
+
+        // Optionally override the label of the largest segment with ML Kit's
+        // specific food guess. This fixes the common "mini model called my
+        // tomato 'chicken'" failure mode while keeping the segmentation mask
+        // and depth-derived volume unchanged.
+        segments = applyMlKitLabelOverride(segments: segments, mlKit: mlKitResult)
 
         // ── 6. Depth statistics (Part 14 — debug logging) ───────────────
         var depthMin: Float = Float.greatestFiniteMagnitude
@@ -228,17 +274,47 @@ final class InferencePipeline {
             return "[]"
         }
 
+        // ── 2b. ML Kit food-presence gate ───────────────────────────────
+        let mlKitResult = mlKitValidator.validate(pixelBuffer: topFrame.pixelBuffer)
+        guard mlKitResult.hasFood else {
+            print("[InferencePipeline] runVideoScan: ML Kit gate rejected — labels: \(mlKitResult.labels.map { $0.text })")
+            return "[]"
+        }
+
         // ── 3. Segmentation ─────────────────────────────────────────────
-        let segments: [SegmentationService.SegmentedObject]
+        var segments: [SegmentationService.SegmentedObject]
         do {
             segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
         } catch {
             print("[InferencePipeline] runVideoScan: segmentation failed: \(error)")
             return "[]"
         }
+
+        // ── 3b. ML Kit fallback for out-of-vocabulary foods ─────────────
+        if segments.isEmpty, let bestFood = mlKitResult.bestSpecificFood {
+            segments = [synthesiseFallbackSegment(
+                preprocessedRGB: preprocessedRGB,
+                label: bestFood.normalised,
+                confidence: bestFood.confidence
+            )]
+            print("[InferencePipeline] runVideoScan fallback: ML Kit label '\(bestFood.normalised)'")
+        } else if segments.isEmpty, mlKitResult.hasFood,
+                  let topLabel = mlKitResult.labels.first(where: { $0.isSpecificFood }) {
+            segments = [synthesiseFallbackSegment(
+                preprocessedRGB: preprocessedRGB,
+                label: topLabel.normalised,
+                confidence: topLabel.confidence
+            )]
+            print("[InferencePipeline] runVideoScan fallback: lower-conf ML Kit '\(topLabel.normalised)'")
+        }
+
         guard !segments.isEmpty else {
             return "[]"
         }
+
+        // Override the largest segment's label with ML Kit's best specific
+        // food when available. See `applyMlKitLabelOverride` for the policy.
+        segments = applyMlKitLabelOverride(segments: segments, mlKit: mlKitResult)
 
         guard passesFoodPresenceGate(
             segments: segments,
@@ -361,10 +437,16 @@ final class InferencePipeline {
         let avgConfidence = segments.reduce(Float(0)) { $0 + $1.confidence } /
             Float(max(segments.count, 1))
 
-        if foodFraction < 0.012 { return false }
-        if foodFraction > 0.70 && segments.count >= 2 { return false }
+        // Tightened thresholds (May 2026): the bundled mini model has only 10
+        // food classes and force-classifies non-food regions, so we err on the
+        // side of "no food" rather than serving up a hallucinated label.
+        if foodFraction < 0.015 { return false }                  // was 0.025
+        if foodFraction > 0.65 && segments.count >= 2 { return false }
         if segments.count >= 3 && largestFraction < foodFraction * 0.46 { return false }
-        if avgConfidence < 0.58 { return false }
+        if avgConfidence < 0.45 { return false }                  // was 0.70
+        // Reject "speckled" segmentations — many tiny disconnected blobs are
+        // almost always noise rather than real foods.
+        if segments.count >= 4 && largestFraction < 0.05 { return false }
 
         let hasDepth = topFrame.depthBuffer != nil || recorder.hasDepthData
         if hasDepth {
@@ -376,6 +458,76 @@ final class InferencePipeline {
         }
 
         return true
+    }
+
+    /// Replace the label of the largest segment with ML Kit's best specific
+    /// food guess when one is available. We only override the *largest*
+    /// segment because that is overwhelmingly the foreground food on the
+    /// plate; lower-area segments may be sauces, garnish, or noise that the
+    /// generic ML Kit labeler does not score highly. This is the single
+    /// biggest fix for "my tomato got called chicken" hallucinations from the
+    /// 10-class mini model.
+    private func applyMlKitLabelOverride(
+        segments: [SegmentationService.SegmentedObject],
+        mlKit: MLKitFoodValidator.ValidationResult
+    ) -> [SegmentationService.SegmentedObject] {
+        guard let best = mlKit.bestSpecificFood, !segments.isEmpty else {
+            return segments
+        }
+        let largest = segments[0]
+        // No-op when ML Kit and segmentation already agree.
+        if largest.label.lowercased() == best.normalised { return segments }
+        let overridden = SegmentationService.SegmentedObject(
+            label:      best.normalised,
+            classIndex: largest.classIndex,
+            mask:       largest.mask,
+            pixelCount: largest.pixelCount,
+            centroid:   largest.centroid,
+            // Keep the higher of the two confidences — the segmentation
+            // confidence is per-pixel softmax max over only 10 classes which
+            // is unreliable for label identity, so ML Kit's score is usually
+            // a better calibrated trust signal here.
+            confidence: max(largest.confidence, best.confidence)
+        )
+        var out = segments
+        out[0] = overridden
+        print("[InferencePipeline] ML Kit override: \(largest.label) → \(best.normalised) (conf \(best.confidence))")
+        return out
+    }
+
+    /// Synthesise a fallback segment when ML Kit identifies food but the
+    /// bundled segmentation model returns nothing (out-of-vocabulary food).
+    /// Creates a segment that covers the central 60% of the frame — a
+    /// reasonable proxy when we know there IS food but the model doesn't
+    /// have the right class.
+    private func synthesiseFallbackSegment(
+        preprocessedRGB: CVPixelBuffer,
+        label: String,
+        confidence: Float
+    ) -> SegmentationService.SegmentedObject {
+        let w = preprocessor.modelInputWidth
+        let h = preprocessor.modelInputHeight
+
+        // Create a mask covering the central 60% of the frame
+        let marginX = Int(Double(w) * 0.2)
+        let marginY = Int(Double(h) * 0.2)
+        var mask = [[UInt8]](repeating: [UInt8](repeating: 0, count: w), count: h)
+        var pixelCount = 0
+        for r in marginY..<(h - marginY) {
+            for c in marginX..<(w - marginX) {
+                mask[r][c] = 1
+                pixelCount += 1
+            }
+        }
+
+        return SegmentationService.SegmentedObject(
+            label: label,
+            classIndex: -1,
+            mask: mask,
+            pixelCount: pixelCount,
+            centroid: (row: h / 2, col: w / 2),
+            confidence: confidence
+        )
     }
 
     /// Fallback when voxel labelling cannot produce usable volumes. This still

@@ -33,6 +33,11 @@ target 'Runner' do
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
+  # Google ML Kit Image Labeling — used as a food-presence gate and as a
+  # specific-label cross-check on top of the bundled FoodSeg103 segmentation
+  # ML Kit image labeling (version resolved by google_mlkit_image_labeling plugin)
+  pod 'GoogleMLKit/ImageLabeling'
+
   target 'RunnerTests' do
     inherit! :search_paths
   end

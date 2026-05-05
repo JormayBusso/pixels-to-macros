@@ -18,6 +18,7 @@ import 'home_screen_v2.dart';
 import 'grocery_list_screen.dart';
 import 'history_screen.dart';
 import 'manual_entry_screen.dart';
+import 'recipes_screen.dart';
 import 'settings_screen.dart';
 import 'scan_screen.dart';
 import 'voice_entry_screen.dart';
@@ -41,6 +42,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _tabs = [
     HomeScreen(),
     AnalyticsScreen(),
+    RecipesScreen(),
     GroceryListScreen(),
     HistoryScreen(),
     SettingsScreen(),
@@ -175,7 +177,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             onDestinationSelected: (i) {
               setState(() => _tabIndex = i);
               // Clear history badge when visiting the History tab.
-              if (i == 3) {
+              if (i == 4) {
                 final newestId = ref.read(historyProvider).scans.isEmpty
                     ? 0
                     : (ref.read(historyProvider).scans.first.id ?? 0);
@@ -200,6 +202,12 @@ class _MainShellState extends ConsumerState<MainShell> {
                 icon: const Icon(Icons.bar_chart_outlined),
                 selectedIcon: Icon(Icons.bar_chart, color: context.primary700),
                 label: 'Analytics',
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.restaurant_menu_outlined),
+                selectedIcon:
+                    Icon(Icons.restaurant_menu, color: context.primary700),
+                label: 'Recipes',
               ),
               NavigationDestination(
                 icon: const Icon(Icons.shopping_cart_outlined),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/food_data.dart';
+import '../models/glucose_spike_model.dart';
 import '../models/nutrition_goal.dart';
 import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
@@ -13,6 +14,8 @@ import '../services/database_service.dart';
 import '../services/native_bridge.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
+import '../widgets/glucose_spike_card.dart';
+import '../widgets/plate_score_widget.dart';
 import 'edit_food_screen.dart';
 import 'ground_truth_screen.dart';
 
@@ -228,7 +231,38 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
             caloriesMin: _scan.totalCaloriesMin,
             caloriesMax: _scan.totalCaloriesMax,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // ── Plate Score ──────────────────────────────────────────────
+          if (_scan.foods.isNotEmpty) ...[
+            Builder(builder: (context) {
+              final mealCal = (_scan.totalCaloriesMin + _scan.totalCaloriesMax) / 2;
+              double mealProtein = 0;
+              double mealFiber = 0;
+              double mealGL = 0;
+              for (final f in _scan.foods) {
+                final fd = _foodMap[f.label.toLowerCase()];
+                if (fd == null) continue;
+                final g = _gramsFor(f);
+                mealProtein += fd.proteinPer100g * g / 100;
+                mealFiber += fd.fiberPer100g * g / 100;
+                mealGL += fd.glForGrams(g);
+              }
+              final breakdown = calculatePlateScore(
+                mealCalories: mealCal,
+                dailyGoal: prefs.dailyCalorieGoal,
+                proteinG: mealProtein,
+                fiberG: mealFiber,
+                foodCount: _scan.foods.length,
+                totalGL: mealGL,
+              );
+              return PlateScoreReveal(
+                score: breakdown.total,
+                breakdown: breakdown,
+              );
+            }),
+            const SizedBox(height: 16),
+          ],
 
           // ── Meal Bolus card (diabetes goal only) ─────────────────────
           if (totalBolus != null) ...[
@@ -295,6 +329,22 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
               scan: _scan,
               foodMap: _foodMap,
               gramsForFood: _gramsFor,
+            ),
+            const SizedBox(height: 8),
+            // ── Glucose Spike Prediction Chart ──────────────────────────
+            GlucoseSpikeCard(
+              mealItems: _scan.foods.map((f) {
+                final fd = _foodMap[f.label.toLowerCase()];
+                if (fd == null) return null;
+                final g = _gramsFor(f);
+                return MealItemInput(
+                  netCarbsG: (fd.carbsPer100g - fd.fiberPer100g).clamp(0, 999) * g / 100,
+                  gi: fd.estimatedGI.toDouble(),
+                  proteinG: fd.proteinPer100g * g / 100,
+                  fatG: fd.fatPer100g * g / 100,
+                  fiberG: fd.fiberPer100g * g / 100,
+                );
+              }).whereType<MealItemInput>().toList(),
             ),
             const SizedBox(height: 16),
           ],

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/grocery_item.dart';
@@ -203,13 +204,73 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     if (file != null && mounted) {
       setState(() => _photos[slot] = file);
       setSheetState(() {});
-      // After adding a photo, scroll to suggestions and show a hint
+
+      // Analyze photo with ML Kit to detect food items.
+      _analyzePhotoForFoods(file);
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Photo saved! Check your personalised suggestions below.'),
+          content: Text('Analyzing photo for food items…'),
           duration: Duration(seconds: 2),
         ),
       );
+    }
+  }
+
+  /// Runs ML Kit Image Labeling on the photo and adds detected food labels
+  /// to the grocery list automatically.
+  Future<void> _analyzePhotoForFoods(XFile photo) async {
+    try {
+      final inputImage = InputImage.fromFilePath(photo.path);
+      final labeler = ImageLabeler(
+        options: ImageLabelerOptions(confidenceThreshold: 0.5),
+      );
+      final labels = await labeler.processImage(inputImage);
+      await labeler.close();
+
+      // Filter to food-related labels only.
+      const foodKeywords = {
+        'food', 'fruit', 'vegetable', 'meat', 'dairy', 'bread', 'egg',
+        'cheese', 'milk', 'apple', 'banana', 'tomato', 'lettuce', 'carrot',
+        'pepper', 'onion', 'potato', 'chicken', 'beef', 'fish', 'rice',
+        'pasta', 'cereal', 'juice', 'yogurt', 'butter', 'cream', 'sauce',
+        'berry', 'grape', 'orange', 'lemon', 'avocado', 'broccoli',
+        'mushroom', 'cucumber', 'spinach', 'produce', 'grocery',
+      };
+      final detected = <String>[];
+      for (final label in labels) {
+        final name = label.label.toLowerCase();
+        if (foodKeywords.any((k) => name.contains(k))) {
+          detected.add(label.label);
+        }
+      }
+
+      if (detected.isEmpty || !mounted) return;
+
+      // Add detected foods to grocery list (avoid duplicates).
+      final grocery = ref.read(groceryProvider.notifier);
+      final existing = ref.read(groceryProvider)
+          .items
+          .map((g) => g.name.toLowerCase())
+          .toSet();
+      int added = 0;
+      for (final food in detected) {
+        if (!existing.contains(food.toLowerCase())) {
+          await grocery.addItem(food);
+          added++;
+        }
+      }
+
+      if (mounted && added > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added $added food${added > 1 ? 's' : ''} from photo: ${detected.take(3).join(', ')}${detected.length > 3 ? '…' : ''}'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (_) {
+      // ML Kit not available (e.g. simulator) — silently skip.
     }
   }
 

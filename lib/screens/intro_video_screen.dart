@@ -137,7 +137,10 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      // MUST stay black to match LaunchScreen.storyboard's black background
+      // and the intro video's first frame — otherwise users see a white
+      // flash between OS launch and the video's first painted frame.
+      backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [

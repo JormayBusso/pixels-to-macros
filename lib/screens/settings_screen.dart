@@ -6,10 +6,12 @@ import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../providers/scroll_trigger_provider.dart';
 import '../providers/user_prefs_provider.dart';
+import '../services/auth_service.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
+import 'auth_screen.dart';
 import 'eval_dashboard_screen.dart';
 import 'food_database_screen.dart';
 
@@ -311,6 +313,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
         ),
+
+        const SizedBox(height: 24),
+        _SectionHeader('Cloud Sync'),
+        const SizedBox(height: 12),
+        const _CloudSyncCard(),
 
         const SizedBox(height: 24),
         _SectionHeader('About'),
@@ -1085,6 +1092,156 @@ class _ThemeColorPickerCard extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────── Cloud Sync Card ───────────────────────
+
+class _CloudSyncCard extends ConsumerWidget {
+  const _CloudSyncCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+
+    if (!isSupabaseConfigured) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(Icons.cloud_off, size: 32, color: AppTheme.gray300),
+              const SizedBox(height: 8),
+              const Text(
+                'Cloud sync not configured yet.\nAdd Supabase credentials to .env to enable.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppTheme.gray400, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!auth.isLoggedIn) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(Icons.cloud_outlined, size: 32, color: context.primary500),
+              const SizedBox(height: 8),
+              const Text(
+                'Sign in to sync your scans across devices',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.login),
+                  label: const Text('Sign In / Create Account'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AuthScreen()),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: context.primary100,
+                  child: Text(
+                    auth.displayName[0].toUpperCase(),
+                    style: TextStyle(
+                      color: context.primary700,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(auth.displayName,
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text(auth.user?.email ?? '',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppTheme.gray500)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.cloud_done, color: Colors.green.shade400, size: 22),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () =>
+                        ref.read(authProvider.notifier).signOut(),
+                    child: const Text('Sign Out'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _confirmDelete(context, ref),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                    ),
+                    child: const Text('Delete Account'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text(
+          'This will permanently delete your account and all synced data. '
+          'Local data on this device will be kept.\n\nThis cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(authProvider.notifier).deleteAccount();
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }

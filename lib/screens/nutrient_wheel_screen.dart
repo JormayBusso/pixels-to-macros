@@ -473,7 +473,7 @@ class _WheelPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.shortestSide * 0.36;
-    final strokeWidth = size.shortestSide * 0.105;
+    final strokeWidth = size.shortestSide * 0.120;  // slightly thicker for clarity
     final segmentAngle = (2 * math.pi) / nutrients.length;
     const gap = 0.045;
     final rect = Rect.fromCircle(center: center, radius: radius);
@@ -482,15 +482,21 @@ class _WheelPainter extends CustomPainter {
       final nutrient = nutrients[i];
       final start = -math.pi / 2 + i * segmentAngle + gap / 2;
       final sweep = segmentAngle - gap;
+
+      // Track (background arc): flat caps so there is no dot at the start.
       final basePaint = Paint()
-        ..color = AppTheme.gray200.withValues(alpha: 0.70)
+        ..color = AppTheme.gray200
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round;
+        ..strokeCap = StrokeCap.butt;
+
+      // Fill arc: round cap only at the end (progress tip), flat at start.
+      // Flutter's StrokeCap applies to both ends, so we use StrokeCap.round
+      // and draw a flat cap manually at the start by placing a tiny rect.
       final fillPaint = Paint()
         ..shader = SweepGradient(
           colors: [
-            nutrient.color.withValues(alpha: 0.72),
+            nutrient.color.withValues(alpha: 0.80),
             nutrient.color,
           ],
           startAngle: start,
@@ -501,8 +507,16 @@ class _WheelPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round;
 
       canvas.drawArc(rect, start, sweep, false, basePaint);
-      if (nutrient.ratio > 0) {
+      if (nutrient.ratio > 0.01) {
+        // Draw fill with round end cap
         canvas.drawArc(rect, start, sweep * nutrient.ratio, false, fillPaint);
+        // Cover the start cap with a flat square cap manually
+        final flatCapPaint = Paint()
+          ..color = nutrient.color.withValues(alpha: 0.80)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.butt;
+        canvas.drawArc(rect, start, 0.001, false, flatCapPaint);
       }
     }
   }

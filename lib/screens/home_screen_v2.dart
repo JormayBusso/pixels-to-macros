@@ -14,6 +14,7 @@ import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/drink_sheet.dart';
 import '../widgets/goal_mascot_widget.dart';
+import '../widgets/weekly_challenges_card.dart';
 import 'body_map_screen.dart';
 import 'nutrition_dashboard_screen.dart';
 import 'scan_detail_screen.dart';
@@ -137,14 +138,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16),
                   children: [
-                    // ── Greeting ─────────────────────────────────────────────
-                    Text(
-                      greeting,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.gray900,
-                      ),
+                    // ── Greeting + streak badge ────────────────────────────
+                    Row(
+                      children: [
+                        Text(
+                          greeting,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.gray900,
+                          ),
+                        ),
+                        if (streak.currentStreak > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.amber100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.local_fire_department, size: 14, color: AppTheme.amber500),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '${streak.currentStreak}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.amber700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -168,12 +198,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     _GoalProgressCard(prefs: prefs, intake: intake),
                     const SizedBox(height: 16),
 
-                    // ── Streak card ──────────────────────────────────────────
-                    _StreakCard(streak: streak),
-                    const SizedBox(height: 16),
-
                     // ── Hydration card ───────────────────────────────────────
                     _HydrationCard(),
+                    const SizedBox(height: 16),
+
+
+
+                    // ── Weekly challenges ────────────────────────────────────
+                    const WeeklyChallengesCard(),
                     const SizedBox(height: 16),
 
                     // ── Food breakdown ───────────────────────────────────────
