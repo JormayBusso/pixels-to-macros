@@ -48,14 +48,26 @@ extension RecipeMealTypeX on RecipeMealType {
 
 @immutable
 class RecipeIngredient {
-  const RecipeIngredient({required this.name, required this.amount});
+  const RecipeIngredient({
+    required this.name,
+    required this.amount,
+    required this.grams,
+  });
   final String name;
   final String amount;
+  final double grams;
 
   factory RecipeIngredient.fromJson(Map<String, dynamic> j) =>
       RecipeIngredient(
         name: (j['name'] as String?)?.trim() ?? '',
         amount: (j['amount'] as String?)?.trim() ?? '',
+        grams: (j['grams'] as num?)?.toDouble() ?? 0,
+      );
+
+  RecipeIngredient copyWithGrams(double newGrams) => RecipeIngredient(
+        name: name,
+        amount: '${newGrams.round()}g',
+        grams: newGrams,
       );
 }
 
@@ -79,6 +91,22 @@ class Recipe {
     required this.ingredients,
     required this.steps,
     required this.source,
+    this.vitaminAUg = 0,
+    this.vitaminCMg = 0,
+    this.vitaminDUg = 0,
+    this.vitaminEMg = 0,
+    this.vitaminKUg = 0,
+    this.vitaminB12Ug = 0,
+    this.folateUg = 0,
+    this.calciumMg = 0,
+    this.ironMg = 0,
+    this.magnesiumMg = 0,
+    this.potassiumMg = 0,
+    this.zincMg = 0,
+    this.sodiumMg = 0,
+    this.glycemicIndex = 0,
+    this.glycemicLoad = 0,
+    this.insulinUnits = 0,
   });
 
   final String id;
@@ -99,6 +127,26 @@ class Recipe {
   final List<String> steps;
   final String source;
 
+  // Micronutrients
+  final double vitaminAUg;
+  final double vitaminCMg;
+  final double vitaminDUg;
+  final double vitaminEMg;
+  final double vitaminKUg;
+  final double vitaminB12Ug;
+  final double folateUg;
+  final double calciumMg;
+  final double ironMg;
+  final double magnesiumMg;
+  final double potassiumMg;
+  final double zincMg;
+  final double sodiumMg;
+
+  // Glycemic & insulin
+  final int glycemicIndex;
+  final double glycemicLoad;
+  final double insulinUnits;
+
   bool get hasMacros => calories > 0;
 
   /// Per-serving values.
@@ -108,6 +156,53 @@ class Recipe {
   double fatPerServing(int s) => fatG / s;
   double fiberPerServing(int s) => fiberG / s;
   double sugarPerServing(int s) => sugarG / s;
+
+  /// Insulin units for a given number of servings.
+  /// Uses standard ICR (Insulin-to-Carb Ratio) of 1:10 by default.
+  double insulinForServings(int s, {double icr = 10}) {
+    final netCarbs = (carbsG - fiberG).clamp(0, double.infinity) / s;
+    return netCarbs / icr;
+  }
+
+  /// Recalculate nutrition when ingredient grams are adjusted.
+  /// [scale] is the ratio newGrams/originalGrams for proportional scaling.
+  Recipe scaledBy(double scale) => Recipe(
+        id: id,
+        name: name,
+        image: image,
+        mealType: mealType,
+        goals: goals,
+        minutes: minutes,
+        servings: servings,
+        calories: (calories * scale).round(),
+        proteinG: proteinG * scale,
+        carbsG: carbsG * scale,
+        fatG: fatG * scale,
+        fiberG: fiberG * scale,
+        sugarG: sugarG * scale,
+        vitaminAUg: vitaminAUg * scale,
+        vitaminCMg: vitaminCMg * scale,
+        vitaminDUg: vitaminDUg * scale,
+        vitaminEMg: vitaminEMg * scale,
+        vitaminKUg: vitaminKUg * scale,
+        vitaminB12Ug: vitaminB12Ug * scale,
+        folateUg: folateUg * scale,
+        calciumMg: calciumMg * scale,
+        ironMg: ironMg * scale,
+        magnesiumMg: magnesiumMg * scale,
+        potassiumMg: potassiumMg * scale,
+        zincMg: zincMg * scale,
+        sodiumMg: sodiumMg * scale,
+        glycemicIndex: glycemicIndex,
+        glycemicLoad: glycemicLoad * scale,
+        insulinUnits: insulinUnits * scale,
+        tags: tags,
+        ingredients: ingredients
+            .map((i) => i.copyWithGrams(i.grams * scale))
+            .toList(),
+        steps: steps,
+        source: source,
+      );
 
   factory Recipe.fromJson(Map<String, dynamic> j) {
     final goalsRaw = (j['goals'] as List?)?.cast<String>() ?? const [];
@@ -127,6 +222,22 @@ class Recipe {
       fatG: (j['fat_g'] as num?)?.toDouble() ?? 0,
       fiberG: (j['fiber_g'] as num?)?.toDouble() ?? 0,
       sugarG: (j['sugar_g'] as num?)?.toDouble() ?? 0,
+      vitaminAUg: (j['vitamin_a_ug'] as num?)?.toDouble() ?? 0,
+      vitaminCMg: (j['vitamin_c_mg'] as num?)?.toDouble() ?? 0,
+      vitaminDUg: (j['vitamin_d_ug'] as num?)?.toDouble() ?? 0,
+      vitaminEMg: (j['vitamin_e_mg'] as num?)?.toDouble() ?? 0,
+      vitaminKUg: (j['vitamin_k_ug'] as num?)?.toDouble() ?? 0,
+      vitaminB12Ug: (j['vitamin_b12_ug'] as num?)?.toDouble() ?? 0,
+      folateUg: (j['folate_ug'] as num?)?.toDouble() ?? 0,
+      calciumMg: (j['calcium_mg'] as num?)?.toDouble() ?? 0,
+      ironMg: (j['iron_mg'] as num?)?.toDouble() ?? 0,
+      magnesiumMg: (j['magnesium_mg'] as num?)?.toDouble() ?? 0,
+      potassiumMg: (j['potassium_mg'] as num?)?.toDouble() ?? 0,
+      zincMg: (j['zinc_mg'] as num?)?.toDouble() ?? 0,
+      sodiumMg: (j['sodium_mg'] as num?)?.toDouble() ?? 0,
+      glycemicIndex: (j['glycemic_index'] as num?)?.toInt() ?? 0,
+      glycemicLoad: (j['glycemic_load'] as num?)?.toDouble() ?? 0,
+      insulinUnits: (j['insulin_units'] as num?)?.toDouble() ?? 0,
       tags: ((j['tags'] as List?) ?? const [])
           .cast<dynamic>()
           .map((e) => e.toString())

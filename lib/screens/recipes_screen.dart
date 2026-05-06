@@ -483,6 +483,7 @@ class _RecipeDetailScreenState extends ConsumerState<_RecipeDetailScreen> {
                     carbsG: _carbsForServing,
                     bolusUnits: _bolusUnits,
                     icr: _icr,
+                    glycemicIndex: r.glycemicIndex,
                   ),
                   if (_selectedServings > 1) ...[
                     const SizedBox(height: 8),
@@ -693,7 +694,10 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
 
     for (var i = 0; i < widget.recipe.ingredients.length; i++) {
       final ing = widget.recipe.ingredients[i];
-      final grams = _estimateGrams(ing.amount, widget.servings, widget.recipe.servings, ing.name);
+      // Use the numeric grams field directly if available, otherwise parse from amount string
+      final grams = ing.grams > 0
+          ? (ing.grams * widget.servings / widget.recipe.servings)
+          : _estimateGrams(ing.amount, widget.servings, widget.recipe.servings, ing.name);
       _controllers[i].text = grams.round().toString();
     }
     setState(() {});
@@ -1049,13 +1053,22 @@ class _ServingSelector extends StatelessWidget {
 
 // ─────────────────────── Nutrition table ───────────────────────
 
-class _NutritionTable extends StatelessWidget {
+class _NutritionTable extends StatefulWidget {
   const _NutritionTable({required this.recipe, required this.servings});
   final Recipe recipe;
   final int servings;
 
   @override
+  State<_NutritionTable> createState() => _NutritionTableState();
+}
+
+class _NutritionTableState extends State<_NutritionTable> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final r = widget.recipe;
+    final s = widget.servings;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -1064,13 +1077,66 @@ class _NutritionTable extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _NutrientRow('Protein', recipe.proteinPerServing(servings), 'g'),
-          _NutrientRow('Carbs', recipe.carbsPerServing(servings), 'g'),
-          _NutrientRow('Fat', recipe.fatPerServing(servings), 'g'),
-          if (recipe.fiberG > 0)
-            _NutrientRow('Fiber', recipe.fiberPerServing(servings), 'g'),
-          if (recipe.sugarG > 0)
-            _NutrientRow('Sugar', recipe.sugarPerServing(servings), 'g'),
+          _NutrientRow('Protein', r.proteinPerServing(s), 'g'),
+          _NutrientRow('Carbs', r.carbsPerServing(s), 'g'),
+          _NutrientRow('Fat', r.fatPerServing(s), 'g'),
+          if (r.fiberG > 0)
+            _NutrientRow('Fiber', r.fiberPerServing(s), 'g'),
+          if (r.sugarG > 0)
+            _NutrientRow('Sugar', r.sugarPerServing(s), 'g'),
+          if (_expanded) ...[
+            const Divider(height: 16),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Vitamins & Minerals',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(height: 4),
+            if (r.vitaminAUg > 0)
+              _NutrientRow('Vitamin A', r.vitaminAUg / s, 'µg'),
+            if (r.vitaminCMg > 0)
+              _NutrientRow('Vitamin C', r.vitaminCMg / s, 'mg'),
+            if (r.vitaminDUg > 0)
+              _NutrientRow('Vitamin D', r.vitaminDUg / s, 'µg'),
+            if (r.vitaminEMg > 0)
+              _NutrientRow('Vitamin E', r.vitaminEMg / s, 'mg'),
+            if (r.vitaminKUg > 0)
+              _NutrientRow('Vitamin K', r.vitaminKUg / s, 'µg'),
+            if (r.vitaminB12Ug > 0)
+              _NutrientRow('Vitamin B12', r.vitaminB12Ug / s, 'µg'),
+            if (r.folateUg > 0)
+              _NutrientRow('Folate', r.folateUg / s, 'µg'),
+            if (r.calciumMg > 0)
+              _NutrientRow('Calcium', r.calciumMg / s, 'mg'),
+            if (r.ironMg > 0)
+              _NutrientRow('Iron', r.ironMg / s, 'mg'),
+            if (r.magnesiumMg > 0)
+              _NutrientRow('Magnesium', r.magnesiumMg / s, 'mg'),
+            if (r.potassiumMg > 0)
+              _NutrientRow('Potassium', r.potassiumMg / s, 'mg'),
+            if (r.zincMg > 0)
+              _NutrientRow('Zinc', r.zincMg / s, 'mg'),
+            if (r.sodiumMg > 0)
+              _NutrientRow('Sodium', r.sodiumMg / s, 'mg'),
+          ],
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _expanded ? 'Show less' : 'Vitamins & minerals',
+                  style: TextStyle(fontSize: 11, color: AppTheme.gray500),
+                ),
+                Icon(
+                  _expanded ? Icons.expand_less : Icons.expand_more,
+                  size: 16,
+                  color: AppTheme.gray500,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1112,13 +1178,21 @@ class _BolusCard extends StatelessWidget {
     required this.carbsG,
     required this.bolusUnits,
     required this.icr,
+    this.glycemicIndex = 0,
   });
   final double carbsG;
   final double bolusUnits;
   final double icr;
+  final int glycemicIndex;
 
   @override
   Widget build(BuildContext context) {
+    String giLabel = '';
+    if (glycemicIndex > 0) {
+      if (glycemicIndex <= 35) giLabel = 'Low GI ($glycemicIndex)';
+      else if (glycemicIndex <= 55) giLabel = 'Medium GI ($glycemicIndex)';
+      else giLabel = 'High GI ($glycemicIndex)';
+    }
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1143,7 +1217,7 @@ class _BolusCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${carbsG.round()}g carbs ÷ ICR ${icr.round()}',
+                  '${carbsG.round()}g carbs ÷ ICR ${icr.round()}${giLabel.isNotEmpty ? ' · $giLabel' : ''}',
                   style: const TextStyle(
                     fontSize: 11,
                     color: Color(0xFF42A5F5),

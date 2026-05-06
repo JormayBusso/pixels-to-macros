@@ -37,7 +37,7 @@ class RecipeRepository {
     RecipeMealType? mealType,
     String? search,
     int maxMinutes = 0,
-    int limit = 100,
+    int limit = 200,
   }) async {
     final list = await all();
     final q = (search ?? '').trim().toLowerCase();
