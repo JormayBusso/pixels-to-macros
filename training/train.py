@@ -625,44 +625,51 @@ def main() -> None:
                 device,
                 num_classes,
             )
+            improved = val_miou > best_miou + 1e-4
+            if improved:
+                best_miou = val_miou
+                epochs_without_improvement = 0
+                torch.save(model.state_dict(), output_dir / "best.pth")
+            else:
+                epochs_without_improvement += 1
         else:
-            # Skip validation this epoch — use last known values
-            last = metrics[-1] if metrics else {}
-            val_loss = last.get("val_loss", 0.0)
-            val_miou = last.get("val_miou", 0.0)
-            pixel_acc = last.get("pixel_acc", 0.0)
+            val_loss = val_miou = pixel_acc = None
+            improved = False
         scheduler.step()
         elapsed = time.time() - t0
-
-        improved = val_miou > best_miou + 1e-4
-        if improved:
-            best_miou = val_miou
-            epochs_without_improvement = 0
-            torch.save(model.state_dict(), output_dir / "best.pth")
-        else:
-            epochs_without_improvement += 1
 
         entry = {
             "epoch": epoch,
             "train_loss": round(train_loss, 4),
-            "val_loss": round(val_loss, 4),
-            "val_miou": round(val_miou, 4),
-            "pixel_acc": round(pixel_acc, 4),
+            "val_loss": round(val_loss, 4) if val_loss is not None else None,
+            "val_miou": round(val_miou, 4) if val_miou is not None else None,
+            "pixel_acc": round(pixel_acc, 4) if pixel_acc is not None else None,
             "best_miou": round(best_miou, 4),
+            "val_ran": run_val,
             "lr": round(optimizer.param_groups[0]["lr"], 7),
             "time_s": round(elapsed, 1),
         }
         metrics.append(entry)
-        print(
-            f"Epoch {epoch:3d}/{args.epochs} | "
-            f"train_loss={entry['train_loss']:.4f} | "
-            f"val_loss={entry['val_loss']:.4f} | "
-            f"mIoU={entry['val_miou']:.4f} | "
-            f"pixel_acc={entry['pixel_acc']:.4f} | "
-            f"{entry['time_s']:.0f}s"
-        )
+        if run_val:
+            print(
+                f"Epoch {epoch:3d}/{args.epochs} | "
+                f"train_loss={entry['train_loss']:.4f} | "
+                f"val_loss={entry['val_loss']:.4f} | "
+                f"mIoU={entry['val_miou']:.4f} | "
+                f"pixel_acc={entry['pixel_acc']:.4f} | "
+                f"best_mIoU={best_miou:.4f} | "
+                f"{entry['time_s']:.0f}s"
+            )
+        else:
+            print(
+                f"Epoch {epoch:3d}/{args.epochs} | "
+                f"train_loss={entry['train_loss']:.4f} | "
+                f"[val skipped, runs every {args.val_every} epochs] | "
+                f"best_mIoU={best_miou:.4f} | "
+                f"{entry['time_s']:.0f}s"
+            )
         if improved:
-            print(f"  -> Saved best model (mIoU={best_miou:.4f})")
+            print(f"  -> New best model (mIoU={best_miou:.4f})")
 
         checkpoint = {
             "epoch": epoch,
