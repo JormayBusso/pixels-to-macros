@@ -345,6 +345,13 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Auto-resume from last checkpoint if --resume not explicitly given
+    if not args.resume:
+        auto_ckpt = output_dir / "last_checkpoint.pth"
+        if auto_ckpt.exists():
+            args.resume = str(auto_ckpt)
+            print(f"Auto-resuming from {args.resume}")
+
     device = choose_device()
     use_amp = args.amp and device.type == "cuda"
     print(f"Device: {device}")
@@ -538,6 +545,20 @@ def main() -> None:
 
     print(f"\nDone. Best mIoU: {best_miou:.4f}")
     print(f"Checkpoint: {output_dir / 'best.pth'}")
+
+    # Auto-export to Core ML immediately after training
+    best_ckpt = output_dir / "best.pth"
+    if best_ckpt.exists():
+        print("\n--- Auto-exporting best model to Core ML ---")
+        try:
+            import sys as _sys
+            _sys.path.insert(0, str(Path(__file__).parent))
+            from export_coreml import load_model as _load_model, convert_coreml as _convert_coreml
+            _model, _nclasses = _load_model(best_ckpt, num_classes)
+            _convert_coreml(_model, _nclasses, args.img_size, output_dir)
+            print("Core ML export complete ✅")
+        except Exception as e:
+            print(f"Auto-export failed ({e}) — run export_coreml.py manually.")
 
 
 if __name__ == "__main__":
