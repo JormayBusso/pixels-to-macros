@@ -506,6 +506,13 @@ def main() -> None:
         payload = torch.load(args.resume, map_location=device)
         state = payload.get("model_state", payload)
 
+        # Strip _orig_mod. prefix added by torch.compile so checkpoints saved
+        # from a compiled model can be loaded into an uncompiled model.
+        state = {
+            (k[len("_orig_mod."):] if k.startswith("_orig_mod.") else k): v
+            for k, v in state.items()
+        }
+
         # Safely copy matching parameters only. This allows resuming from
         # checkpoints trained with a different number of classes (classifier
         # heads will be skipped and remain freshly initialized).
@@ -555,9 +562,9 @@ def main() -> None:
 
         # Determine whether checkpoint was saved mid-epoch (contains batch_idx)
         payload_epoch = int(payload.get("epoch", 0))
-        payload_batch = int(payload.get("batch_idx", 0)) if payload.get("batch_idx", 0) is not None else 0
-        best_miou = float(payload.get("best_miou", 0.0))
-        metrics = list(payload.get("metrics", []))
+        payload_batch = int(payload.get("batch_idx") or 0)
+        best_miou = float(payload.get("best_miou") or 0.0)
+        metrics = list(payload.get("metrics") or [])
 
         if payload_batch and 0 < payload_batch < len(train_loader):
             # Resume mid-epoch: start at the same epoch and skip processed batches
