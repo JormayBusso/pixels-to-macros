@@ -490,9 +490,7 @@ class _WheelPainter extends CustomPainter {
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.butt;
 
-      // Fill arc: round cap only at the end (progress tip), flat at start.
-      // Flutter's StrokeCap applies to both ends, so we use StrokeCap.round
-      // and draw a flat cap manually at the start by placing a tiny rect.
+      // Fill arc: flat caps on both ends — no bleeding dot.
       final fillPaint = Paint()
         ..shader = SweepGradient(
           colors: [
@@ -504,19 +502,11 @@ class _WheelPainter extends CustomPainter {
         ).createShader(rect)
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round;
+        ..strokeCap = StrokeCap.butt;
 
       canvas.drawArc(rect, start, sweep, false, basePaint);
       if (nutrient.ratio > 0.01) {
-        // Draw fill with round end cap
         canvas.drawArc(rect, start, sweep * nutrient.ratio, false, fillPaint);
-        // Cover the start cap with a flat square cap manually
-        final flatCapPaint = Paint()
-          ..color = nutrient.color.withValues(alpha: 0.80)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = strokeWidth
-          ..strokeCap = StrokeCap.butt;
-        canvas.drawArc(rect, start, 0.001, false, flatCapPaint);
       }
     }
   }

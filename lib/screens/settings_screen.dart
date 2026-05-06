@@ -27,6 +27,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _nameCtrl;
   late TextEditingController _goalCtrl;
   late TextEditingController _passwordCtrl;
+  late TextEditingController _carbCtrl;
+  late TextEditingController _proteinCtrl;
+  late TextEditingController _fatCtrl;
+  late TextEditingController _waterCtrl;
   bool _obscurePassword = true;
   int _foodCount = 0;
   final _accountScrollController = ScrollController();
@@ -40,6 +44,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _nameCtrl = TextEditingController(text: prefs.name);
     _goalCtrl = TextEditingController(text: prefs.dailyCalorieGoal.toString());
     _passwordCtrl = TextEditingController();
+    _carbCtrl = TextEditingController(text: prefs.dailyCarbLimitG.toString());
+    _proteinCtrl = TextEditingController(text: prefs.dailyProteinTargetG.toString());
+    _fatCtrl = TextEditingController(text: prefs.dailyFatTargetG.toString());
+    _waterCtrl = TextEditingController(text: prefs.dailyWaterGoalMl.toString());
     _loadFoodCount();
   }
 
@@ -53,15 +61,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _nameCtrl.dispose();
     _goalCtrl.dispose();
     _passwordCtrl.dispose();
+    _carbCtrl.dispose();
+    _proteinCtrl.dispose();
+    _fatCtrl.dispose();
+    _waterCtrl.dispose();
     _accountScrollController.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     final goal = int.tryParse(_goalCtrl.text) ?? 2000;
+    final carb = int.tryParse(_carbCtrl.text) ?? 250;
+    final protein = int.tryParse(_proteinCtrl.text) ?? 80;
+    final fat = int.tryParse(_fatCtrl.text) ?? 65;
+    final water = int.tryParse(_waterCtrl.text) ?? 2000;
     final prefs = ref.read(userPrefsProvider).copyWith(
           name: _nameCtrl.text.trim(),
           dailyCalorieGoal: goal.clamp(500, 10000),
+          dailyCarbLimitG: carb.clamp(0, 1000),
+          dailyProteinTargetG: protein.clamp(0, 500),
+          dailyFatTargetG: fat.clamp(0, 500),
+          dailyWaterGoalMl: water.clamp(500, 10000),
         );
     await ref.read(userPrefsProvider.notifier).update(prefs);
     if (mounted) {
@@ -277,6 +297,107 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 24),
 
+        _SectionHeader('Daily Macro Targets'),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _carbCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Carbs (g)',
+                          prefixIcon: Icon(Icons.grain),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _proteinCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Protein (g)',
+                          prefixIcon: Icon(Icons.egg_outlined),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _fatCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Fat (g)',
+                          prefixIcon: Icon(Icons.opacity),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _save,
+                    child: const Text('Save Macro Targets'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        _SectionHeader('Water Goal'),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: _waterCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Daily water goal (ml)',
+                    prefixIcon: Icon(Icons.water_drop_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  children: [1500, 2000, 2500, 3000].map((ml) {
+                    return ActionChip(
+                      label: Text('${ml ~/ 1000}.${(ml % 1000) ~/ 100 == 0 ? '0' : (ml % 1000) ~/ 100}L'),
+                      onPressed: () => setState(() => _waterCtrl.text = ml.toString()),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _save,
+                    child: const Text('Save Water Goal'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        _SectionHeader('Reminders'),
+        const SizedBox(height: 12),
+        const _RemindersCard(),
+
         _SectionHeader('Database'),
         const SizedBox(height: 12),
         Card(
@@ -491,6 +612,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: const Icon(Icons.download),
                     label: const Text('Export Detailed Data (CSV)'),
                     onPressed: () => _exportCsv(detailed: true),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    label: const Text(
+                      'Clear All Scan History',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red),
+                    ),
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Clear Scan History?'),
+                          content: const Text(
+                            'This will permanently delete all your scan records. This cannot be undone.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              style: TextButton.styleFrom(foregroundColor: Colors.red),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true && mounted) {
+                        final db = await DatabaseService.instance.database;
+                        await db.delete('scan_results');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Scan history cleared')),
+                          );
+                        }
+                      }
+                    },
                   ),
                 ),
               ],
@@ -1242,6 +1407,89 @@ class _CloudSyncCard extends ConsumerWidget {
             child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RemindersCard extends StatefulWidget {
+  const _RemindersCard();
+
+  @override
+  State<_RemindersCard> createState() => _RemindersCardState();
+}
+
+class _RemindersCardState extends State<_RemindersCard> {
+  bool _mealReminder = false;
+  bool _waterReminder = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final db = await DatabaseService.instance.database;
+    final rows = await db.query('user_preferences', limit: 1);
+    if (rows.isNotEmpty) {
+      final row = rows.first;
+      if (mounted) {
+        setState(() {
+          _mealReminder = (row['meal_reminder_enabled'] as int? ?? 0) == 1;
+          _waterReminder = (row['water_reminder_enabled'] as int? ?? 0) == 1;
+        });
+      }
+    }
+  }
+
+  Future<void> _save() async {
+    final db = await DatabaseService.instance.database;
+    await db.update('user_preferences', {
+      'meal_reminder_enabled': _mealReminder ? 1 : 0,
+      'water_reminder_enabled': _waterReminder ? 1 : 0,
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'In-app reminders (coming soon)',
+              style: TextStyle(fontSize: 12, color: AppTheme.gray400),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(Icons.restaurant_outlined),
+              title: const Text('Meal reminder',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Remind me to log meals at 13:00'),
+              value: _mealReminder,
+              onChanged: (v) {
+                setState(() => _mealReminder = v);
+                _save();
+              },
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(Icons.water_drop_outlined),
+              title: const Text('Water reminder',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Remind me to drink water every 2 hours'),
+              value: _waterReminder,
+              onChanged: (v) {
+                setState(() => _waterReminder = v);
+                _save();
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

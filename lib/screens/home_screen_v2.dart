@@ -150,24 +150,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         if (streak.currentStreak > 0) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 10),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: AppTheme.amber100,
-                              borderRadius: BorderRadius.circular(12),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFF6B00), Color(0xFFFFAA00)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0xFFFF8C00),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.local_fire_department, size: 14, color: AppTheme.amber500),
-                                const SizedBox(width: 3),
+                                const Text('🔥', style: TextStyle(fontSize: 15, height: 1)),
+                                const SizedBox(width: 5),
                                 Text(
                                   '${streak.currentStreak}',
                                   style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppTheme.amber700,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                    height: 1,
                                   ),
                                 ),
                               ],
@@ -602,70 +614,116 @@ class _StreakCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final active = streak.currentStreak > 0;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: active
+            ? const LinearGradient(
+                colors: [Color(0xFFFF6B00), Color(0xFFFF9F00)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : const LinearGradient(
+                colors: [Color(0xFFF5F5F5), Color(0xFFE0E0E0)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: active
+            ? [
+                BoxShadow(
+                  color: const Color(0xFFFF8C00).withValues(alpha: 0.35),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : [],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: streak.currentStreak > 0
-                    ? AppTheme.amber100
-                    : AppTheme.gray100,
-                borderRadius: BorderRadius.circular(12),
+                color: active
+                    ? Colors.white.withValues(alpha: 0.20)
+                    : const Color(0xFFE0E0E0),
+                shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.local_fire_department,
-                size: 28,
-                color: streak.currentStreak > 0
-                    ? AppTheme.amber500
-                    : AppTheme.gray400,
+              child: Center(
+                child: Text(
+                  active ? '🔥' : '💤',
+                  style: const TextStyle(fontSize: 32, height: 1),
+                ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 18),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${streak.currentStreak} day streak',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.gray900,
+                    active
+                        ? '${streak.currentStreak} day streak!'
+                        : 'No streak yet',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: active ? Colors.white : AppTheme.gray700,
+                      height: 1.1,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     streak.scannedToday
-                        ? 'Keep it going!'
-                        : 'Scan today to continue!',
-                    style: const TextStyle(
+                        ? '✅ Logged today — keep it up!'
+                        : active
+                            ? 'Scan today to keep the fire going!'
+                            : 'Start scanning to build your streak.',
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.gray400,
+                      color: active
+                          ? Colors.white.withValues(alpha: 0.85)
+                          : AppTheme.gray500,
                     ),
                   ),
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${streak.longestStreak}',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: context.primary700,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: active
+                    ? Colors.white.withValues(alpha: 0.22)
+                    : const Color(0xFFE0E0E0),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    '${streak.longestStreak}',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: active ? Colors.white : AppTheme.gray600,
+                      height: 1,
+                    ),
                   ),
-                ),
-                const Text(
-                  'best',
-                  style: TextStyle(fontSize: 11, color: AppTheme.gray400),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    'best',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: active
+                          ? Colors.white.withValues(alpha: 0.80)
+                          : AppTheme.gray400,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -949,7 +1007,6 @@ class _HydrationCard extends ConsumerWidget {
       glassAsset = 'assets/mascots/empty_glass.png';
     }
 
-    final remaining = ((goal - intake) / 1000.0).clamp(0.0, 99.0);
     final percent = (progress * 100).round();
 
     return Card(
@@ -1012,7 +1069,7 @@ class _HydrationCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${(intake / 1000).toStringAsFixed(1)} / ${(goal / 1000).toStringAsFixed(1)} L  ($percent%)',
+                        '${_fmtMl(intake)} / ${_fmtMl(goal)}  ($percent%)',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -1034,7 +1091,7 @@ class _HydrationCard extends ConsumerWidget {
                       Text(
                         progress >= 1.0
                             ? '🎉 Hydration goal reached!'
-                            : '${remaining.toStringAsFixed(1)} L remaining',
+                            : '${_fmtMl((goal - intake).clamp(0, goal))} remaining',
                         style: const TextStyle(
                             fontSize: 11, color: AppTheme.gray400),
                       ),
@@ -1225,4 +1282,14 @@ class _WaterButton extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Format a water amount precisely.
+/// Under 1000 ml → shown as exact ml (e.g. "250 ml").
+/// 1000 ml and above → shown in L with up to 2 decimals, trailing zeros stripped.
+String _fmtMl(int ml) {
+  if (ml < 1000) return '$ml ml';
+  final s = (ml / 1000.0).toStringAsFixed(2);
+  final trimmed = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+  return '$trimmed L';
 }

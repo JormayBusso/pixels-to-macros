@@ -121,7 +121,11 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                           ],
                         ),
                         child: Center(
-                          child: Icon(region.icon, size: d * 0.42, color: Colors.white),
+                          child: Text(
+                            region.emoji,
+                            style: TextStyle(fontSize: d * 0.40, height: 1),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
                     ),
@@ -174,7 +178,11 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                     border: Border.all(color: colorScheme, width: 2),
                   ),
                   alignment: Alignment.center,
-                  child: Icon(region.icon, color: colorScheme, size: 22),
+                  child: Text(
+                    region.emoji,
+                    style: const TextStyle(fontSize: 22, height: 1),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -339,6 +347,21 @@ extension on _OrganRegion {
         _OrganRegion.muscles => Icons.fitness_center,
         _OrganRegion.skin => Icons.face_outlined,
         _OrganRegion.blood => Icons.bloodtype_outlined,
+      };
+
+  String get emoji => switch (this) {
+        _OrganRegion.brain => '🧠',
+        _OrganRegion.eyes => '👁️',
+        _OrganRegion.lungs => '🫁',
+        _OrganRegion.heart => '🫀',
+        _OrganRegion.liver => '🍁',
+        _OrganRegion.stomach => '🌀',
+        _OrganRegion.intestines => '〰️',
+        _OrganRegion.kidneys => '🫘',
+        _OrganRegion.bones => '🦴',
+        _OrganRegion.muscles => '💪',
+        _OrganRegion.skin => '🩹',
+        _OrganRegion.blood => '🩸',
       };
 
   String get explanation => switch (this) {
