@@ -220,19 +220,19 @@ def train_one_epoch(
     criterion: nn.Module,
     optimizer: torch.optim.Optimizer,
     device: torch.device,
-    scaler: torch.cuda.amp.GradScaler,
+    scaler,
     grad_clip: float,
     use_amp: bool,
 ) -> float:
     model.train()
     total_loss = 0.0
     seen = 0
-    pbar = tqdm(loader, desc="  Train", leave=False)
+    pbar = tqdm(loader, desc="  Train", leave=True)
     for i, batch in enumerate(pbar, start=1):
         images, masks = batch_to_tensors(batch, device)
         optimizer.zero_grad(set_to_none=True)
 
-        with torch.cuda.amp.autocast(enabled=use_amp):
+        with torch.amp.autocast('cuda', enabled=use_amp):
             output = model(images).contiguous()
             loss = criterion(output, masks)
 
@@ -253,12 +253,9 @@ def train_one_epoch(
         total_loss += loss.item() * batch_n
         seen += batch_n
 
-        # Periodically print running loss so Colab/tee shows live progress
-        if i % 20 == 0 or seen == len(loader.dataset):
-            running_loss = total_loss / max(seen, 1)
-            lr = optimizer.param_groups[0]["lr"]
-            pbar.set_postfix({"loss": f"{running_loss:.4f}", "lr": f"{lr:.1e}"})
-            print(f"[Train] batch {i}/{len(loader)} loss={running_loss:.4f} lr={lr:.1e}", flush=True)
+        running_loss = total_loss / max(seen, 1)
+        lr = optimizer.param_groups[0]["lr"]
+        pbar.set_postfix({"loss": f"{running_loss:.4f}", "lr": f"{lr:.1e}"})
 
     return total_loss / len(loader.dataset)
 
@@ -276,7 +273,7 @@ def evaluate(
     confusion = np.zeros((num_classes, num_classes), dtype=np.int64)
     seen = 0
 
-    pbar = tqdm(loader, desc="  Val  ", leave=False)
+    pbar = tqdm(loader, desc="  Val  ", leave=True)
     for i, batch in enumerate(pbar, start=1):
         images, masks = batch_to_tensors(batch, device)
         output = model(images).contiguous()
@@ -289,10 +286,8 @@ def evaluate(
         targets = masks.cpu().numpy()
         confusion += confusion_matrix(preds, targets, num_classes)
 
-        if i % 20 == 0 or seen == len(loader.dataset):
-            running_loss = total_loss / max(seen, 1)
-            pbar.set_postfix({"loss": f"{running_loss:.4f}"})
-            print(f"[Val] batch {i}/{len(loader)} loss={running_loss:.4f}", flush=True)
+        running_loss = total_loss / max(seen, 1)
+        pbar.set_postfix({"loss": f"{running_loss:.4f}"})
 
     avg_loss = total_loss / len(loader.dataset)
     miou, pixel_acc = metrics_from_confusion(confusion)
@@ -408,7 +403,7 @@ def main() -> None:
     )
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
-    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+    scaler = torch.amp.GradScaler('cuda', enabled=use_amp)
 
     start_epoch = 1
     best_miou = 0.0
