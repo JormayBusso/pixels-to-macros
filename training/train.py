@@ -22,6 +22,8 @@ import json
 import random
 import time
 from pathlib import Path
+import os
+import tempfile
 
 import numpy as np
 import torch
@@ -223,12 +225,23 @@ def train_one_epoch(
     scaler,
     grad_clip: float,
     use_amp: bool,
+    epoch: int = 1,
+    output_dir: Path = Path("training/output"),
+    save_every_batches: int = 200,
+    save_every_secs: float = 600.0,
+    resume_batch: int = 0,
 ) -> float:
     model.train()
     total_loss = 0.0
     seen = 0
     pbar = tqdm(loader, desc="  Train", leave=True)
+    last_save_time = time.time()
     for i, batch in enumerate(pbar, start=1):
+        # If resuming from a mid-epoch checkpoint, skip already-processed batches
+        if resume_batch and i <= resume_batch:
+            # advance progress bar visually and continue
+            pbar.update(0)
+            continue
         images, masks = batch_to_tensors(batch, device)
         optimizer.zero_grad(set_to_none=True)
 
@@ -256,6 +269,32 @@ def train_one_epoch(
         running_loss = total_loss / max(seen, 1)
         lr = optimizer.param_groups[0]["lr"]
         pbar.set_postfix({"loss": f"{running_loss:.4f}", "lr": f"{lr:.1e}"})
+
+        # Periodic atomic checkpointing mid-epoch so Colab disconnects don't lose much
+        now = time.time()
+        do_save = False
+        if save_every_batches and (i % save_every_batches == 0):
+            do_save = True
+        if save_every_secs and (now - last_save_time) >= save_every_secs:
+            do_save = True
+        if do_save:
+            last_save_time = now
+            checkpoint = {
+                "epoch": epoch,
+                "batch_idx": i,
+                "model_state": model.state_dict(),
+                "optimizer_state": optimizer.state_dict(),
+                "scheduler_state": {},
+                "scaler_state": getattr(scaler, "state_dict", lambda: {})(),
+                "best_miou": None,
+                "metrics": [],
+                "num_classes": getattr(model, "num_classes", None) or None,
+            }
+            try:
+                _save_checkpoint_atomic(Path(output_dir), checkpoint)
+                pbar.write(f"[Save] checkpoint at epoch {epoch} batch {i} -> last_checkpoint.pth")
+            except Exception as e:
+                pbar.write(f"[Save] failed: {e}")
 
     return total_loss / len(loader.dataset)
 
@@ -313,6 +352,32 @@ def _collate(batch):
     }
 
 
+def _save_checkpoint_atomic(
+    output_dir: Path,
+    checkpoint: dict,
+    temp_prefix: str = "tmp_ckpt",
+):
+    """Save checkpoint atomically (write tmp -> rename).
+
+    The file is written inside the same directory and then replaced so mounts like
+    Google Drive see a coherent file.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(prefix=temp_prefix, dir=str(output_dir))
+    os.close(fd)
+    try:
+        torch.save(checkpoint, tmp_path)
+        target = output_dir / "last_checkpoint.pth"
+        # atomic replace
+        os.replace(tmp_path, str(target))
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train food segmentation model")
     parser.add_argument("--data_dir", type=str, required=True)
@@ -334,6 +399,18 @@ def main() -> None:
     parser.add_argument("--no_pretrained", action="store_true")
     parser.add_argument("--resume", type=str, default="")
     parser.add_argument("--amp", action="store_true")
+    parser.add_argument(
+        "--save_every_batches",
+        type=int,
+        default=200,
+        help="Save intermediate checkpoint every N batches (0 to disable)",
+    )
+    parser.add_argument(
+        "--save_every_secs",
+        type=float,
+        default=600.0,
+        help="Save intermediate checkpoint at least every N seconds (0 to disable)",
+    )
     args = parser.parse_args()
 
     set_seed(args.seed)
@@ -408,6 +485,7 @@ def main() -> None:
     start_epoch = 1
     best_miou = 0.0
     metrics = []
+    resume_batch = 0
     if args.resume:
         payload = torch.load(args.resume, map_location=device)
         state = payload.get("model_state", payload)
@@ -459,10 +537,22 @@ def main() -> None:
                 except Exception as e:
                     print(f"Warning: could not load scheduler state: {e}")
 
-        start_epoch = int(payload.get("epoch", 0)) + 1
+        # Determine whether checkpoint was saved mid-epoch (contains batch_idx)
+        payload_epoch = int(payload.get("epoch", 0))
+        payload_batch = int(payload.get("batch_idx", 0)) if payload.get("batch_idx", 0) is not None else 0
         best_miou = float(payload.get("best_miou", 0.0))
         metrics = list(payload.get("metrics", []))
-        print(f"Resumed from {args.resume} at epoch {start_epoch}")
+
+        if payload_batch and 0 < payload_batch < len(train_loader):
+            # Resume mid-epoch: start at the same epoch and skip processed batches
+            start_epoch = payload_epoch
+            resume_batch = payload_batch
+            print(f"Resumed from {args.resume} at epoch {start_epoch} after batch {resume_batch}")
+        else:
+            # Resume between epochs (or no batch info)
+            start_epoch = payload_epoch + 1
+            resume_batch = 0
+            print(f"Resumed from {args.resume} at epoch {start_epoch}")
 
     epochs_without_improvement = 0
     for epoch in range(start_epoch, args.epochs + 1):
@@ -471,6 +561,8 @@ def main() -> None:
             print("Backbone unfrozen")
 
         t0 = time.time()
+        # If resuming mid-epoch, only skip batches for the first resumed epoch
+        current_resume_batch = resume_batch if epoch == start_epoch else 0
         train_loss = train_one_epoch(
             model,
             train_loader,
@@ -480,7 +572,14 @@ def main() -> None:
             scaler,
             args.grad_clip,
             use_amp,
+            epoch=epoch,
+            output_dir=output_dir,
+            save_every_batches=args.save_every_batches,
+            save_every_secs=args.save_every_secs,
+            resume_batch=current_resume_batch,
         )
+        # after applying resume for the first resumed epoch, clear it
+        resume_batch = 0
         val_loss, val_miou, pixel_acc = evaluate(
             model,
             val_loader,
@@ -523,14 +622,19 @@ def main() -> None:
 
         checkpoint = {
             "epoch": epoch,
+            "batch_idx": 0,
             "model_state": model.state_dict(),
             "optimizer_state": optimizer.state_dict(),
             "scheduler_state": scheduler.state_dict(),
+            "scaler_state": getattr(scaler, "state_dict", lambda: {})(),
             "best_miou": best_miou,
             "metrics": metrics,
             "num_classes": num_classes,
         }
-        torch.save(checkpoint, output_dir / "last_checkpoint.pth")
+        try:
+            _save_checkpoint_atomic(output_dir, checkpoint)
+        except Exception:
+            torch.save(checkpoint, output_dir / "last_checkpoint.pth")
         with open(output_dir / "metrics.json", "w") as f:
             json.dump(metrics, f, indent=2)
 
