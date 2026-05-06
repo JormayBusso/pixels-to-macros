@@ -69,3 +69,5 @@ logs/
 *.onnx
 *.tflite
 training/output/last_checkpoint.pth
+*.pth
+*.mlpackage
