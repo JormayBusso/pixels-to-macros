@@ -389,7 +389,7 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--output_dir", type=str, default="training/output")
     parser.add_argument("--img_size", type=int, default=640)
-    parser.add_argument("--num_workers", type=int, default=2)
+    parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--patience", type=int, default=20)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--freeze_backbone_epochs", type=int, default=1)
@@ -399,6 +399,10 @@ def main() -> None:
     parser.add_argument("--no_pretrained", action="store_true")
     parser.add_argument("--resume", type=str, default="")
     parser.add_argument("--amp", action="store_true")
+    parser.add_argument("--compile", action="store_true",
+                        help="Wrap model with torch.compile for ~20-40%% faster forward passes (PyTorch 2+)")
+    parser.add_argument("--val_every", type=int, default=1,
+                        help="Run validation every N epochs instead of every epoch")
     parser.add_argument(
         "--save_every_batches",
         type=int,
@@ -411,7 +415,6 @@ def main() -> None:
         default=600.0,
         help="Save intermediate checkpoint at least every N seconds (0 to disable)",
     )
-    parser.add_argument("--compile", action="store_true", help="Use torch.compile() if available to speed up training")
     args = parser.parse_args()
 
     set_seed(args.seed)
@@ -430,14 +433,12 @@ def main() -> None:
     print(f"Device: {device}")
     print(f"AMP: {'on' if use_amp else 'off'}")
 
-    # Enable cuDNN autotuner for fixed-size inputs (faster convs)
     if device.type == "cuda":
-        try:
-            torch.backends.cudnn.benchmark = True
-            torch.backends.cudnn.enabled = True
-            print("cuDNN benchmark enabled")
-        except Exception:
-            pass
+        # Let cuDNN auto-tune the fastest kernels for our fixed input size
+        torch.backends.cudnn.benchmark = True
+        # TF32 gives free throughput on Ampere+ GPUs (A100, 3090, etc.)
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
 
     target_size = (args.img_size, args.img_size)
     train_ds = FoodSeg103Dataset(
@@ -458,39 +459,38 @@ def main() -> None:
     num_classes = train_ds.num_classes
     print(f"Classes: {num_classes}, Train: {len(train_ds)}, Val: {len(val_ds)}")
 
+    use_persistent = args.num_workers > 0
     train_loader = DataLoader(
         train_ds,
         batch_size=args.batch_size,
         shuffle=True,
         num_workers=args.num_workers,
         pin_memory=device.type == "cuda",
+        persistent_workers=use_persistent,
+        prefetch_factor=2 if use_persistent else None,
         collate_fn=_collate,
-        persistent_workers=(args.num_workers > 0),
-        prefetch_factor=2,
     )
     val_loader = DataLoader(
         val_ds,
-        batch_size=args.batch_size,
+        batch_size=args.batch_size * 2,  # val has no grad, double batch for speed
         shuffle=False,
         num_workers=args.num_workers,
         pin_memory=device.type == "cuda",
+        persistent_workers=use_persistent,
+        prefetch_factor=2 if use_persistent else None,
         collate_fn=_collate,
-        persistent_workers=(args.num_workers > 0),
-        prefetch_factor=2,
     )
 
     print(f"Model: {args.model}")
     model = get_model(num_classes, pretrained=not args.no_pretrained, arch=args.model).to(device)
     set_backbone_trainable(model, args.freeze_backbone_epochs <= 0)
 
-    # Optional PyTorch 2.0 compile step (may improve throughput)
-    if args.compile:
+    if args.compile and hasattr(torch, "compile"):
         try:
-            if hasattr(torch, "compile"):
-                model = torch.compile(model)
-                print("torch.compile() applied")
+            model = torch.compile(model, mode="reduce-overhead")
+            print("torch.compile enabled (reduce-overhead mode)")
         except Exception as e:
-            print("torch.compile() failed:", e)
+            print(f"torch.compile skipped: {e}")
 
     class_weights = None
     if not args.no_class_weights:
@@ -586,6 +586,10 @@ def main() -> None:
         t0 = time.time()
         # If resuming mid-epoch, only skip batches for the first resumed epoch
         current_resume_batch = resume_batch if epoch == start_epoch else 0
+
+        # Run validation only every val_every epochs (or on the last epoch)
+        run_val = (epoch % args.val_every == 0) or (epoch == args.epochs)
+
         train_loss = train_one_epoch(
             model,
             train_loader,
@@ -603,13 +607,21 @@ def main() -> None:
         )
         # after applying resume for the first resumed epoch, clear it
         resume_batch = 0
-        val_loss, val_miou, pixel_acc = evaluate(
-            model,
-            val_loader,
-            criterion,
-            device,
-            num_classes,
-        )
+
+        if run_val:
+            val_loss, val_miou, pixel_acc = evaluate(
+                model,
+                val_loader,
+                criterion,
+                device,
+                num_classes,
+            )
+        else:
+            # Skip validation this epoch — use last known values
+            last = metrics[-1] if metrics else {}
+            val_loss = last.get("val_loss", 0.0)
+            val_miou = last.get("val_miou", 0.0)
+            pixel_acc = last.get("pixel_acc", 0.0)
         scheduler.step()
         elapsed = time.time() - t0
 
