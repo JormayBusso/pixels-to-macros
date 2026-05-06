@@ -1,0 +1,22 @@
+[
+  {
+    "epoch": 1,
+    "train_loss": 1.9517,
+    "val_loss": 1.5856,
+    "val_miou": 0.2405,
+    "pixel_acc": 0.6751,
+    "best_miou": 0.2405,
+    "lr": 5e-05,
+    "time_s": 44.2
+  },
+  {
+    "epoch": 2,
+    "train_loss": 1.4866,
+    "val_loss": 1.4102,
+    "val_miou": 0.2962,
+    "pixel_acc": 0.8062,
+    "best_miou": 0.2962,
+    "lr": 0.0,
+    "time_s": 37.4
+  }
+]

@@ -27,13 +27,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import segmentation_models_pytorch as smp
 from PIL import Image
 from torch.utils.data import DataLoader
 from torchvision.models.segmentation import (
     DeepLabV3_MobileNet_V3_Large_Weights,
-    DeepLabV3_ResNet101_Weights,
     deeplabv3_mobilenet_v3_large,
-    deeplabv3_resnet101,
 )
 from tqdm import tqdm
 import sys
@@ -46,7 +45,12 @@ def get_model(num_classes: int, pretrained: bool = True, arch: str = "resnet101"
     if arch == "segformer":
         return _get_segformer(num_classes, pretrained)
     elif arch == "resnet101":
-        return _get_deeplabv3_resnet101(num_classes, pretrained)
+        return smp.DeepLabV3Plus(
+            encoder_name="efficientnet-b3",
+            encoder_weights="imagenet" if pretrained else None,
+            classes=num_classes,
+            activation=None,
+        )
     else:  # mobilenet
         return _get_deeplabv3_mobilenet(num_classes, pretrained)
 
@@ -54,17 +58,6 @@ def get_model(num_classes: int, pretrained: bool = True, arch: str = "resnet101"
 def _get_deeplabv3_mobilenet(num_classes: int, pretrained: bool) -> nn.Module:
     weights = DeepLabV3_MobileNet_V3_Large_Weights.DEFAULT if pretrained else None
     model = deeplabv3_mobilenet_v3_large(weights=weights)
-    in_channels = model.classifier[4].in_channels
-    model.classifier[4] = nn.Conv2d(in_channels, num_classes, kernel_size=1)
-    if model.aux_classifier is not None:
-        aux_in = model.aux_classifier[4].in_channels
-        model.aux_classifier[4] = nn.Conv2d(aux_in, num_classes, kernel_size=1)
-    return model
-
-
-def _get_deeplabv3_resnet101(num_classes: int, pretrained: bool) -> nn.Module:
-    weights = DeepLabV3_ResNet101_Weights.DEFAULT if pretrained else None
-    model = deeplabv3_resnet101(weights=weights)
     in_channels = model.classifier[4].in_channels
     model.classifier[4] = nn.Conv2d(in_channels, num_classes, kernel_size=1)
     if model.aux_classifier is not None:
@@ -240,7 +233,7 @@ def train_one_epoch(
         optimizer.zero_grad(set_to_none=True)
 
         with torch.cuda.amp.autocast(enabled=use_amp):
-            output = model(images)["out"].contiguous()
+            output = model(images).contiguous()
             loss = criterion(output, masks)
 
         if use_amp:
@@ -286,7 +279,7 @@ def evaluate(
     pbar = tqdm(loader, desc="  Val  ", leave=False)
     for i, batch in enumerate(pbar, start=1):
         images, masks = batch_to_tensors(batch, device)
-        output = model(images)["out"].contiguous()
+        output = model(images).contiguous()
         loss = criterion(output, masks)
         batch_n = images.size(0)
         total_loss += loss.item() * batch_n

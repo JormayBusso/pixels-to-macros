@@ -47,7 +47,11 @@ class _SegmentationWrapper(torch.nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = (x - self.mean) / self.std
-        return self.model(x)["out"]
+        out = self.model(x)
+        # SMP returns tensor directly; torchvision models return dict
+        if isinstance(out, dict):
+            return out["out"]
+        return out
 
 
 def load_model(checkpoint: Path, num_classes: int) -> tuple[torch.nn.Module, int]:
@@ -55,7 +59,14 @@ def load_model(checkpoint: Path, num_classes: int) -> tuple[torch.nn.Module, int
     payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
     state = payload.get("model_state", payload) if isinstance(payload, dict) else payload
 
-    detected = state["classifier.4.weight"].shape[0]
+    # Auto-detect num_classes from the final conv layer
+    # SMP DeepLabV3Plus uses 'segmentation_head.0.weight'
+    # Torchvision DeepLabV3 uses 'classifier.4.weight'
+    detected = num_classes
+    for key in ["segmentation_head.0.weight", "classifier.4.weight"]:
+        if key in state:
+            detected = state[key].shape[0]
+            break
     if detected != num_classes:
         print(
             f"[export] Checkpoint has {detected} classes; "
@@ -124,7 +135,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Export model to CoreML")
     parser.add_argument("--checkpoint", type=str, required=True)
     parser.add_argument("--num_classes", type=int, default=104)
-    parser.add_argument("--img_size", type=int, default=513)
+    parser.add_argument("--img_size", type=int, default=512)
     parser.add_argument("--output_dir", type=str, default="training/output")
     args = parser.parse_args()
 
