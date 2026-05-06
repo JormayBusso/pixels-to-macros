@@ -411,6 +411,7 @@ def main() -> None:
         default=600.0,
         help="Save intermediate checkpoint at least every N seconds (0 to disable)",
     )
+    parser.add_argument("--compile", action="store_true", help="Use torch.compile() if available to speed up training")
     args = parser.parse_args()
 
     set_seed(args.seed)
@@ -428,6 +429,15 @@ def main() -> None:
     use_amp = args.amp and device.type == "cuda"
     print(f"Device: {device}")
     print(f"AMP: {'on' if use_amp else 'off'}")
+
+    # Enable cuDNN autotuner for fixed-size inputs (faster convs)
+    if device.type == "cuda":
+        try:
+            torch.backends.cudnn.benchmark = True
+            torch.backends.cudnn.enabled = True
+            print("cuDNN benchmark enabled")
+        except Exception:
+            pass
 
     target_size = (args.img_size, args.img_size)
     train_ds = FoodSeg103Dataset(
@@ -455,6 +465,8 @@ def main() -> None:
         num_workers=args.num_workers,
         pin_memory=device.type == "cuda",
         collate_fn=_collate,
+        persistent_workers=(args.num_workers > 0),
+        prefetch_factor=2,
     )
     val_loader = DataLoader(
         val_ds,
@@ -463,11 +475,22 @@ def main() -> None:
         num_workers=args.num_workers,
         pin_memory=device.type == "cuda",
         collate_fn=_collate,
+        persistent_workers=(args.num_workers > 0),
+        prefetch_factor=2,
     )
 
     print(f"Model: {args.model}")
     model = get_model(num_classes, pretrained=not args.no_pretrained, arch=args.model).to(device)
     set_backbone_trainable(model, args.freeze_backbone_epochs <= 0)
+
+    # Optional PyTorch 2.0 compile step (may improve throughput)
+    if args.compile:
+        try:
+            if hasattr(torch, "compile"):
+                model = torch.compile(model)
+                print("torch.compile() applied")
+        except Exception as e:
+            print("torch.compile() failed:", e)
 
     class_weights = None
     if not args.no_class_weights:
