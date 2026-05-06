@@ -389,7 +389,7 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--output_dir", type=str, default="training/output")
     parser.add_argument("--img_size", type=int, default=640)
-    parser.add_argument("--num_workers", type=int, default=4)
+    parser.add_argument("--num_workers", type=int, default=2)
     parser.add_argument("--patience", type=int, default=20)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--freeze_backbone_epochs", type=int, default=1)
@@ -485,13 +485,6 @@ def main() -> None:
     model = get_model(num_classes, pretrained=not args.no_pretrained, arch=args.model).to(device)
     set_backbone_trainable(model, args.freeze_backbone_epochs <= 0)
 
-    if args.compile and hasattr(torch, "compile"):
-        try:
-            model = torch.compile(model, mode="reduce-overhead")
-            print("torch.compile enabled (reduce-overhead mode)")
-        except Exception as e:
-            print(f"torch.compile skipped: {e}")
-
     class_weights = None
     if not args.no_class_weights:
         class_weights = compute_class_weights(train_ds, num_classes).to(device)
@@ -576,6 +569,15 @@ def main() -> None:
             start_epoch = payload_epoch + 1
             resume_batch = 0
             print(f"Resumed from {args.resume} at epoch {start_epoch}")
+
+    # Apply torch.compile AFTER checkpoint loading so state_dict keys are
+    # not prefixed with '_orig_mod.' during weight comparison above.
+    if args.compile and hasattr(torch, "compile"):
+        try:
+            model = torch.compile(model, mode="default")
+            print("torch.compile enabled")
+        except Exception as e:
+            print(f"torch.compile skipped: {e}")
 
     epochs_without_improvement = 0
     for epoch in range(start_epoch, args.epochs + 1):
