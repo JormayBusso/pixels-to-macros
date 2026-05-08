@@ -550,7 +550,7 @@ class _MealSlotRow extends ConsumerWidget {
     final candidates = await RecipeRepository.instance.query(
       goal: goal,
       mealType: mealType,
-      limit: 50,
+      limit: 1000,
     );
     if (!context.mounted) return;
     final picked = await showModalBottomSheet<Recipe>(

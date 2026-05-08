@@ -33,6 +33,7 @@ import segmentation_models_pytorch as smp
 from PIL import Image
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset as TorchDataset
+from torch.utils.data import ConcatDataset
 from torchvision.models.segmentation import (
     DeepLabV3_MobileNet_V3_Large_Weights,
     deeplabv3_mobilenet_v3_large,
@@ -44,6 +45,19 @@ from tqdm import tqdm
 import sys
 
 from dataset import FoodSeg103Dataset
+
+
+def _parse_data_dirs(primary: str, extra: list[str]) -> list[str]:
+    dirs = [primary, *extra]
+    deduped = []
+    seen = set()
+    for d in dirs:
+        norm = str(Path(d)).strip()
+        if not norm or norm in seen:
+            continue
+        seen.add(norm)
+        deduped.append(norm)
+    return deduped
 
 
 def get_model(num_classes: int, pretrained: bool = True, arch: str = "resnet101") -> nn.Module:
@@ -177,13 +191,25 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
+def _iter_mask_paths(dataset) -> list[Path]:
+    if hasattr(dataset, "mask_paths"):
+        return list(dataset.mask_paths)
+    if isinstance(dataset, ConcatDataset):
+        paths = []
+        for sub in dataset.datasets:
+            paths.extend(_iter_mask_paths(sub))
+        return paths
+    return []
+
+
 def compute_class_weights(
-    dataset: FoodSeg103Dataset,
+    dataset,
     num_classes: int,
     max_masks: int = 512,
 ) -> torch.Tensor:
     counts = np.ones(num_classes, dtype=np.float64)
-    for mask_path in tqdm(dataset.mask_paths[:max_masks], desc="Class weights", leave=False):
+    mask_paths = _iter_mask_paths(dataset)
+    for mask_path in tqdm(mask_paths[:max_masks], desc="Class weights", leave=False):
         if not mask_path.exists():
             continue
         mask = np.array(Image.open(mask_path), dtype=np.int64)
@@ -473,6 +499,15 @@ def _save_checkpoint_atomic(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train food segmentation model")
     parser.add_argument("--data_dir", type=str, required=True)
+    parser.add_argument(
+        "--extra_data_dir",
+        action="append",
+        default=[],
+        help=(
+            "Additional dataset root(s) to concatenate with --data_dir. "
+            "Example: --data_dir ./data/FoodSeg103 --extra_data_dir ./data/FoodSeg154"
+        ),
+    )
     parser.add_argument("--model", type=str, default="resnet101",
                         choices=["mobilenet", "resnet101", "segformer"],
                         help="Model architecture")
@@ -551,25 +586,53 @@ def main() -> None:
     if not args.no_torchvision_aug:
         pair_transform = SegmentationAugmentV2(size=target_size)
 
-    train_base_ds = FoodSeg103Dataset(
-        args.data_dir,
-        split="train",
-        target_size=target_size,
-        seed=args.seed,
-        augment=True,
-        pair_transform=pair_transform,
-    )
-    train_ds = RepeatDataset(train_base_ds, args.virtual_train_multiplier)
-    val_ds = FoodSeg103Dataset(
-        args.data_dir,
-        split="val",
-        target_size=target_size,
-        seed=args.seed,
-        augment=False,
-    )
+    data_dirs = _parse_data_dirs(args.data_dir, args.extra_data_dir)
+    train_bases = []
+    val_bases = []
+    for data_dir in data_dirs:
+        train_bases.append(
+            FoodSeg103Dataset(
+                data_dir,
+                split="train",
+                target_size=target_size,
+                seed=args.seed,
+                augment=True,
+                pair_transform=pair_transform,
+            )
+        )
+        val_bases.append(
+            FoodSeg103Dataset(
+                data_dir,
+                split="val",
+                target_size=target_size,
+                seed=args.seed,
+                augment=False,
+            )
+        )
 
-    num_classes = train_base_ds.num_classes
+    if not train_bases:
+        raise ValueError("No datasets found. Provide --data_dir and optional --extra_data_dir.")
+
+    num_classes = train_bases[0].num_classes
+    for i, ds in enumerate(train_bases[1:], start=2):
+        if ds.num_classes != num_classes:
+            raise ValueError(
+                f"Dataset class mismatch at dataset #{i}: "
+                f"expected {num_classes}, got {ds.num_classes}."
+            )
+
+    if len(train_bases) == 1:
+        train_base_ds = train_bases[0]
+        val_ds = val_bases[0]
+    else:
+        train_base_ds = ConcatDataset(train_bases)
+        val_ds = ConcatDataset(val_bases)
+
+    train_ds = RepeatDataset(train_base_ds, args.virtual_train_multiplier)
+    per_dir_counts = [len(ds) for ds in train_bases]
     print(
+        f"Datasets: {data_dirs}\n"
+        f"Train per dataset: {per_dir_counts}\n"
         f"Classes: {num_classes}, Train base: {len(train_base_ds)}, "
         f"Train effective: {len(train_ds)}, Val: {len(val_ds)}"
     )

@@ -38,12 +38,16 @@ class RecipeRepository {
     String? search,
     int maxMinutes = 0,
     int limit = 200,
+    bool strictGoalRules = true,
   }) async {
     final list = await all();
     final q = (search ?? '').trim().toLowerCase();
     final filtered = <Recipe>[];
     for (final r in list) {
       if (goal != null && !r.goals.contains(goal)) continue;
+      if (goal != null && strictGoalRules && !_isRecipeEligibleForGoal(r, goal)) {
+        continue;
+      }
       if (mealType != null && r.mealType != mealType) continue;
       if (maxMinutes > 0 && r.minutes > maxMinutes) continue;
       if (q.isNotEmpty) {
@@ -65,6 +69,40 @@ class RecipeRepository {
     });
     if (filtered.length > limit) return filtered.sublist(0, limit);
     return filtered;
+  }
+
+  bool _isRecipeEligibleForGoal(Recipe recipe, NutritionGoalType goal) {
+    final carbsPerServing = recipe.carbsPerServing(recipe.servings);
+    final proteinPerServing = recipe.proteinPerServing(recipe.servings);
+    final caloriesPerServing = recipe.caloriesPerServing(recipe.servings);
+    final gi = recipe.glycemicIndex;
+
+    switch (goal) {
+      case NutritionGoalType.diabetes:
+        // Strong diabetes safety rule: breakfast must stay very low-carb.
+        if (recipe.mealType == RecipeMealType.breakfast && carbsPerServing > 20) {
+          return false;
+        }
+        // Other meals should still avoid large carb spikes.
+        if (recipe.mealType != RecipeMealType.breakfast && carbsPerServing > 35) {
+          return false;
+        }
+        if (gi > 0 && gi > 55) return false;
+        return true;
+
+      case NutritionGoalType.keto:
+        return carbsPerServing <= 20;
+
+      case NutritionGoalType.weightLoss:
+        return caloriesPerServing <= 600 && proteinPerServing >= 15;
+
+      case NutritionGoalType.muscleGrowth:
+        return proteinPerServing >= 25 && caloriesPerServing >= 300;
+
+      case NutritionGoalType.vegan:
+      case NutritionGoalType.maintain:
+        return true;
+    }
   }
 }
 

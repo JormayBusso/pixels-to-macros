@@ -1,7 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/food_data.dart';
 import '../models/nutrition_goal.dart';
@@ -9,6 +8,7 @@ import '../models/recipe.dart';
 import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
+import '../providers/user_prefs_provider.dart';
 import '../services/database_service.dart';
 import '../services/recipe_repository.dart';
 import '../theme/app_theme.dart';
@@ -378,8 +378,6 @@ class RecipeDetailScreen extends ConsumerStatefulWidget {
 
 class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   int _selectedServings = 1;
-  bool _isDiabetic = false;
-  double _icr = 10.0; // insulin-to-carb ratio
 
   /// Scale an ingredient amount string by the ratio of selected/recipe servings.
   String _scaleAmount(String amount, int selected, int original) {
@@ -414,25 +412,19 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   void initState() {
     super.initState();
     _selectedServings = widget.recipe.servings;
-    _loadPrefs();
-  }
-
-  Future<void> _loadPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _isDiabetic = prefs.getBool('is_diabetic') ?? false;
-      _icr = prefs.getDouble('insulin_carb_ratio') ?? 10.0;
-    });
   }
 
   // Nutrition always shows 1 person's portion (recipe base serving)
   double get _carbsForServing =>
       widget.recipe.carbsPerServing(widget.recipe.servings);
-  double get _bolusUnits => _carbsForServing / _icr;
 
   @override
   Widget build(BuildContext context) {
     final r = widget.recipe;
+    final prefs = ref.watch(userPrefsProvider);
+    final isDiabetic = prefs.nutritionGoal == NutritionGoalType.diabetes;
+    final icr = prefs.icrGramsPerUnit <= 0 ? 10.0 : prefs.icrGramsPerUnit;
+    final bolusUnits = _carbsForServing / icr;
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -488,12 +480,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   ),
                 ],
                 // ── Bolus display for diabetics ──
-                if (_isDiabetic && r.hasMacros) ...[
+                if (isDiabetic && r.hasMacros) ...[
                   const SizedBox(height: 12),
                   _BolusCard(
                     carbsG: _carbsForServing,
-                    bolusUnits: _bolusUnits,
-                    icr: _icr,
+                    bolusUnits: bolusUnits,
+                    icr: icr,
                     glycemicIndex: r.glycemicIndex,
                   ),
                   if (_selectedServings > 1) ...[
@@ -643,11 +635,16 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton.icon(
-                        onPressed: () => _logRecipe(context),
+                        onPressed: () => _logRecipe(
+                          context,
+                          isDiabetic: isDiabetic,
+                          bolusUnits: bolusUnits,
+                          icr: icr,
+                        ),
                         icon: const Icon(Icons.add_circle_outline, size: 18),
                         label: Text(
-                          _isDiabetic
-                              ? 'Log Meal · ${r.caloriesPerServing(r.servings)} kcal · ${_bolusUnits.toStringAsFixed(1)}U'
+                          isDiabetic
+                              ? 'Log Meal · ${r.caloriesPerServing(r.servings)} kcal · ${bolusUnits.toStringAsFixed(1)}U'
                               : 'Log Meal · ${r.caloriesPerServing(r.servings)} kcal',
                         ),
                         style: FilledButton.styleFrom(
@@ -675,7 +672,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     );
   }
 
-  void _logRecipe(BuildContext context) {
+  void _logRecipe(
+    BuildContext context, {
+    required bool isDiabetic,
+    required double bolusUnits,
+    required double icr,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -683,6 +685,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       builder: (_) => _LogRecipeSheet(
         recipe: widget.recipe,
         servings: _selectedServings,
+        isDiabetic: isDiabetic,
+        bolusUnits: bolusUnits,
+        icr: icr,
+        carbsPerServing: _carbsForServing,
         onLogged: () {
           // Reload providers after logging
           ref.read(dailyIntakeProvider.notifier).load();
@@ -697,11 +703,19 @@ class _LogRecipeSheet extends ConsumerStatefulWidget {
   const _LogRecipeSheet({
     required this.recipe,
     required this.servings,
+    required this.isDiabetic,
+    required this.bolusUnits,
+    required this.icr,
+    required this.carbsPerServing,
     required this.onLogged,
   });
 
   final Recipe recipe;
   final int servings;
+  final bool isDiabetic;
+  final double bolusUnits;
+  final double icr;
+  final double carbsPerServing;
   final VoidCallback onLogged;
 
   @override
@@ -730,6 +744,38 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
 
   Future<void> _initDefaults() async {
     _allFoods = await DatabaseService.instance.getAllFoods();
+
+    // Ensure plant milk ingredients map to liquid milk entries instead of nuts.
+    final hasAlmondMilk = _allFoods.any(
+      (f) => _normalizeIngredient(f.label) == 'almond milk',
+    );
+    if (!hasAlmondMilk) {
+      _allFoods = [
+        ..._allFoods,
+        const FoodData(
+          label: 'almond milk',
+          densityMin: 1.00,
+          densityMax: 1.03,
+          kcalPer100g: 15,
+          category: 'drink',
+          proteinPer100g: 0.5,
+          carbsPer100g: 0.6,
+          fatPer100g: 1.2,
+          perMl: true,
+        ),
+        const FoodData(
+          label: 'almond milk unsweetened',
+          densityMin: 1.00,
+          densityMax: 1.03,
+          kcalPer100g: 15,
+          category: 'drink',
+          proteinPer100g: 0.5,
+          carbsPer100g: 0.6,
+          fatPer100g: 1.2,
+          perMl: true,
+        ),
+      ];
+    }
 
     for (var i = 0; i < widget.recipe.ingredients.length; i++) {
       final ing = widget.recipe.ingredients[i];
@@ -864,6 +910,72 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
     return double.tryParse(t.replaceAll(',', '.')) ?? 0.0;
   }
 
+  String _normalizeIngredient(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp(r'\([^)]*\)'), ' ')
+        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  FoodData _resolveFoodMatch(String ingredientName) {
+    final normalizedIngredient = _normalizeIngredient(ingredientName);
+    if (normalizedIngredient.isEmpty) {
+      return _allFoods.firstWhere(
+        (f) => f.label.toLowerCase() == 'others',
+        orElse: () => _allFoods.first,
+      );
+    }
+
+    FoodData? exactMatch;
+    for (final food in _allFoods) {
+      if (_normalizeIngredient(food.label) == normalizedIngredient) {
+        exactMatch = food;
+        break;
+      }
+    }
+    if (exactMatch != null) return exactMatch;
+
+    final isMilkIngredient = normalizedIngredient.contains('milk');
+    FoodData? best;
+    double bestScore = -1;
+
+    for (final food in _allFoods) {
+      final labelNorm = _normalizeIngredient(food.label);
+      if (labelNorm.isEmpty) continue;
+
+      if (!normalizedIngredient.contains(labelNorm) &&
+          !labelNorm.contains(normalizedIngredient)) {
+        continue;
+      }
+
+      final ingredientTokens = normalizedIngredient.split(' ').where((t) => t.isNotEmpty).toSet();
+      final labelTokens = labelNorm.split(' ').where((t) => t.isNotEmpty).toSet();
+      final overlap = ingredientTokens.intersection(labelTokens).length;
+      var score = overlap * 100 + labelNorm.length;
+
+      if (isMilkIngredient && !labelNorm.contains('milk')) {
+        score -= 500;
+      }
+      if (normalizedIngredient.contains('almond milk') && labelNorm == 'almond') {
+        score -= 1000;
+      }
+
+      if (score > bestScore) {
+        bestScore = score.toDouble();
+        best = food;
+      }
+    }
+
+    if (best != null) return best;
+
+    return _allFoods.firstWhere(
+      (f) => f.label.toLowerCase() == 'others',
+      orElse: () => _allFoods.first,
+    );
+  }
+
   double get _totalKcal {
     if (_allFoods.isEmpty) return 0.0;
     double sum = 0.0;
@@ -871,16 +983,7 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
       final g = _parseControllerValue(i);
       if (g <= 0) continue;
       final ingName = widget.recipe.ingredients[i].name.toLowerCase();
-      FoodData? fd;
-      try {
-        fd = _allFoods.firstWhere((f) => f.label.toLowerCase() == ingName);
-      } catch (_) {}
-      if (fd == null) {
-        try {
-          fd = _allFoods.firstWhere((f) => ingName.contains(f.label.toLowerCase()) || f.label.toLowerCase().contains(ingName));
-        } catch (_) {}
-      }
-      fd ??= _allFoods.firstWhere((f) => f.label.toLowerCase() == 'others', orElse: () => _allFoods.first);
+      final fd = _resolveFoodMatch(ingName);
       sum += g / 100.0 * fd.kcalPer100g;
     }
     return sum;
@@ -898,18 +1001,7 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
       final grams = _parseControllerValue(i);
       if (grams <= 0) continue;
       final ing = widget.recipe.ingredients[i];
-      final ingName = ing.name.toLowerCase();
-
-      FoodData? fd;
-      try {
-        fd = _allFoods.firstWhere((f) => f.label.toLowerCase() == ingName);
-      } catch (_) {}
-      if (fd == null) {
-        try {
-          fd = _allFoods.firstWhere((f) => ingName.contains(f.label.toLowerCase()) || f.label.toLowerCase().contains(ingName));
-        } catch (_) {}
-      }
-      fd ??= _allFoods.firstWhere((f) => f.label.toLowerCase() == 'others', orElse: () => _allFoods.first);
+      final fd = _resolveFoodMatch(ing.name);
 
       final kcalAvg = grams / 100.0 * fd.kcalPer100g;
       final kcalMin = kcalAvg * 0.95;
@@ -970,6 +1062,15 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
               ),
               const SizedBox(height: 8),
               Text('Adjust grams per ingredient (cooking for ${widget.servings})', style: const TextStyle(color: Color(0xFF666666))),
+              if (widget.isDiabetic) ...[
+                const SizedBox(height: 10),
+                _BolusCard(
+                  carbsG: widget.carbsPerServing,
+                  bolusUnits: widget.bolusUnits,
+                  icr: widget.icr,
+                  glycemicIndex: widget.recipe.glycemicIndex,
+                ),
+              ],
               const SizedBox(height: 12),
               Expanded(
                 child: ListView.separated(

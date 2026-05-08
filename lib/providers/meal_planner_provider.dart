@@ -167,7 +167,7 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     final candidates = await RecipeRepository.instance.query(
       goal: goal,
       mealType: mealType,
-      limit: 100,
+      limit: 1000,
     );
 
     if (candidates.isEmpty) return;

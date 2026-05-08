@@ -318,7 +318,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
           final newUnit = explicitUnit ?? existing.unit;
           await DatabaseService.instance.updateGroceryItem(
             existing.copyWith(
-              quantity: (existing.quantity + inferredQty).clamp(1, 99),
+              quantity: ((existing.quantity + inferredQty).clamp(1, 99)) as int,
               unit: newUnit,
             ),
           );
@@ -462,6 +462,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     }
 
     return hints;
+  }
 
   String _normalizeFoodName(String raw) {
     final s = raw.trim().toLowerCase();
