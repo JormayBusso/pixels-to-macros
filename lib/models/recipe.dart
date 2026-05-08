@@ -212,7 +212,7 @@ class Recipe {
     return Recipe(
       id: id,
       name: name,
-      image: rawImage.isNotEmpty ? rawImage : _internetImageForRecipe(name, id),
+      image: rawImage.isNotEmpty ? rawImage : null,
       mealType: RecipeMealTypeX.fromJson(j['meal_type'] as String?),
       goals: goalsRaw.map(_goalFromKey).whereType<NutritionGoalType>().toSet(),
       minutes: (j['minutes'] as num?)?.toInt() ?? 30,
@@ -256,27 +256,6 @@ class Recipe {
           .toList(),
       source: (j['source'] as String?) ?? 'Unknown',
     );
-  }
-
-  static String _internetImageForRecipe(String name, String id) {
-    final normalized = name
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9 ]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    final query = Uri.encodeComponent(
-      normalized.isEmpty ? 'healthy food recipe' : '$normalized food dish',
-    );
-    final seed = _stableSeed(id.isNotEmpty ? id : name);
-    return 'https://source.unsplash.com/900x900/?$query&sig=$seed';
-  }
-
-  static int _stableSeed(String input) {
-    var hash = 7;
-    for (final code in input.codeUnits) {
-      hash = (hash * 31 + code) % 100000;
-    }
-    return hash.abs();
   }
 
   static NutritionGoalType? _goalFromKey(String k) {

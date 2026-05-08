@@ -26,6 +26,7 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     required int dailyProteinTargetG,
     required int dailyFatTargetG,
     UserGender gender = UserGender.preferNotToSay,
+    double icrGramsPerUnit = 0.0,
   }) async {
     final prefs = state.copyWith(
       name: name,
@@ -36,6 +37,7 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
       dailyProteinTargetG: dailyProteinTargetG,
       dailyFatTargetG: dailyFatTargetG,
       gender: gender,
+      icrGramsPerUnit: icrGramsPerUnit,
     );
     await update(prefs);
   }

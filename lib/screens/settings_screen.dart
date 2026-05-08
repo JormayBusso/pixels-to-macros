@@ -12,6 +12,7 @@ import '../services/database_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
+import '../widgets/tour_keys.dart';
 import 'auth_screen.dart';
 import 'eval_dashboard_screen.dart';
 import 'food_database_screen.dart';
@@ -35,8 +36,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _obscurePassword = true;
   int _foodCount = 0;
   final _accountScrollController = ScrollController();
-  final _weeklyReviewCardKey = GlobalKey();
-  final _vacationModeCardKey = GlobalKey();
+  // Private keys replaced by TourKeys so AppTutorialOverlay can measure them.
   int _lastVacationTrigger = 0;
   int _lastWeeklyReviewTrigger = 0;
 
@@ -114,7 +114,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (vacationTrigger != _lastVacationTrigger) {
       _lastVacationTrigger = vacationTrigger;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        final ctx = _vacationModeCardKey.currentContext;
+        final ctx = TourKeys.vacationModeCard.currentContext;
         if (ctx != null) {
           Scrollable.ensureVisible(
             ctx,
@@ -134,7 +134,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (weeklyReviewTrigger != _lastWeeklyReviewTrigger) {
       _lastWeeklyReviewTrigger = weeklyReviewTrigger;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        final ctx = _weeklyReviewCardKey.currentContext;
+        final ctx = TourKeys.weeklyReviewCard.currentContext;
         if (ctx != null) {
           Scrollable.ensureVisible(
             ctx,
@@ -488,7 +488,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _SectionHeader('Weekly Review'),
         const SizedBox(height: 12),
         Container(
-          key: _weeklyReviewCardKey,
+          key: TourKeys.weeklyReviewCard,
           child: const _WeeklyBadgeRecapCard(),
         ),
         const SizedBox(height: 24),
@@ -496,7 +496,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _SectionHeader('Vacation Mode'),
         const SizedBox(height: 12),
         Container(
-          key: _vacationModeCardKey,
+          key: TourKeys.vacationModeCard,
           child: Consumer(
             builder: (context, ref, _) {
               final vacation =

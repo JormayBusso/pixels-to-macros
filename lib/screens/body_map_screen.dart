@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../models/nutrient_data.dart';
 import '../models/user_preferences.dart';
@@ -45,11 +46,11 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
     _OrganRegion.blood:       (cx: 0.460, cy: 0.245, size: 30),
   };
 
-  // The JPEG is 1024 × 1536.  Given the container size, compute the rendered
-  // image rect (BoxFit.contain centres the image).
+  // The SVG viewport is 474 × 711.  Given the container size, compute the
+  // rendered image rect (BoxFit.contain centres the image).
   static ({double left, double top, double width, double height})
       _imageRect(double cw, double ch) {
-    const imgW = 1024.0, imgH = 1536.0;
+    const imgW = 474.0, imgH = 711.0;
     final scale = (cw / imgW).compareTo(ch / imgH) <= 0 ? cw / imgW : ch / imgH;
     final rw = imgW * scale, rh = imgH * scale;
     return (left: (cw - rw) / 2, top: (ch - rh) / 2, width: rw, height: rh);
@@ -134,10 +135,10 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
 
                 return Stack(
                   children: [
-                    // Body image
+                    // Body SVG
                     Positioned.fill(
-                      child: Image.asset(
-                        'assets/body_map.jpeg',
+                      child: SvgPicture.asset(
+                        'assets/body_map_svg.svg',
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -532,13 +533,42 @@ Map<_OrganRegion, _OrganScore> _computeOrganScores(
   };
 }
 
+/// Maps a nutrient sufficiency score to a colour.
+///
+/// Under-intake (0 → 1.0): red → orange → yellow → green
+/// Over-intake  (1.0 → 2.0+): green → yellow → orange → red
+///
+/// score = 0   → grey  (no data logged yet today)
+/// score = 1.0 → green (daily goal met)
+/// score ≥ 2.0 → red   (significantly over safe upper level)
 Color _scoreColor(double score) {
-  if (score > 1.6) return const Color(0xFFB71C1C);
-  if (score >= 1.0) return const Color(0xFF2E7D32);
-  if (score >= 0.7) return const Color(0xFF9CCC65);
-  if (score >= 0.4) return const Color(0xFFFFB300);
-  if (score > 0.0) return const Color(0xFFE53935);
-  return const Color(0xFFB0BEC5); // grey: no data
+  if (score <= 0) return const Color(0xFFB0BEC5); // grey: no data
+
+  const red    = Color(0xFFFF3B30);
+  const orange = Color(0xFFFF9500);
+  const yellow = Color(0xFFFFCC00);
+  const green  = Color(0xFF34C759);
+
+  if (score <= 1.0) {
+    // Under-intake: red → orange → yellow → green
+    if (score < 0.33) {
+      return Color.lerp(red,    orange, score / 0.33)!;
+    } else if (score < 0.66) {
+      return Color.lerp(orange, yellow, (score - 0.33) / 0.33)!;
+    } else {
+      return Color.lerp(yellow, green,  (score - 0.66) / 0.34)!;
+    }
+  }
+
+  // Over-intake: green → yellow → orange → red
+  final t = ((score - 1.0) / 1.0).clamp(0.0, 1.0);
+  if (t < 0.33) {
+    return Color.lerp(green,  yellow, t / 0.33)!;
+  } else if (t < 0.66) {
+    return Color.lerp(yellow, orange, (t - 0.33) / 0.33)!;
+  } else {
+    return Color.lerp(orange, red,    (t - 0.66) / 0.34)!;
+  }
 }
 
 // ───────────────────────── Legend ─────────────────────────
@@ -558,10 +588,11 @@ class _Legend extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: const [
           _LegendDot(color: Color(0xFFB0BEC5), label: 'No data'),
-          _LegendDot(color: Color(0xFFE53935), label: 'Low'),
-          _LegendDot(color: Color(0xFFFFB300), label: 'Fair'),
-          _LegendDot(color: Color(0xFF9CCC65), label: 'Good'),
-          _LegendDot(color: Color(0xFF2E7D32), label: 'Met'),
+          _LegendDot(color: Color(0xFFFF3B30), label: 'Low'),
+          _LegendDot(color: Color(0xFFFF9500), label: 'Fair'),
+          _LegendDot(color: Color(0xFFFFCC00), label: 'Good'),
+          _LegendDot(color: Color(0xFF34C759), label: 'Goal ✓'),
+          _LegendDot(color: Color(0xFFFF3B30), label: 'Over!'),
         ],
       ),
     );

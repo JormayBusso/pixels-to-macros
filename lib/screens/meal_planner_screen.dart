@@ -1,16 +1,67 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/custom_meal.dart';
+import '../models/food_data.dart';
 import '../models/meal_plan.dart';
 import '../models/nutrition_goal.dart';
 import '../models/recipe.dart';
 import '../providers/meal_planner_provider.dart';
 import '../providers/grocery_provider.dart';
 import '../providers/user_prefs_provider.dart';
+import '../services/database_service.dart';
 import '../services/recipe_repository.dart';
 import '../theme/app_theme.dart';
 import 'recipes_screen.dart';
+
+/// Converts a [CustomMeal] to a [Recipe] for use in the meal planner UI.
+Recipe _customMealToRecipe(CustomMeal meal, List<FoodData> foods) {
+  final kcalMap = {for (final f in foods) f.label: f.kcalPer100g};
+  final proteinMap = {for (final f in foods) f.label: f.proteinPer100g};
+  final carbsMap = {for (final f in foods) f.label: f.carbsPer100g};
+  final fatMap = {for (final f in foods) f.label: f.fatPer100g};
+  double kcal = 0, protein = 0, carbs = 0, fat = 0;
+  for (final ing in meal.ingredients) {
+    final g = ing.grams / 100.0;
+    kcal += (kcalMap[ing.foodLabel] ?? 0) * g;
+    protein += (proteinMap[ing.foodLabel] ?? 0) * g;
+    carbs += (carbsMap[ing.foodLabel] ?? 0) * g;
+    fat += (fatMap[ing.foodLabel] ?? 0) * g;
+  }
+  final mealType = switch (meal.mealType) {
+    MealType.breakfast => RecipeMealType.breakfast,
+    MealType.lunch => RecipeMealType.lunch,
+    MealType.dinner => RecipeMealType.dinner,
+  };
+  return Recipe(
+    id: 'custom:${meal.id ?? 0}',
+    name: meal.name,
+    image: meal.imagePath,
+    mealType: mealType,
+    goals: const {},
+    minutes: 0,
+    servings: 1,
+    calories: kcal.round(),
+    proteinG: protein,
+    carbsG: carbs,
+    fatG: fat,
+    fiberG: 0,
+    sugarG: 0,
+    tags: const ['custom'],
+    ingredients: meal.ingredients
+        .map((i) => RecipeIngredient(
+              name: i.foodLabel,
+              amount: '${i.grams.round()}g',
+              grams: i.grams,
+            ))
+        .toList(),
+    steps: const [],
+    source: 'custom',
+  );
+}
 
 /// Full-screen smart weekly meal planner.
 class MealPlannerScreen extends ConsumerStatefulWidget {
@@ -233,13 +284,16 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         ingredients: ingredientMap.values.toList(),
         onAdd: () async {
           final notifier = ref.read(groceryProvider.notifier);
-          for (final agg in ingredientMap.values) {
-            await notifier.addItem(
-              agg.name,
-              category: _guessCategory(agg.name),
+          // Normalise egg-white → eggs before adding to the grocery list
+          final items = ingredientMap.values.map((agg) {
+            final normalised = _normaliseGroceryIngredient(agg.name);
+            return (
+              name: normalised,
+              category: _guessCategory(normalised),
               quantity: agg.servingQty,
             );
-          }
+          }).toList();
+          await notifier.addItems(items);
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -253,6 +307,16 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         },
       ),
     );
+  }
+
+  /// Merge partial-egg ingredients into whole eggs, etc.
+  static String _normaliseGroceryIngredient(String name) {
+    final l = name.toLowerCase().trim();
+    // egg white / egg yolk / egg whites → eggs
+    if (RegExp(r'\begg\s*(white|yolk|whites|yolks)\b').hasMatch(l)) {
+      return 'eggs';
+    }
+    return name;
   }
 
   String _guessCategory(String name) {
@@ -437,24 +501,41 @@ class _MealSlotRow extends ConsumerWidget {
                           bottomLeft: Radius.circular(10),
                         ),
                         child: recipe.image != null
-                            ? CachedNetworkImage(
-                                imageUrl: recipe.image!,
-                                width: 60,
-                                height: 60,
-                                fit: BoxFit.cover,
-                                placeholder: (_, __) => Container(
+                            ? (recipe.id.startsWith('custom:')
+                                ? Image.file(
+                                    File(recipe.image!),
                                     width: 60,
                                     height: 60,
-                                    color: AppTheme.gray100),
-                                errorWidget: (_, __, ___) => Container(
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                        width: 60,
+                                        height: 60,
+                                        color: AppTheme.gray100,
+                                        child: Center(
+                                          child: Text(mealType.emoji,
+                                              style: const TextStyle(
+                                                  fontSize: 22)),
+                                        )),
+                                  )
+                                : CachedNetworkImage(
+                                    imageUrl: recipe.image!,
                                     width: 60,
                                     height: 60,
-                                    color: AppTheme.gray100,
-                                    child: Center(
-                                      child: Text(mealType.emoji,
-                                          style: const TextStyle(fontSize: 22)),
-                                    )),
-                              )
+                                    fit: BoxFit.cover,
+                                    placeholder: (_, __) => Container(
+                                        width: 60,
+                                        height: 60,
+                                        color: AppTheme.gray100),
+                                    errorWidget: (_, __, ___) => Container(
+                                        width: 60,
+                                        height: 60,
+                                        color: AppTheme.gray100,
+                                        child: Center(
+                                          child: Text(mealType.emoji,
+                                              style: const TextStyle(
+                                                  fontSize: 22)),
+                                        )),
+                                  ))
                             : Container(
                                 width: 60,
                                 height: 60,
@@ -552,13 +633,27 @@ class _MealSlotRow extends ConsumerWidget {
       mealType: mealType,
       limit: 1000,
     );
+    // Also include custom meals that match this meal type
+    final allCustom = await DatabaseService.instance.getCustomMeals();
+    final allFoods = await DatabaseService.instance.getAllFoods();
+    final matchingCustom = allCustom.where((m) {
+      final mt = switch (m.mealType) {
+        MealType.breakfast => RecipeMealType.breakfast,
+        MealType.lunch => RecipeMealType.lunch,
+        MealType.dinner => RecipeMealType.dinner,
+      };
+      return mt == mealType;
+    }).toList();
+    final customAsRecipes = matchingCustom
+        .map((m) => _customMealToRecipe(m, allFoods))
+        .toList();
     if (!context.mounted) return;
     final picked = await showModalBottomSheet<Recipe>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _PickRecipeSheet(
-        candidates: candidates,
+        candidates: [...customAsRecipes, ...candidates],
         mealType: mealType,
       ),
     );
@@ -840,24 +935,41 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                     leading: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: r.image != null
-                          ? CachedNetworkImage(
-                              imageUrl: r.image!,
-                              width: 52,
-                              height: 52,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
+                          ? (r.id.startsWith('custom:')
+                              ? Image.file(
+                                  File(r.image!),
                                   width: 52,
                                   height: 52,
-                                  color: AppTheme.gray100),
-                              errorWidget: (_, __, ___) => Container(
-                                width: 52,
-                                height: 52,
-                                color: AppTheme.gray100,
-                                child: Center(
-                                    child: Text(widget.mealType.emoji,
-                                        style: const TextStyle(fontSize: 20))),
-                              ),
-                            )
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 52,
+                                    height: 52,
+                                    color: AppTheme.gray100,
+                                    child: Center(
+                                        child: Text(widget.mealType.emoji,
+                                            style: const TextStyle(
+                                                fontSize: 20))),
+                                  ),
+                                )
+                              : CachedNetworkImage(
+                                  imageUrl: r.image!,
+                                  width: 52,
+                                  height: 52,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) => Container(
+                                      width: 52,
+                                      height: 52,
+                                      color: AppTheme.gray100),
+                                  errorWidget: (_, __, ___) => Container(
+                                    width: 52,
+                                    height: 52,
+                                    color: AppTheme.gray100,
+                                    child: Center(
+                                        child: Text(widget.mealType.emoji,
+                                            style: const TextStyle(
+                                                fontSize: 20))),
+                                  ),
+                                ))
                           : Container(
                               width: 52,
                               height: 52,

@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/custom_meal.dart';
+import '../models/food_data.dart';
 import '../models/nutrition_goal.dart';
 import '../models/recipe.dart';
 import '../services/database_service.dart';
@@ -75,13 +77,22 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     final allRecipes = await RecipeRepository.instance.all();
     final recipeById = {for (final r in allRecipes) r.id: r};
 
+    // Also load custom meals so we can restore 'custom:N' plan entries
+    final allCustomMeals = await DatabaseService.instance.getCustomMeals();
+    final allFoods = await DatabaseService.instance.getAllFoods();
+    final customById = <String, Recipe>{
+      for (final m in allCustomMeals)
+        if (m.id != null) 'custom:${m.id}': _customMealToRecipe(m, allFoods),
+    };
+
     final enabled = <String>{};
     final assignments = <String, Recipe>{};
     for (final row in rows) {
       final mealType = RecipeMealTypeX.fromJson(row['meal_type'] as String?);
       final key = MealPlanState.slotKey(row['day_of_week'] as int, mealType);
       enabled.add(key);
-      final recipe = recipeById[row['recipe_id'] as String];
+      final id = row['recipe_id'] as String;
+      final recipe = recipeById[id] ?? customById[id];
       if (recipe != null) assignments[key] = recipe;
     }
 
@@ -224,3 +235,57 @@ final mealPlanProvider =
     StateNotifierProvider<MealPlanNotifier, MealPlanState>(
   (ref) => MealPlanNotifier(_isoWeekNumber(_now), _now.year),
 );
+
+/// Converts a [CustomMeal] to a [Recipe] for use in the meal planner.
+/// The recipe id uses the prefix 'custom:' to distinguish from JSON recipes.
+Recipe _customMealToRecipe(CustomMeal meal, List<FoodData> foods) {
+  final kcalMap = {for (final f in foods) f.label: f.kcalPer100g};
+  final proteinMap = {for (final f in foods) f.label: f.proteinPer100g};
+  final carbsMap = {for (final f in foods) f.label: f.carbsPer100g};
+  final fatMap = {for (final f in foods) f.label: f.fatPer100g};
+
+  double totalKcal = 0;
+  double totalProtein = 0;
+  double totalCarbs = 0;
+  double totalFat = 0;
+
+  for (final ing in meal.ingredients) {
+    final g = ing.grams / 100.0;
+    totalKcal += (kcalMap[ing.foodLabel] ?? 0) * g;
+    totalProtein += (proteinMap[ing.foodLabel] ?? 0) * g;
+    totalCarbs += (carbsMap[ing.foodLabel] ?? 0) * g;
+    totalFat += (fatMap[ing.foodLabel] ?? 0) * g;
+  }
+
+  final mealType = switch (meal.mealType) {
+    MealType.breakfast => RecipeMealType.breakfast,
+    MealType.lunch => RecipeMealType.lunch,
+    MealType.dinner => RecipeMealType.dinner,
+  };
+
+  return Recipe(
+    id: 'custom:${meal.id ?? 0}',
+    name: meal.name,
+    image: meal.imagePath,
+    mealType: mealType,
+    goals: const {},
+    minutes: 0,
+    servings: 1,
+    calories: totalKcal.round(),
+    proteinG: totalProtein,
+    carbsG: totalCarbs,
+    fatG: totalFat,
+    fiberG: 0,
+    sugarG: 0,
+    tags: const ['custom'],
+    ingredients: meal.ingredients
+        .map((i) => RecipeIngredient(
+              name: i.foodLabel,
+              amount: '${i.grams.round()}g',
+              grams: i.grams,
+            ))
+        .toList(),
+    steps: const [],
+    source: 'custom',
+  );
+}

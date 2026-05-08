@@ -14,6 +14,7 @@ import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/drink_sheet.dart';
 import '../widgets/goal_mascot_widget.dart';
+import '../widgets/tour_keys.dart';
 import '../widgets/weekly_challenges_card.dart';
 import 'body_map_screen.dart';
 import 'nutrition_dashboard_screen.dart';
@@ -31,8 +32,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _initialLoading = true;
   final _scrollController = ScrollController();
-  final _hydrationCardKey = GlobalKey();
-  final _recommendationsCardKey = GlobalKey();
+  // Private keys removed — TourKeys.hydrationCard / TourKeys.recommendationsCard
+  // are used directly so AppTutorialOverlay can measure them.
   int _lastHydrationTrigger = 0;
   int _lastRecommendationsTrigger = 0;
 
@@ -61,6 +62,102 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (mounted) setState(() => _initialLoading = false);
   }
 
+  void _showEditFoodSheet(BuildContext context, DetectedFood food) {
+    final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
+    final calController =
+        TextEditingController(text: avgCal.round().toString());
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Edit "${food.label}"',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: calController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Calories (kcal)',
+                border: OutlineInputBorder(),
+                suffixText: 'kcal',
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      if (food.id != null) {
+                        await DatabaseService.instance
+                            .deleteDetectedFood(food.id!);
+                        await ref
+                            .read(dailyIntakeProvider.notifier)
+                            .load();
+                        await ref.read(historyProvider.notifier).load();
+                      }
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    },
+                    icon: const Icon(Icons.delete_outline,
+                        color: Colors.red, size: 18),
+                    label: const Text('Remove',
+                        style: TextStyle(color: Colors.red)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      final newCal =
+                          double.tryParse(calController.text) ?? avgCal;
+                      if (food.id != null) {
+                        // Keep the same ± spread ratio
+                        final ratio = avgCal > 0
+                            ? newCal / avgCal
+                            : 1.0;
+                        await DatabaseService.instance.updateDetectedFood(
+                          food.id!,
+                          label: food.label,
+                          caloriesMin: food.caloriesMin * ratio,
+                          caloriesMax: food.caloriesMax * ratio,
+                        );
+                        await ref
+                            .read(dailyIntakeProvider.notifier)
+                            .load();
+                        await ref.read(historyProvider.notifier).load();
+                      }
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    },
+                    child: const Text('Save'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final prefs = ref.watch(userPrefsProvider);
@@ -74,7 +171,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (hydrationTrigger != _lastHydrationTrigger) {
       _lastHydrationTrigger = hydrationTrigger;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        final ctx = _hydrationCardKey.currentContext;
+        final ctx = TourKeys.hydrationCard.currentContext;
         if (ctx != null) {
           Scrollable.ensureVisible(
             ctx,
@@ -95,7 +192,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (recommendationsTrigger != _lastRecommendationsTrigger) {
       _lastRecommendationsTrigger = recommendationsTrigger;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        final ctx = _recommendationsCardKey.currentContext;
+        final ctx = TourKeys.recommendationsCard.currentContext;
         if (ctx != null) {
           Scrollable.ensureVisible(
             ctx,
@@ -116,6 +213,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: GestureDetector(
+              key: TourKeys.bodyMapIcon,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const BodyMapScreen()),
               ),
@@ -133,6 +231,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: GestureDetector(
+              key: TourKeys.nutritionIcon,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
                     builder: (_) => const NutritionDashboardScreen()),
@@ -184,6 +283,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const Spacer(),
                         if (streak.currentStreak > 0) ...[
                           Container(
+                            key: TourKeys.streakBadge,
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
@@ -244,7 +344,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                     // ── Hydration card ───────────────────────────────────────
                     Container(
-                      key: _hydrationCardKey,
+                      key: TourKeys.hydrationCard,
                       child: const _HydrationCard(),
                     ),
                     const SizedBox(height: 16),
@@ -292,36 +392,96 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     else
                       Card(
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
                           child: Column(
                             children: intake.foods.map((f) {
                               final avg = (f.caloriesMin + f.caloriesMax) / 2;
-                              return Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 4),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.restaurant,
-                                        size: 16, color: context.primary500),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        f.label,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
+                              return Dismissible(
+                                key: ValueKey(f.id ?? f.label),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade400,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(Icons.delete_outline,
+                                      color: Colors.white),
+                                ),
+                                confirmDismiss: (_) async {
+                                  return await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Remove Food'),
+                                      content: Text(
+                                          'Remove "${f.label}" from today\'s intake?'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, false),
+                                          child: const Text('Cancel'),
                                         ),
-                                      ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, true),
+                                          child: const Text('Remove',
+                                              style: TextStyle(
+                                                  color: Colors.red)),
+                                        ),
+                                      ],
                                     ),
-                                    Text(
-                                      '${avg.round()} kcal',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: context.primary700,
-                                      ),
+                                  );
+                                },
+                                onDismissed: (_) async {
+                                  if (f.id != null) {
+                                    await DatabaseService.instance
+                                        .deleteDetectedFood(f.id!);
+                                    await ref
+                                        .read(dailyIntakeProvider.notifier)
+                                        .load();
+                                    await ref
+                                        .read(historyProvider.notifier)
+                                        .load();
+                                  }
+                                },
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(8),
+                                  onTap: () => _showEditFoodSheet(context, f),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 10, horizontal: 4),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.restaurant,
+                                            size: 16,
+                                            color: context.primary500),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            f.label,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          '${avg.round()} kcal',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: context.primary700,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Icon(Icons.edit_outlined,
+                                            size: 14,
+                                            color: AppTheme.gray300),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
                               );
                             }).toList(),
@@ -332,7 +492,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                     // ── Recommendations ───────────────────────────────────────
                     Container(
-                      key: _recommendationsCardKey,
+                      key: TourKeys.recommendationsCard,
                       child: _RecommendationsCard(),
                     ),
                     const SizedBox(height: 16),
@@ -906,7 +1066,19 @@ class _MacroRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final ratio = target > 0 ? (current / target).clamp(0.0, 1.0) : 0.0;
     final isOver = isLimit && current > target;
-    final barColor = isOver ? Colors.red.shade500 : color;
+
+    // Healthy state:
+    //  • Carbs (isLimit=true):  healthy = under the limit (green = safe)
+    //  • Others (protein, kcal, fat):  healthy = ≥85 % of target reached
+    final isHealthy = isLimit
+        ? !isOver
+        : current >= (target * 0.85).round();
+
+    final barColor = isOver
+        ? Colors.red.shade500
+        : isHealthy
+            ? Colors.green.shade500
+            : color;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -921,7 +1093,11 @@ class _MacroRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: isOver ? Colors.red.shade600 : AppTheme.gray700,
+                color: isOver
+                    ? Colors.red.shade600
+                    : isHealthy
+                        ? Colors.green.shade700
+                        : AppTheme.gray700,
               ),
             ),
           ],
@@ -1074,6 +1250,7 @@ class _HydrationCard extends ConsumerWidget {
                       intake > 0 ? () => _removeWater(context, ref, 250) : null,
                 ),
                 IconButton(
+                  key: TourKeys.hydrationAddDrink,
                   icon: const Icon(Icons.add_circle_outline, size: 22),
                   color: const Color(0xFF1976D2),
                   tooltip: 'Add drink',
@@ -1144,7 +1321,7 @@ class _HydrationCard extends ConsumerWidget {
               children: [
                 _WaterButton(label: '+150 ml', ml: 150),
                 const SizedBox(width: 8),
-                _WaterButton(label: '+200 ml', ml: 200),
+                _WaterButton(key: TourKeys.hydrationQuickAdd200, label: '+200 ml', ml: 200),
                 const SizedBox(width: 8),
                 _WaterButton(label: '+250 ml', ml: 250),
                 const SizedBox(width: 8),
@@ -1295,7 +1472,7 @@ class _HydrationCard extends ConsumerWidget {
 }
 
 class _WaterButton extends ConsumerWidget {
-  const _WaterButton({required this.label, required this.ml});
+  const _WaterButton({super.key, required this.label, required this.ml});
   final String label;
   final int ml;
 

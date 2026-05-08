@@ -33,12 +33,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   late int _proteinTarget = GoalDefaults.proteinTargetG(_selectedGoalType);
   late int _fatTarget   = GoalDefaults.fatTargetG(_selectedGoalType);
 
-  static const _totalPages = 5;
+  // Page 5 (diabetes only): ICR — 0.0 means user chose to skip
+  double _icr = 0.0;
+  final _icrCtrl = TextEditingController();
+
+  bool get _isDiabetes => _selectedGoalType == NutritionGoalType.diabetes;
+  int get _totalPages => _isDiabetes ? 6 : 5;
 
   @override
   void dispose() {
     _pageCtrl.dispose();
     _nameCtrl.dispose();
+    _icrCtrl.dispose();
     super.dispose();
   }
 
@@ -52,39 +58,40 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   void _selectGender(UserGender gender) {
+    final isMale = gender == UserGender.male;
+    final newCal = GoalDefaults.calories(_selectedGoalType, male: isMale);
+    final r = GoalDefaults.macroRatios(_selectedGoalType);
     setState(() {
       _selectedGender = gender;
-      // Update calorie defaults based on gender
-      final isMale = gender == UserGender.male;
-      _calories = GoalDefaults.calories(_selectedGoalType, male: isMale);
-      _carbLimit     = GoalDefaults.carbLimitG(_selectedGoalType);
-      _proteinTarget = GoalDefaults.proteinTargetG(_selectedGoalType);
-      _fatTarget     = GoalDefaults.fatTargetG(_selectedGoalType);
+      _calories      = newCal;
+      _carbLimit     = (newCal * r.carb    / 4).round().clamp(15, 500);
+      _proteinTarget = (newCal * r.protein / 4).round().clamp(30, 300);
+      _fatTarget     = (newCal * r.fat     / 9).round().clamp(20, 250);
     });
   }
 
   void _selectGoal(NutritionGoalType goal) {
     final isMale = _selectedGender == UserGender.male;
+    final newCal = GoalDefaults.calories(goal, male: isMale);
+    final r = GoalDefaults.macroRatios(goal);
     setState(() {
       _selectedGoalType = goal;
-      _calories      = GoalDefaults.calories(goal, male: isMale);
-      _carbLimit     = GoalDefaults.carbLimitG(goal);
-      _proteinTarget = GoalDefaults.proteinTargetG(goal);
-      _fatTarget     = GoalDefaults.fatTargetG(goal);
+      _calories      = newCal;
+      _carbLimit     = (newCal * r.carb    / 4).round().clamp(15, 500);
+      _proteinTarget = (newCal * r.protein / 4).round().clamp(30, 300);
+      _fatTarget     = (newCal * r.fat     / 9).round().clamp(20, 250);
     });
   }
 
-  /// When the calorie slider moves, proportionally scale the other macros
-  /// so the defaults always reflect a realistic intake for the chosen kcal.
+  /// When the calorie slider moves, recalculate macros using evidence-based
+  /// ratios for the chosen goal — not a simple proportional scale.
   void _onCaloriesChanged(int newCalories) {
-    final isMale = _selectedGender == UserGender.male;
-    final defaultCals = GoalDefaults.calories(_selectedGoalType, male: isMale);
-    final ratio = newCalories / defaultCals;
+    final r = GoalDefaults.macroRatios(_selectedGoalType);
     setState(() {
       _calories      = newCalories;
-      _carbLimit     = (GoalDefaults.carbLimitG(_selectedGoalType) * ratio).round().clamp(15, 500);
-      _proteinTarget = (GoalDefaults.proteinTargetG(_selectedGoalType) * ratio).round().clamp(30, 300);
-      _fatTarget     = (GoalDefaults.fatTargetG(_selectedGoalType) * ratio).round().clamp(20, 250);
+      _carbLimit     = (newCalories * r.carb    / 4).round().clamp(15, 500);
+      _proteinTarget = (newCalories * r.protein / 4).round().clamp(30, 300);
+      _fatTarget     = (newCalories * r.fat     / 9).round().clamp(20, 250);
     });
   }
 
@@ -97,6 +104,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           dailyProteinTargetG: _proteinTarget,
           dailyFatTargetG: _fatTarget,
           gender: _selectedGender,
+          icrGramsPerUnit: _icr,
         );
   }
 
@@ -155,8 +163,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     onCarbChanged: (v) => setState(() => _carbLimit = v),
                     onProteinChanged: (v) => setState(() => _proteinTarget = v),
                     onFatChanged: (v) => setState(() => _fatTarget = v),
-                    onFinish: _finish,
+                    onFinish: _isDiabetes ? _next : _finish,
+                    finishLabel: _isDiabetes ? 'Next' : 'Start Scanning! 🚀',
                   ),
+                  if (_isDiabetes)
+                    _IcrPage(
+                      controller: _icrCtrl,
+                      onChanged: (v) => setState(() => _icr = v),
+                      onFinish: _finish,
+                    ),
                 ],
               ),
             ),
@@ -531,6 +546,7 @@ class _ConfirmPage extends StatelessWidget {
     required this.onProteinChanged,
     required this.onFatChanged,
     required this.onFinish,
+    this.finishLabel = 'Start Scanning! 🚀',
   });
 
   final NutritionGoalType goalType;
@@ -543,6 +559,7 @@ class _ConfirmPage extends StatelessWidget {
   final ValueChanged<int> onProteinChanged;
   final ValueChanged<int> onFatChanged;
   final VoidCallback onFinish;
+  final String finishLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -630,7 +647,7 @@ class _ConfirmPage extends StatelessWidget {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: onFinish,
-              child: const Text('Start Scanning! 🚀'),
+              child: Text(finishLabel),
             ),
           ),
           const SizedBox(height: 16),
@@ -700,6 +717,102 @@ class _TargetSlider extends StatelessWidget {
           onChanged: (v) => onChanged(v.round()),
         ),
       ],
+    );
+  }
+}
+
+// ── Page 5 (diabetes only): ICR setup ─────────────────────────────────────────
+
+class _IcrPage extends StatelessWidget {
+  const _IcrPage({
+    required this.controller,
+    required this.onChanged,
+    required this.onFinish,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<double> onChanged;
+  final VoidCallback onFinish;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(height: 16),
+          const Text('🩺', style: TextStyle(fontSize: 48)),
+          const SizedBox(height: 12),
+          const Text(
+            'Your Insulin-to-Carb Ratio',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.gray900,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE3F2FD),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF1976D2), width: 1),
+            ),
+            child: const Text(
+              'Your ICR (Insulin-to-Carb Ratio) tells you how many grams of carbohydrate one unit of insulin covers.\n\n'
+              'Example: an ICR of 10 means 1 unit covers 10 g of carbs.\n\n'
+              'This value is personal and should be set by your diabetes care team. '
+              'Do NOT use a pre-set value — an incorrect ICR can cause dangerous blood sugar swings.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF1565C0), height: 1.5),
+            ),
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'ICR — grams of carbs per 1 unit of insulin',
+              hintText: 'e.g. 10',
+              prefixIcon: Icon(Icons.vaccines_outlined),
+              suffixText: 'g / unit',
+            ),
+            onChanged: (v) {
+              final parsed = double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
+              onChanged(parsed);
+            },
+          ),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                final v = double.tryParse(
+                      controller.text.replaceAll(',', '.'),
+                    ) ??
+                    0.0;
+                onChanged(v);
+                onFinish();
+              },
+              child: const Text('Start Scanning! 🚀'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: () {
+              onChanged(0.0); // 0.0 = not set
+              onFinish();
+            },
+            child: const Text(
+              'Skip — I\'ll set this later in Settings',
+              style: TextStyle(color: AppTheme.gray500),
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 }

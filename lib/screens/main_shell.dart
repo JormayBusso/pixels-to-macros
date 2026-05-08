@@ -11,6 +11,7 @@ import '../services/notification_service.dart';
 import '../services/weekly_badge_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_tutorial_overlay.dart';
+import '../widgets/tour_keys.dart';
 import '../widgets/weekly_badge_recap_sheet.dart';
 import 'analytics_screen.dart';
 import 'meal_planner_screen.dart';
@@ -167,6 +168,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             children: _tabs,
           ),
           bottomNavigationBar: NavigationBar(
+            key: TourKeys.navBar,
             selectedIndex: _tabIndex,
             onDestinationSelected: (i) {
               setState(() => _tabIndex = i);
@@ -217,8 +219,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                     // ── AI Speech (voice) ─────────────────────────────────
                     SizedBox(
                       width: 125,
-                      child: FloatingActionButton.extended(
-                        heroTag: 'voice',
+                      child: FloatingActionButton.extended(                        key: TourKeys.speechFab,                        heroTag: 'voice',
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
                               builder: (_) => const VoiceEntryScreen()),
@@ -254,8 +255,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                     // ── Manual Log ────────────────────────────────────────
                     SizedBox(
                       width: 125,
-                      child: FloatingActionButton.extended(
-                        heroTag: 'manual',
+                      child: FloatingActionButton.extended(                        key: TourKeys.manualFab,                        heroTag: 'manual',
                         onPressed: _openManualEntry,
                         backgroundColor: Colors.white,
                         foregroundColor: context.primary700,
@@ -270,8 +270,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                     // ── AI Scan ───────────────────────────────────────────
                     SizedBox(
                       width: 125,
-                      child: FloatingActionButton.extended(
-                        heroTag: 'scan',
+                      child: FloatingActionButton.extended(                        key: TourKeys.scanFab,                        heroTag: 'scan',
                         onPressed: _openScan,
                         backgroundColor: context.primary600,
                         foregroundColor: Colors.white,

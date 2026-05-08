@@ -16,7 +16,6 @@ enum MealType {
       MealType.values.firstWhere((e) => e.name == v,
           orElse: () => MealType.lunch);
 }
-
 /// One ingredient inside a [CustomMeal].
 class MealIngredient {
   final int? id;
@@ -60,6 +59,7 @@ class CustomMeal {
   final MealType mealType;
   final DateTime createdAt;
   final List<MealIngredient> ingredients;
+  final String? imagePath;
 
   const CustomMeal({
     this.id,
@@ -67,6 +67,7 @@ class CustomMeal {
     required this.mealType,
     required this.createdAt,
     this.ingredients = const [],
+    this.imagePath,
   });
 
   factory CustomMeal.fromMap(Map<String, dynamic> m,
@@ -77,6 +78,7 @@ class CustomMeal {
         mealType: MealType.fromDbValue(m['meal_type'] as String),
         createdAt: DateTime.parse(m['created_at'] as String),
         ingredients: ingredients,
+        imagePath: m['image_path'] as String?,
       );
 
   Map<String, dynamic> toMap() => {
@@ -84,12 +86,15 @@ class CustomMeal {
         'name': name,
         'meal_type': mealType.dbValue,
         'created_at': createdAt.toIso8601String(),
+        'image_path': imagePath,
       };
 
   CustomMeal copyWith({
     String? name,
     MealType? mealType,
     List<MealIngredient>? ingredients,
+    String? imagePath,
+    bool clearImage = false,
   }) =>
       CustomMeal(
         id: id,
@@ -97,6 +102,7 @@ class CustomMeal {
         mealType: mealType ?? this.mealType,
         createdAt: createdAt,
         ingredients: ingredients ?? this.ingredients,
+        imagePath: clearImage ? null : (imagePath ?? this.imagePath),
       );
 
   /// Total kcal for this meal, given a [Map<label → kcalPer100g>].

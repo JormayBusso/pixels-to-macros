@@ -41,7 +41,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 27,
+      version: 28,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -179,7 +179,8 @@ class DatabaseService {
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
         name       TEXT    NOT NULL,
         meal_type  TEXT    NOT NULL DEFAULT 'lunch',
-        created_at TEXT    NOT NULL
+        created_at TEXT    NOT NULL,
+        image_path TEXT
       )
     ''');
 
@@ -457,7 +458,8 @@ class DatabaseService {
           id         INTEGER PRIMARY KEY AUTOINCREMENT,
           name       TEXT    NOT NULL,
           meal_type  TEXT    NOT NULL DEFAULT 'lunch',
-          created_at TEXT    NOT NULL
+          created_at TEXT    NOT NULL,
+          image_path TEXT
         )
       ''');
       await db.execute('''
@@ -575,6 +577,13 @@ class DatabaseService {
       try {
         await db.execute(
           'ALTER TABLE grocery_list ADD COLUMN unit TEXT',
+        );
+      } catch (_) {}
+    }
+    if (oldVersion < 28) {
+      try {
+        await db.execute(
+          'ALTER TABLE custom_meals ADD COLUMN image_path TEXT',
         );
       } catch (_) {}
     }

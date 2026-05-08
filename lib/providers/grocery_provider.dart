@@ -41,6 +41,20 @@ class GroceryNotifier extends StateNotifier<GroceryState> {
     await load();
   }
 
+  /// Add multiple items in a single batch, then reload once.
+  Future<void> addItems(List<({String name, String? category, int quantity})> items) async {
+    for (final entry in items) {
+      final item = GroceryItem(
+        name: entry.name,
+        category: entry.category,
+        quantity: entry.quantity,
+        createdAt: DateTime.now(),
+      );
+      await DatabaseService.instance.insertGroceryItem(item);
+    }
+    await load();
+  }
+
   Future<void> toggleChecked(GroceryItem item) async {
     final updated = item.copyWith(checked: !item.checked);
     await DatabaseService.instance.updateGroceryItem(updated);

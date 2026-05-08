@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/custom_meal.dart';
 import '../models/food_data.dart';
 import '../models/nutrition_goal.dart';
 import '../models/recipe.dart';
@@ -12,6 +15,8 @@ import '../providers/user_prefs_provider.dart';
 import '../services/database_service.dart';
 import '../services/recipe_repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/tour_keys.dart';
+import 'create_meal_screen.dart';
 import 'meal_planner_screen.dart';
 
 class RecipesScreen extends ConsumerStatefulWidget {
@@ -23,6 +28,18 @@ class RecipesScreen extends ConsumerStatefulWidget {
 
 class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   final _searchController = TextEditingController();
+  List<CustomMeal> _customMeals = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomMeals();
+  }
+
+  Future<void> _loadCustomMeals() async {
+    final meals = await DatabaseService.instance.getCustomMeals();
+    if (mounted) setState(() => _customMeals = meals);
+  }
 
   @override
   void dispose() {
@@ -53,6 +70,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: TextField(
+              key: TourKeys.recipeSearch,
               controller: _searchController,
               onChanged: (s) =>
                   ref.read(recipeQueryProvider.notifier).setSearch(s),
@@ -140,7 +158,27 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (recipes) {
-                if (recipes.isEmpty) {
+                // Filter custom meals by search + meal type
+                final q = ref.watch(recipeQueryProvider);
+                final searchLower = q.search.toLowerCase();
+                final filteredCustom = _customMeals.where((m) {
+                  if (searchLower.isNotEmpty &&
+                      !m.name.toLowerCase().contains(searchLower)) {
+                    return false;
+                  }
+                  if (q.mealType != null) {
+                    // Map CustomMeal.MealType → RecipeMealType for filtering
+                    final mt = switch (m.mealType) {
+                      MealType.breakfast => RecipeMealType.breakfast,
+                      MealType.lunch => RecipeMealType.lunch,
+                      MealType.dinner => RecipeMealType.dinner,
+                    };
+                    if (mt != q.mealType) return false;
+                  }
+                  return true;
+                }).toList();
+
+                if (recipes.isEmpty && filteredCustom.isEmpty) {
                   return const Center(
                     child: Padding(
                       padding: EdgeInsets.all(32),
@@ -154,12 +192,483 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                 }
                 return ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                  itemCount: recipes.length,
-                  itemBuilder: (_, i) =>
-                      _RecipeCard(recipe: recipes[i]),
+                  itemCount: filteredCustom.isEmpty
+                      ? recipes.length
+                      : filteredCustom.length + 2 + recipes.length,
+                  // [0..filteredCustom.length-1] = custom meal cards
+                  // [filteredCustom.length] = "My Meals" header
+                  // [filteredCustom.length+1] = "Recipes" header
+                  // [filteredCustom.length+2 .. end] = recipe cards
+                  itemBuilder: (_, i) {
+                    if (filteredCustom.isEmpty) {
+                      return _RecipeCard(recipe: recipes[i]);
+                    }
+                    if (i == 0) {
+                      // "My Meals" section header
+                      return _SectionHeader(
+                        title: 'My Meals',
+                        onAdd: () async {
+                          await Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => const CreateMealScreen()));
+                          _loadCustomMeals();
+                        },
+                      );
+                    }
+                    if (i <= filteredCustom.length) {
+                      return _CustomMealCard(
+                        meal: filteredCustom[i - 1],
+                        onChanged: _loadCustomMeals,
+                      );
+                    }
+                    if (i == filteredCustom.length + 1) {
+                      // "Recipes" section header
+                      return const _SectionHeader(title: 'Recipes');
+                    }
+                    return _RecipeCard(
+                        recipe: recipes[i - filteredCustom.length - 2]);
+                  },
                 );
               },
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────── Section header ───────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, this.onAdd});
+  final String title;
+  final VoidCallback? onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.gray500,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const Spacer(),
+          if (onAdd != null)
+            GestureDetector(
+              onTap: onAdd,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: context.primary100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add, size: 14, color: context.primary700),
+                    const SizedBox(width: 3),
+                    Text('New',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: context.primary700)),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────── Custom meal card ───────────────────────
+
+class _CustomMealCard extends ConsumerWidget {
+  const _CustomMealCard({required this.meal, required this.onChanged});
+  final CustomMeal meal;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mealTypeEmoji = switch (meal.mealType) {
+      MealType.breakfast => '🍳',
+      MealType.lunch => '🥗',
+      MealType.dinner => '🍽️',
+    };
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 1,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _openDetail(context, ref),
+        child: Row(
+          children: [
+            // Thumbnail
+            SizedBox(
+              width: 90,
+              height: 90,
+              child: meal.imagePath != null && File(meal.imagePath!).existsSync()
+                  ? Image.file(File(meal.imagePath!), fit: BoxFit.cover)
+                  : Container(
+                      color: AppTheme.gray100,
+                      child: Center(
+                        child: Text(mealTypeEmoji,
+                            style: const TextStyle(fontSize: 28)),
+                      ),
+                    ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            meal.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.gray100,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'My Meal',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: AppTheme.gray600,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${meal.ingredients.length} ingredient${meal.ingredients.length == 1 ? '' : 's'} · ${meal.mealType.displayName}',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppTheme.gray500),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openDetail(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CustomMealDetailSheet(
+        meal: meal,
+        onChanged: onChanged,
+        onLogged: () {
+          ref.read(dailyIntakeProvider.notifier).load();
+          ref.read(historyProvider.notifier).load();
+        },
+      ),
+    );
+  }
+}
+
+// ─────────────────────── Custom meal detail / log sheet ───────────────────────
+
+class _CustomMealDetailSheet extends ConsumerStatefulWidget {
+  const _CustomMealDetailSheet({
+    required this.meal,
+    required this.onChanged,
+    required this.onLogged,
+  });
+  final CustomMeal meal;
+  final VoidCallback onChanged;
+  final VoidCallback onLogged;
+
+  @override
+  ConsumerState<_CustomMealDetailSheet> createState() =>
+      _CustomMealDetailSheetState();
+}
+
+class _CustomMealDetailSheetState
+    extends ConsumerState<_CustomMealDetailSheet> {
+  List<FoodData> _allFoods = [];
+  late List<MealIngredient> _ingredients;
+  late List<TextEditingController> _gramsControllers;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ingredients = List<MealIngredient>.from(widget.meal.ingredients);
+    _gramsControllers = _ingredients
+        .map((i) => TextEditingController(text: i.grams.round().toString()))
+        .toList();
+    _loadFoods();
+  }
+
+  Future<void> _loadFoods() async {
+    final foods = await DatabaseService.instance.getAllFoods();
+    if (mounted) setState(() => _allFoods = foods);
+  }
+
+  @override
+  void dispose() {
+    for (final c in _gramsControllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Map<String, double> get _kcalMap =>
+      {for (final f in _allFoods) f.label: f.kcalPer100g};
+
+  double get _totalKcal {
+    final map = _kcalMap;
+    double total = 0;
+    for (var i = 0; i < _ingredients.length; i++) {
+      final g = double.tryParse(_gramsControllers[i].text) ?? _ingredients[i].grams;
+      total += (map[_ingredients[i].foodLabel] ?? 0) * g / 100.0;
+    }
+    return total;
+  }
+
+  Future<void> _logMeal() async {
+    setState(() => _saving = true);
+    final foods = <DetectedFood>[];
+    final map = _kcalMap;
+    for (var i = 0; i < _ingredients.length; i++) {
+      final g = double.tryParse(_gramsControllers[i].text) ??
+          _ingredients[i].grams;
+      if (g <= 0) continue;
+      final label = _ingredients[i].foodLabel;
+      final kcalPer100 = map[label] ?? 0.0;
+      final avg = g / 100.0 * kcalPer100;
+      foods.add(DetectedFood(
+        label: label,
+        volumeCm3: g,
+        caloriesMin: avg * 0.95,
+        caloriesMax: avg * 1.05,
+      ));
+    }
+    if (foods.isEmpty) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No ingredients to log.')));
+      return;
+    }
+    final scan = ScanResult(
+      timestamp: DateTime.now(),
+      depthMode: 'custom_meal',
+      foods: foods,
+    );
+    await DatabaseService.instance.insertScanResult(scan);
+    widget.onLogged();
+    if (mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Logged "${widget.meal.name}".')));
+    }
+    setState(() => _saving = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = MediaQuery.of(context).size.height * 0.85;
+    final mealTypeEmoji = switch (widget.meal.mealType) {
+      MealType.breakfast => '🍳',
+      MealType.lunch => '🥗',
+      MealType.dinner => '🍽️',
+    };
+    return Container(
+      height: h,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            // Handle
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.gray300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header
+            if (widget.meal.imagePath != null &&
+                File(widget.meal.imagePath!).existsSync())
+              SizedBox(
+                height: 150,
+                width: double.infinity,
+                child: Image.file(
+                  File(widget.meal.imagePath!),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Row(
+                children: [
+                  Text(mealTypeEmoji,
+                      style: const TextStyle(fontSize: 24)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.meal.name,
+                      style: const TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  // Edit button
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      await Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) =>
+                              CreateMealScreen(meal: widget.meal)));
+                      widget.onChanged();
+                    },
+                  ),
+                  // Delete button
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline,
+                        size: 20, color: Colors.red),
+                    onPressed: () => _confirmDelete(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            // Ingredients list
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: _ingredients.length,
+                separatorBuilder: (_, __) => const Divider(height: 12),
+                itemBuilder: (_, i) {
+                  final ing = _ingredients[i];
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          ing.foodLabel,
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 80,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _gramsControllers[i],
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(8))),
+                                ),
+                                onChanged: (_) => setState(() {}),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text('g',
+                                style: TextStyle(fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const Divider(height: 1),
+            // Bottom bar
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Total: ${_totalKcal.round()} kcal',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  FilledButton(
+                    onPressed: _saving ? null : _logMeal,
+                    child: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Log Meal'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Meal?'),
+        content:
+            Text('Remove "${widget.meal.name}" from your saved meals?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await DatabaseService.instance
+                  .deleteCustomMeal(widget.meal.id!);
+              widget.onChanged();
+              if (mounted) Navigator.of(context).pop();
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -423,8 +932,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     final r = widget.recipe;
     final prefs = ref.watch(userPrefsProvider);
     final isDiabetic = prefs.nutritionGoal == NutritionGoalType.diabetes;
-    final icr = prefs.icrGramsPerUnit <= 0 ? 10.0 : prefs.icrGramsPerUnit;
-    final bolusUnits = _carbsForServing / icr;
+    final icr = prefs.icrGramsPerUnit; // pass raw; 0.0 = not set
+    final bolusUnits = _carbsForServing / (icr <= 0 ? 10.0 : icr);
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -723,15 +1232,20 @@ class _LogRecipeSheet extends ConsumerStatefulWidget {
 }
 
 class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
+  // Mutable working copy of ingredients — user can add / remove
+  late List<RecipeIngredient> _ingredients;
   final List<TextEditingController> _controllers = [];
+  final List<TextEditingController> _nameControllers = [];
   List<FoodData> _allFoods = [];
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    for (final _ in widget.recipe.ingredients) {
+    _ingredients = List<RecipeIngredient>.from(widget.recipe.ingredients);
+    for (final _ in _ingredients) {
       _controllers.add(TextEditingController());
+      _nameControllers.add(TextEditingController());
     }
     _initDefaults();
   }
@@ -739,7 +1253,24 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
   @override
   void dispose() {
     for (final c in _controllers) c.dispose();
+    for (final c in _nameControllers) c.dispose();
     super.dispose();
+  }
+
+  void _removeIngredient(int index) {
+    final ctrl = _controllers.removeAt(index);
+    final nameCtrl = _nameControllers.removeAt(index);
+    ctrl.dispose();
+    nameCtrl.dispose();
+    setState(() => _ingredients.removeAt(index));
+  }
+
+  void _addIngredient() {
+    setState(() {
+      _ingredients.add(const RecipeIngredient(name: '', amount: '', grams: 0.0));
+      _controllers.add(TextEditingController(text: '100'));
+      _nameControllers.add(TextEditingController());
+    });
   }
 
   Future<void> _initDefaults() async {
@@ -777,8 +1308,9 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
       ];
     }
 
-    for (var i = 0; i < widget.recipe.ingredients.length; i++) {
-      final ing = widget.recipe.ingredients[i];
+    for (var i = 0; i < _ingredients.length; i++) {
+      final ing = _ingredients[i];
+      _nameControllers[i].text = ing.name;
       // Use the numeric grams field directly if available, otherwise parse from amount string
       final grams = ing.grams > 0
           ? (ing.grams * widget.servings / widget.recipe.servings)
@@ -979,11 +1511,13 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
   double get _totalKcal {
     if (_allFoods.isEmpty) return 0.0;
     double sum = 0.0;
-    for (var i = 0; i < widget.recipe.ingredients.length; i++) {
+    for (var i = 0; i < _ingredients.length; i++) {
       final g = _parseControllerValue(i);
       if (g <= 0) continue;
-      final ingName = widget.recipe.ingredients[i].name.toLowerCase();
-      final fd = _resolveFoodMatch(ingName);
+      final name = _nameControllers[i].text.trim().isEmpty
+          ? _ingredients[i].name
+          : _nameControllers[i].text.trim();
+      final fd = _resolveFoodMatch(name.toLowerCase());
       sum += g / 100.0 * fd.kcalPer100g;
     }
     return sum;
@@ -997,11 +1531,13 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
       _allFoods = await DatabaseService.instance.getAllFoods();
     }
 
-    for (var i = 0; i < widget.recipe.ingredients.length; i++) {
+    for (var i = 0; i < _ingredients.length; i++) {
       final grams = _parseControllerValue(i);
       if (grams <= 0) continue;
-      final ing = widget.recipe.ingredients[i];
-      final fd = _resolveFoodMatch(ing.name);
+      final ingredientName = _nameControllers[i].text.trim().isEmpty
+          ? _ingredients[i].name
+          : _nameControllers[i].text.trim();
+      final fd = _resolveFoodMatch(ingredientName);
 
       final kcalAvg = grams / 100.0 * fd.kcalPer100g;
       final kcalMin = kcalAvg * 0.95;
@@ -1064,35 +1600,89 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
               Text('Adjust grams per ingredient (cooking for ${widget.servings})', style: const TextStyle(color: Color(0xFF666666))),
               if (widget.isDiabetic) ...[
                 const SizedBox(height: 10),
+                // ICR-not-set warning
+                if (widget.icr <= 0)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded,
+                            color: Colors.red.shade600, size: 20),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Your ICR is not set. Bolus calculations will be inaccurate.\n'
+                            'Go to Settings → Diabetes to set your personal ICR.',
+                            style: TextStyle(fontSize: 12, color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 _BolusCard(
                   carbsG: widget.carbsPerServing,
                   bolusUnits: widget.bolusUnits,
-                  icr: widget.icr,
+                  icr: widget.icr <= 0 ? 10.0 : widget.icr,
                   glycemicIndex: widget.recipe.glycemicIndex,
                 ),
               ],
               const SizedBox(height: 12),
               Expanded(
                 child: ListView.separated(
-                  itemCount: widget.recipe.ingredients.length,
+                  itemCount: _ingredients.length + 1, // +1 for add row
                   separatorBuilder: (_, __) => const Divider(height: 12),
                   itemBuilder: (_, i) {
-                    final ing = widget.recipe.ingredients[i];
+                    // Last slot = "Add ingredient" button
+                    if (i == _ingredients.length) {
+                      return TextButton.icon(
+                        onPressed: _addIngredient,
+                        icon: const Icon(Icons.add_circle_outline, size: 18),
+                        label: const Text('Add ingredient'),
+                      );
+                    }
+                    final ing = _ingredients[i];
                     return Row(
                       children: [
+                        // Remove button
+                        GestureDetector(
+                          onTap: () => _removeIngredient(i),
+                          child: const Icon(Icons.remove_circle_outline,
+                              color: Colors.red, size: 20),
+                        ),
+                        const SizedBox(width: 8),
+                        // Name field (editable)
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(ing.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              TextField(
+                                controller: _nameControllers[i],
+                                decoration: InputDecoration(
+                                  hintText: ing.name.isEmpty ? 'Ingredient name' : ing.name,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+                                  border: InputBorder.none,
+                                ),
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                              ),
                               if (ing.amount.isNotEmpty)
-                                Text(_scaleAmountLocal(ing.amount, widget.servings, widget.recipe.servings), style: const TextStyle(color: Color(0xFF888888), fontSize: 12)),
+                                Text(
+                                  _scaleAmountLocal(ing.amount, widget.servings, widget.recipe.servings),
+                                  style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
+                                ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
+                        // Grams field
                         SizedBox(
-                          width: 110,
+                          width: 90,
                           child: Row(
                             children: [
                               Expanded(
@@ -1107,7 +1697,7 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                                   onChanged: (_) => setState(() {}),
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4),
                               const Text('g', style: TextStyle(fontWeight: FontWeight.w700)),
                             ],
                           ),

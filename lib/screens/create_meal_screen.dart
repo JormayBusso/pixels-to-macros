@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../models/custom_meal.dart';
 import '../models/food_data.dart';
@@ -24,6 +27,10 @@ class CreateMealScreen extends ConsumerStatefulWidget {
 class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
   final _nameCtrl = TextEditingController();
   MealType _mealType = MealType.lunch;
+
+  // Photo
+  File? _imageFile;
+  String? _existingImagePath;
 
   // Ingredient list being built: food + grams
   final List<_IngredientEntry> _ingredients = [];
@@ -49,6 +56,7 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
       if (meal != null) {
         _nameCtrl.text = meal.name;
         _mealType = meal.mealType;
+        _existingImagePath = meal.imagePath;
         for (final ing in meal.ingredients) {
           _ingredients.add(_IngredientEntry(
             label: ing.foodLabel,
@@ -68,6 +76,52 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
 
   void _removeIngredient(int index) {
     setState(() => _ingredients.removeAt(index));
+  }
+
+  Future<void> _pickImage() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            if (_imageFile != null || _existingImagePath != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Remove photo',
+                    style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  setState(() {
+                    _imageFile = null;
+                    _existingImagePath = null;
+                  });
+                  Navigator.pop(ctx);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    final picked = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      imageQuality: 85,
+    );
+    if (picked != null) {
+      setState(() => _imageFile = File(picked.path));
+    }
   }
 
   void _showAddIngredientSheet() {
@@ -103,6 +157,21 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
 
     setState(() => _saving = true);
 
+    // Save image to app documents if a new one was picked
+    String? savedImagePath = _existingImagePath;
+    if (_imageFile != null) {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final fileName =
+          'meal_${DateTime.now().millisecondsSinceEpoch}${p.extension(_imageFile!.path)}';
+      final destFile =
+          File(p.join(docsDir.path, 'meal_images', fileName));
+      await destFile.parent.create(recursive: true);
+      await _imageFile!.copy(destFile.path);
+      savedImagePath = destFile.path;
+    } else if (_existingImagePath == null) {
+      savedImagePath = null; // user removed image
+    }
+
     final ingredients = _ingredients
         .map((e) => MealIngredient(
               mealId: widget.meal?.id ?? 0,
@@ -116,10 +185,16 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
         name: name,
         mealType: _mealType,
         createdAt: DateTime.now(),
+        imagePath: savedImagePath,
       );
       await DatabaseService.instance.insertCustomMeal(meal, ingredients);
     } else {
-      final updated = widget.meal!.copyWith(name: name, mealType: _mealType);
+      final updated = widget.meal!.copyWith(
+        name: name,
+        mealType: _mealType,
+        imagePath: savedImagePath,
+        clearImage: savedImagePath == null,
+      );
       await DatabaseService.instance.updateCustomMeal(updated, ingredients);
     }
 
@@ -158,6 +233,25 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
             ? const Center(child: CircularProgressIndicator())
             : Column(
               children: [
+                // ── Photo banner ──────────────────────────────────────
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    height: 160,
+                    width: double.infinity,
+                    color: AppTheme.gray100,
+                    child: _imageFile != null
+                        ? Image.file(_imageFile!, fit: BoxFit.cover)
+                        : _existingImagePath != null
+                            ? Image.file(
+                                File(_existingImagePath!),
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _ImagePlaceholder(
+                                    onTap: _pickImage),
+                              )
+                            : _ImagePlaceholder(onTap: _pickImage),
+                  ),
+                ),
                 // ── Meal name + type ──────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -317,6 +411,28 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
         MealType.lunch => Icons.wb_cloudy_outlined,
         MealType.dinner => Icons.nights_stay_outlined,
       };
+}
+
+// ── Image placeholder ─────────────────────────────────────────────────────
+
+class _ImagePlaceholder extends StatelessWidget {
+  const _ImagePlaceholder({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.add_a_photo_outlined, size: 32, color: AppTheme.gray400),
+          const SizedBox(height: 6),
+          Text('Tap to add a photo (optional)',
+              style: TextStyle(fontSize: 12, color: AppTheme.gray400)),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Mutable ingredient entry ───────────────────────────────────────────────

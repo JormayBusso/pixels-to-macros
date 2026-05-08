@@ -97,37 +97,53 @@ abstract final class GoalDefaults {
     }
   }
 
-  static int carbLimitG(NutritionGoalType t) {
+  /// Evidence-based macro percentage distributions per goal.
+  ///
+  /// Fractions of total daily kcal.  Carbs and protein = 4 kcal/g; fat = 9 kcal/g.
+  ///
+  /// Sources: AHA, ADA, WHO dietary guidelines.
+  static ({double carb, double protein, double fat}) macroRatios(
+      NutritionGoalType t) {
     switch (t) {
-      case NutritionGoalType.muscleGrowth: return 375;
-      case NutritionGoalType.diabetes:     return 130;
-      case NutritionGoalType.vegan:        return 250;
-      case NutritionGoalType.weightLoss:   return 130;
-      case NutritionGoalType.keto:         return 25;
-      case NutritionGoalType.maintain:     return 250;
+      case NutritionGoalType.muscleGrowth:
+        // High carbs for training energy, high protein for hypertrophy (AHA/ISSN).
+        return (carb: 0.46, protein: 0.22, fat: 0.27);
+      case NutritionGoalType.diabetes:
+        // ADA 2024: low carb (<130 g/day), moderate-high protein, unsaturated fats.
+        return (carb: 0.26, protein: 0.26, fat: 0.44);
+      case NutritionGoalType.vegan:
+        // Higher complex carbs, adequate plant protein, moderate fat (PMID 31728500).
+        return (carb: 0.52, protein: 0.16, fat: 0.30);
+      case NutritionGoalType.weightLoss:
+        // High protein preserves muscle & improves satiety (NEJM 2009); reduced carbs.
+        return (carb: 0.30, protein: 0.35, fat: 0.35);
+      case NutritionGoalType.keto:
+        // Classic ketogenic: very low carb, moderate protein, high fat (AJCN).
+        return (carb: 0.05, protein: 0.22, fat: 0.73);
+      case NutritionGoalType.maintain:
+        // Balanced AMDR ranges (DRI/IOM): carbs 45–65 %, protein 10–35 %, fat 20–35 %.
+        return (carb: 0.50, protein: 0.20, fat: 0.30);
     }
+  }
+
+  /// Gram targets derived from [macroRatios] × the female (lower) reference
+  /// calorie for the goal.  Ensures macros always add up to ~95–100 % of kcal.
+  static int carbLimitG(NutritionGoalType t) {
+    final r = macroRatios(t);
+    final kcal = calories(t, male: false).toDouble();
+    return (kcal * r.carb / 4).round();
   }
 
   static int proteinTargetG(NutritionGoalType t) {
-    switch (t) {
-      case NutritionGoalType.muscleGrowth: return 180;
-      case NutritionGoalType.diabetes:     return 90;
-      case NutritionGoalType.vegan:        return 80;
-      case NutritionGoalType.weightLoss:   return 120;
-      case NutritionGoalType.keto:         return 120;
-      case NutritionGoalType.maintain:     return 80;
-    }
+    final r = macroRatios(t);
+    final kcal = calories(t, male: false).toDouble();
+    return (kcal * r.protein / 4).round();
   }
 
   static int fatTargetG(NutritionGoalType t) {
-    switch (t) {
-      case NutritionGoalType.muscleGrowth: return 100;
-      case NutritionGoalType.diabetes:     return 60;
-      case NutritionGoalType.vegan:        return 65;
-      case NutritionGoalType.weightLoss:   return 55;
-      case NutritionGoalType.keto:         return 155;
-      case NutritionGoalType.maintain:     return 65;
-    }
+    final r = macroRatios(t);
+    final kcal = calories(t, male: false).toDouble();
+    return (kcal * r.fat / 9).round();
   }
 
   /// Mascot stage name for progress percentage [0.0–1.0+].
