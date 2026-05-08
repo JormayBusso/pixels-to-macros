@@ -71,7 +71,7 @@ class _Step {
 
 const _kNumNavItems = 6;
 
-const _kSteps = [
+final _kSteps = [
   // 0 – Welcome (no spotlight)
   _Step(
     title: 'Welcome to Pixels to Macros! 👋',
@@ -404,7 +404,7 @@ class _SpotlightPainter extends CustomPainter {
     if (spotRect == null) {
       canvas.drawRect(
         Rect.fromLTWH(0, 0, size.width, size.height),
-        Paint()..color = Colors.black.withValues(alpha: 0.78),
+        Paint()..color = Colors.black.withOpacity(0.78),
       );
       return;
     }
@@ -426,14 +426,14 @@ class _SpotlightPainter extends CustomPainter {
 
     canvas.drawPath(
       overlayPath,
-      Paint()..color = Colors.black.withValues(alpha: 0.78),
+      Paint()..color = Colors.black.withOpacity(0.78),
     );
 
     // Bright border traces the exact widget edge.
     canvas.drawRRect(
       spotRRect,
       Paint()
-        ..color = Colors.white.withValues(alpha: 0.50)
+        ..color = Colors.white.withOpacity(0.50)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.0,
     );
