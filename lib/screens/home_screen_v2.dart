@@ -52,6 +52,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await ref.read(userPrefsProvider.notifier).load();
     await ref.read(dailyIntakeProvider.notifier).load();
     await ref.read(historyProvider.notifier).load();
+    final scans = ref.read(historyProvider).scans;
+    final newestId = scans.isEmpty ? 0 : (scans.first.id ?? 0);
+    if (newestId > 0) {
+      await ref.read(userPrefsProvider.notifier).markHistorySeen(newestId);
+    }
     await ref.read(streakProvider.notifier).load();
     if (mounted) setState(() => _initialLoading = false);
   }
@@ -332,8 +337,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // ── Recent scans ─────────────────────────────────────────
-                    _SectionTitle('Recent Scans'),
+                    // ── Scan history (full list) ───────────────────────────
+                    _SectionTitle('Scan History'),
                     const SizedBox(height: 8),
                     if (history.scans.isEmpty)
                       Card(
@@ -358,7 +363,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       )
                     else
-                      ...history.scans.take(3).map((scan) {
+                      ...history.scans.map((scan) {
                         final avg =
                             (scan.totalCaloriesMin + scan.totalCaloriesMax) / 2;
                         return Padding(

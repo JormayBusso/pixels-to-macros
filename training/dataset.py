@@ -45,12 +45,14 @@ class FoodSeg103Dataset(Dataset):
         root: str | Path,
         split: str = "train",
         transform: Callable | None = None,
+        pair_transform: Callable | None = None,
         target_size: tuple[int, int] = (513, 513),
         seed: int = 42,
         augment: bool = False,
     ):
         self.root = Path(root)
         self.transform = transform
+        self.pair_transform = pair_transform
         self.target_size = target_size
         self.augment = augment
 
@@ -155,6 +157,9 @@ class FoodSeg103Dataset(Dataset):
 
         if self.augment:
             img, mask = self._augment_pair(img, mask)
+
+        if self.pair_transform is not None:
+            img, mask = self.pair_transform(img, mask)
 
         img = img.resize(self.target_size, Image.BILINEAR)
         mask = mask.resize(self.target_size, Image.NEAREST)

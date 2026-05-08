@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../providers/history_provider.dart';
 import '../providers/scan_state_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/app_recovery_service.dart';
@@ -14,9 +13,9 @@ import '../theme/app_theme.dart';
 import '../widgets/app_tutorial_overlay.dart';
 import '../widgets/weekly_badge_recap_sheet.dart';
 import 'analytics_screen.dart';
+import 'meal_planner_screen.dart';
 import 'home_screen_v2.dart';
 import 'grocery_list_screen.dart';
-import 'history_screen.dart';
 import 'manual_entry_screen.dart';
 import 'recipes_screen.dart';
 import 'settings_screen.dart';
@@ -44,7 +43,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     AnalyticsScreen(),
     RecipesScreen(),
     GroceryListScreen(),
-    HistoryScreen(),
+    MealPlannerScreen(),
     SettingsScreen(),
   ];
 
@@ -151,12 +150,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final historyState = ref.watch(historyProvider);
-    final prefs = ref.watch(userPrefsProvider);
-    final lastSeenScanId = prefs.lastSeenHistoryScanId;
-    final unseenCount = historyState.scans
-        .where((scan) => (scan.id ?? 0) > lastSeenScanId)
-        .length;
+    ref.watch(userPrefsProvider);
 
     // Watch showTourProvider so we can re-show tour on demand (from Settings).
     ref.listen<bool>(showTourProvider, (_, show) {
@@ -176,19 +170,6 @@ class _MainShellState extends ConsumerState<MainShell> {
             selectedIndex: _tabIndex,
             onDestinationSelected: (i) {
               setState(() => _tabIndex = i);
-              // Clear history badge when visiting the History tab.
-              if (i == 4) {
-                final newestId = ref.read(historyProvider).scans.isEmpty
-                    ? 0
-                    : (ref.read(historyProvider).scans.first.id ?? 0);
-                if (newestId > 0) {
-                  unawaited(
-                    ref
-                        .read(userPrefsProvider.notifier)
-                        .markHistorySeen(newestId),
-                  );
-                }
-              }
             },
             backgroundColor: Colors.white,
             indicatorColor: context.primary100,
@@ -216,16 +197,10 @@ class _MainShellState extends ConsumerState<MainShell> {
                 label: 'Groceries',
               ),
               NavigationDestination(
-                icon: Badge(
-                  isLabelVisible: unseenCount > 0,
-                  label: Text('$unseenCount'),
-                  child: const Icon(Icons.history_outlined),
-                ),
-                selectedIcon: Badge(
-                  isLabelVisible: false,
-                  child: Icon(Icons.history, color: context.primary700),
-                ),
-                label: 'History',
+                icon: const Icon(Icons.calendar_month_outlined),
+                selectedIcon:
+                    Icon(Icons.calendar_month, color: context.primary700),
+                label: 'Planner',
               ),
               NavigationDestination(
                 icon: const Icon(Icons.settings_outlined),

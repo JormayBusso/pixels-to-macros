@@ -1,13 +1,16 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/grocery_item.dart';
 import '../providers/grocery_provider.dart';
 import '../providers/history_provider.dart';
+import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 
 /// Screen for managing a personal grocery shopping list.
@@ -206,11 +209,11 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       setSheetState(() {});
 
       // Analyze photo with ML Kit to detect food items.
-      _analyzePhotoForFoods(file);
+      unawaited(_analyzePhotoForFoods(file));
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Analyzing photo for food items…'),
+          content: Text('Analyzing food, text and quantities…'),
           duration: Duration(seconds: 2),
         ),
       );
@@ -222,11 +225,18 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   Future<void> _analyzePhotoForFoods(XFile photo) async {
     try {
       final inputImage = InputImage.fromFilePath(photo.path);
+
+      // 1) Visual labels from the image
       final labeler = ImageLabeler(
         options: ImageLabelerOptions(confidenceThreshold: 0.5),
       );
       final labels = await labeler.processImage(inputImage);
       await labeler.close();
+
+      // 2) OCR text extraction (package text like "2x milk", "eggs 12")
+      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      final recognizedText = await textRecognizer.processImage(inputImage);
+      await textRecognizer.close();
 
       // Filter to food-related labels only.
       const foodKeywords = {
@@ -245,26 +255,93 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         }
       }
 
-      if (detected.isEmpty || !mounted) return;
+      // 3) Parse OCR lines for explicit quantity and unit patterns.
+      final quantityAndUnitHints = _extractQuantityAndUnitHints(
+        recognizedText.text,
+        allowedKeywords: foodKeywords,
+      );
 
-      // Add detected foods to grocery list (avoid duplicates).
-      final grocery = ref.read(groceryProvider.notifier);
-      final existing = ref.read(groceryProvider)
-          .items
-          .map((g) => g.name.toLowerCase())
-          .toSet();
+      // 4) Build candidate foods from labels + OCR keyword matches.
+      final candidates = <String, _PhotoCandidate>{};
+      for (final label in detected) {
+        final normalized = _normalizeFoodName(label);
+        if (normalized.isEmpty) continue;
+        final prev = candidates[normalized];
+        final hint = quantityAndUnitHints[normalized.toLowerCase()];
+        candidates[normalized] = _PhotoCandidate(
+          name: normalized,
+          sourceCount: (prev?.sourceCount ?? 0) + 1,
+          quantity: hint?['quantity'] ?? (prev?.quantity ?? 1),
+          unit: hint?['unit'] ?? prev?.unit,
+        );
+      }
+
+      for (final line in recognizedText.text.split(RegExp(r'\n+'))) {
+        final lower = line.toLowerCase();
+        for (final keyword in foodKeywords) {
+          if (lower.contains(keyword)) {
+            final normalized = _normalizeFoodName(keyword);
+            if (normalized.isEmpty) continue;
+            final prev = candidates[normalized];
+            final hint = quantityAndUnitHints[normalized.toLowerCase()];
+            candidates[normalized] = _PhotoCandidate(
+              name: normalized,
+              sourceCount: (prev?.sourceCount ?? 0) + 1,
+              quantity: hint?['quantity'] ?? (prev?.quantity ?? 1),
+              unit: hint?['unit'] ?? prev?.unit,
+            );
+          }
+        }
+      }
+
+      if (candidates.isEmpty || !mounted) return;
+
+      // 5) Upsert into grocery list with quantity and unit awareness.
+      final groceryNotifier = ref.read(groceryProvider.notifier);
+      final existingItems = ref.read(groceryProvider).items;
+      final existingByName = {
+        for (final i in existingItems) i.name.toLowerCase().trim(): i,
+      };
+
       int added = 0;
-      for (final food in detected) {
-        if (!existing.contains(food.toLowerCase())) {
-          await grocery.addItem(food);
+      int updated = 0;
+      for (final entry in candidates.values) {
+        final hint = quantityAndUnitHints[entry.name.toLowerCase()];
+        final explicitQty = hint?['quantity'] ?? 0;
+        final explicitUnit = hint?['unit'];
+        final inferredQty = explicitQty > 0 ? explicitQty : entry.sourceCount.clamp(1, 3);
+
+        final key = entry.name.toLowerCase();
+        final existing = existingByName[key];
+        if (existing != null) {
+          // Update with new quantity and preserve or add unit
+          final newUnit = explicitUnit ?? existing.unit;
+          await DatabaseService.instance.updateGroceryItem(
+            existing.copyWith(
+              quantity: (existing.quantity + inferredQty).clamp(1, 99),
+              unit: newUnit,
+            ),
+          );
+          updated++;
+        } else {
+          await groceryNotifier.addItem(
+            entry.name,
+            category: _guessCategory(entry.name),
+            quantity: inferredQty,
+            unit: explicitUnit,
+          );
           added++;
         }
       }
 
-      if (mounted && added > 0) {
+      if (!mounted) return;
+      if (added > 0 || updated > 0) {
+        final sample = candidates.values.take(3).map((c) => c.name).join(', ');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Added $added food${added > 1 ? 's' : ''} from photo: ${detected.take(3).join(', ')}${detected.length > 3 ? '…' : ''}'),
+            content: Text(
+              'Photo scan complete: +$added new, $updated updated. Found: $sample${candidates.length > 3 ? '…' : ''}',
+            ),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -272,6 +349,129 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     } catch (_) {
       // ML Kit not available (e.g. simulator) — silently skip.
     }
+  }
+
+  /// Parses quantity and unit from text like "500g chicken", "2L milk", "3 pack".
+  /// Returns map with 'quantity' (int) and 'unit' (String? null).
+  static Map<String, dynamic> _parseQuantityAndUnit(String text) {
+    text = text.trim().toLowerCase();
+
+    // Common unit patterns with their regex
+    final unitPatterns = {
+      'g': r'(\d+(?:\.\d+)?)\s*g\b',
+      'kg': r'(\d+(?:\.\d+)?)\s*kg\b',
+      'mg': r'(\d+(?:\.\d+)?)\s*mg\b',
+      'ml': r'(\d+(?:\.\d+)?)\s*ml\b',
+      'L': r'(\d+(?:\.\d+)?)\s*L\b',
+      'l': r'(\d+(?:\.\d+)?)\s*l\b',
+      'pack': r'(\d+(?:\.\d+)?)\s*pack',
+      'box': r'(\d+(?:\.\d+)?)\s*box',
+      'bunch': r'(\d+(?:\.\d+)?)\s*bunch',
+      'count': r'(\d+(?:\.\d+)?)\s*ct\b',
+    };
+
+    for (final unit in unitPatterns.keys) {
+      final regex = RegExp(unitPatterns[unit]!);
+      final match = regex.firstMatch(text);
+      if (match != null) {
+        final qty = double.tryParse(match.group(1) ?? '1') ?? 1.0;
+        return {'quantity': qty.toInt(), 'unit': unit};
+      }
+    }
+
+    // Try simple "Nx" or "x N" pattern
+    final simpleMatch = RegExp(r'(\d+)\s*x\s*\w+|\w+\s*x\s*(\d+)').firstMatch(text);
+    if (simpleMatch != null) {
+      final num = simpleMatch.group(1) ?? simpleMatch.group(2);
+      if (num != null) {
+        return {'quantity': int.parse(num), 'unit': null};
+      }
+    }
+
+    return {'quantity': 1, 'unit': null};
+  }
+
+  /// Extracts quantity hints AND units from OCR text.
+  /// Returns a map of food name -> {quantity (int), unit (String?)}
+  Map<String, Map<String, dynamic>> _extractQuantityAndUnitHints(
+    String rawText, {
+    required Set<String> allowedKeywords,
+  }) {
+    final hints = <String, Map<String, dynamic>>{};
+    final lines = rawText
+        .split(RegExp(r'\n+'))
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+
+    final countPatternA = RegExp(
+      r'(\d{1,2})\s*(x|pcs?|pieces?|packs?|bottles?|cans?|g|kg|ml|L|l)\s+([a-zA-Z][a-zA-Z ]{1,30})',
+      caseSensitive: false,
+    );
+    final countPatternB = RegExp(
+      r'([a-zA-Z][a-zA-Z ]{1,30})\s*(x|×)\s*(\d{1,2})',
+      caseSensitive: false,
+    );
+    final countPatternC = RegExp(
+      r'(\d{1,2})\s+([a-zA-Z][a-zA-Z ]{1,30})',
+      caseSensitive: false,
+    );
+
+    for (final line in lines) {
+      final lower = line.toLowerCase();
+      if (!allowedKeywords.any(lower.contains)) continue;
+
+      final mA = countPatternA.firstMatch(line);
+      if (mA != null) {
+        final qty = int.tryParse(mA.group(1) ?? '') ?? 0;
+        final unitStr = mA.group(2) ?? '';
+        final food = _normalizeFoodName(mA.group(3) ?? '');
+        if (qty > 0 && food.isNotEmpty) {
+          hints[food.toLowerCase()] = {
+            'quantity': qty.clamp(1, 99),
+            'unit': unitStr,
+          };
+          continue;
+        }
+      }
+
+      final mB = countPatternB.firstMatch(line);
+      if (mB != null) {
+        final qty = int.tryParse(mB.group(3) ?? '') ?? 0;
+        final food = _normalizeFoodName(mB.group(1) ?? '');
+        if (qty > 0 && food.isNotEmpty) {
+          hints[food.toLowerCase()] = {
+            'quantity': qty.clamp(1, 99),
+            'unit': null,
+          };
+          continue;
+        }
+      }
+
+      final mC = countPatternC.firstMatch(line);
+      if (mC != null) {
+        final qty = int.tryParse(mC.group(1) ?? '') ?? 0;
+        final food = _normalizeFoodName(mC.group(2) ?? '');
+        if (qty > 0 && food.isNotEmpty) {
+          hints[food.toLowerCase()] = {
+            'quantity': qty.clamp(1, 99),
+            'unit': null,
+          };
+        }
+      }
+    }
+
+    return hints;
+
+  String _normalizeFoodName(String raw) {
+    final s = raw.trim().toLowerCase();
+    if (s.isEmpty) return '';
+    final clean = s.replaceAll(RegExp(r'[^a-z\s]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (clean.isEmpty) return '';
+    return clean.split(' ').map((w) {
+      if (w.isEmpty) return w;
+      return '${w[0].toUpperCase()}${w.substring(1)}';
+    }).join(' ');
   }
 
   void _showSmartSuggestSheet() {
@@ -657,6 +857,19 @@ class _SuggestionItem {
   const _SuggestionItem({required this.name, required this.category, this.suggestedQty = 1});
 }
 
+class _PhotoCandidate {
+  final String name;
+  final int sourceCount;
+  final int quantity;
+  final String? unit;
+  const _PhotoCandidate({
+    required this.name,
+    this.sourceCount = 1,
+    this.quantity = 1,
+    this.unit,
+  });
+}
+
 // ── Section label ──────────────────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
@@ -720,7 +933,7 @@ class _GroceryTile extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 12, color: AppTheme.gray400))
             : null,
-        trailing: item.quantity > 1
+        trailing: item.quantity > 0 || item.unit != null
             ? Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 8, vertical: 2),
@@ -728,7 +941,10 @@ class _GroceryTile extends StatelessWidget {
                   color:        context.primary100,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text('x${item.quantity}',
+                child: Text(
+                    item.unit != null
+                        ? '${item.quantity} ${item.unit}'
+                        : 'x${item.quantity}',
                     style: TextStyle(
                         fontSize:   12,
                         fontWeight: FontWeight.w600,

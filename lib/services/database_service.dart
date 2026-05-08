@@ -41,7 +41,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 26,
+      version: 27,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -201,6 +201,7 @@ class DatabaseService {
         name       TEXT    NOT NULL,
         category   TEXT,
         quantity   INTEGER NOT NULL DEFAULT 1,
+        unit       TEXT,
         checked    INTEGER NOT NULL DEFAULT 0,
         created_at TEXT    NOT NULL
       )
@@ -569,6 +570,13 @@ class DatabaseService {
           recipe_name TEXT    NOT NULL
         )
       ''');
+    }
+    if (oldVersion < 27) {
+      try {
+        await db.execute(
+          'ALTER TABLE grocery_list ADD COLUMN unit TEXT',
+        );
+      } catch (_) {}
     }
   }
 

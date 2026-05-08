@@ -4,6 +4,7 @@ class GroceryItem {
   final String name;
   final String? category;
   final int quantity;
+  final String? unit; // 'g', 'ml', 'kg', 'L', 'pack', 'box', 'bunch', etc.
   final bool checked;
   final DateTime createdAt;
 
@@ -12,6 +13,7 @@ class GroceryItem {
     required this.name,
     this.category,
     this.quantity = 1,
+    this.unit,
     this.checked = false,
     required this.createdAt,
   });
@@ -22,6 +24,7 @@ class GroceryItem {
       name: map['name'] as String,
       category: map['category'] as String?,
       quantity: (map['quantity'] as int?) ?? 1,
+      unit: map['unit'] as String?,
       checked: (map['checked'] as int?) == 1,
       createdAt: DateTime.parse(map['created_at'] as String),
     );
@@ -33,6 +36,7 @@ class GroceryItem {
       'name': name,
       'category': category,
       'quantity': quantity,
+      if (unit != null) 'unit': unit,
       'checked': checked ? 1 : 0,
       'created_at': createdAt.toIso8601String(),
     };
@@ -42,6 +46,7 @@ class GroceryItem {
     String? name,
     String? category,
     int? quantity,
+    String? unit,
     bool? checked,
   }) {
     return GroceryItem(
@@ -49,6 +54,7 @@ class GroceryItem {
       name: name ?? this.name,
       category: category ?? this.category,
       quantity: quantity ?? this.quantity,
+      unit: unit ?? this.unit,
       checked: checked ?? this.checked,
       createdAt: createdAt,
     );

@@ -32,10 +32,14 @@ import torch.nn.functional as F
 import segmentation_models_pytorch as smp
 from PIL import Image
 from torch.utils.data import DataLoader
+from torch.utils.data import Dataset as TorchDataset
 from torchvision.models.segmentation import (
     DeepLabV3_MobileNet_V3_Large_Weights,
     deeplabv3_mobilenet_v3_large,
 )
+from torchvision.transforms import InterpolationMode
+from torchvision.transforms import functional as tvf
+from torchvision.transforms import v2 as T
 from tqdm import tqdm
 import sys
 
@@ -352,6 +356,94 @@ def _collate(batch):
     }
 
 
+class SegmentationAugmentV2:
+    """Torchvision pair augmentations for segmentation training."""
+
+    def __init__(self, size: tuple[int, int]):
+        self.size = size
+        self.flip = T.RandomHorizontalFlip(p=0.5)
+        self.jitter = T.ColorJitter(
+            brightness=0.25,
+            contrast=0.20,
+            saturation=0.20,
+            hue=0.06,
+        )
+        self.rotation = T.RandomRotation(degrees=12)
+        self.rrc = T.RandomResizedCrop(
+            size=size,
+            scale=(0.72, 1.0),
+            ratio=(0.8, 1.25),
+            interpolation=InterpolationMode.BILINEAR,
+            antialias=True,
+        )
+
+    def __call__(self, img: Image.Image, mask: Image.Image) -> tuple[Image.Image, Image.Image]:
+        # RandomHorizontalFlip (same decision for image and mask)
+        if random.random() < self.flip.p:
+            img = tvf.hflip(img)
+            mask = tvf.hflip(mask)
+
+        # RandomRotation (same angle for image and mask)
+        angle = T.RandomRotation.get_params(self.rotation.degrees)
+        img = tvf.rotate(
+            img,
+            angle=angle,
+            interpolation=InterpolationMode.BILINEAR,
+            fill=[0, 0, 0],
+        )
+        mask = tvf.rotate(
+            mask,
+            angle=angle,
+            interpolation=InterpolationMode.NEAREST,
+            fill=0,
+        )
+
+        # RandomResizedCrop (same crop for image and mask)
+        i, j, h, w = T.RandomResizedCrop.get_params(
+            img,
+            scale=self.rrc.scale,
+            ratio=self.rrc.ratio,
+        )
+        img = tvf.resized_crop(
+            img,
+            i=i,
+            j=j,
+            h=h,
+            w=w,
+            size=self.size,
+            interpolation=InterpolationMode.BILINEAR,
+            antialias=True,
+        )
+        mask = tvf.resized_crop(
+            mask,
+            i=i,
+            j=j,
+            h=h,
+            w=w,
+            size=self.size,
+            interpolation=InterpolationMode.NEAREST,
+            antialias=False,
+        )
+
+        # ColorJitter (image only)
+        img = self.jitter(img)
+        return img, mask
+
+
+class RepeatDataset(TorchDataset):
+    """Virtual dataset expansion via repeated indexing with fresh augmentation."""
+
+    def __init__(self, base: TorchDataset, repeats: int):
+        self.base = base
+        self.repeats = max(1, int(repeats))
+
+    def __len__(self) -> int:
+        return len(self.base) * self.repeats
+
+    def __getitem__(self, idx):
+        return self.base[idx % len(self.base)]
+
+
 def _save_checkpoint_atomic(
     output_dir: Path,
     checkpoint: dict,
@@ -415,6 +507,20 @@ def main() -> None:
         default=600.0,
         help="Save intermediate checkpoint at least every N seconds (0 to disable)",
     )
+    parser.add_argument(
+        "--virtual_train_multiplier",
+        type=int,
+        default=10,
+        help=(
+            "Repeat training samples this many times per epoch with random "
+            "augmentation (4235 x 10 ~= 42k effective samples)."
+        ),
+    )
+    parser.add_argument(
+        "--no_torchvision_aug",
+        action="store_true",
+        help="Disable torchvision flip/jitter/rotation/resized-crop augmentation.",
+    )
     args = parser.parse_args()
 
     set_seed(args.seed)
@@ -441,13 +547,19 @@ def main() -> None:
         torch.backends.cudnn.allow_tf32 = True
 
     target_size = (args.img_size, args.img_size)
-    train_ds = FoodSeg103Dataset(
+    pair_transform = None
+    if not args.no_torchvision_aug:
+        pair_transform = SegmentationAugmentV2(size=target_size)
+
+    train_base_ds = FoodSeg103Dataset(
         args.data_dir,
         split="train",
         target_size=target_size,
         seed=args.seed,
         augment=True,
+        pair_transform=pair_transform,
     )
+    train_ds = RepeatDataset(train_base_ds, args.virtual_train_multiplier)
     val_ds = FoodSeg103Dataset(
         args.data_dir,
         split="val",
@@ -456,8 +568,11 @@ def main() -> None:
         augment=False,
     )
 
-    num_classes = train_ds.num_classes
-    print(f"Classes: {num_classes}, Train: {len(train_ds)}, Val: {len(val_ds)}")
+    num_classes = train_base_ds.num_classes
+    print(
+        f"Classes: {num_classes}, Train base: {len(train_base_ds)}, "
+        f"Train effective: {len(train_ds)}, Val: {len(val_ds)}"
+    )
 
     use_persistent = args.num_workers > 0
     train_loader = DataLoader(
@@ -487,7 +602,7 @@ def main() -> None:
 
     class_weights = None
     if not args.no_class_weights:
-        class_weights = compute_class_weights(train_ds, num_classes).to(device)
+        class_weights = compute_class_weights(train_base_ds, num_classes).to(device)
 
     criterion = CombinedSegmentationLoss(
         num_classes=num_classes,

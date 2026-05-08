@@ -29,11 +29,12 @@ class GroceryNotifier extends StateNotifier<GroceryState> {
     state = GroceryState(items: items);
   }
 
-  Future<void> addItem(String name, {String? category, int quantity = 1}) async {
+  Future<void> addItem(String name, {String? category, int quantity = 1, String? unit}) async {
     final item = GroceryItem(
       name: name,
       category: category,
       quantity: quantity,
+      unit: unit,
       createdAt: DateTime.now(),
     );
     await DatabaseService.instance.insertGroceryItem(item);
