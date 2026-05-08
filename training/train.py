@@ -431,21 +431,13 @@ class SegmentationAugmentV2:
             ratio=self.rrc.ratio,
         )
         img = tvf.resized_crop(
-            img,
-            i=i,
-            j=j,
-            h=h,
-            w=w,
+            img, i, j, h, w,
             size=self.size,
             interpolation=InterpolationMode.BILINEAR,
             antialias=True,
         )
         mask = tvf.resized_crop(
-            mask,
-            i=i,
-            j=j,
-            h=h,
-            w=w,
+            mask, i, j, h, w,
             size=self.size,
             interpolation=InterpolationMode.NEAREST,
             antialias=False,
