@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../models/nutrient_data.dart';
+import '../models/scan_result.dart';
 import '../models/user_preferences.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/user_prefs_provider.dart';
+import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 
 /// Anatomy-style body map.
@@ -62,6 +64,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
     final prefs = ref.watch(userPrefsProvider);
     final isMale = prefs.gender == UserGender.male;
     final scores = _computeOrganScores(intake.nutrientTotals, isMale);
+    final foods = intake.foods;
 
     return Scaffold(
       appBar: AppBar(
@@ -100,7 +103,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                     child: GestureDetector(
                       onTap: () {
                         setState(() => _selected = region);
-                        _showDetail(region, scores[region]!);
+                        _showDetail(region, scores[region]!, foods, isMale);
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
@@ -108,26 +111,24 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                         height: d,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: color.withValues(alpha: isHi ? 0.70 : 0.50),
+                              color: color.withOpacity(isHi ? 0.40 : 0.22),
                           border: Border.all(
                             color: color,
                             width: isHi ? 3.0 : 2.0,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: color.withValues(alpha: isHi ? 0.60 : 0.40),
+                                  color: color.withOpacity(isHi ? 0.50 : 0.28),
                               blurRadius: isHi ? 16 : 10,
                               spreadRadius: isHi ? 4 : 2,
                             ),
                           ],
                         ),
-                        child: Center(
-                          child: Text(
-                            region.emoji,
-                            style: TextStyle(fontSize: d * 0.40, height: 1),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
+                            child: Icon(
+                              region.icon,
+                              size: d * 0.45,
+                              color: Colors.white.withOpacity(isHi ? 0.95 : 0.78),
+                            ),
                       ),
                     ),
                   );
@@ -155,7 +156,12 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
     );
   }
 
-  void _showDetail(_OrganRegion region, _OrganScore score) {
+  void _showDetail(
+    _OrganRegion region,
+    _OrganScore score,
+    List<DetectedFood> foods,
+    bool isMale,
+  ) {
     final colorScheme = _scoreColor(score.score);
     showModalBottomSheet<void>(
       context: context,
@@ -175,15 +181,11 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                   height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: colorScheme.withValues(alpha: 0.18),
+                    color: colorScheme.withOpacity(0.18),
                     border: Border.all(color: colorScheme, width: 2),
                   ),
                   alignment: Alignment.center,
-                  child: Text(
-                    region.emoji,
-                    style: const TextStyle(fontSize: 22, height: 1),
-                    textAlign: TextAlign.center,
-                  ),
+                      child: Icon(region.icon, color: colorScheme),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -269,6 +271,92 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            const Text(
+              'Top foods affecting this body part',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            FutureBuilder<List<_FoodContribution>>(
+              future: _computeTopFoodsForRegion(
+                region: region,
+                foods: foods,
+                isMale: isMale,
+              ),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Calculating food impact...',
+                      style: TextStyle(fontSize: 12, color: AppTheme.gray600),
+                    ),
+                  );
+                }
+
+                final items = snapshot.data ?? const <_FoodContribution>[];
+                if (items.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'No food contributors available yet. Log meals to see which foods drive this color.',
+                      style: TextStyle(fontSize: 12, color: AppTheme.gray600),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: items.map((f) {
+                    final pct = (f.impact * 100).clamp(0, 999).round();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              f.label,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${f.kcal.round()} kcal',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.gray600,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _scoreColor(f.impact).withOpacity(0.14),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              '$pct%',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _scoreColor(f.impact),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -350,21 +438,6 @@ extension on _OrganRegion {
         _OrganRegion.blood => Icons.bloodtype_outlined,
       };
 
-  String get emoji => switch (this) {
-        _OrganRegion.brain => '🧠',
-        _OrganRegion.eyes => '👁️',
-        _OrganRegion.lungs => '🫁',
-        _OrganRegion.heart => '🫀',
-        _OrganRegion.liver => '🍁',
-        _OrganRegion.stomach => '🌀',
-        _OrganRegion.intestines => '〰️',
-        _OrganRegion.kidneys => '🫘',
-        _OrganRegion.bones => '🦴',
-        _OrganRegion.muscles => '💪',
-        _OrganRegion.skin => '🩹',
-        _OrganRegion.blood => '🩸',
-      };
-
   String get explanation => switch (this) {
         _OrganRegion.brain =>
           'B12 and folate keep nerves firing. Iron carries oxygen to brain tissue and supports focus and memory.',
@@ -403,6 +476,137 @@ class _NutrientRatio {
   const _NutrientRatio(this.name, this.ratio);
   final String name;
   final double ratio;
+}
+
+class _FoodContribution {
+  const _FoodContribution({
+    required this.label,
+    required this.impact,
+    required this.kcal,
+  });
+
+  final String label;
+  final double impact;
+  final double kcal;
+}
+
+class _FoodContributionAcc {
+  _FoodContributionAcc(this.label);
+  final String label;
+  double impactTimesKcal = 0;
+  double kcal = 0;
+}
+
+List<String> _nutrientNamesForRegion(_OrganRegion region) {
+  return switch (region) {
+    _OrganRegion.brain => ['B12', 'Folate', 'Iron'],
+    _OrganRegion.eyes => ['Vitamin A', 'Vitamin C', 'Zinc'],
+    _OrganRegion.lungs => ['Vitamin C', 'Vitamin E', 'Vitamin A'],
+    _OrganRegion.heart => ['Potassium', 'Magnesium', 'Vitamin E'],
+    _OrganRegion.liver => ['Vitamin E', 'Vitamin K', 'B12'],
+    _OrganRegion.stomach => ['Zinc', 'B12'],
+    _OrganRegion.intestines => ['Fiber', 'Magnesium', 'Potassium'],
+    _OrganRegion.kidneys => ['Potassium', 'Magnesium'],
+    _OrganRegion.bones => ['Calcium', 'Vitamin D', 'Vitamin K'],
+    _OrganRegion.muscles => ['Magnesium', 'Potassium', 'Calcium'],
+    _OrganRegion.skin => ['Vitamin C', 'Vitamin E', 'Zinc'],
+    _OrganRegion.blood => ['Iron', 'B12', 'Folate'],
+  };
+}
+
+double _ratioForNutrientName(String name, NutrientTotals totals, bool isMale) {
+  double r(double current, double drv) => drv > 0 ? current / drv : 0;
+  return switch (name) {
+    'Vitamin A' => r(
+      totals.vitaminAUg,
+      isMale ? NutrientDRV.vitaminAUg_male : NutrientDRV.vitaminAUg_female,
+    ),
+    'Vitamin C' => r(
+      totals.vitaminCMg,
+      isMale ? NutrientDRV.vitaminCMg_male : NutrientDRV.vitaminCMg_female,
+    ),
+    'Vitamin D' => r(totals.vitaminDUg, NutrientDRV.vitaminDUg),
+    'Vitamin E' => r(totals.vitaminEMg, NutrientDRV.vitaminEMg),
+    'Vitamin K' => r(
+      totals.vitaminKUg,
+      isMale ? NutrientDRV.vitaminKUg_male : NutrientDRV.vitaminKUg_female,
+    ),
+    'Folate' => r(totals.folateMcg, NutrientDRV.folateMcg),
+    'B12' => r(totals.b12Mcg, NutrientDRV.b12Mcg),
+    'Calcium' => r(
+      totals.calciumMg,
+      isMale ? NutrientDRV.calciumMg_male : NutrientDRV.calciumMg_female,
+    ),
+    'Iron' => r(
+      totals.ironMg,
+      isMale ? NutrientDRV.ironMg_male : NutrientDRV.ironMg_female,
+    ),
+    'Magnesium' => r(
+      totals.magnesiumMg,
+      isMale ? NutrientDRV.magnesiumMg_male : NutrientDRV.magnesiumMg_female,
+    ),
+    'Potassium' => r(
+      totals.potassiumMg,
+      isMale ? NutrientDRV.potassiumMg_male : NutrientDRV.potassiumMg_female,
+    ),
+    'Zinc' => r(
+      totals.zincMg,
+      isMale ? NutrientDRV.zincMg_male : NutrientDRV.zincMg_female,
+    ),
+    'Fiber' => r(totals.fiberG, NutrientDRV.fiberG),
+    _ => 0,
+  };
+}
+
+Future<List<_FoodContribution>> _computeTopFoodsForRegion({
+  required _OrganRegion region,
+  required List<DetectedFood> foods,
+  required bool isMale,
+}) async {
+  if (foods.isEmpty) return const <_FoodContribution>[];
+
+  final keys = _nutrientNamesForRegion(region);
+  final byLabel = <String, _FoodContributionAcc>{};
+
+  for (final food in foods) {
+    var lookupLabel = food.label;
+    const aliases = {'chicken duck': 'chicken'};
+    final alias = aliases[lookupLabel.toLowerCase()];
+    if (alias != null) lookupLabel = alias;
+
+    final foodData = await DatabaseService.instance.getFoodByLabel(lookupLabel);
+    if (foodData == null || foodData.kcalPer100g <= 0) continue;
+
+    final kcal = (food.caloriesMin + food.caloriesMax) / 2;
+    final weightG = kcal / (foodData.kcalPer100g / 100);
+    if (kcal <= 0 || weightG <= 0) continue;
+
+    final nt = nutrientsForFood(food: foodData, weightG: weightG);
+    final ratios = keys.map((k) => _ratioForNutrientName(k, nt, isMale)).toList();
+    final impact = ratios.isEmpty
+        ? 0.0
+        : ratios.reduce((a, b) => a + b) / ratios.length;
+
+    if (impact <= 0) continue;
+
+    final acc = byLabel.putIfAbsent(food.label, () => _FoodContributionAcc(food.label));
+    acc.impactTimesKcal += impact * kcal;
+    acc.kcal += kcal;
+  }
+
+  final out = byLabel.values
+      .where((a) => a.kcal > 0)
+      .map(
+        (a) => _FoodContribution(
+          label: a.label,
+          impact: (a.impactTimesKcal / a.kcal).clamp(0.0, 2.0),
+          kcal: a.kcal,
+        ),
+      )
+      .toList()
+    ..sort((a, b) => b.impact.compareTo(a.impact));
+
+  return out.take(5).toList();
 }
 
 Map<_OrganRegion, _OrganScore> _computeOrganScores(
