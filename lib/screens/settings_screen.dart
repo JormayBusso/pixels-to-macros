@@ -9,6 +9,7 @@ import '../providers/user_prefs_provider.dart';
 import '../services/auth_service.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
 import 'auth_screen.dart';
@@ -34,6 +35,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _obscurePassword = true;
   int _foodCount = 0;
   final _accountScrollController = ScrollController();
+  final _weeklyReviewCardKey = GlobalKey();
+  final _vacationModeCardKey = GlobalKey();
   int _lastVacationTrigger = 0;
   int _lastWeeklyReviewTrigger = 0;
 
@@ -111,7 +114,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (vacationTrigger != _lastVacationTrigger) {
       _lastVacationTrigger = vacationTrigger;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_accountScrollController.hasClients) {
+        final ctx = _vacationModeCardKey.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+            alignment: 0.12,
+          );
+        } else if (_accountScrollController.hasClients) {
           _accountScrollController.animateTo(
             650,
             duration: const Duration(milliseconds: 500),
@@ -123,7 +134,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (weeklyReviewTrigger != _lastWeeklyReviewTrigger) {
       _lastWeeklyReviewTrigger = weeklyReviewTrigger;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_accountScrollController.hasClients) {
+        final ctx = _weeklyReviewCardKey.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+            alignment: 0.12,
+          );
+        } else if (_accountScrollController.hasClients) {
           _accountScrollController.animateTo(
             560,
             duration: const Duration(milliseconds: 500),
@@ -468,81 +487,87 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
         _SectionHeader('Weekly Review'),
         const SizedBox(height: 12),
-        const _WeeklyBadgeRecapCard(),
+        Container(
+          key: _weeklyReviewCardKey,
+          child: const _WeeklyBadgeRecapCard(),
+        ),
         const SizedBox(height: 24),
 
         _SectionHeader('Vacation Mode'),
         const SizedBox(height: 12),
-        Consumer(
-          builder: (context, ref, _) {
-            final vacation =
-                ref.watch(userPrefsProvider.select((p) => p.vacationMode));
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.beach_access_outlined,
-                            color: Color(0xFFF57C00)),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Vacation Mode',
+        Container(
+          key: _vacationModeCardKey,
+          child: Consumer(
+            builder: (context, ref, _) {
+              final vacation =
+                  ref.watch(userPrefsProvider.select((p) => p.vacationMode));
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.beach_access_outlined,
+                              color: Color(0xFFF57C00)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Vacation Mode',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15)),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'Keeps your streak alive while you\'re away.',
                                   style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15)),
-                              const SizedBox(height: 2),
-                              const Text(
-                                'Keeps your streak alive while you\'re away.',
-                                style: TextStyle(
-                                    fontSize: 12, color: AppTheme.gray600),
+                                      fontSize: 12, color: AppTheme.gray600),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: vacation,
+                            onChanged: (v) => ref
+                                .read(userPrefsProvider.notifier)
+                                .setVacationMode(v),
+                          ),
+                        ],
+                      ),
+                      if (vacation) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF3E0),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: const [
+                              Icon(Icons.info_outline,
+                                  size: 14, color: Color(0xFFF57C00)),
+                              SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  '🏖️  Vacation active — your streak is protected.',
+                                  style: TextStyle(
+                                      fontSize: 11, color: Color(0xFFF57C00)),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        Switch(
-                          value: vacation,
-                          onChanged: (v) => ref
-                              .read(userPrefsProvider.notifier)
-                              .setVacationMode(v),
-                        ),
                       ],
-                    ),
-                    if (vacation) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF3E0),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: const [
-                            Icon(Icons.info_outline,
-                                size: 14, color: Color(0xFFF57C00)),
-                            SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                '🏖️  Vacation active — your streak is protected.',
-                                style: TextStyle(
-                                    fontSize: 11, color: Color(0xFFF57C00)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ],
     );
@@ -1420,8 +1445,8 @@ class _RemindersCard extends StatefulWidget {
 }
 
 class _RemindersCardState extends State<_RemindersCard> {
-  bool _mealReminder = false;
-  bool _waterReminder = false;
+  bool _mealReminder = true;
+  bool _waterReminder = true;
 
   @override
   void initState() {
@@ -1436,8 +1461,8 @@ class _RemindersCardState extends State<_RemindersCard> {
       final row = rows.first;
       if (mounted) {
         setState(() {
-          _mealReminder = (row['meal_reminder_enabled'] as int? ?? 0) == 1;
-          _waterReminder = (row['water_reminder_enabled'] as int? ?? 0) == 1;
+          _mealReminder = (row['meal_reminder_enabled'] as int? ?? 1) == 1;
+          _waterReminder = (row['water_reminder_enabled'] as int? ?? 1) == 1;
         });
       }
     }
@@ -1445,10 +1470,21 @@ class _RemindersCardState extends State<_RemindersCard> {
 
   Future<void> _save() async {
     final db = await DatabaseService.instance.database;
-    await db.update('user_preferences', {
-      'meal_reminder_enabled': _mealReminder ? 1 : 0,
-      'water_reminder_enabled': _waterReminder ? 1 : 0,
-    });
+    try {
+      await db.update('user_preferences', {
+        'meal_reminder_enabled': _mealReminder ? 1 : 0,
+        'water_reminder_enabled': _waterReminder ? 1 : 0,
+      });
+    } catch (_) {
+      // Older DBs may not have these columns yet; migration will add them.
+    }
+
+    try {
+      final prefs = await DatabaseService.instance.getUserPreferences();
+      await NotificationService.instance.scheduleReminders(prefs: prefs);
+    } catch (_) {
+      // Avoid surfacing transient notification scheduling failures in settings UI.
+    }
   }
 
   @override

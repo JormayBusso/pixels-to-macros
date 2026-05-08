@@ -12,6 +12,7 @@ import '../providers/history_provider.dart';
 import '../services/database_service.dart';
 import '../services/recipe_repository.dart';
 import '../theme/app_theme.dart';
+import 'meal_planner_screen.dart';
 
 class RecipesScreen extends ConsumerStatefulWidget {
   const RecipesScreen({super.key});
@@ -37,6 +38,16 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Recipes'),
+        actions: [
+          IconButton(
+            tooltip: 'Weekly Meal Planner',
+            icon: const Icon(Icons.calendar_month_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const MealPlannerScreen()),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(54),
           child: Padding(
@@ -320,7 +331,7 @@ class _RecipeCard extends StatelessWidget {
 
   void _openDetail(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => _RecipeDetailScreen(recipe: recipe)),
+      MaterialPageRoute(builder: (_) => RecipeDetailScreen(recipe: recipe)),
     );
   }
 }
@@ -356,16 +367,16 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
-class _RecipeDetailScreen extends ConsumerStatefulWidget {
-  const _RecipeDetailScreen({required this.recipe});
+class RecipeDetailScreen extends ConsumerStatefulWidget {
+  const RecipeDetailScreen({super.key, required this.recipe});
   final Recipe recipe;
 
   @override
-  ConsumerState<_RecipeDetailScreen> createState() =>
+  ConsumerState<RecipeDetailScreen> createState() =>
       _RecipeDetailScreenState();
 }
 
-class _RecipeDetailScreenState extends ConsumerState<_RecipeDetailScreen> {
+class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   int _selectedServings = 1;
   bool _isDiabetic = false;
   double _icr = 10.0; // insulin-to-carb ratio
@@ -609,30 +620,58 @@ class _RecipeDetailScreenState extends ConsumerState<_RecipeDetailScreen> {
           ),
         ],
       ),
-      // ── Log button ──
+      // ── Log button + Swap ──
       bottomNavigationBar: r.hasMacros
           ? SafeArea(
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: FilledButton.icon(
-                  onPressed: () => _logRecipe(context),
-                  icon: const Icon(Icons.add_circle_outline, size: 18),
-                  label: Text(
-                    _isDiabetic
-                        ? 'Log Meal · ${r.caloriesPerServing(r.servings)} kcal · ${_bolusUnits.toStringAsFixed(1)}U'
-                        : 'Log Meal · ${r.caloriesPerServing(r.servings)} kcal',
-                  ),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                child: Row(
+                  children: [
+                    // AI Swap button
+                    OutlinedButton.icon(
+                      onPressed: () => _showSwapSheet(context, r),
+                      icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                      label: const Text('Swap'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => _logRecipe(context),
+                        icon: const Icon(Icons.add_circle_outline, size: 18),
+                        label: Text(
+                          _isDiabetic
+                              ? 'Log Meal · ${r.caloriesPerServing(r.servings)} kcal · ${_bolusUnits.toStringAsFixed(1)}U'
+                              : 'Log Meal · ${r.caloriesPerServing(r.servings)} kcal',
+                        ),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             )
           : null,
+    );
+  }
+
+  Future<void> _showSwapSheet(BuildContext context, Recipe current) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AiSwapSheet(current: current),
     );
   }
 
@@ -1227,6 +1266,533 @@ class _BolusCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────── AI Meal Swap Sheet ───────────────────────────────────
+
+/// Professional bottom sheet that surfaces up to 5 nutritionally-smart
+/// alternative recipes for the currently-viewed recipe.
+///
+/// Swap logic:
+///   • Same meal type as the current recipe
+///   • Matches the same nutrition goals
+///   • Sorted by a benefit score:  Δprotein×2 − Δcalories×0.5 − Δcarbs×0.3
+///   • Each card shows a before→after macro diff with coloured indicators
+class _AiSwapSheet extends ConsumerStatefulWidget {
+  const _AiSwapSheet({required this.current});
+  final Recipe current;
+
+  @override
+  ConsumerState<_AiSwapSheet> createState() => _AiSwapSheetState();
+}
+
+class _AiSwapSheetState extends ConsumerState<_AiSwapSheet> {
+  List<_SwapCandidate>? _candidates;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCandidates();
+  }
+
+  Future<void> _loadCandidates() async {
+    try {
+      final all = await RecipeRepository.instance.query(
+        mealType: widget.current.mealType,
+        limit: 200,
+      );
+
+      final current = widget.current;
+      final swaps = <_SwapCandidate>[];
+
+      for (final r in all) {
+        if (r.id == current.id) continue;
+        if (!r.hasMacros) continue;
+
+        // Build benefit reasons
+        final reasons = <String>[];
+        final deltaProtein = r.proteinG - current.proteinG;
+        final deltaCalories = r.calories - current.calories;
+        final deltaCarbs = r.carbsG - current.carbsG;
+        final deltaFat = r.fatG - current.fatG;
+        final deltaFiber = r.fiberG - current.fiberG;
+
+        // Score: reward protein gain, penalise calorie & carb increase
+        final score = deltaProtein * 2 -
+            deltaCalories * 0.5 -
+            deltaCarbs * 0.3 +
+            deltaFiber * 1.5;
+
+        if (deltaProtein > 3) {
+          reasons.add('+${deltaProtein.abs().round()}g protein');
+        }
+        if (deltaCalories < -50) {
+          reasons.add('−${deltaCalories.abs().round()} kcal');
+        }
+        if (deltaCarbs < -10) {
+          reasons.add('−${deltaCarbs.abs().round()}g carbs');
+        }
+        if (deltaFiber > 2) {
+          reasons.add('+${deltaFiber.abs().round()}g fiber');
+        }
+        if (deltaFat < -5) {
+          reasons.add('−${deltaFat.abs().round()}g fat');
+        }
+        if (r.minutes < current.minutes - 5) {
+          reasons.add('${r.minutes} min prep');
+        }
+
+        if (reasons.isEmpty && score < 0) continue; // not beneficial enough
+
+        swaps.add(_SwapCandidate(
+          recipe: r,
+          score: score,
+          deltaCalories: deltaCalories,
+          deltaProtein: deltaProtein,
+          deltaCarbs: deltaCarbs,
+          deltaFat: deltaFat,
+          deltaFiber: deltaFiber,
+          reasons: reasons.take(3).toList(),
+        ));
+      }
+
+      swaps.sort((a, b) => b.score.compareTo(a.score));
+
+      setState(() {
+        _candidates = swaps.take(5).toList();
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      maxChildSize: 0.92,
+      minChildSize: 0.35,
+      builder: (_, ctrl) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            const SizedBox(height: 8),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.gray300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: context.primary100,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.auto_awesome,
+                        size: 20, color: context.primary600),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'AI Meal Swap',
+                          style: TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          'Smarter alternatives to "${widget.current.name}"',
+                          style: const TextStyle(
+                              fontSize: 11, color: AppTheme.gray500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Current recipe mini card
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: _CurrentRecipeMini(recipe: widget.current),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(child: Divider()),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: Text('Better alternatives',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.gray400,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                  Expanded(child: Divider()),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(child: Text('Error: $_error'))
+                      : (_candidates?.isEmpty ?? true)
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24),
+                                child: Text(
+                                  'No better alternatives found for this recipe.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: AppTheme.gray500),
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              controller: ctrl,
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                              itemCount: _candidates!.length,
+                              itemBuilder: (_, i) => _SwapCard(
+                                candidate: _candidates![i],
+                                current: widget.current,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => RecipeDetailScreen(
+                                          recipe: _candidates![i].recipe),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SwapCandidate {
+  final Recipe recipe;
+  final double score;
+  final int deltaCalories;
+  final double deltaProtein;
+  final double deltaCarbs;
+  final double deltaFat;
+  final double deltaFiber;
+  final List<String> reasons;
+
+  const _SwapCandidate({
+    required this.recipe,
+    required this.score,
+    required this.deltaCalories,
+    required this.deltaProtein,
+    required this.deltaCarbs,
+    required this.deltaFat,
+    required this.deltaFiber,
+    required this.reasons,
+  });
+}
+
+class _CurrentRecipeMini extends StatelessWidget {
+  const _CurrentRecipeMini({required this.recipe});
+  final Recipe recipe;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.gray50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.gray200),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: recipe.image != null
+                ? CachedNetworkImage(
+                    imageUrl: recipe.image!,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => Container(
+                        width: 48,
+                        height: 48,
+                        color: AppTheme.gray200,
+                        child: Center(
+                            child: Text(recipe.mealType.emoji,
+                                style: const TextStyle(fontSize: 20)))),
+                  )
+                : Container(
+                    width: 48,
+                    height: 48,
+                    color: AppTheme.gray200,
+                    child: Center(
+                        child: Text(recipe.mealType.emoji,
+                            style: const TextStyle(fontSize: 20))),
+                  ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Current',
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: AppTheme.gray400,
+                        fontWeight: FontWeight.w600)),
+                Text(recipe.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(
+                  '${recipe.calories} kcal · P${recipe.proteinG.round()}g · C${recipe.carbsG.round()}g · F${recipe.fatG.round()}g',
+                  style: const TextStyle(
+                      fontSize: 10, color: AppTheme.gray500),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SwapCard extends StatelessWidget {
+  const _SwapCard({
+    required this.candidate,
+    required this.current,
+    required this.onTap,
+  });
+
+  final _SwapCandidate candidate;
+  final Recipe current;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = candidate.recipe;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 1,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: r.image != null
+                    ? CachedNetworkImage(
+                        imageUrl: r.image!,
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Container(
+                            width: 72,
+                            height: 72,
+                            color: AppTheme.gray100,
+                            child: Center(
+                                child: Text(r.mealType.emoji,
+                                    style: const TextStyle(fontSize: 24)))),
+                      )
+                    : Container(
+                        width: 72,
+                        height: 72,
+                        color: AppTheme.gray100,
+                        child: Center(
+                            child: Text(r.mealType.emoji,
+                                style: const TextStyle(fontSize: 24))),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      r.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    // Macro diff row
+                    _MacroDiffRow(candidate: candidate, current: current),
+                    const SizedBox(height: 6),
+                    // Benefit chips
+                    if (candidate.reasons.isNotEmpty)
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: candidate.reasons
+                            .map((r) => _BenefitChip(label: r))
+                            .toList(),
+                      ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, size: 18, color: AppTheme.gray400),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MacroDiffRow extends StatelessWidget {
+  const _MacroDiffRow({required this.candidate, required this.current});
+  final _SwapCandidate candidate;
+  final Recipe current;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _DiffBadge(
+          label: 'kcal',
+          current: current.calories.toDouble(),
+          next: candidate.recipe.calories.toDouble(),
+          isInteger: true,
+          lowerIsBetter: true,
+        ),
+        const SizedBox(width: 4),
+        _DiffBadge(
+          label: 'P',
+          current: current.proteinG,
+          next: candidate.recipe.proteinG,
+          lowerIsBetter: false,
+        ),
+        const SizedBox(width: 4),
+        _DiffBadge(
+          label: 'C',
+          current: current.carbsG,
+          next: candidate.recipe.carbsG,
+          lowerIsBetter: true,
+        ),
+        const SizedBox(width: 4),
+        _DiffBadge(
+          label: 'F',
+          current: current.fatG,
+          next: candidate.recipe.fatG,
+          lowerIsBetter: true,
+        ),
+      ],
+    );
+  }
+}
+
+class _DiffBadge extends StatelessWidget {
+  const _DiffBadge({
+    required this.label,
+    required this.current,
+    required this.next,
+    this.lowerIsBetter = true,
+    this.isInteger = false,
+  });
+
+  final String label;
+  final double current;
+  final double next;
+  final bool lowerIsBetter;
+  final bool isInteger;
+
+  @override
+  Widget build(BuildContext context) {
+    final delta = next - current;
+    final improved = lowerIsBetter ? delta < -1 : delta > 1;
+    final worsened = lowerIsBetter ? delta > 1 : delta < -1;
+
+    Color bg;
+    Color fg;
+    if (improved) {
+      bg = AppTheme.green100;
+      fg = AppTheme.green700;
+    } else if (worsened) {
+      bg = AppTheme.red100;
+      fg = AppTheme.red700;
+    } else {
+      bg = AppTheme.gray100;
+      fg = AppTheme.gray600;
+    }
+
+    final sign = delta > 0 ? '+' : '';
+    final deltaStr =
+        isInteger ? '$sign${delta.round()}' : '$sign${delta.toStringAsFixed(1)}g';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Text(
+        '$label $deltaStr',
+        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: fg),
+      ),
+    );
+  }
+}
+
+class _BenefitChip extends StatelessWidget {
+  const _BenefitChip({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: context.primary100,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          color: context.primary700,
+        ),
       ),
     );
   }

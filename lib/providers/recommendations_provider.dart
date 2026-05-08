@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/nutrition_goal.dart';
+import '../models/nutrient_data.dart';
 import '../models/user_preferences.dart';
 import 'daily_intake_provider.dart';
 import 'user_prefs_provider.dart';
@@ -266,6 +267,15 @@ class RecommendationsNotifier
         ));
     }
 
+    // Micronutrient-aware recommendations based on today's intake.
+    recs.addAll(
+      _buildMicronutrientRecommendations(
+        goal: goal,
+        gender: prefs.gender,
+        totals: intake.nutrientTotals,
+      ),
+    );
+
     // Universal reminders — time-aware hydration
     final hour = DateTime.now().hour;
     if (hour >= 13 && kcal < kcalTarget * 0.3) {
@@ -297,8 +307,122 @@ class RecommendationsNotifier
       ));
     }
 
-    // Keep at most 5 recommendations
-    state = RecommendationsState(recs: recs.take(5).toList());
+    // Keep at most 8 recommendations
+    state = RecommendationsState(recs: recs.take(8).toList());
+  }
+
+  List<Recommendation> _buildMicronutrientRecommendations({
+    required NutritionGoalType goal,
+    required UserGender gender,
+    required NutrientTotals totals,
+  }) {
+    final recs = <Recommendation>[];
+    final plantOnly = goal == NutritionGoalType.vegan;
+
+    final vitaminCGoal =
+        gender == UserGender.female ? NutrientDRV.vitaminCMg_female : NutrientDRV.vitaminCMg_male;
+    final vitaminAGoal =
+        gender == UserGender.female ? NutrientDRV.vitaminAUg_female : NutrientDRV.vitaminAUg_male;
+    final calciumGoal =
+        gender == UserGender.female ? NutrientDRV.calciumMg_female : NutrientDRV.calciumMg_male;
+    final ironGoal =
+        gender == UserGender.female ? NutrientDRV.ironMg_female : NutrientDRV.ironMg_male;
+    final potassiumGoal =
+        gender == UserGender.female ? NutrientDRV.potassiumMg_female : NutrientDRV.potassiumMg_male;
+
+    if (totals.vitaminDUg < NutrientDRV.vitaminDUg * 0.45) {
+      recs.add(Recommendation(
+        message:
+            'Vitamin D looks low (${totals.vitaminDUg.toStringAsFixed(1)} µg / ${NutrientDRV.vitaminDUg.toStringAsFixed(0)} µg).',
+        suggestion: plantOnly
+            ? 'Try fortified plant milk, UV-exposed mushrooms, and a vitamin D supplement.'
+            : 'Add fatty fish (salmon, sardines, trout), eggs, or fortified dairy.',
+        icon: Icons.wb_sunny_outlined,
+        color: Colors.amber.shade700,
+      ));
+    }
+
+    if (totals.b12Mcg < NutrientDRV.b12Mcg * 0.55) {
+      recs.add(Recommendation(
+        message:
+            'Vitamin B12 may be low (${totals.b12Mcg.toStringAsFixed(1)} µg / ${NutrientDRV.b12Mcg.toStringAsFixed(1)} µg).',
+        suggestion: plantOnly
+            ? 'Use B12-fortified foods (plant milk, nutritional yeast) or a B12 supplement.'
+            : 'Add fish, eggs, dairy, or lean meat to support B12 intake.',
+        icon: Icons.medication_outlined,
+        color: Colors.deepPurple.shade400,
+      ));
+    }
+
+    if (totals.ironMg < ironGoal * 0.5) {
+      recs.add(Recommendation(
+        message:
+            'Iron is on the low side (${totals.ironMg.toStringAsFixed(1)} mg / ${ironGoal.toStringAsFixed(0)} mg).',
+        suggestion: plantOnly
+            ? 'Try lentils, tofu, spinach, pumpkin seeds, and pair with vitamin C foods.'
+            : 'Try fish, lean red meat, legumes, and pair with vitamin C foods.',
+        icon: Icons.bloodtype_outlined,
+        color: Colors.red.shade500,
+      ));
+    }
+
+    if (totals.calciumMg < calciumGoal * 0.45) {
+      recs.add(Recommendation(
+        message:
+            'Calcium is low (${totals.calciumMg.toStringAsFixed(0)} mg / ${calciumGoal.toStringAsFixed(0)} mg).',
+        suggestion: plantOnly
+            ? 'Add fortified soy milk, calcium-set tofu, tahini, and leafy greens.'
+            : 'Add yogurt, milk, cheese, sardines, or calcium-fortified alternatives.',
+        icon: Icons.science_outlined,
+        color: Colors.lightBlue.shade600,
+      ));
+    }
+
+    if (totals.potassiumMg < potassiumGoal * 0.45) {
+      recs.add(Recommendation(
+        message:
+            'Potassium intake is low (${totals.potassiumMg.toStringAsFixed(0)} mg / ${potassiumGoal.toStringAsFixed(0)} mg).',
+        suggestion:
+            'Add potatoes, beans, avocado, spinach, bananas, or yogurt for recovery and blood pressure support.',
+        icon: Icons.bolt_outlined,
+        color: Colors.teal.shade600,
+      ));
+    }
+
+    if (totals.fiberG < NutrientDRV.fiberG * 0.5) {
+      recs.add(Recommendation(
+        message:
+            'Fiber is low (${totals.fiberG.toStringAsFixed(1)} g / ${NutrientDRV.fiberG.toStringAsFixed(0)} g).',
+        suggestion:
+            'Add oats, lentils, berries, chia seeds, and vegetables to improve satiety and glucose control.',
+        icon: Icons.eco_outlined,
+        color: Colors.green.shade700,
+      ));
+    }
+
+    if (totals.vitaminCMg < vitaminCGoal * 0.45) {
+      recs.add(Recommendation(
+        message:
+            'Vitamin C may be low (${totals.vitaminCMg.toStringAsFixed(0)} mg / ${vitaminCGoal.toStringAsFixed(0)} mg).',
+        suggestion: 'Try bell peppers, kiwi, citrus, strawberries, or broccoli.',
+        icon: Icons.local_florist_outlined,
+        color: Colors.orange.shade500,
+      ));
+    }
+
+    if (totals.vitaminAUg < vitaminAGoal * 0.4) {
+      recs.add(Recommendation(
+        message:
+            'Vitamin A looks low (${totals.vitaminAUg.toStringAsFixed(0)} µg / ${vitaminAGoal.toStringAsFixed(0)} µg).',
+        suggestion: plantOnly
+            ? 'Try carrots, sweet potato, kale, and spinach.'
+            : 'Try carrots, sweet potato, spinach, eggs, and dairy.',
+        icon: Icons.visibility_outlined,
+        color: Colors.deepOrange.shade400,
+      ));
+    }
+
+    return recs.take(4).toList();
   }
 }
 

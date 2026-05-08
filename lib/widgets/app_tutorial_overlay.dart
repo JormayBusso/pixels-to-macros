@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/scroll_trigger_provider.dart';
@@ -13,8 +12,8 @@ import '../theme/app_theme.dart';
 ///
 /// Each step:
 ///  1. Navigates to the relevant tab automatically.
-///  2. Greys out everything EXCEPT the highlighted element.
-///  3. Shows a tooltip bubble above or below the highlighted element.
+///  2. Shows a pointer marker over the target button.
+///  3. Shows a tooltip bubble above or below that marker.
 ///
 /// Positions are expressed as fractions of screen width/height so they
 /// adapt to any device size.
@@ -44,7 +43,7 @@ class _SpotRect {
   const _SpotRect(this.cx, this.cy, this.w, this.h, {this.r = 0.06});
 }
 
-enum _ScrollTarget { none, hydration, weeklyReview, vacation }
+enum _ScrollTarget { none, hydration, recommendations, weeklyReview, vacation }
 
 class _Step {
   final String title;
@@ -71,13 +70,13 @@ const _kSteps = [
     body: "Let's take a quick tour so you know where everything is.",
     tab: 0,
   ),
-  // 1 – AI Scan button (extended FAB, bottom-right, 125px wide ≈ 0.32 of 390)
+  // 1 – AI Scan button (extended FAB, bottom-right)
   _Step(
     title: 'AI Scan 📷',
     body:
         'Tap AI Scan to open the camera.\nPoint at your plate and get instant calories & macros!\nIncludes flashlight toggle and low-light warnings.',
     tab: 0,
-    spot: _SpotRect(0.84, 0.895, 0.33, 0.055, r: 0.035),
+    spot: _SpotRect(0.835, 0.895, 0.33, 0.056, r: 0.035),
   ),
   // 2 – AI Speech (extended FAB, above scan)
   _Step(
@@ -85,7 +84,7 @@ const _kSteps = [
     body:
         'Tap AI Speech to log food by voice in English.\nSay "200 grams of chicken and a banana" — it matches your food database automatically.',
     tab: 0,
-    spot: _SpotRect(0.84, 0.735, 0.33, 0.055, r: 0.035),
+    spot: _SpotRect(0.835, 0.735, 0.33, 0.056, r: 0.035),
   ),
   // 3 – Manual Log (extended FAB, between speech and scan)
   _Step(
@@ -93,51 +92,96 @@ const _kSteps = [
     body:
         'Search foods, pick from My Meals, or scan a barcode.\nBarcode scanning shows a health score (0-100) before logging.',
     tab: 0,
-    spot: _SpotRect(0.84, 0.815, 0.33, 0.055, r: 0.035),
+    spot: _SpotRect(0.835, 0.815, 0.33, 0.056, r: 0.035),
   ),
-  // 4 – Body map icon (AppBar action)
+  // 4 – Streak badge (top-right in greeting row)
+  _Step(
+    title: 'Daily Streak 🔥',
+    body:
+        'Your streak badge is now bigger and easier to spot. Keep logging daily to build momentum.',
+    tab: 0,
+    spot: _SpotRect(0.78, 0.182, 0.34, 0.07, r: 0.035),
+    tipBelow: true,
+  ),
+  // 5 – Body map icon (AppBar action)
   _Step(
     title: 'Body Map 🫀',
     body:
         'Tap the body icon to open the anatomy map.\nBrain, eyes, heart, lungs, gut, bones, muscles, skin, blood, and immune regions are tappable and color-coded from your nutrient intake.',
     tab: 0,
-    spot: _SpotRect(0.82, 0.068, 0.10, 0.045, r: 0.025),
+    spot: _SpotRect(0.84, 0.066, 0.11, 0.045, r: 0.025),
     tipBelow: true,
   ),
-  // 5 – Nutrition button (leaf icon, rightmost AppBar action)
+  // 6 – Nutrition button (leaf icon, rightmost AppBar action)
   _Step(
     title: "Today's Nutrition 🌿",
     body:
         'The leaf icon opens your full nutrition dashboard with macros, vitamins, minerals, and the upgraded micronutrient wheel.',
     tab: 0,
-    spot: _SpotRect(0.935, 0.068, 0.10, 0.045, r: 0.025),
+    spot: _SpotRect(0.955, 0.066, 0.09, 0.045, r: 0.025),
     tipBelow: true,
   ),
-  // 6 – Hydration card "+" button (scrolls home screen to show it)
+  // 7 – Hydration card add-drink button (scrolls home screen first)
   _Step(
-    title: 'Stay Hydrated 💧',
+    title: 'Hydration Tracking 💧',
     body:
-        'The hydration card tracks your daily water intake.\nUse the plus button for water, coffee, tea, and other drinks.',
+        'The hydration card tracks your daily water intake.\nUse the + drink button to log water, coffee, tea, and more.',
     tab: 0,
-    spot: _SpotRect(0.82, 0.42, 0.10, 0.05, r: 0.025),
+    spot: _SpotRect(0.84, 0.305, 0.12, 0.055, r: 0.025),
     scroll: _ScrollTarget.hydration,
   ),
-  // 7 – Analytics tab (tab index 1, center = 0.25)
+  // 8 – Hydration quick +200 button
+  _Step(
+    title: 'Quick Add +200 ml',
+    body:
+        'Need a fast water log? Tap +200 ml for one-tap hydration updates.',
+    tab: 0,
+    spot: _SpotRect(0.37, 0.548, 0.23, 0.052, r: 0.02),
+    scroll: _ScrollTarget.hydration,
+  ),
+  // 9 – Smart recommendations card
+  _Step(
+    title: 'Smart Nutrition Coach 🧠',
+    body:
+        'Recommendations now adapt to your goal and nutrient gaps (like low iron, vitamin D, B12, calcium, and more).',
+    tab: 0,
+    spot: _SpotRect(0.50, 0.575, 0.88, 0.12, r: 0.03),
+    scroll: _ScrollTarget.recommendations,
+  ),
+  // 10 – Analytics tab
   _Step(
     title: 'Analytics 📊',
     body: 'Track weekly & monthly calorie and macro trends here.',
     tab: 1,
     spot: _SpotRect(0.25, 0.965, 0.155, 0.055, r: 0.02),
   ),
-  // 8 – Recipes tab (tab index 2, center = 0.417)
+  // 11 – Recipes tab button
   _Step(
     title: 'Recipes 🍽️',
     body:
-        'Browse 700+ recipes filtered by your nutrition goal.\nLog meals with adjustable ingredient grams.',
+        'Browse recipes tailored to your nutrition goal and log meals quickly.',
     tab: 2,
     spot: _SpotRect(0.417, 0.965, 0.155, 0.055, r: 0.02),
   ),
-  // 9 – Groceries tab (tab index 3, center = 0.583)
+  // 12 – Recipes search bar
+  _Step(
+    title: 'Recipe Search',
+    body:
+        'Use search + goal filters to find recipes that match your needs faster.',
+    tab: 2,
+    spot: _SpotRect(0.50, 0.162, 0.90, 0.07, r: 0.03),
+    tipBelow: true,
+  ),
+  // 13 – Recipes with photos
+  _Step(
+    title: 'Recipe Photos 📸',
+    body:
+        'Recipes now show matching food photos to make selection easier and more intuitive.',
+    tab: 2,
+    spot: _SpotRect(0.50, 0.40, 0.90, 0.18, r: 0.03),
+    tipBelow: true,
+  ),
+  // 14 – Groceries tab (tab index 3, center = 0.583)
   _Step(
     title: 'Grocery List 🛒',
     body:
@@ -145,7 +189,7 @@ const _kSteps = [
     tab: 3,
     spot: _SpotRect(0.583, 0.965, 0.155, 0.055, r: 0.02),
   ),
-  // 10 – Settings tab (tab index 5, center = 0.917)
+  // 15 – Settings tab (tab index 5, center = 0.917)
   _Step(
     title: 'Settings ⚙️',
     body:
@@ -153,25 +197,25 @@ const _kSteps = [
     tab: 5,
     spot: _SpotRect(0.917, 0.965, 0.155, 0.055, r: 0.02),
   ),
-  // 11 – Weekly badge recap setting
+  // 16 – Weekly badge recap setting
   _Step(
     title: 'Weekly Badges 🏅',
     body:
         'At the start of each week, the app can show the badges you earned last week.\nUse this setting to turn that recap on or off.',
     tab: 5,
-    spot: _SpotRect(0.86, 0.52, 0.18, 0.07, r: 0.035),
+    spot: _SpotRect(0.87, 0.45, 0.18, 0.07, r: 0.035),
     scroll: _ScrollTarget.weeklyReview,
   ),
-  // 12 – Vacation mode (scrolls to it in Settings)
+  // 17 – Vacation mode (scrolls to it in Settings)
   _Step(
     title: 'Vacation Mode 🏖️',
     body:
         'Protect your streak while you\'re away.\nTap the toggle to activate Vacation Mode.\nYou can also adjust your daily water goal and Glycemic Load settings here.',
     tab: 5,
-    spot: _SpotRect(0.86, 0.52, 0.18, 0.07, r: 0.035),
+    spot: _SpotRect(0.87, 0.46, 0.18, 0.07, r: 0.035),
     scroll: _ScrollTarget.vacation,
   ),
-  // 13 – Outro
+  // 18 – Outro
   _Step(
     title: 'You\'re All Set! 🚀',
     body:
@@ -215,10 +259,15 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
       widget.onNavigateToTab(step.tab);
       if (step.scroll == _ScrollTarget.hydration) {
         ref.read(scrollToHydrationProvider.notifier).state++;
+      } else if (step.scroll == _ScrollTarget.recommendations) {
+        ref.read(scrollToRecommendationsProvider.notifier).state++;
       } else if (step.scroll == _ScrollTarget.weeklyReview) {
         ref.read(scrollToWeeklyReviewProvider.notifier).state++;
       } else if (step.scroll == _ScrollTarget.vacation) {
         ref.read(scrollToVacationProvider.notifier).state++;
+      }
+      if (step.scroll != _ScrollTarget.none) {
+        await Future<void>.delayed(const Duration(milliseconds: 260));
       }
       unawaited(_ctrl.forward());
     } else {
@@ -241,21 +290,19 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
       opacity: _fade,
       child: Stack(
         children: [
-          // ── Dark overlay + clean highlight rect ──────────────────────────
+          // ── Dark overlay (no spotlight cutout) ──────────────────────────
           Positioned.fill(
             child: GestureDetector(
               onTap: () {}, // absorb all taps
-              child: step.spot != null
-                  ? CustomPaint(
-                      size: size,
-                      painter: _HighlightPainter(
-                        spot: step.spot!,
-                        screenSize: size,
-                      ),
-                    )
-                  : Container(color: Colors.black.withValues(alpha: 0.80)),
+              child: Container(color: Colors.black.withValues(alpha: 0.80)),
             ),
           ),
+
+          if (step.spot != null)
+            _PointerMarker(
+              spot: step.spot!,
+              screenSize: size,
+            ),
 
           // ── Skip button ───────────────────────────────────────────────
           SafeArea(
@@ -289,44 +336,60 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Highlight painter: dims everything except the target cutout.
+// Pointer marker: highlights target location without a spotlight cutout.
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _HighlightPainter extends CustomPainter {
+class _PointerMarker extends StatelessWidget {
   final _SpotRect spot;
   final Size screenSize;
 
-  const _HighlightPainter({required this.spot, required this.screenSize});
+  const _PointerMarker({required this.spot, required this.screenSize});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final cx = spot.cx * size.width;
-    final cy = spot.cy * size.height;
-    final w = spot.w * size.width;
-    final h = spot.h * size.height;
-    final r = spot.r * math.min(size.width, size.height);
-
-    final bounds = Offset.zero & size;
-    final cutout = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx, cy), width: w + 10, height: h + 10),
-      Radius.circular(r),
+  Widget build(BuildContext context) {
+    final cx = spot.cx * screenSize.width;
+    final cy = spot.cy * screenSize.height;
+    return Positioned(
+      left: cx - 18,
+      top: cy - 42,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 0.9, end: 1.1),
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.easeInOut,
+        builder: (context, scale, child) {
+          return Transform.scale(scale: scale, child: child);
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFA000),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFFA000).withValues(alpha: 0.5),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(Icons.touch_app, color: Colors.white, size: 20),
+              ),
+            ),
+            Container(
+              width: 3,
+              height: 8,
+              color: const Color(0xFFFFA000),
+            ),
+          ],
+        ),
+      ),
     );
-
-    canvas.saveLayer(bounds, Paint());
-    canvas.drawRect(
-      bounds,
-      Paint()..color = Colors.black.withValues(alpha: 0.78),
-    );
-    canvas.drawRRect(
-      cutout,
-      Paint()..blendMode = BlendMode.clear,
-    );
-    canvas.restore();
   }
-
-  @override
-  bool shouldRepaint(_HighlightPainter old) =>
-      old.spot != spot || old.screenSize != screenSize;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -31,7 +31,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _initialLoading = true;
   final _scrollController = ScrollController();
+  final _hydrationCardKey = GlobalKey();
+  final _recommendationsCardKey = GlobalKey();
   int _lastHydrationTrigger = 0;
+  int _lastRecommendationsTrigger = 0;
 
   @override
   void initState() {
@@ -60,16 +63,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final history = ref.watch(historyProvider);
     final streak = ref.watch(streakProvider);
     final hydrationTrigger = ref.watch(scrollToHydrationProvider);
+    final recommendationsTrigger = ref.watch(scrollToRecommendationsProvider);
 
     // Scroll to hydration card when the tour fires the trigger
     if (hydrationTrigger != _lastHydrationTrigger) {
       _lastHydrationTrigger = hydrationTrigger;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
+        final ctx = _hydrationCardKey.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+            alignment: 0.16,
+          );
+        } else if (_scrollController.hasClients) {
           _scrollController.animateTo(
             600,
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
+
+    if (recommendationsTrigger != _lastRecommendationsTrigger) {
+      _lastRecommendationsTrigger = recommendationsTrigger;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = _recommendationsCardKey.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+            alignment: 0.16,
           );
         }
       });
@@ -149,34 +176,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             color: AppTheme.gray900,
                           ),
                         ),
+                        const Spacer(),
                         if (streak.currentStreak > 0) ...[
-                          const SizedBox(width: 10),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [Color(0xFFFF6B00), Color(0xFFFFAA00)],
+                                colors: [Color(0xFFFF5A00), Color(0xFFFFA000)],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Color(0xFFFF8C00),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 4),
+                                  color: const Color(0xFFFF8C00).withValues(alpha: 0.45),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
                                 ),
                               ],
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text('🔥', style: TextStyle(fontSize: 15, height: 1)),
-                                const SizedBox(width: 5),
+                                const Text('🔥', style: TextStyle(fontSize: 20, height: 1)),
+                                const SizedBox(width: 8),
                                 Text(
-                                  '${streak.currentStreak}',
+                                  '${streak.currentStreak} day streak',
                                   style: const TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 17,
                                     fontWeight: FontWeight.w900,
                                     color: Colors.white,
                                     height: 1,
@@ -211,7 +238,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 16),
 
                     // ── Hydration card ───────────────────────────────────────
-                    _HydrationCard(),
+                    Container(
+                      key: _hydrationCardKey,
+                      child: const _HydrationCard(),
+                    ),
                     const SizedBox(height: 16),
 
 
@@ -296,7 +326,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 16),
 
                     // ── Recommendations ───────────────────────────────────────
-                    _RecommendationsCard(),
+                    Container(
+                      key: _recommendationsCardKey,
+                      child: _RecommendationsCard(),
+                    ),
                     const SizedBox(height: 16),
 
                     // ── Recent scans ─────────────────────────────────────────
@@ -1105,6 +1138,8 @@ class _HydrationCard extends ConsumerWidget {
             Row(
               children: [
                 _WaterButton(label: '+150 ml', ml: 150),
+                const SizedBox(width: 8),
+                _WaterButton(label: '+200 ml', ml: 200),
                 const SizedBox(width: 8),
                 _WaterButton(label: '+250 ml', ml: 250),
                 const SizedBox(width: 8),

@@ -3,6 +3,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/user_preferences.dart';
+import 'database_service.dart';
 
 /// Smart water & food reminder notifications.
 ///
@@ -49,6 +50,10 @@ class NotificationService {
     // Cancel previous reminders so we don't accumulate stale ones.
     await _plugin.cancelAll();
 
+    final toggles = await _loadReminderToggles();
+    final mealReminderEnabled = toggles.$1;
+    final waterReminderEnabled = toggles.$2;
+
     final now      = DateTime.now();
     const wakeHour = 8;
     const sleepHour = 21;
@@ -59,7 +64,10 @@ class NotificationService {
     final intakeMl  = prefs.waterIntakeMl;
     final hoursSinceWake = now.hour - wakeHour;
 
-    if (goalMl > 0 && hoursSinceWake > 0 && now.hour < sleepHour) {
+    if (waterReminderEnabled &&
+      goalMl > 0 &&
+      hoursSinceWake > 0 &&
+      now.hour < sleepHour) {
       final targetByNow = (goalMl * hoursSinceWake / windowH).round();
       final deficit      = targetByNow - intakeMl;
       final pct          = targetByNow > 0 ? deficit / targetByNow : 0.0;
@@ -95,7 +103,7 @@ class NotificationService {
     // Food reminder is always scheduled for 13:00 if user hasn't consumed
     // enough by then. We schedule it here and cancel on app open if met.
     final lunchTime = _today(13);
-    if (lunchTime.isAfter(now) && calorieGoal > 0) {
+    if (mealReminderEnabled && lunchTime.isAfter(now) && calorieGoal > 0) {
       await _scheduleOnce(
         id: 200,
         title: 'Don\'t forget lunch! 🍽️',
@@ -141,6 +149,20 @@ class NotificationService {
   static DateTime _today(int hour) {
     final n = DateTime.now();
     return DateTime(n.year, n.month, n.day, hour.clamp(0, 23));
+  }
+
+  Future<(bool, bool)> _loadReminderToggles() async {
+    try {
+      final db = await DatabaseService.instance.database;
+      final rows = await db.query('user_preferences', limit: 1);
+      if (rows.isEmpty) return (true, true);
+      final row = rows.first;
+      final meal = (row['meal_reminder_enabled'] as int? ?? 1) == 1;
+      final water = (row['water_reminder_enabled'] as int? ?? 1) == 1;
+      return (meal, water);
+    } catch (_) {
+      return (true, true);
+    }
   }
 
   // ── Smart Personalized Notification (1/day max) ──────────────────────────

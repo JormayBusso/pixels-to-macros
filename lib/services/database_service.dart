@@ -41,7 +41,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 24,
+      version: 26,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -134,6 +134,8 @@ class DatabaseService {
         water_intake_ml          INTEGER NOT NULL DEFAULT 0,
         water_intake_date        TEXT    NOT NULL DEFAULT '',
         last_seen_history_scan_id INTEGER NOT NULL DEFAULT 0,
+        meal_reminder_enabled    INTEGER NOT NULL DEFAULT 1,
+        water_reminder_enabled   INTEGER NOT NULL DEFAULT 1,
         weekly_badge_recap_enabled INTEGER NOT NULL DEFAULT 1,
         last_weekly_badge_recap_week TEXT NOT NULL DEFAULT ''
       )
@@ -201,6 +203,19 @@ class DatabaseService {
         quantity   INTEGER NOT NULL DEFAULT 1,
         checked    INTEGER NOT NULL DEFAULT 0,
         created_at TEXT    NOT NULL
+      )
+    ''');
+
+    // meal_plan_entries — weekly meal planner slots
+    await db.execute('''
+      CREATE TABLE meal_plan_entries (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        week_number INTEGER NOT NULL,
+        year        INTEGER NOT NULL,
+        day_of_week INTEGER NOT NULL,
+        meal_type   TEXT    NOT NULL,
+        recipe_id   TEXT    NOT NULL,
+        recipe_name TEXT    NOT NULL
       )
     ''');
   }
@@ -526,6 +541,34 @@ class DatabaseService {
     }
     if (oldVersion < 24) {
       await _backfillMicronutrients(db);
+    }
+    if (oldVersion < 25) {
+      try {
+        await db.execute(
+          'ALTER TABLE user_preferences ADD COLUMN meal_reminder_enabled INTEGER NOT NULL DEFAULT 1',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE user_preferences ADD COLUMN water_reminder_enabled INTEGER NOT NULL DEFAULT 1',
+        );
+      } catch (_) {}
+      await db.rawUpdate(
+        'UPDATE user_preferences SET meal_reminder_enabled = COALESCE(meal_reminder_enabled, 1), water_reminder_enabled = COALESCE(water_reminder_enabled, 1)',
+      );
+    }
+    if (oldVersion < 26) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS meal_plan_entries (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          week_number INTEGER NOT NULL,
+          year        INTEGER NOT NULL,
+          day_of_week INTEGER NOT NULL,
+          meal_type   TEXT    NOT NULL,
+          recipe_id   TEXT    NOT NULL,
+          recipe_name TEXT    NOT NULL
+        )
+      ''');
     }
   }
 
@@ -3532,6 +3575,69 @@ class DatabaseService {
   Future<void> clearCheckedGroceryItems() async {
     final db = await database;
     await db.delete('grocery_list', where: 'checked = 1');
+  }
+
+  // ── Meal plan ─────────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getMealPlanEntries({
+    required int weekNumber,
+    required int year,
+  }) async {
+    final db = await database;
+    return db.query(
+      'meal_plan_entries',
+      where: 'week_number = ? AND year = ?',
+      whereArgs: [weekNumber, year],
+      orderBy: 'day_of_week ASC, meal_type ASC',
+    );
+  }
+
+  Future<void> upsertMealPlanEntry({
+    required int weekNumber,
+    required int year,
+    required int dayOfWeek,
+    required String mealType,
+    required String recipeId,
+    required String recipeName,
+  }) async {
+    final db = await database;
+    // Delete any existing entry for same slot
+    await db.delete(
+      'meal_plan_entries',
+      where: 'week_number = ? AND year = ? AND day_of_week = ? AND meal_type = ?',
+      whereArgs: [weekNumber, year, dayOfWeek, mealType],
+    );
+    await db.insert('meal_plan_entries', {
+      'week_number': weekNumber,
+      'year': year,
+      'day_of_week': dayOfWeek,
+      'meal_type': mealType,
+      'recipe_id': recipeId,
+      'recipe_name': recipeName,
+    });
+  }
+
+  Future<void> deleteMealPlanEntry({
+    required int weekNumber,
+    required int year,
+    required int dayOfWeek,
+    required String mealType,
+  }) async {
+    final db = await database;
+    await db.delete(
+      'meal_plan_entries',
+      where: 'week_number = ? AND year = ? AND day_of_week = ? AND meal_type = ?',
+      whereArgs: [weekNumber, year, dayOfWeek, mealType],
+    );
+  }
+
+  Future<void> clearMealPlanWeek({required int weekNumber, required int year}) async {
+    final db = await database;
+    await db.delete(
+      'meal_plan_entries',
+      where: 'week_number = ? AND year = ?',
+      whereArgs: [weekNumber, year],
+    );
   }
 
   // ── Custom meals ─────────────────────────────────────────────────────────
