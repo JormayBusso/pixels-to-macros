@@ -478,7 +478,6 @@ class _TooltipCard extends StatelessWidget {
       top = spotRect!.bottom + 12;
     } else {
       bottom = screenSize.height - spotRect!.top + 12;
-      }
     }
 
     return Positioned(
@@ -495,7 +494,7 @@ class _TooltipCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.35),
+                color: Colors.black.withOpacity(0.35),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
