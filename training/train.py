@@ -246,6 +246,30 @@ def batch_to_tensors(batch: dict, device: torch.device) -> tuple[torch.Tensor, t
     return images, masks
 
 
+def _extract_logits(output) -> torch.Tensor:
+    """Normalize model outputs to a logits tensor.
+
+    Supports models returning:
+    - torch.Tensor
+    - dict with key "out" (torchvision, SegFormer wrapper)
+    - tuple/list with tensor as first element
+    """
+    if isinstance(output, torch.Tensor):
+        return output
+    if isinstance(output, dict):
+        out = output.get("out")
+        if isinstance(out, torch.Tensor):
+            return out
+        # Fallback: first tensor value in dict
+        for v in output.values():
+            if isinstance(v, torch.Tensor):
+                return v
+    if isinstance(output, (list, tuple)) and output:
+        if isinstance(output[0], torch.Tensor):
+            return output[0]
+    raise TypeError(f"Unsupported model output type: {type(output)}")
+
+
 def train_one_epoch(
     model: nn.Module,
     loader: DataLoader,
@@ -276,7 +300,7 @@ def train_one_epoch(
         optimizer.zero_grad(set_to_none=True)
 
         with torch.amp.autocast('cuda', enabled=use_amp):
-            output = model(images).contiguous()
+            output = _extract_logits(model(images)).contiguous()
             loss = criterion(output, masks)
 
         if use_amp:
@@ -345,7 +369,7 @@ def evaluate(
     pbar = tqdm(loader, desc="  Val  ", leave=True)
     for i, batch in enumerate(pbar, start=1):
         images, masks = batch_to_tensors(batch, device)
-        output = model(images).contiguous()
+        output = _extract_logits(model(images)).contiguous()
         loss = criterion(output, masks)
         batch_n = images.size(0)
         total_loss += loss.item() * batch_n
@@ -434,13 +458,11 @@ class SegmentationAugmentV2:
             img, i, j, h, w,
             size=self.size,
             interpolation=InterpolationMode.BILINEAR,
-            antialias=True,
         )
         mask = tvf.resized_crop(
             mask, i, j, h, w,
             size=self.size,
             interpolation=InterpolationMode.NEAREST,
-            antialias=False,
         )
 
         # ColorJitter (image only)
