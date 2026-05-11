@@ -661,6 +661,7 @@ def main() -> None:
         persistent_workers=use_persistent,
         prefetch_factor=2 if use_persistent else None,
         collate_fn=_collate,
+        drop_last=True,
     )
     val_loader = DataLoader(
         val_ds,
