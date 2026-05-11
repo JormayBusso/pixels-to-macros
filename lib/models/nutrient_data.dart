@@ -1,21 +1,27 @@
 import 'food_data.dart';
+import 'nutrition_goal.dart';
 
 /// Micronutrient totals accumulated across a day's scanned foods.
 class NutrientTotals {
   final double fiberG;
-  final double vitaminAUg; // μg RAE
-  final double vitaminCMg; // mg
-  final double vitaminDUg; // μg
-  final double vitaminEMg; // mg
-  final double vitaminKUg; // μg
-  final double folateMcg; // μg
-  final double b12Mcg; // μg
-  final double calciumMg; // mg
-  final double ironMg; // mg
+  final double vitaminAUg;  // μg RAE
+  final double vitaminCMg;  // mg
+  final double vitaminDUg;  // μg
+  final double vitaminEMg;  // mg
+  final double vitaminKUg;  // μg
+  final double folateMcg;   // μg DFE
+  final double b12Mcg;      // μg
+  final double calciumMg;   // mg
+  final double ironMg;      // mg
   final double magnesiumMg; // mg
   final double potassiumMg; // mg
-  final double sodiumMg; // mg
-  final double zincMg; // mg
+  final double sodiumMg;    // mg
+  final double zincMg;      // mg
+  // ── NEW (2026 additions) ────────────────────────────────────────────────
+  final double omega3G;      // g  — total EPA + DHA + ALA combined
+  final double seleniumMcg;  // μg — essential for thyroid & antioxidant defence
+  final double iodineMcg;    // μg — required for thyroid hormone synthesis
+  final double chromiumMcg;  // μg — supports insulin signalling / glucose metabolism
 
   const NutrientTotals({
     this.fiberG = 0,
@@ -32,24 +38,18 @@ class NutrientTotals {
     this.potassiumMg = 0,
     this.sodiumMg = 0,
     this.zincMg = 0,
+    this.omega3G = 0,
+    this.seleniumMcg = 0,
+    this.iodineMcg = 0,
+    this.chromiumMcg = 0,
   });
 
   bool get hasAnyValue => [
-        fiberG,
-        vitaminAUg,
-        vitaminCMg,
-        vitaminDUg,
-        vitaminEMg,
-        vitaminKUg,
-        folateMcg,
-        b12Mcg,
-        calciumMg,
-        ironMg,
-        magnesiumMg,
-        potassiumMg,
-        sodiumMg,
-        zincMg,
-      ].any((value) => value > 0);
+        fiberG, vitaminAUg, vitaminCMg, vitaminDUg, vitaminEMg,
+        vitaminKUg, folateMcg, b12Mcg, calciumMg, ironMg,
+        magnesiumMg, potassiumMg, sodiumMg, zincMg,
+        omega3G, seleniumMcg, iodineMcg, chromiumMcg,
+      ].any((v) => v > 0);
 
   NutrientTotals operator +(NutrientTotals o) => NutrientTotals(
         fiberG: fiberG + o.fiberG,
@@ -66,6 +66,10 @@ class NutrientTotals {
         potassiumMg: potassiumMg + o.potassiumMg,
         sodiumMg: sodiumMg + o.sodiumMg,
         zincMg: zincMg + o.zincMg,
+        omega3G: omega3G + o.omega3G,
+        seleniumMcg: seleniumMcg + o.seleniumMcg,
+        iodineMcg: iodineMcg + o.iodineMcg,
+        chromiumMcg: chromiumMcg + o.chromiumMcg,
       );
 
   NutrientTotals operator *(double factor) => NutrientTotals(
@@ -83,56 +87,264 @@ class NutrientTotals {
         potassiumMg: potassiumMg * factor,
         sodiumMg: sodiumMg * factor,
         zincMg: zincMg * factor,
+        omega3G: omega3G * factor,
+        seleniumMcg: seleniumMcg * factor,
+        iodineMcg: iodineMcg * factor,
+        chromiumMcg: chromiumMcg * factor,
       );
 }
 
-/// Daily Reference Values — 2026 DRI (NIH / NASEM).
-/// Gender-specific values based on the Dietary Reference Intakes.
-/// Note: vitaminCMg stored in mg, vitaminEMg stored in mg, etc.
-/// The user-provided numbers for Vitamin C are in µg in the spec but
-/// standard DRI for Vitamin C is expressed in mg — the µg figures given
-/// (90,000 µg male, 75,000 µg female) equal 90 mg and 75 mg respectively,
-/// which matches the standard DRI.  We store everything in the same units
-/// as [NutrientTotals] (mg for Vitamin C, mg for Vitamin E).
+// ─────────────────────────────────────────────────────────────────────────────
+// NutrientDRV — 2026 Dietary Reference Intakes (NASEM / NIH)
+//
+// Sources:
+//   • NASEM DRI tables (2006–2011, reaffirmed 2024)
+//   • NIH Office of Dietary Supplements fact sheets (updated 2024–2025)
+//   • American Diabetes Association Standards of Care 2024
+//   • ISSN Position Stand on Protein & Exercise 2017 / 2023 update
+//   • AHA omega-3 guidance 2023
+//   • Endocrine Society Vitamin D guidelines 2024
+//
+// Use [NutrientDRV.forContext] to get goal- and gender-adjusted values.
+// The legacy static constants are kept for backward compatibility.
+// ─────────────────────────────────────────────────────────────────────────────
 class NutrientDRV {
-  // Gender-neutral / shared
-  static const double fiberG = 28.0; // general recommendation
-  static const double b12Mcg = 2.4; // same for both
-  static const double folateMcg = 400.0; // same for both
-  static const double vitaminDUg = 15.0; // same for both
-  static const double vitaminEMg = 15.0; // same for both (15,000 µg = 15 mg)
-  static const double sodiumMaxMg = 1500.0; // DRI upper limit (NIH 2026)
+  final double fiberG;
+  final double vitaminAUg;
+  final double vitaminCMg;
+  final double vitaminDUg;
+  final double vitaminEMg;
+  final double vitaminKUg;
+  final double folateMcg;
+  final double b12Mcg;
+  final double calciumMg;
+  final double ironMg;
+  final double magnesiumMg;
+  final double potassiumMg;
+  final double sodiumMaxMg; // upper limit — track under this
+  final double zincMg;
+  final double omega3G;
+  final double seleniumMcg;
+  final double iodineMcg;
+  final double chromiumMcg;
 
-  // Male DRVs
-  static const double vitaminAUg_male = 900.0;
-  static const double vitaminCMg_male = 90.0; // 90,000 µg = 90 mg
-  static const double vitaminKUg_male = 120.0;
-  static const double calciumMg_male = 1000.0;
-  static const double ironMg_male = 8.0;
-  static const double magnesiumMg_male = 420.0;
-  static const double potassiumMg_male = 3400.0;
-  static const double zincMg_male = 11.0;
+  const NutrientDRV({
+    required this.fiberG,
+    required this.vitaminAUg,
+    required this.vitaminCMg,
+    required this.vitaminDUg,
+    required this.vitaminEMg,
+    required this.vitaminKUg,
+    required this.folateMcg,
+    required this.b12Mcg,
+    required this.calciumMg,
+    required this.ironMg,
+    required this.magnesiumMg,
+    required this.potassiumMg,
+    required this.sodiumMaxMg,
+    required this.zincMg,
+    required this.omega3G,
+    required this.seleniumMcg,
+    required this.iodineMcg,
+    required this.chromiumMcg,
+  });
 
-  // Female DRVs
-  static const double vitaminAUg_female = 700.0;
-  static const double vitaminCMg_female = 75.0; // 75,000 µg = 75 mg
-  static const double vitaminKUg_female = 90.0;
-  static const double calciumMg_female = 1000.0;
-  static const double ironMg_female = 18.0;
+  /// Returns fully resolved DRV for the given gender + nutrition goal.
+  /// All values are per-day for a healthy adult (19–50 y) unless noted.
+  factory NutrientDRV.forContext({
+    required bool isMale,
+    required NutritionGoalType goal,
+  }) {
+    // ── 1. Baseline gender-specific values (NASEM DRI 2024) ──────────────
+    final fiber         = isMale ? 38.0  : 25.0;    // AI g/d
+    final vitA          = isMale ? 900.0 : 700.0;   // RDA μg RAE
+    final vitC          = isMale ? 90.0  : 75.0;    // RDA mg
+    const vitD          = 20.0;                     // RDA μg (Endocrine Soc. 2024 ≥20 μg)
+    const vitE          = 15.0;                     // RDA mg α-TE
+    final vitK          = isMale ? 120.0 : 90.0;    // AI μg
+    const folate        = 400.0;                    // RDA μg DFE
+    const b12           = 2.4;                      // RDA μg
+    const calcium       = 1000.0;                   // RDA mg
+    final iron          = isMale ? 8.0   : 18.0;    // RDA mg (pre-menopausal women)
+    final magnesium     = isMale ? 420.0 : 320.0;   // RDA mg
+    final potassium     = isMale ? 3400.0: 2600.0;  // AI mg
+    const sodiumMax     = 2300.0;                   // UL mg (AHA/NIH dietary limit)
+    final zinc          = isMale ? 11.0  : 8.0;     // RDA mg
+    final omega3        = isMale ? 1.6   : 1.1;     // AI g ALA (plus DHA+EPA boost below)
+    const selenium      = 55.0;                     // RDA μg
+    const iodine        = 150.0;                    // RDA μg
+    final chromium      = isMale ? 35.0  : 25.0;    // AI μg
+
+    // ── 2. Goal-specific overrides / increases ───────────────────────────
+    switch (goal) {
+      case NutritionGoalType.muscleGrowth:
+        // Higher magnesium, zinc, vitamin D, calcium, omega-3 for muscle recovery
+        // and adaptation. (ISSN 2023; Volpe 2023 sports nutrition review)
+        return NutrientDRV(
+          fiberG: fiber,
+          vitaminAUg: vitA,
+          vitaminCMg: isMale ? 120.0 : 100.0, // slight increase: antioxidant demand
+          vitaminDUg: 25.0,          // 1000 IU — muscle function, testosterone
+          vitaminEMg: 20.0,          // antioxidant for exercise stress
+          vitaminKUg: vitK,
+          folateMcg: folate,
+          b12Mcg: b12,
+          calciumMg: 1200.0,         // bone health under load
+          ironMg: iron,
+          magnesiumMg: isMale ? 500.0 : 400.0,  // muscle contraction / recovery
+          potassiumMg: isMale ? 3800.0 : 3000.0, // electrolyte loss in sweat
+          sodiumMaxMg: 2500.0,       // slightly higher: athletes lose more sodium
+          zincMg: isMale ? 14.0 : 11.0,  // protein synthesis, testosterone
+          omega3G: 3.0,              // anti-inflammatory, muscle protein synthesis
+          seleniumMcg: 70.0,         // oxidative stress from exercise
+          iodineMcg: iodine,
+          chromiumMcg: chromium,
+        );
+
+      case NutritionGoalType.diabetes:
+        // ADA 2024: higher fiber, magnesium (insulin sensitivity), chromium,
+        // omega-3 (cardiometabolic protection), vitamin D.
+        return NutrientDRV(
+          fiberG: isMale ? 38.0 : 30.0, // ADA recommends ≥25–38 g/day
+          vitaminAUg: vitA,
+          vitaminCMg: vitC,
+          vitaminDUg: 25.0,          // insulin sensitivity, reduces HbA1c risk
+          vitaminEMg: vitE,
+          vitaminKUg: vitK,
+          folateMcg: folate,
+          b12Mcg: b12,
+          calciumMg: calcium,
+          ironMg: iron,
+          magnesiumMg: isMale ? 500.0 : 420.0,  // #1 mineral for insulin sensitivity
+          potassiumMg: potassium,
+          sodiumMaxMg: 2300.0,
+          zincMg: zinc,
+          omega3G: 2.0,              // ADA: EPA+DHA for CV risk reduction
+          seleniumMcg: selenium,
+          iodineMcg: iodine,
+          chromiumMcg: 200.0,        // AI raised for insulin co-factor role
+        );
+
+      case NutritionGoalType.weightLoss:
+        // Under calorie restriction, micronutrient needs don't decrease —
+        // calcium and iron are at risk; fiber aids satiety. (DGA 2025)
+        return NutrientDRV(
+          fiberG: isMale ? 38.0 : 28.0,  // higher fiber for satiety
+          vitaminAUg: vitA,
+          vitaminCMg: vitC,
+          vitaminDUg: 20.0,
+          vitaminEMg: vitE,
+          vitaminKUg: vitK,
+          folateMcg: folate,
+          b12Mcg: b12,
+          calciumMg: 1200.0,         // often under-consumed on restrictive diets
+          ironMg: isMale ? 10.0 : 20.0, // slight increase: deficit diets risk deficiency
+          magnesiumMg: magnesium,
+          potassiumMg: potassium,
+          sodiumMaxMg: 2300.0,
+          zincMg: zinc,
+          omega3G: isMale ? 1.6 : 1.1,
+          seleniumMcg: selenium,
+          iodineMcg: iodine,
+          chromiumMcg: chromium,
+        );
+
+      case NutritionGoalType.keto:
+        // Electrolytes are lost rapidly on keto; magnesium, potassium,
+        // sodium need upward adjustment. (Paoli et al. 2020)
+        return NutrientDRV(
+          fiberG: isMale ? 30.0 : 20.0,  // harder to meet on low-carb; aim lower
+          vitaminAUg: vitA,
+          vitaminCMg: vitC,
+          vitaminDUg: 20.0,
+          vitaminEMg: vitE,
+          vitaminKUg: vitK,
+          folateMcg: folate,
+          b12Mcg: b12,
+          calciumMg: 1200.0,
+          ironMg: iron,
+          magnesiumMg: isMale ? 500.0 : 420.0,  // electrolyte depletion on keto
+          potassiumMg: isMale ? 4700.0 : 4700.0, // WHO/NASEM upper AI — keto risk
+          sodiumMaxMg: 2500.0,       // moderate increase: initial sodium depletion
+          zincMg: zinc,
+          omega3G: 2.0,              // important on fat-heavy diet
+          seleniumMcg: selenium,
+          iodineMcg: iodine,
+          chromiumMcg: chromium,
+        );
+
+      case NutritionGoalType.vegan:
+        // Plant-based diets risk: B12, iron, zinc, omega-3, iodine, selenium.
+        // Values reflect ~1.8× absorption factor for non-heme iron/zinc.
+        // (Craig et al. 2021, PCRM vegan nutrition guidelines)
+        return NutrientDRV(
+          fiberG: fiber,             // typically meets fiber easily
+          vitaminAUg: vitA,
+          vitaminCMg: vitC,
+          vitaminDUg: 25.0,          // sunlight + fortified foods often insufficient
+          vitaminEMg: vitE,
+          vitaminKUg: vitK,
+          folateMcg: folate,
+          b12Mcg: 6.0,               // EFSA: 4–7 μg/d for vegans (poor absorption)
+          calciumMg: 1200.0,         // no dairy
+          ironMg: isMale ? 14.0 : 32.0,  // non-heme × 1.8 bioavailability factor
+          magnesiumMg: magnesium,
+          potassiumMg: potassium,
+          sodiumMaxMg: sodiumMax,
+          zincMg: isMale ? 16.0 : 12.0,  // phytates reduce absorption × 1.5
+          omega3G: 3.0,              // no DHA/EPA from fish; need higher ALA + algae
+          seleniumMcg: 70.0,         // plant selenium less bioavailable
+          iodineMcg: 200.0,          // no seafood/dairy; seaweed unreliable
+          chromiumMcg: chromium,
+        );
+
+      case NutritionGoalType.maintain:
+        // Standard DRI baseline.
+        return NutrientDRV(
+          fiberG: fiber,
+          vitaminAUg: vitA,
+          vitaminCMg: vitC,
+          vitaminDUg: vitD,
+          vitaminEMg: vitE,
+          vitaminKUg: vitK,
+          folateMcg: folate,
+          b12Mcg: b12,
+          calciumMg: calcium,
+          ironMg: iron,
+          magnesiumMg: magnesium,
+          potassiumMg: potassium,
+          sodiumMaxMg: sodiumMax,
+          zincMg: zinc,
+          omega3G: omega3,
+          seleniumMcg: selenium,
+          iodineMcg: iodine,
+          chromiumMcg: chromium,
+        );
+    }
+  }
+
+  // ── Legacy static constants (backward-compat for any callers not yet  ──
+  // ── updated to use NutrientDRV.forContext()).                         ──
+  static const double fiberG_male   = 38.0;
+  static const double fiberG_female = 25.0;
+
+  static const double vitaminAUg_male    = 900.0;
+  static const double vitaminCMg_male    = 90.0;
+  static const double vitaminKUg_male    = 120.0;
+  static const double calciumMg_male     = 1000.0;
+  static const double ironMg_male        = 8.0;
+  static const double magnesiumMg_male   = 420.0;
+  static const double potassiumMg_male   = 3400.0;
+  static const double zincMg_male        = 11.0;
+
+  static const double vitaminAUg_female  = 700.0;
+  static const double vitaminCMg_female  = 75.0;
+  static const double vitaminKUg_female  = 90.0;
+  static const double calciumMg_female   = 1000.0;
+  static const double ironMg_female      = 18.0;
   static const double magnesiumMg_female = 320.0;
   static const double potassiumMg_female = 2600.0;
-  static const double zincMg_female = 8.0;
-
-  // Legacy ungendered accessors (used by code that hasn't been updated yet,
-  // default to male values which were the old defaults).
-  static const double vitaminAUg = vitaminAUg_male;
-  static const double vitaminCMg = vitaminCMg_male;
-  static const double vitaminKUg = vitaminKUg_male;
-  static const double calciumMg = calciumMg_male;
-  static const double ironMg = ironMg_male;
-  static const double magnesiumMg = magnesiumMg_male;
-  static const double potassiumMg = potassiumMg_male;
-  static const double zincMg = zincMg_male;
+  static const double zincMg_female      = 8.0;
 }
 
 /// Approximate nutrient content per 100 g by food category
@@ -554,6 +766,9 @@ const Map<String, NutrientTotals> _labelPer100g = {
     potassiumMg: 350,
     sodiumMg: 60,
     zincMg: 0.5,
+    omega3G: 0.5,       // generic fish — moderate EPA+DHA (USDA average)
+    seleniumMcg: 46.0,  // fish is a top selenium source
+    iodineMcg: 116.0,   // iodine from ocean fish
   ),
   'salmon': NutrientTotals(
     vitaminAUg: 40,
@@ -566,6 +781,22 @@ const Map<String, NutrientTotals> _labelPer100g = {
     potassiumMg: 363,
     sodiumMg: 59,
     zincMg: 0.4,
+    omega3G: 2.6,       // one of the richest EPA+DHA sources per 100g
+    seleniumMcg: 36.5,  // USDA FDC salmon
+    iodineMcg: 63.0,
+  ),
+  'tuna': NutrientTotals(
+    vitaminDUg: 5.7,
+    b12Mcg: 2.2,
+    calciumMg: 10,
+    ironMg: 1.0,
+    magnesiumMg: 35,
+    potassiumMg: 380,
+    sodiumMg: 40,
+    zincMg: 0.7,
+    omega3G: 1.2,
+    seleniumMcg: 90.0,  // canned tuna very high in selenium
+    iodineMcg: 40.0,
   ),
   'shrimp': NutrientTotals(
     b12Mcg: 1.1,
@@ -575,6 +806,9 @@ const Map<String, NutrientTotals> _labelPer100g = {
     potassiumMg: 259,
     sodiumMg: 111,
     zincMg: 1.3,
+    omega3G: 0.4,
+    seleniumMcg: 33.0,
+    iodineMcg: 35.0,
   ),
   'egg': NutrientTotals(
     vitaminAUg: 140,
@@ -589,6 +823,9 @@ const Map<String, NutrientTotals> _labelPer100g = {
     potassiumMg: 126,
     sodiumMg: 124,
     zincMg: 1,
+    seleniumMcg: 30.8,  // eggs are a good selenium source
+    iodineMcg: 24.0,
+    chromiumMcg: 0.6,
   ),
   'tofu': NutrientTotals(
     fiberG: 0.3,
@@ -599,6 +836,8 @@ const Map<String, NutrientTotals> _labelPer100g = {
     potassiumMg: 121,
     sodiumMg: 7,
     zincMg: 0.8,
+    omega3G: 0.4,       // soy contains ALA
+    seleniumMcg: 8.9,
   ),
   'cheese': NutrientTotals(
     vitaminAUg: 265,
@@ -613,6 +852,8 @@ const Map<String, NutrientTotals> _labelPer100g = {
     potassiumMg: 98,
     sodiumMg: 621,
     zincMg: 3.1,
+    seleniumMcg: 14.5,
+    iodineMcg: 40.0,
   ),
   'yogurt': NutrientTotals(
     vitaminAUg: 27,
@@ -625,6 +866,8 @@ const Map<String, NutrientTotals> _labelPer100g = {
     potassiumMg: 155,
     sodiumMg: 46,
     zincMg: 0.6,
+    seleniumMcg: 9.7,
+    iodineMcg: 37.5,
   ),
   'salad': NutrientTotals(
     fiberG: 2,
@@ -705,6 +948,8 @@ const Map<String, NutrientTotals> _labelPer100g = {
     potassiumMg: 150,
     sodiumMg: 43,
     zincMg: 0.4,
+    seleniumMcg: 3.7,
+    iodineMcg: 56.0,   // milk is a major iodine source in many diets
   ),
   'coffee': NutrientTotals(
     magnesiumMg: 3,
@@ -786,6 +1031,11 @@ NutrientTotals storedNutrientsPer100g(FoodData food) {
     potassiumMg: food.potassiumMgPer100g,
     sodiumMg: food.sodiumMgPer100g,
     zincMg: food.zincMgPer100g,
+    // New nutrients: fall back to 0 until DB columns are added.
+    omega3G: 0,
+    seleniumMcg: 0,
+    iodineMcg: 0,
+    chromiumMcg: 0,
   );
 }
 

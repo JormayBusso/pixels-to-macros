@@ -318,22 +318,21 @@ class RecommendationsNotifier
   }) {
     final recs = <Recommendation>[];
     final plantOnly = goal == NutritionGoalType.vegan;
+    final drv = NutrientDRV.forContext(
+      isMale: gender != UserGender.female,
+      goal: goal,
+    );
 
-    final vitaminCGoal =
-        gender == UserGender.female ? NutrientDRV.vitaminCMg_female : NutrientDRV.vitaminCMg_male;
-    final vitaminAGoal =
-        gender == UserGender.female ? NutrientDRV.vitaminAUg_female : NutrientDRV.vitaminAUg_male;
-    final calciumGoal =
-        gender == UserGender.female ? NutrientDRV.calciumMg_female : NutrientDRV.calciumMg_male;
-    final ironGoal =
-        gender == UserGender.female ? NutrientDRV.ironMg_female : NutrientDRV.ironMg_male;
-    final potassiumGoal =
-        gender == UserGender.female ? NutrientDRV.potassiumMg_female : NutrientDRV.potassiumMg_male;
+    final vitaminCGoal = drv.vitaminCMg;
+    final vitaminAGoal = drv.vitaminAUg;
+    final calciumGoal = drv.calciumMg;
+    final ironGoal = drv.ironMg;
+    final potassiumGoal = drv.potassiumMg;
 
-    if (totals.vitaminDUg < NutrientDRV.vitaminDUg * 0.45) {
+    if (totals.vitaminDUg < drv.vitaminDUg * 0.45) {
       recs.add(Recommendation(
         message:
-            'Vitamin D looks low (${totals.vitaminDUg.toStringAsFixed(1)} µg / ${NutrientDRV.vitaminDUg.toStringAsFixed(0)} µg).',
+            'Vitamin D looks low (${totals.vitaminDUg.toStringAsFixed(1)} µg / ${drv.vitaminDUg.toStringAsFixed(0)} µg).',
         suggestion: plantOnly
             ? 'Try fortified plant milk, UV-exposed mushrooms, and a vitamin D supplement.'
             : 'Add fatty fish (salmon, sardines, trout), eggs, or fortified dairy.',
@@ -342,10 +341,10 @@ class RecommendationsNotifier
       ));
     }
 
-    if (totals.b12Mcg < NutrientDRV.b12Mcg * 0.55) {
+    if (totals.b12Mcg < drv.b12Mcg * 0.55) {
       recs.add(Recommendation(
         message:
-            'Vitamin B12 may be low (${totals.b12Mcg.toStringAsFixed(1)} µg / ${NutrientDRV.b12Mcg.toStringAsFixed(1)} µg).',
+            'Vitamin B12 may be low (${totals.b12Mcg.toStringAsFixed(1)} µg / ${drv.b12Mcg.toStringAsFixed(1)} µg).',
         suggestion: plantOnly
             ? 'Use B12-fortified foods (plant milk, nutritional yeast) or a B12 supplement.'
             : 'Add fish, eggs, dairy, or lean meat to support B12 intake.',
@@ -389,10 +388,10 @@ class RecommendationsNotifier
       ));
     }
 
-    if (totals.fiberG < NutrientDRV.fiberG * 0.5) {
+    if (totals.fiberG < drv.fiberG * 0.5) {
       recs.add(Recommendation(
         message:
-            'Fiber is low (${totals.fiberG.toStringAsFixed(1)} g / ${NutrientDRV.fiberG.toStringAsFixed(0)} g).',
+            'Fiber is low (${totals.fiberG.toStringAsFixed(1)} g / ${drv.fiberG.toStringAsFixed(0)} g).',
         suggestion:
             'Add oats, lentils, berries, chia seeds, and vegetables to improve satiety and glucose control.',
         icon: Icons.eco_outlined,

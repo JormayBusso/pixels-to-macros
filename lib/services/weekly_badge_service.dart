@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/food_data.dart';
 import '../models/nutrient_data.dart';
+import '../models/nutrition_goal.dart';
 import '../models/scan_result.dart';
 import '../models/user_preferences.dart';
 import 'database_service.dart';
@@ -121,7 +122,7 @@ class WeeklyBadgeService {
           protein >= prefs.dailyProteinTargetG * 0.55;
     }).where((ok) => ok).length;
     final micronutrientDays = nutrientsByDay
-        .where((totals) => _reachedNutrientCount(totals, prefs.gender) >= 8)
+        .where((totals) => _reachedNutrientCount(totals, prefs.gender, prefs.nutritionGoal) >= 8)
         .length;
 
     final badges = <WeeklyBadge>[];
@@ -264,40 +265,24 @@ class WeeklyBadgeService {
   static int _reachedNutrientCount(
     NutrientTotals totals,
     UserGender gender,
+    NutritionGoalType goal,
   ) {
-    final isMale = gender == UserGender.male;
+    final isMale = gender == UserGender.male || gender == UserGender.preferNotToSay;
+    final drv = NutrientDRV.forContext(isMale: isMale, goal: goal);
     final targets = [
-      totals.fiberG / NutrientDRV.fiberG,
-      totals.vitaminAUg /
-          (isMale
-              ? NutrientDRV.vitaminAUg_male
-              : NutrientDRV.vitaminAUg_female),
-      totals.vitaminCMg /
-          (isMale
-              ? NutrientDRV.vitaminCMg_male
-              : NutrientDRV.vitaminCMg_female),
-      totals.vitaminDUg / NutrientDRV.vitaminDUg,
-      totals.vitaminEMg / NutrientDRV.vitaminEMg,
-      totals.vitaminKUg /
-          (isMale
-              ? NutrientDRV.vitaminKUg_male
-              : NutrientDRV.vitaminKUg_female),
-      totals.folateMcg / NutrientDRV.folateMcg,
-      totals.b12Mcg / NutrientDRV.b12Mcg,
-      totals.calciumMg /
-          (isMale ? NutrientDRV.calciumMg_male : NutrientDRV.calciumMg_female),
-      totals.ironMg /
-          (isMale ? NutrientDRV.ironMg_male : NutrientDRV.ironMg_female),
-      totals.magnesiumMg /
-          (isMale
-              ? NutrientDRV.magnesiumMg_male
-              : NutrientDRV.magnesiumMg_female),
-      totals.potassiumMg /
-          (isMale
-              ? NutrientDRV.potassiumMg_male
-              : NutrientDRV.potassiumMg_female),
-      totals.zincMg /
-          (isMale ? NutrientDRV.zincMg_male : NutrientDRV.zincMg_female),
+      totals.fiberG      / drv.fiberG,
+      totals.vitaminAUg  / drv.vitaminAUg,
+      totals.vitaminCMg  / drv.vitaminCMg,
+      totals.vitaminDUg  / drv.vitaminDUg,
+      totals.vitaminEMg  / drv.vitaminEMg,
+      totals.vitaminKUg  / drv.vitaminKUg,
+      totals.folateMcg   / drv.folateMcg,
+      totals.b12Mcg      / drv.b12Mcg,
+      totals.calciumMg   / drv.calciumMg,
+      totals.ironMg      / drv.ironMg,
+      totals.magnesiumMg / drv.magnesiumMg,
+      totals.potassiumMg / drv.potassiumMg,
+      totals.zincMg      / drv.zincMg,
     ];
     return targets.where((ratio) => ratio >= 1).length;
   }

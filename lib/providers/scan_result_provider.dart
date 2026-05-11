@@ -48,12 +48,77 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
   /// Maps model output labels to user-friendly DB labels where they differ.
   static const _labelAliases = {
     'chicken duck': 'chicken',
+    'egg tart': 'egg',
+    'white rice': 'rice',
+    'brown rice': 'rice',
+    'fried rice': 'rice',
+    'steamed rice': 'rice',
+    'french fries': 'french fries',
+    'fries': 'french fries',
+    'potato fries': 'french fries',
+    'chips': 'french fries',
+    'grilled chicken': 'chicken',
+    'roast chicken': 'chicken',
+    'fried chicken': 'chicken',
+    'beef steak': 'beef',
+    'steak': 'beef',
+    'ground beef': 'beef',
+    'grilled salmon': 'salmon',
+    'grilled fish': 'fish',
+    'fried fish': 'fish',
+    'orange juice': 'orange juice',
+    'apple juice': 'apple juice',
+    'hard boiled egg': 'egg',
+    'scrambled egg': 'egg',
+    'fried egg': 'egg',
+    'boiled egg': 'egg',
+    'whole wheat bread': 'bread',
+    'white bread': 'bread',
+    'toast': 'bread',
+    'yoghurt': 'yogurt',
+    'greek yogurt': 'yogurt',
+    'bell pepper': 'pepper',
+    'red pepper': 'pepper',
+    'green pepper': 'pepper',
   };
 
-  /// Normalise a model label: apply alias mapping, then title-case fallback.
-  static String _normaliseLabel(String raw) {
-    final lower = raw.toLowerCase();
-    return _labelAliases[lower] ?? raw;
+  // Labels that are NOT foods — model noise, non-food objects, or sentence fragments.
+  // These are rejected before any further processing.
+  static const _nonFoodLabels = {
+    'background', 'others', 'other', 'unknown', 'food', 'dish', 'meal',
+    'plate', 'bowl', 'cup', 'glass', 'table', 'surface', 'object',
+    'person', 'hand', 'finger', 'spoon', 'fork', 'knife', 'utensil',
+    // Common sentence fragment fragments the FoodSeg model sometimes emits:
+    'and', 'the', 'with', 'of', 'a', 'an', 'in', 'on', 'for', 'to',
+    'is', 'are', 'it', 'this', 'that',
+    // Non-food items that occasionally score high:
+    'paper', 'napkin', 'cloth', 'wrapper', 'box', 'bag', 'container',
+    'packaging', 'label', 'text', 'logo',
+  };
+
+  /// Returns true if a label looks like a plausible food name.
+  /// Rejects: very short tokens, all-numeric strings, labels with 4+ words
+  /// (likely a sentence fragment), and entries in [_nonFoodLabels].
+  static bool _isFoodLabel(String label) {
+    final lower = label.toLowerCase().trim();
+    if (lower.isEmpty || lower.length < 2) return false;
+    if (_nonFoodLabels.contains(lower)) return false;
+    // Reject pure numbers
+    if (RegExp(r'^\d+(\.\d+)?$').hasMatch(lower)) return false;
+    // Reject if it contains sentence-like punctuation
+    if (lower.contains(RegExp(r'[.,!?;:()\[\]]'))) return false;
+    // Reject 5+ word strings — model is concatenating descriptions
+    final wordCount = lower.split(RegExp(r'\s+')).length;
+    if (wordCount >= 5) return false;
+    return true;
+  }
+
+  /// Normalise a model label: reject non-food, apply alias, title-case fallback.
+  static String? _normaliseLabel(String raw) {
+    final trimmed = raw.trim();
+    if (!_isFoodLabel(trimmed)) return null;
+    final lower = trimmed.toLowerCase();
+    return _labelAliases[lower] ?? trimmed;
   }
 
   /// Run inference and compute calories.
@@ -78,6 +143,10 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
       for (final vol in rawVolumes) {
         final rawLabel = vol['label'] as String? ?? 'unknown';
         final label = _normaliseLabel(rawLabel);
+        if (label == null) {
+          DebugLog.instance.log('Detection', 'Rejected non-food label: $rawLabel');
+          continue;
+        }
         final volumeCm3 = (vol['volume_cm3'] as num?)?.toDouble() ?? 0;
         final pixelCount = (vol['pixel_count'] as num?)?.toInt() ?? 0;
         final confidence = (vol['confidence'] as num?)?.toDouble();
@@ -153,6 +222,10 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
       for (final vol in rawVolumes) {
         final rawLabel = vol['label'] as String? ?? 'unknown';
         final label = _normaliseLabel(rawLabel);
+        if (label == null) {
+          DebugLog.instance.log('VideoScan', 'Rejected non-food label: $rawLabel');
+          continue;
+        }
         final volumeCm3 = (vol['volume_cm3'] as num?)?.toDouble() ?? 0;
         final pixelCount = (vol['pixel_count'] as num?)?.toInt() ?? 0;
         final confidence = (vol['confidence'] as num?)?.toDouble();
@@ -225,14 +298,12 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     required double? confidence,
     required String? fallbackReason,
   }) {
+    // Non-food labels are already filtered by _normaliseLabel; this gate
+    // only applies physical size/confidence thresholds.
     if (fallbackReason != null) return false;
-    if (label.toLowerCase() == 'background') return false;
     if (volumeCm3 < 3.0) return false;
     if (pixelCount < 450) return false;
     if (confidence != null && confidence < 0.55) return false;
-    if (label.toLowerCase() == 'others' && (confidence ?? 0) < 0.72) {
-      return false;
-    }
     return true;
   }
 

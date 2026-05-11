@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/nutrient_data.dart';
+import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/user_prefs_provider.dart';
@@ -18,6 +19,12 @@ class NutritionDashboardScreen extends ConsumerWidget {
     final intake = ref.watch(dailyIntakeProvider);
     final prefs  = ref.watch(userPrefsProvider);
     final isFemale = prefs.gender == UserGender.female;
+    final isMale   = prefs.gender == UserGender.male;
+    // Resolve goal-specific DRVs — "prefer not to say" uses male baseline.
+    final drv = NutrientDRV.forContext(
+      isMale: !isFemale,
+      goal: prefs.nutritionGoal,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -86,7 +93,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: const Text('🌾', style: TextStyle(fontSize: 16)),
                         name: 'Dietary Fiber',
                         current: intake.nutrientTotals.fiberG,
-                        drv: NutrientDRV.fiberG,
+                        drv: drv.fiberG,
                         unit: 'g',
                       ),
                     ],
@@ -104,7 +111,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: const Text('🥕', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin A',
                         current: intake.nutrientTotals.vitaminAUg,
-                        drv: isFemale ? NutrientDRV.vitaminAUg_female : NutrientDRV.vitaminAUg_male,
+                        drv: drv.vitaminAUg,
                         unit: 'μg',
                       ),
                       const _Divider(),
@@ -112,7 +119,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: const Text('🍊', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin C',
                         current: intake.nutrientTotals.vitaminCMg,
-                        drv: isFemale ? NutrientDRV.vitaminCMg_female : NutrientDRV.vitaminCMg_male,
+                        drv: drv.vitaminCMg,
                         unit: 'mg',
                       ),
                       const _Divider(),
@@ -120,7 +127,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: const Text('☀️', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin D',
                         current: intake.nutrientTotals.vitaminDUg,
-                        drv: NutrientDRV.vitaminDUg,
+                        drv: drv.vitaminDUg,
                         unit: 'μg',
                       ),
                       const _Divider(),
@@ -128,7 +135,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: const Text('🌻', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin E',
                         current: intake.nutrientTotals.vitaminEMg,
-                        drv: NutrientDRV.vitaminEMg,
+                        drv: drv.vitaminEMg,
                         unit: 'mg',
                       ),
                       const _Divider(),
@@ -136,7 +143,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: const Text('🥬', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin K',
                         current: intake.nutrientTotals.vitaminKUg,
-                        drv: isFemale ? NutrientDRV.vitaminKUg_female : NutrientDRV.vitaminKUg_male,
+                        drv: drv.vitaminKUg,
                         unit: 'μg',
                       ),
                       const _Divider(),
@@ -144,7 +151,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: const Text('🫘', style: TextStyle(fontSize: 16)),
                         name: 'Folate (B9)',
                         current: intake.nutrientTotals.folateMcg,
-                        drv: NutrientDRV.folateMcg,
+                        drv: drv.folateMcg,
                         unit: 'μg',
                       ),
                       const _Divider(),
@@ -152,7 +159,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: const Text('🥩', style: TextStyle(fontSize: 16)),
                         name: 'Vitamin B12',
                         current: intake.nutrientTotals.b12Mcg,
-                        drv: NutrientDRV.b12Mcg,
+                        drv: drv.b12Mcg,
                         unit: 'μg',
                       ),
                     ],
@@ -170,7 +177,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: Image.asset('assets/Calcium.png', width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Calcium',
                         current: intake.nutrientTotals.calciumMg,
-                        drv: isFemale ? NutrientDRV.calciumMg_female : NutrientDRV.calciumMg_male,
+                        drv: drv.calciumMg,
                         unit: 'mg',
                       ),
                       const _Divider(),
@@ -178,7 +185,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: Image.asset('assets/Iron.png', width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Iron',
                         current: intake.nutrientTotals.ironMg,
-                        drv: isFemale ? NutrientDRV.ironMg_female : NutrientDRV.ironMg_male,
+                        drv: drv.ironMg,
                         unit: 'mg',
                       ),
                       const _Divider(),
@@ -186,7 +193,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: Image.asset('assets/Magnesium.png', width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Magnesium',
                         current: intake.nutrientTotals.magnesiumMg,
-                        drv: isFemale ? NutrientDRV.magnesiumMg_female : NutrientDRV.magnesiumMg_male,
+                        drv: drv.magnesiumMg,
                         unit: 'mg',
                       ),
                       const _Divider(),
@@ -194,7 +201,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: Image.asset('assets/Potassium.png', width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Potassium',
                         current: intake.nutrientTotals.potassiumMg,
-                        drv: isFemale ? NutrientDRV.potassiumMg_female : NutrientDRV.potassiumMg_male,
+                        drv: drv.potassiumMg,
                         unit: 'mg',
                       ),
                       const _Divider(),
@@ -202,7 +209,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: Image.asset('assets/Sodium.png', width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Sodium',
                         current: intake.nutrientTotals.sodiumMg,
-                        drv: NutrientDRV.sodiumMaxMg,
+                        drv: drv.sodiumMaxMg,
                         unit: 'mg',
                         isLimit: true,
                       ),
@@ -211,21 +218,71 @@ class NutritionDashboardScreen extends ConsumerWidget {
                         icon: Image.asset('assets/Zink.png', width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Zinc',
                         current: intake.nutrientTotals.zincMg,
-                        drv: isFemale ? NutrientDRV.zincMg_female : NutrientDRV.zincMg_male,
+                        drv: drv.zincMg,
                         unit: 'mg',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // ── Essential fatty acids & trace minerals (new 2026) ─────
+                const _SectionHeader('Essential Fats & Trace Minerals'),
+                Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Column(
+                    children: [
+                      _NutrientRow(
+                        icon: const Text('🐟', style: TextStyle(fontSize: 16)),
+                        name: 'Omega-3 (EPA+DHA+ALA)',
+                        current: intake.nutrientTotals.omega3G,
+                        drv: drv.omega3G,
+                        unit: 'g',
+                      ),
+                      const _Divider(),
+                      _NutrientRow(
+                        icon: const Text('🥜', style: TextStyle(fontSize: 16)),
+                        name: 'Selenium',
+                        current: intake.nutrientTotals.seleniumMcg,
+                        drv: drv.seleniumMcg,
+                        unit: 'μg',
+                      ),
+                      const _Divider(),
+                      _NutrientRow(
+                        icon: const Text('🧪', style: TextStyle(fontSize: 16)),
+                        name: 'Iodine',
+                        current: intake.nutrientTotals.iodineMcg,
+                        drv: drv.iodineMcg,
+                        unit: 'μg',
+                      ),
+                      const _Divider(),
+                      _NutrientRow(
+                        icon: const Text('🥦', style: TextStyle(fontSize: 16)),
+                        name: 'Chromium',
+                        current: intake.nutrientTotals.chromiumMcg,
+                        drv: drv.chromiumMcg,
+                        unit: 'μg',
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
 
+                // ── Goal context note ─────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: _GoalContextNote(goal: prefs.nutritionGoal, isMale: isMale),
+                ),
+                const SizedBox(height: 8),
+
                 // ── Disclaimer ────────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Text(
-                    '* Vitamin and mineral values are estimated from food categories '
-                    'using average nutrient densities (USDA FoodData Central). '
-                    'For precise tracking, consult a registered dietitian.',
+                    '* Targets shown are goal- and gender-adjusted Dietary Reference Intakes '
+                    '(NASEM / NIH, updated 2024–2025). Micronutrient values are estimated '
+                    'from USDA FoodData Central averages. For personalised advice, consult '
+                    'a registered dietitian.',
                     style: const TextStyle(
                       fontSize: 11,
                       color: AppTheme.gray400,
@@ -236,6 +293,65 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 ),
               ],
             ),
+    );
+  }
+}
+
+// ── Goal context note widget ─────────────────────────────────────────────────
+class _GoalContextNote extends StatelessWidget {
+  final NutritionGoalType goal;
+  final bool isMale;
+  const _GoalContextNote({required this.goal, required this.isMale});
+
+  @override
+  Widget build(BuildContext context) {
+    final String note;
+    switch (goal) {
+      case NutritionGoalType.muscleGrowth:
+        note = 'Your targets are adjusted for muscle growth: higher magnesium, '
+            'zinc, vitamin D, calcium, and omega-3 to support muscle repair and '
+            'adaptation. (ISSN 2023)';
+      case NutritionGoalType.diabetes:
+        note = 'Your targets are adjusted for blood-sugar management: higher '
+            'fiber, magnesium, vitamin D, chromium (insulin co-factor), and '
+            'omega-3 for cardiovascular protection. (ADA 2024)';
+      case NutritionGoalType.weightLoss:
+        note = 'Calorie restriction does not lower your micronutrient needs. '
+            'Targets for calcium, iron, and fiber are slightly raised to protect '
+            'against common deficiencies during a deficit. (DGA 2025)';
+      case NutritionGoalType.keto:
+        note = 'Keto causes rapid electrolyte loss. Magnesium, potassium, and '
+            'sodium targets are increased. Aim to get these from food or a '
+            'quality electrolyte supplement. (Paoli et al. 2020)';
+      case NutritionGoalType.vegan:
+        note = 'Vegan targets are raised for nutrients with lower plant-based '
+            'bioavailability: iron ×1.8, zinc ×1.5, B12 ×2.5, omega-3, '
+            'iodine, and selenium. Supplementing B12 and vitamin D is '
+            'strongly advised. (Craig et al. 2021)';
+      case NutritionGoalType.maintain:
+        note = 'Targets are standard NASEM/NIH Dietary Reference Intakes for '
+            'healthy adults, adjusted for your biological sex.';
+    }
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: goal.color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: goal.color.withOpacity(0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(goal.emoji, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              note,
+              style: TextStyle(fontSize: 12, color: AppTheme.gray400, height: 1.4),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

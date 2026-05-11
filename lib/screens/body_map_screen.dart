@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../models/nutrient_data.dart';
 import '../models/scan_result.dart';
@@ -9,6 +9,7 @@ import '../providers/daily_intake_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/interactive_body_map_svg.dart';
 
 /// Anatomy-style body map.
 ///
@@ -30,6 +31,38 @@ class BodyMapScreen extends ConsumerStatefulWidget {
 
 class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
   _OrganRegion? _selected;
+  late final Future<String> _rawSvgFuture;
+  static const List<String> _requiredOrganIds = <String>[
+    'brain',
+    'eyes',
+    'lungs',
+    'heart',
+    'liver',
+    'stomach',
+    'intestines',
+    'bones',
+    'muscles',
+    'skin',
+    'veins',
+  ];
+
+  /// Mock data example requested by product spec.
+  /// This is a sample map demonstrating direct organ-id updates.
+  static const Map<String, int> mockHighlightScores = {
+    'liver': 82,
+    'brain': 41,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _rawSvgFuture = rootBundle.loadString('assets/body_map_svg.svg');
+  }
+
+  static bool _hasOrganPathIds(String rawSvg) {
+    final lower = rawSvg.toLowerCase();
+    return _requiredOrganIds.any((id) => lower.contains('id="$id"'));
+  }
 
   // Organ positions as fractions of the body_map.jpeg (1024×1536).
   // Each entry: (cx, cy) = normalised centre; size = tap-circle diameter in px.
@@ -63,7 +96,11 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
     final intake = ref.watch(dailyIntakeProvider);
     final prefs = ref.watch(userPrefsProvider);
     final isMale = prefs.gender == UserGender.male;
-    final scores = _computeOrganScores(intake.nutrientTotals, isMale);
+    final drv = NutrientDRV.forContext(
+      isMale: isMale || prefs.gender == UserGender.preferNotToSay,
+      goal: prefs.nutritionGoal,
+    );
+    final scores = _computeOrganScores(intake.nutrientTotals, drv);
     final foods = intake.foods;
 
     return Scaffold(
@@ -85,66 +122,128 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                 final cw = constraints.maxWidth;
                 final ch = constraints.maxHeight;
                 final img = _imageRect(cw, ch);
-
-                // Build tappable organ circles
-                final circles = _organLayout.entries.map((e) {
-                  final region = e.key;
-                  final layout = e.value;
-                  final score = scores[region]?.score ?? 0;
-                  final color = _scoreColor(score);
-                  final isHi = _selected == region;
-                  final cx = img.left + layout.cx * img.width;
-                  final cy = img.top  + layout.cy * img.height;
-                  final d  = layout.size;
-
-                  return Positioned(
-                    left: cx - d / 2,
-                    top:  cy - d / 2,
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() => _selected = region);
-                        _showDetail(region, scores[region]!, foods, isMale);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        width: d,
-                        height: d,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                              color: color.withOpacity(isHi ? 0.40 : 0.22),
-                          border: Border.all(
-                            color: color,
-                            width: isHi ? 3.0 : 2.0,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                                  color: color.withOpacity(isHi ? 0.50 : 0.28),
-                              blurRadius: isHi ? 16 : 10,
-                              spreadRadius: isHi ? 4 : 2,
-                            ),
-                          ],
-                        ),
-                            child: Icon(
-                              region.icon,
-                              size: d * 0.45,
-                              color: Colors.white.withOpacity(isHi ? 0.95 : 0.78),
-                            ),
-                      ),
-                    ),
-                  );
-                }).toList();
+                final organScores100 = <String, int>{
+                  for (final e in scores.entries)
+                    e.key.svgId: (e.value.score * 100).round().clamp(0, 100),
+                };
 
                 return Stack(
                   children: [
-                    // Body SVG
+                    // Inline/raw SVG with ID-targeted path highlighting.
                     Positioned.fill(
-                      child: SvgPicture.asset(
-                        'assets/body_map_svg.svg',
-                        fit: BoxFit.contain,
+                      child: FutureBuilder<String>(
+                        future: _rawSvgFuture,
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+                          final rawSvg = snapshot.data!;
+                          final hasOrganPaths = _hasOrganPathIds(rawSvg);
+                          if (rawSvg.trim().isEmpty) {
+                            return const Center(
+                              child: Text('SVG source is empty.'),
+                            );
+                          }
+                          return Stack(
+                            children: [
+                              Positioned.fill(
+                                child: Image.asset(
+                                  'assets/5C0CFA50-9D0D-4813-BAB6-950A06A6FF3F_1_105_c.jpeg',
+                                  fit: BoxFit.contain,
+                                  alignment: Alignment.center,
+                                ),
+                              ),
+                              Positioned.fill(
+                                child: InteractiveBodyMapSvg(
+                                  rawSvg: rawSvg,
+                                  organScores: organScores100,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              if (!hasOrganPaths)
+                                Positioned(
+                                  left: 16,
+                                  right: 16,
+                                  top: 12,
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFF3CD),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: const Color(0xFFFFD166),
+                                      ),
+                                    ),
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 8,
+                                      ),
+                                      child: Text(
+                                        'Current SVG has no organ path IDs (brain/liver/etc). Replace assets/body_map_svg.svg with a true path-based SVG to enable direct organ highlighting.',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF7A5A00),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              // Fallback visual hotspots if SVG has no organ IDs.
+                              if (!hasOrganPaths)
+                                ..._organLayout.entries.map((e) {
+                                  final region = e.key;
+                                  final layout = e.value;
+                                  final score = scores[region]?.score ?? 0;
+                                  final color = _scoreColor(score);
+                                  final cx = img.left + layout.cx * img.width;
+                                  final cy = img.top + layout.cy * img.height;
+                                  final d = layout.size;
+                                  return Positioned(
+                                    left: cx - d / 2,
+                                    top: cy - d / 2,
+                                    child: IgnorePointer(
+                                      child: Container(
+                                        width: d,
+                                        height: d,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: color.withOpacity(0.28),
+                                          border: Border.all(
+                                            color: color.withOpacity(0.6),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                            ],
+                          );
+                        },
                       ),
                     ),
-                    // Organ tap circles
-                    ...circles,
+                    // Gesture layer for opening organ details.
+                    ..._organLayout.entries.map((e) {
+                      final region = e.key;
+                      final layout = e.value;
+                      final cx = img.left + layout.cx * img.width;
+                      final cy = img.top + layout.cy * img.height;
+                      final d = layout.size;
+                      return Positioned(
+                        left: cx - d / 2,
+                        top: cy - d / 2,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() => _selected = region);
+                            _showDetail(region, scores[region]!, foods, drv);
+                          },
+                          behavior: HitTestBehavior.translucent,
+                          child: SizedBox(width: d, height: d),
+                        ),
+                      );
+                    }),
+                    // Transparent gesture layer for opening detail sheet.
                   ],
                 );
               },
@@ -160,7 +259,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
     _OrganRegion region,
     _OrganScore score,
     List<DetectedFood> foods,
-    bool isMale,
+    NutrientDRV drv,
   ) {
     final colorScheme = _scoreColor(score.score);
     showModalBottomSheet<void>(
@@ -246,10 +345,10 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(3),
                         child: LinearProgressIndicator(
-                          value: n.ratio.clamp(0.0, 1.0),
+                          value: n.intakeRatio.clamp(0.0, 1.0),
                           backgroundColor: AppTheme.gray100,
                           valueColor: AlwaysStoppedAnimation(
-                            _scoreColor(n.ratio),
+                            _scoreColor(n.healthScore),
                           ),
                           minHeight: 7,
                         ),
@@ -259,7 +358,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                     SizedBox(
                       width: 42,
                       child: Text(
-                        '${(n.ratio * 100).round().clamp(0, 999)}%',
+                        '${(n.intakeRatio * 100).round().clamp(0, 999)}%',
                         textAlign: TextAlign.right,
                         style: const TextStyle(
                           fontSize: 11,
@@ -281,7 +380,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
               future: _computeTopFoodsForRegion(
                 region: region,
                 foods: foods,
-                isMale: isMale,
+                drv: drv,
               ),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -408,6 +507,21 @@ enum _OrganRegion {
 }
 
 extension on _OrganRegion {
+  String get svgId => switch (this) {
+        _OrganRegion.brain => 'brain',
+        _OrganRegion.eyes => 'eyes',
+        _OrganRegion.lungs => 'lungs',
+        _OrganRegion.heart => 'heart',
+        _OrganRegion.liver => 'liver',
+        _OrganRegion.stomach => 'stomach',
+        _OrganRegion.intestines => 'intestines',
+        _OrganRegion.kidneys => 'kidneys', // no SVG path; falls back to overlay dot
+        _OrganRegion.bones => 'bones',
+        _OrganRegion.muscles => 'muscles',
+        _OrganRegion.skin => 'skin',
+        _OrganRegion.blood => 'veins', // SVG uses 'veins' for blood vessels
+      };
+
   String get label => switch (this) {
         _OrganRegion.brain => 'Brain',
         _OrganRegion.eyes => 'Eyes',
@@ -473,9 +587,15 @@ class _OrganScore {
 }
 
 class _NutrientRatio {
-  const _NutrientRatio(this.name, this.ratio);
+  const _NutrientRatio(
+    this.name, {
+    required this.intakeRatio,
+    required this.healthScore,
+  });
+
   final String name;
-  final double ratio;
+  final double intakeRatio;
+  final double healthScore;
 }
 
 class _FoodContribution {
@@ -514,54 +634,102 @@ List<String> _nutrientNamesForRegion(_OrganRegion region) {
   };
 }
 
-double _ratioForNutrientName(String name, NutrientTotals totals, bool isMale) {
-  double r(double current, double drv) => drv > 0 ? current / drv : 0;
+double _ratioForNutrientName(String name, NutrientTotals totals, NutrientDRV drv) {
+  double r(double current, double target) => target > 0 ? current / target : 0;
   return switch (name) {
-    'Vitamin A' => r(
-      totals.vitaminAUg,
-      isMale ? NutrientDRV.vitaminAUg_male : NutrientDRV.vitaminAUg_female,
-    ),
-    'Vitamin C' => r(
-      totals.vitaminCMg,
-      isMale ? NutrientDRV.vitaminCMg_male : NutrientDRV.vitaminCMg_female,
-    ),
-    'Vitamin D' => r(totals.vitaminDUg, NutrientDRV.vitaminDUg),
-    'Vitamin E' => r(totals.vitaminEMg, NutrientDRV.vitaminEMg),
-    'Vitamin K' => r(
-      totals.vitaminKUg,
-      isMale ? NutrientDRV.vitaminKUg_male : NutrientDRV.vitaminKUg_female,
-    ),
-    'Folate' => r(totals.folateMcg, NutrientDRV.folateMcg),
-    'B12' => r(totals.b12Mcg, NutrientDRV.b12Mcg),
-    'Calcium' => r(
-      totals.calciumMg,
-      isMale ? NutrientDRV.calciumMg_male : NutrientDRV.calciumMg_female,
-    ),
-    'Iron' => r(
-      totals.ironMg,
-      isMale ? NutrientDRV.ironMg_male : NutrientDRV.ironMg_female,
-    ),
-    'Magnesium' => r(
-      totals.magnesiumMg,
-      isMale ? NutrientDRV.magnesiumMg_male : NutrientDRV.magnesiumMg_female,
-    ),
-    'Potassium' => r(
-      totals.potassiumMg,
-      isMale ? NutrientDRV.potassiumMg_male : NutrientDRV.potassiumMg_female,
-    ),
-    'Zinc' => r(
-      totals.zincMg,
-      isMale ? NutrientDRV.zincMg_male : NutrientDRV.zincMg_female,
-    ),
-    'Fiber' => r(totals.fiberG, NutrientDRV.fiberG),
-    _ => 0,
+    'Vitamin A'  => r(totals.vitaminAUg,  drv.vitaminAUg),
+    'Vitamin C'  => r(totals.vitaminCMg,  drv.vitaminCMg),
+    'Vitamin D'  => r(totals.vitaminDUg,  drv.vitaminDUg),
+    'Vitamin E'  => r(totals.vitaminEMg,  drv.vitaminEMg),
+    'Vitamin K'  => r(totals.vitaminKUg,  drv.vitaminKUg),
+    'Folate'     => r(totals.folateMcg,   drv.folateMcg),
+    'B12'        => r(totals.b12Mcg,      drv.b12Mcg),
+    'Calcium'    => r(totals.calciumMg,   drv.calciumMg),
+    'Iron'       => r(totals.ironMg,      drv.ironMg),
+    'Magnesium'  => r(totals.magnesiumMg, drv.magnesiumMg),
+    'Potassium'  => r(totals.potassiumMg, drv.potassiumMg),
+    'Zinc'       => r(totals.zincMg,      drv.zincMg),
+    'Fiber'      => r(totals.fiberG,      drv.fiberG),
+    'Omega-3'    => r(totals.omega3G,     drv.omega3G),
+    'Selenium'   => r(totals.seleniumMcg, drv.seleniumMcg),
+    _            => 0,
   };
+}
+
+double _upperLimitRatioForNutrient(String name, NutrientDRV drv) {
+  // Nutrient-specific upper bounds. For nutrients without a formal UL,
+  // use conservative soft caps so over-intake still degrades gradually.
+  switch (name) {
+    case 'Vitamin A':
+      return 3000 / drv.vitaminAUg;
+    case 'Vitamin C':
+      return 2000 / drv.vitaminCMg;
+    case 'Vitamin D':
+      return 100 / drv.vitaminDUg;
+    case 'Vitamin E':
+      return 1000 / drv.vitaminEMg;
+    case 'Vitamin K':
+      return double.infinity;
+    case 'Folate':
+      return 1000 / drv.folateMcg;
+    case 'B12':
+      return double.infinity;
+    case 'Calcium':
+      return 2500 / drv.calciumMg;
+    case 'Iron':
+      return 45 / drv.ironMg;
+    case 'Magnesium':
+      return 2.0;
+    case 'Potassium':
+      return 2.2;
+    case 'Zinc':
+      return 40 / drv.zincMg;
+    case 'Fiber':
+      return 70 / drv.fiberG;
+    case 'Omega-3':
+      return 5.0 / drv.omega3G;
+    case 'Selenium':
+      return 400 / drv.seleniumMcg;
+    case 'Iodine':
+      return 1100 / drv.iodineMcg;
+    case 'Chromium':
+      return double.infinity;
+    default:
+      return 2.0;
+  }
+}
+
+double _healthScoreForNutrientRatio({
+  required double intakeRatio,
+  required double upperLimitRatio,
+}) {
+  if (intakeRatio <= 0) return 0;
+  if (intakeRatio <= 1.0) return intakeRatio;
+
+  final redAt = upperLimitRatio.isFinite
+      ? upperLimitRatio.clamp(1.15, 8.0)
+      : 3.0;
+  final t = ((intakeRatio - 1.0) / (redAt - 1.0)).clamp(0.0, 1.0);
+  return 1.0 + t;
+}
+
+double _healthScoreForNutrientName(
+  String name,
+  NutrientTotals totals,
+  NutrientDRV drv,
+) {
+  final intakeRatio = _ratioForNutrientName(name, totals, drv);
+  final upperLimitRatio = _upperLimitRatioForNutrient(name, drv);
+  return _healthScoreForNutrientRatio(
+    intakeRatio: intakeRatio,
+    upperLimitRatio: upperLimitRatio,
+  );
 }
 
 Future<List<_FoodContribution>> _computeTopFoodsForRegion({
   required _OrganRegion region,
   required List<DetectedFood> foods,
-  required bool isMale,
+  required NutrientDRV drv,
 }) async {
   if (foods.isEmpty) return const <_FoodContribution>[];
 
@@ -582,7 +750,7 @@ Future<List<_FoodContribution>> _computeTopFoodsForRegion({
     if (kcal <= 0 || weightG <= 0) continue;
 
     final nt = nutrientsForFood(food: foodData, weightG: weightG);
-    final ratios = keys.map((k) => _ratioForNutrientName(k, nt, isMale)).toList();
+    final ratios = keys.map((k) => _ratioForNutrientName(k, nt, drv)).toList();
     final impact = ratios.isEmpty
         ? 0.0
         : ratios.reduce((a, b) => a + b) / ratios.length;
@@ -611,127 +779,133 @@ Future<List<_FoodContribution>> _computeTopFoodsForRegion({
 
 Map<_OrganRegion, _OrganScore> _computeOrganScores(
   NutrientTotals totals,
-  bool isMale,
+  NutrientDRV drv,
 ) {
-  double r(double current, double drv) => drv > 0 ? current / drv : 0;
+  double r(double current, double target) => target > 0 ? current / target : 0;
   double avg(List<double> v) =>
       v.isEmpty ? 0 : v.reduce((a, b) => a + b) / v.length;
 
-  final vitA = r(totals.vitaminAUg,
-      isMale ? NutrientDRV.vitaminAUg_male : NutrientDRV.vitaminAUg_female);
-  final vitC = r(totals.vitaminCMg,
-      isMale ? NutrientDRV.vitaminCMg_male : NutrientDRV.vitaminCMg_female);
-  final vitD = r(totals.vitaminDUg, NutrientDRV.vitaminDUg);
-  final vitE = r(totals.vitaminEMg, NutrientDRV.vitaminEMg);
-  final vitK = r(totals.vitaminKUg,
-      isMale ? NutrientDRV.vitaminKUg_male : NutrientDRV.vitaminKUg_female);
-  final folate = r(totals.folateMcg, NutrientDRV.folateMcg);
-  final b12 = r(totals.b12Mcg, NutrientDRV.b12Mcg);
-  final calcium = r(totals.calciumMg,
-      isMale ? NutrientDRV.calciumMg_male : NutrientDRV.calciumMg_female);
-  final iron = r(totals.ironMg,
-      isMale ? NutrientDRV.ironMg_male : NutrientDRV.ironMg_female);
-  final mag = r(totals.magnesiumMg,
-      isMale ? NutrientDRV.magnesiumMg_male : NutrientDRV.magnesiumMg_female);
-  final potassium = r(totals.potassiumMg,
-      isMale ? NutrientDRV.potassiumMg_male : NutrientDRV.potassiumMg_female);
-  final zinc = r(totals.zincMg,
-      isMale ? NutrientDRV.zincMg_male : NutrientDRV.zincMg_female);
-  final fiber = r(totals.fiberG, NutrientDRV.fiberG);
+  final vitARaw      = r(totals.vitaminAUg, drv.vitaminAUg);
+  final vitCRaw      = r(totals.vitaminCMg, drv.vitaminCMg);
+  final vitDRaw      = r(totals.vitaminDUg, drv.vitaminDUg);
+  final vitERaw      = r(totals.vitaminEMg, drv.vitaminEMg);
+  final vitKRaw      = r(totals.vitaminKUg, drv.vitaminKUg);
+  final folateRaw    = r(totals.folateMcg, drv.folateMcg);
+  final b12Raw       = r(totals.b12Mcg, drv.b12Mcg);
+  final calciumRaw   = r(totals.calciumMg, drv.calciumMg);
+  final ironRaw      = r(totals.ironMg, drv.ironMg);
+  final magnesiumRaw = r(totals.magnesiumMg, drv.magnesiumMg);
+  final potassiumRaw = r(totals.potassiumMg, drv.potassiumMg);
+  final zincRaw      = r(totals.zincMg, drv.zincMg);
+  final fiberRaw     = r(totals.fiberG, drv.fiberG);
+
+  final vitA      = _healthScoreForNutrientName('Vitamin A', totals, drv);
+  final vitC      = _healthScoreForNutrientName('Vitamin C', totals, drv);
+  final vitD      = _healthScoreForNutrientName('Vitamin D', totals, drv);
+  final vitE      = _healthScoreForNutrientName('Vitamin E', totals, drv);
+  final vitK      = _healthScoreForNutrientName('Vitamin K', totals, drv);
+  final folate    = _healthScoreForNutrientName('Folate', totals, drv);
+  final b12       = _healthScoreForNutrientName('B12', totals, drv);
+  final calcium   = _healthScoreForNutrientName('Calcium', totals, drv);
+  final iron      = _healthScoreForNutrientName('Iron', totals, drv);
+  final mag       = _healthScoreForNutrientName('Magnesium', totals, drv);
+  final potassium = _healthScoreForNutrientName('Potassium', totals, drv);
+  final zinc      = _healthScoreForNutrientName('Zinc', totals, drv);
+  final fiber     = _healthScoreForNutrientName('Fiber', totals, drv);
 
   return {
     _OrganRegion.brain: _OrganScore(
       avg([b12, folate, iron]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('B12', b12),
-        _NutrientRatio('Folate', folate),
-        _NutrientRatio('Iron', iron),
+        _NutrientRatio('B12', intakeRatio: b12Raw, healthScore: b12),
+        _NutrientRatio('Folate', intakeRatio: folateRaw, healthScore: folate),
+        _NutrientRatio('Iron', intakeRatio: ironRaw, healthScore: iron),
       ],
     ),
     _OrganRegion.eyes: _OrganScore(
       avg([vitA, vitC, zinc]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Vitamin A', vitA),
-        _NutrientRatio('Vitamin C', vitC),
-        _NutrientRatio('Zinc', zinc),
+        _NutrientRatio('Vitamin A', intakeRatio: vitARaw, healthScore: vitA),
+        _NutrientRatio('Vitamin C', intakeRatio: vitCRaw, healthScore: vitC),
+        _NutrientRatio('Zinc', intakeRatio: zincRaw, healthScore: zinc),
       ],
     ),
     _OrganRegion.lungs: _OrganScore(
       avg([vitC, vitE, vitA]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Vitamin C', vitC),
-        _NutrientRatio('Vitamin E', vitE),
-        _NutrientRatio('Vitamin A', vitA),
+        _NutrientRatio('Vitamin C', intakeRatio: vitCRaw, healthScore: vitC),
+        _NutrientRatio('Vitamin E', intakeRatio: vitERaw, healthScore: vitE),
+        _NutrientRatio('Vitamin A', intakeRatio: vitARaw, healthScore: vitA),
       ],
     ),
     _OrganRegion.heart: _OrganScore(
       avg([potassium, mag, vitE]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Potassium', potassium),
-        _NutrientRatio('Magnesium', mag),
-        _NutrientRatio('Vitamin E', vitE),
+        _NutrientRatio('Potassium', intakeRatio: potassiumRaw, healthScore: potassium),
+        _NutrientRatio('Magnesium', intakeRatio: magnesiumRaw, healthScore: mag),
+        _NutrientRatio('Vitamin E', intakeRatio: vitERaw, healthScore: vitE),
       ],
     ),
     _OrganRegion.liver: _OrganScore(
       avg([vitE, vitK, b12]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Vitamin E', vitE),
-        _NutrientRatio('Vitamin K', vitK),
-        _NutrientRatio('B12', b12),
+        _NutrientRatio('Vitamin E', intakeRatio: vitERaw, healthScore: vitE),
+        _NutrientRatio('Vitamin K', intakeRatio: vitKRaw, healthScore: vitK),
+        _NutrientRatio('B12', intakeRatio: b12Raw, healthScore: b12),
       ],
     ),
     _OrganRegion.stomach: _OrganScore(
       avg([zinc, b12]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Zinc', zinc),
-        _NutrientRatio('B12', b12),
+        _NutrientRatio('Zinc', intakeRatio: zincRaw, healthScore: zinc),
+        _NutrientRatio('B12', intakeRatio: b12Raw, healthScore: b12),
       ],
     ),
     _OrganRegion.intestines: _OrganScore(
       avg([fiber, mag, potassium]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Fiber', fiber),
-        _NutrientRatio('Magnesium', mag),
-        _NutrientRatio('Potassium', potassium),
+        _NutrientRatio('Fiber', intakeRatio: fiberRaw, healthScore: fiber),
+        _NutrientRatio('Magnesium', intakeRatio: magnesiumRaw, healthScore: mag),
+        _NutrientRatio('Potassium', intakeRatio: potassiumRaw, healthScore: potassium),
       ],
     ),
     _OrganRegion.kidneys: _OrganScore(
       avg([potassium, mag]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Potassium', potassium),
-        _NutrientRatio('Magnesium', mag),
+        _NutrientRatio('Potassium', intakeRatio: potassiumRaw, healthScore: potassium),
+        _NutrientRatio('Magnesium', intakeRatio: magnesiumRaw, healthScore: mag),
       ],
     ),
     _OrganRegion.bones: _OrganScore(
       avg([calcium, vitD, vitK]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Calcium', calcium),
-        _NutrientRatio('Vitamin D', vitD),
-        _NutrientRatio('Vitamin K', vitK),
+        _NutrientRatio('Calcium', intakeRatio: calciumRaw, healthScore: calcium),
+        _NutrientRatio('Vitamin D', intakeRatio: vitDRaw, healthScore: vitD),
+        _NutrientRatio('Vitamin K', intakeRatio: vitKRaw, healthScore: vitK),
       ],
     ),
     _OrganRegion.muscles: _OrganScore(
       avg([mag, potassium, calcium]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Magnesium', mag),
-        _NutrientRatio('Potassium', potassium),
-        _NutrientRatio('Calcium', calcium),
+        _NutrientRatio('Magnesium', intakeRatio: magnesiumRaw, healthScore: mag),
+        _NutrientRatio('Potassium', intakeRatio: potassiumRaw, healthScore: potassium),
+        _NutrientRatio('Calcium', intakeRatio: calciumRaw, healthScore: calcium),
       ],
     ),
     _OrganRegion.skin: _OrganScore(
       avg([vitC, vitE, zinc]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Vitamin C', vitC),
-        _NutrientRatio('Vitamin E', vitE),
-        _NutrientRatio('Zinc', zinc),
+        _NutrientRatio('Vitamin C', intakeRatio: vitCRaw, healthScore: vitC),
+        _NutrientRatio('Vitamin E', intakeRatio: vitERaw, healthScore: vitE),
+        _NutrientRatio('Zinc', intakeRatio: zincRaw, healthScore: zinc),
       ],
     ),
     _OrganRegion.blood: _OrganScore(
       avg([iron, b12, folate]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Iron', iron),
-        _NutrientRatio('B12', b12),
-        _NutrientRatio('Folate', folate),
+        _NutrientRatio('Iron', intakeRatio: ironRaw, healthScore: iron),
+        _NutrientRatio('B12', intakeRatio: b12Raw, healthScore: b12),
+        _NutrientRatio('Folate', intakeRatio: folateRaw, healthScore: folate),
       ],
     ),
   };

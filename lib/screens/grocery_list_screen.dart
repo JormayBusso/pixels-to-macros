@@ -48,7 +48,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    // Defer load to post-frame to avoid modifying Riverpod state during build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_load());
+    });
   }
 
   Future<void> _load() async {

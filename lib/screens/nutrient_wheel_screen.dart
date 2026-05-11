@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/nutrient_data.dart';
+import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/user_prefs_provider.dart';
@@ -16,10 +17,11 @@ class NutrientWheelWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final intake = ref.watch(dailyIntakeProvider);
     final prefs = ref.watch(userPrefsProvider);
-    final nutrients = _buildNutrientList(
-      intake.nutrientTotals,
-      prefs.gender == UserGender.male,
+    final drv = NutrientDRV.forContext(
+      isMale: prefs.gender != UserGender.female,
+      goal: prefs.nutritionGoal,
     );
+    final nutrients = _buildNutrientList(intake.nutrientTotals, drv);
     final onTarget =
         nutrients.where((nutrient) => nutrient.rawRatio >= 0.95).length;
     final low = nutrients.where((nutrient) => nutrient.rawRatio < 0.60).length;
@@ -202,13 +204,13 @@ class _NutrientInfo {
   }
 }
 
-List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
+List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, NutrientDRV drv) {
   return [
     _NutrientInfo(
       name: 'Dietary Fiber',
       emoji: '🌾',
       current: totals.fiberG,
-      drv: NutrientDRV.fiberG,
+      drv: drv.fiberG,
       unit: 'g',
       color: const Color(0xFF7A5C3A),
     ),
@@ -216,7 +218,7 @@ List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
       name: 'Vitamin A',
       emoji: '🥕',
       current: totals.vitaminAUg,
-      drv: isMale ? NutrientDRV.vitaminAUg_male : NutrientDRV.vitaminAUg_female,
+      drv: drv.vitaminAUg,
       unit: 'μg',
       color: const Color(0xFFE7811D),
     ),
@@ -224,7 +226,7 @@ List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
       name: 'Vitamin C',
       emoji: '🍊',
       current: totals.vitaminCMg,
-      drv: isMale ? NutrientDRV.vitaminCMg_male : NutrientDRV.vitaminCMg_female,
+      drv: drv.vitaminCMg,
       unit: 'mg',
       color: const Color(0xFFD6A600),
     ),
@@ -232,7 +234,7 @@ List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
       name: 'Vitamin D',
       emoji: '☀️',
       current: totals.vitaminDUg,
-      drv: NutrientDRV.vitaminDUg,
+      drv: drv.vitaminDUg,
       unit: 'μg',
       color: const Color(0xFFC79000),
     ),
@@ -240,7 +242,7 @@ List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
       name: 'Vitamin E',
       emoji: '🌻',
       current: totals.vitaminEMg,
-      drv: NutrientDRV.vitaminEMg,
+      drv: drv.vitaminEMg,
       unit: 'mg',
       color: const Color(0xFF4C8C3A),
     ),
@@ -248,7 +250,7 @@ List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
       name: 'Vitamin K',
       emoji: '🥬',
       current: totals.vitaminKUg,
-      drv: isMale ? NutrientDRV.vitaminKUg_male : NutrientDRV.vitaminKUg_female,
+      drv: drv.vitaminKUg,
       unit: 'μg',
       color: const Color(0xFF2F7D32),
     ),
@@ -256,7 +258,7 @@ List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
       name: 'Folate (B9)',
       emoji: '🫘',
       current: totals.folateMcg,
-      drv: NutrientDRV.folateMcg,
+      drv: drv.folateMcg,
       unit: 'μg',
       color: const Color(0xFF43A047),
     ),
@@ -264,7 +266,7 @@ List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
       name: 'Vitamin B12',
       emoji: '🥩',
       current: totals.b12Mcg,
-      drv: NutrientDRV.b12Mcg,
+      drv: drv.b12Mcg,
       unit: 'μg',
       color: const Color(0xFFC2185B),
     ),
@@ -272,7 +274,7 @@ List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
       name: 'Calcium',
       assetPath: 'assets/Calcium.png',
       current: totals.calciumMg,
-      drv: isMale ? NutrientDRV.calciumMg_male : NutrientDRV.calciumMg_female,
+      drv: drv.calciumMg,
       unit: 'mg',
       color: const Color(0xFF78909C),
     ),
@@ -280,7 +282,7 @@ List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
       name: 'Iron',
       assetPath: 'assets/Iron.png',
       current: totals.ironMg,
-      drv: isMale ? NutrientDRV.ironMg_male : NutrientDRV.ironMg_female,
+      drv: drv.ironMg,
       unit: 'mg',
       color: const Color(0xFFB71C1C),
     ),
@@ -288,9 +290,7 @@ List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
       name: 'Magnesium',
       assetPath: 'assets/Magnesium.png',
       current: totals.magnesiumMg,
-      drv: isMale
-          ? NutrientDRV.magnesiumMg_male
-          : NutrientDRV.magnesiumMg_female,
+      drv: drv.magnesiumMg,
       unit: 'mg',
       color: const Color(0xFF7B1FA2),
     ),
@@ -298,9 +298,7 @@ List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
       name: 'Potassium',
       assetPath: 'assets/Potassium.png',
       current: totals.potassiumMg,
-      drv: isMale
-          ? NutrientDRV.potassiumMg_male
-          : NutrientDRV.potassiumMg_female,
+      drv: drv.potassiumMg,
       unit: 'mg',
       color: const Color(0xFFEF6C00),
     ),
@@ -308,7 +306,7 @@ List<_NutrientInfo> _buildNutrientList(NutrientTotals totals, bool isMale) {
       name: 'Zinc',
       assetPath: 'assets/Zink.png',
       current: totals.zincMg,
-      drv: isMale ? NutrientDRV.zincMg_male : NutrientDRV.zincMg_female,
+      drv: drv.zincMg,
       unit: 'mg',
       color: const Color(0xFF00838F),
     ),
