@@ -973,6 +973,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
             ],
           ),
         ),
+        ),
       ),
     );
   }
