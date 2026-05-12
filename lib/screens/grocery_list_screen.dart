@@ -144,21 +144,99 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
   // ── Smart suggestions ─────────────────────────────────────────────────────
 
+  /// Normalise a detected food label to a specific grocery product.
+  /// E.g. "plain yogurt" → "Yogurt (plain)", "banana" stays "Banana".
+  static String _normalizeProduct(String raw) {
+    final l = raw.toLowerCase().trim();
+    // Specific product mapping for common scan labels
+    const _productMap = {
+      'greek yogurt': 'Greek yogurt',
+      'plain yogurt': 'Plain yogurt',
+      'yogurt': 'Yogurt',
+      'yoghurt': 'Yogurt',
+      'banana': 'Bananas',
+      'apple': 'Apples',
+      'orange': 'Oranges',
+      'tomato': 'Tomatoes',
+      'onion': 'Onions',
+      'pepper': 'Bell peppers',
+      'bell pepper': 'Bell peppers',
+      'carrot': 'Carrots',
+      'potato': 'Potatoes',
+      'sweet potato': 'Sweet potatoes',
+      'broccoli': 'Broccoli',
+      'spinach': 'Spinach',
+      'lettuce': 'Lettuce',
+      'cucumber': 'Cucumbers',
+      'avocado': 'Avocados',
+      'egg': 'Eggs (dozen)',
+      'eggs': 'Eggs (dozen)',
+      'chicken breast': 'Chicken breast',
+      'chicken': 'Chicken',
+      'ground beef': 'Ground beef',
+      'beef': 'Beef',
+      'salmon': 'Salmon fillet',
+      'tuna': 'Canned tuna',
+      'shrimp': 'Shrimp',
+      'rice': 'Rice',
+      'brown rice': 'Brown rice',
+      'white rice': 'White rice',
+      'pasta': 'Pasta',
+      'bread': 'Bread',
+      'whole wheat bread': 'Whole wheat bread',
+      'oats': 'Oats',
+      'oatmeal': 'Oats',
+      'milk': 'Milk (1L)',
+      'whole milk': 'Whole milk (1L)',
+      'almond milk': 'Almond milk (1L)',
+      'cheese': 'Cheese',
+      'butter': 'Butter',
+      'olive oil': 'Olive oil',
+      'peanut butter': 'Peanut butter',
+      'almond': 'Almonds',
+      'almonds': 'Almonds',
+      'mixed nuts': 'Mixed nuts',
+      'blueberry': 'Blueberries',
+      'blueberries': 'Blueberries',
+      'strawberry': 'Strawberries',
+      'strawberries': 'Strawberries',
+      'tofu': 'Tofu',
+      'lemon': 'Lemons',
+      'garlic': 'Garlic',
+      'ginger': 'Ginger',
+    };
+    // Check exact match first
+    if (_productMap.containsKey(l)) return _productMap[l]!;
+    // Check partial match
+    for (final entry in _productMap.entries) {
+      if (l.contains(entry.key)) return entry.value;
+    }
+    // Capitalise as-is
+    return raw.isEmpty ? raw : raw[0].toUpperCase() + raw.substring(1);
+  }
+
   /// Compute suggestion items from scan history.
   /// Foods eaten more recently are weighted higher (×2 in last 30 days).
+  /// Products are normalised to specific grocery items with accurate quantities.
   List<_SuggestionItem> _buildSuggestions() {
     final history = ref.read(historyProvider);
     if (history.scans.isEmpty) return [];
 
     final cutoff = DateTime.now().subtract(const Duration(days: 30));
-    final freq   = <String, int>{};
+
+    // Count occurrences of each normalised product
+    final freq = <String, int>{};
+    final categories = <String, String>{};
 
     for (final scan in history.scans) {
       final recent = scan.timestamp.isAfter(cutoff);
       for (final food in scan.foods) {
-        final label = food.label.trim().toLowerCase();
+        final label = food.label.trim();
         if (label.isEmpty) continue;
-        freq[label] = (freq[label] ?? 0) + (recent ? 2 : 1);
+        final product = _normalizeProduct(label);
+        final rawLower = label.toLowerCase();
+        freq[product] = (freq[product] ?? 0) + (recent ? 2 : 1);
+        categories[product] ??= _guessCategory(rawLower);
       }
     }
 
@@ -168,13 +246,42 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     // Days between grocery trips
     final daysBetween = (7 / _groceryFrequency).ceil();
 
-    return sorted.take(12).map((e) {
-      // Estimate quantity: times eaten per week × weeks until next trip
-      final timesPerWeek = e.value / 4; // rough 30-day avg
-      final qty = (timesPerWeek * daysBetween / 7).ceil().clamp(1, 10);
+    // Already on the list? Skip those.
+    final existingNames = ref.read(groceryProvider)
+        .map((g) => g.name.toLowerCase())
+        .toSet();
+
+    return sorted
+        .where((e) => !existingNames.contains(e.key.toLowerCase()))
+        .take(15)
+        .map((e) {
+      // Estimate quantity: frequency per week × days until next trip
+      final rawFreq = e.value;
+      final timesPerWeek = rawFreq / 4; // rough 30-day avg → weekly
+      int qty;
+
+      // For items sold in units (fruits, eggs), calculate pieces needed
+      final product = e.key.toLowerCase();
+      if (product.contains('egg')) {
+        // Eggs come in dozens — estimate packs
+        qty = (timesPerWeek * daysBetween / 7 / 6).ceil().clamp(1, 4);
+      } else if (['bananas', 'apples', 'oranges', 'avocados', 'lemons',
+                   'tomatoes', 'onions', 'bell peppers', 'cucumbers',
+                   'carrots', 'potatoes', 'sweet potatoes']
+          .any(product.contains)) {
+        // Count-based produce: estimate pieces per trip
+        qty = (timesPerWeek * daysBetween / 7).ceil().clamp(1, 12);
+      } else if (['milk', 'juice', 'almond milk'].any(product.contains)) {
+        // Liquid containers
+        qty = (timesPerWeek * daysBetween / 7).ceil().clamp(1, 4);
+      } else {
+        // Default: packs/portions
+        qty = (timesPerWeek * daysBetween / 7).ceil().clamp(1, 5);
+      }
+
       return _SuggestionItem(
-        name:     _capitalize(e.key),
-        category: _guessCategory(e.key),
+        name: e.key,
+        category: categories[e.key] ?? 'Other',
         suggestedQty: qty,
       );
     }).toList();

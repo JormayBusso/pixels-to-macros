@@ -57,6 +57,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
+  void _back() {
+    if (_page > 0) {
+      _pageCtrl.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   void _selectGender(UserGender gender) {
     final isMale = gender == UserGender.male;
     final newCal = GoalDefaults.calories(_selectedGoalType, male: isMale);
@@ -142,16 +151,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _WelcomePage(onNext: _next),
-                  _NamePage(controller: _nameCtrl, onNext: _next),
+                  _NamePage(controller: _nameCtrl, onNext: _next, onBack: _back),
                   _GenderPage(
                     selected: _selectedGender,
                     onSelect: _selectGender,
                     onNext: _next,
+                    onBack: _back,
                   ),
                   _GoalTypePage(
                     selected: _selectedGoalType,
                     onSelect: _selectGoal,
                     onNext: _next,
+                    onBack: _back,
                   ),
                   _ConfirmPage(
                     goalType: _selectedGoalType,
@@ -164,6 +175,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     onProteinChanged: (v) => setState(() => _proteinTarget = v),
                     onFatChanged: (v) => setState(() => _fatTarget = v),
                     onFinish: _isDiabetes ? _next : _finish,
+                    onBack: _back,
                     finishLabel: _isDiabetes ? 'Next' : 'Start Scanning! 🚀',
                   ),
                   if (_isDiabetes)
@@ -171,6 +183,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       controller: _icrCtrl,
                       onChanged: (v) => setState(() => _icr = v),
                       onFinish: _finish,
+                      onBack: _back,
                     ),
                 ],
               ),
@@ -238,9 +251,10 @@ class _WelcomePage extends StatelessWidget {
 // â”€â”€ Page 1: Name â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _NamePage extends StatelessWidget {
-  const _NamePage({required this.controller, required this.onNext});
+  const _NamePage({required this.controller, required this.onNext, required this.onBack});
   final TextEditingController controller;
   final VoidCallback onNext;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -296,10 +310,12 @@ class _GenderPage extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     required this.onNext,
+    required this.onBack,
   });
   final UserGender selected;
   final ValueChanged<UserGender> onSelect;
   final VoidCallback onNext;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -352,6 +368,13 @@ class _GenderPage extends StatelessWidget {
               onPressed: onNext,
               child: const Text('Continue'),
             ),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back, size: 16),
+            label: const Text('Back'),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.gray500),
           ),
         ],
       ),
@@ -415,10 +438,12 @@ class _GoalTypePage extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     required this.onNext,
+    required this.onBack,
   });
   final NutritionGoalType selected;
   final ValueChanged<NutritionGoalType> onSelect;
   final VoidCallback onNext;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -525,6 +550,13 @@ class _GoalTypePage extends StatelessWidget {
               child: const Text('Next'),
             ),
           ),
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back, size: 16),
+            label: const Text('Back'),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.gray500),
+          ),
           const SizedBox(height: 8),
         ],
       ),
@@ -546,6 +578,7 @@ class _ConfirmPage extends StatelessWidget {
     required this.onProteinChanged,
     required this.onFatChanged,
     required this.onFinish,
+    required this.onBack,
     this.finishLabel = 'Start Scanning! 🚀',
   });
 
@@ -559,6 +592,7 @@ class _ConfirmPage extends StatelessWidget {
   final ValueChanged<int> onProteinChanged;
   final ValueChanged<int> onFatChanged;
   final VoidCallback onFinish;
+  final VoidCallback onBack;
   final String finishLabel;
 
   @override
@@ -591,64 +625,120 @@ class _ConfirmPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _TargetSlider(
-            label: '🔥 Daily Calories',
-            value: calories,
-            min: 1200,
-            max: 5000,
-            step: 100,
-            unit: 'kcal',
-            color: goalType.color,
-            warningValue: 3000,
-            dangerValue: 4000,
-            onChanged: onCaloriesChanged,
-          ),
+          // Dynamic thresholds: green = within ±25% of goal ratio,
+          // orange = 25-50% off, red = >50% off.
+          Builder(builder: (_) {
+            final r = GoalDefaults.macroRatios(goalType);
+            final idealCarb = (calories * r.carb / 4).round();
+            final idealProtein = (calories * r.protein / 4).round();
+            final idealFat = (calories * r.fat / 9).round();
+            // Calorie thresholds: goal-specific healthy range
+            final goalCal = goalType == NutritionGoalType.weightLoss
+                ? 2200
+                : goalType == NutritionGoalType.muscleGrowth
+                    ? 4000
+                    : 3200;
+            return Column(children: [
+              _TargetSlider(
+                label: '🔥 Daily Calories',
+                value: calories,
+                min: 1200,
+                max: 5000,
+                step: 100,
+                unit: 'kcal',
+                color: goalType.color,
+                warningValue: goalCal,
+                dangerValue: (goalCal * 1.25).round(),
+                onChanged: onCaloriesChanged,
+              ),
+              const SizedBox(height: 16),
+              _TargetSlider(
+                label: '🍞 Carb Limit',
+                value: carbLimit,
+                min: 15,
+                max: 500,
+                step: 5,
+                unit: 'g / day',
+                color: Colors.amber.shade700,
+                warningValue: (idealCarb * 1.3).round().clamp(20, 500),
+                dangerValue: (idealCarb * 1.6).round().clamp(30, 500),
+                onChanged: onCarbChanged,
+              ),
+              const SizedBox(height: 16),
+              _TargetSlider(
+                label: '💪 Protein Target',
+                value: proteinTarget,
+                min: 30,
+                max: 300,
+                step: 5,
+                unit: 'g / day',
+                color: Colors.red.shade600,
+                warningValue: (idealProtein * 1.3).round().clamp(40, 300),
+                dangerValue: (idealProtein * 1.6).round().clamp(50, 300),
+                onChanged: onProteinChanged,
+              ),
+              const SizedBox(height: 16),
+              _TargetSlider(
+                label: '🥑 Fat Target',
+                value: fatTarget,
+                min: 20,
+                max: 250,
+                step: 5,
+                unit: 'g / day',
+                color: Colors.green.shade600,
+                warningValue: (idealFat * 1.3).round().clamp(25, 250),
+                dangerValue: (idealFat * 1.6).round().clamp(35, 250),
+                onChanged: onFatChanged,
+              ),
+            ]);
+          }),
           const SizedBox(height: 16),
-          _TargetSlider(
-            label: '🍞 Carb Limit',
-            value: carbLimit,
-            min: 15,
-            max: 500,
-            step: 5,
-            unit: 'g / day',
-            color: Colors.amber.shade700,
-            warningValue: 300,
-            dangerValue: 400,
-            onChanged: onCarbChanged,
+          // Show macro breakdown info
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: goalType.lightColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: goalType.color.withValues(alpha: 0.3)),
+            ),
+            child: Builder(builder: (_) {
+              final carbCal = carbLimit * 4;
+              final protCal = proteinTarget * 4;
+              final fatCal = fatTarget * 9;
+              final total = carbCal + protCal + fatCal;
+              final pct = calories > 0 ? (total / calories * 100).round() : 0;
+              return Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: goalType.color),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Macros add up to $total kcal ($pct% of $calories kcal target)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: goalType.color,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }),
           ),
-          const SizedBox(height: 16),
-          _TargetSlider(
-            label: '💪 Protein Target',
-            value: proteinTarget,
-            min: 30,
-            max: 300,
-            step: 5,
-            unit: 'g / day',
-            color: Colors.red.shade600,
-            warningValue: 180,
-            dangerValue: 220,
-            onChanged: onProteinChanged,
-          ),
-          const SizedBox(height: 16),
-          _TargetSlider(
-            label: '🥑 Fat Target',
-            value: fatTarget,
-            min: 20,
-            max: 250,
-            step: 5,
-            unit: 'g / day',
-            color: Colors.green.shade600,
-            warningValue: 150,
-            dangerValue: 180,
-            onChanged: onFatChanged,
-          ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: onFinish,
               child: Text(finishLabel),
             ),
+          ),
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back, size: 16),
+            label: const Text('Back'),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.gray500),
           ),
           const SizedBox(height: 16),
         ],
@@ -728,11 +818,13 @@ class _IcrPage extends StatelessWidget {
     required this.controller,
     required this.onChanged,
     required this.onFinish,
+    required this.onBack,
   });
 
   final TextEditingController controller;
   final ValueChanged<double> onChanged;
   final VoidCallback onFinish;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -809,6 +901,13 @@ class _IcrPage extends StatelessWidget {
               'Skip — I\'ll set this later in Settings',
               style: TextStyle(color: AppTheme.gray500),
             ),
+          ),
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back, size: 16),
+            label: const Text('Back'),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.gray500),
           ),
           const SizedBox(height: 24),
         ],

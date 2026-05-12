@@ -129,13 +129,13 @@ final _kSteps = [
     targetKey: TourKeys.nutritionIcon,
     tipBelow: true,
   ),
-  // 7 – Hydration card add-drink button
+  // 7 – Hydration card container
   _Step(
     title: 'Hydration Tracking 💧',
     body:
         'The hydration card tracks your daily water intake.\nUse the + drink button to log water, coffee, tea, and more.',
     tab: 0,
-    targetKey: TourKeys.hydrationAddDrink,
+    targetKey: TourKeys.hydrationCard,
     scroll: _ScrollTarget.hydration,
   ),
   // 8 – Hydration quick +200 button
@@ -180,14 +180,7 @@ final _kSteps = [
     targetKey: TourKeys.recipeSearch,
     tipBelow: true,
   ),
-  // 13 – Recipes with photos (no precise target — content varies)
-  _Step(
-    title: 'Recipe Photos 📸',
-    body:
-        'Recipes now show matching food photos to make selection easier and more intuitive.',
-    tab: 2,
-  ),
-  // 14 – Groceries tab
+  // 13 – Groceries tab
   _Step(
     title: 'Grocery List 🛒',
     body:
@@ -273,11 +266,17 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
         ref.read(scrollToVacationProvider.notifier).state++;
       }
       if (step.scroll != _ScrollTarget.none) {
-        await Future<void>.delayed(const Duration(milliseconds: 260));
+        // Wait for scroll animation (500ms in settings) + layout to settle.
+        await Future<void>.delayed(const Duration(milliseconds: 600));
       }
       // Re-measure after layout settles so the spotlight uses the final position.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() {});
+        if (mounted) {
+          // Second delay to ensure ensureVisible has fully completed.
+          Future<void>.delayed(const Duration(milliseconds: 100), () {
+            if (mounted) setState(() {});
+          });
+        }
       });
       unawaited(_ctrl.forward());
     } else {
