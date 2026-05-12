@@ -248,6 +248,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
     // Already on the list? Skip those.
     final existingNames = ref.read(groceryProvider)
+        .items
         .map((g) => g.name.toLowerCase())
         .toSet();
 
