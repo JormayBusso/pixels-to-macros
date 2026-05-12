@@ -120,11 +120,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ctx,
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOut,
-            alignment: 0.12,
+            alignment: 0.0,
           );
         } else if (_accountScrollController.hasClients) {
           _accountScrollController.animateTo(
-            650,
+            _accountScrollController.position.maxScrollExtent,
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOut,
           );
@@ -140,11 +140,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ctx,
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOut,
-            alignment: 0.12,
+            alignment: 0.0,
           );
         } else if (_accountScrollController.hasClients) {
           _accountScrollController.animateTo(
-            560,
+            _accountScrollController.position.maxScrollExtent - 200,
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOut,
           );
@@ -318,58 +318,101 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
         _SectionHeader('Daily Macro Targets'),
         const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Row(
+        Consumer(
+          builder: (context, ref, _) {
+            final prefs = ref.watch(userPrefsProvider);
+            final goalType = prefs.nutritionGoal;
+            final calories = prefs.dailyCalorieGoal;
+            final r = GoalDefaults.macroRatios(goalType);
+            final idealCarb = (calories * r.carb / 4).round();
+            final idealProtein = (calories * r.protein / 4).round();
+            final idealFat = (calories * r.fat / 9).round();
+
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _carbCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Carbs (g)',
-                          prefixIcon: Icon(Icons.grain),
-                        ),
-                      ),
+                    _SettingsSlider(
+                      label: '🍞 Carbs',
+                      value: int.tryParse(_carbCtrl.text) ?? prefs.dailyCarbLimitG,
+                      min: 15, max: 500, step: 5,
+                      unit: 'g / day',
+                      color: Colors.amber.shade700,
+                      warningValue: (idealCarb * 1.3).round().clamp(20, 500),
+                      dangerValue: (idealCarb * 1.6).round().clamp(30, 500),
+                      onChanged: (v) {
+                        setState(() => _carbCtrl.text = v.toString());
+                        _save();
+                      },
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _proteinCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Protein (g)',
-                          prefixIcon: Icon(Icons.egg_outlined),
-                        ),
-                      ),
+                    const SizedBox(height: 12),
+                    _SettingsSlider(
+                      label: '💪 Protein',
+                      value: int.tryParse(_proteinCtrl.text) ?? prefs.dailyProteinTargetG,
+                      min: 30, max: 300, step: 5,
+                      unit: 'g / day',
+                      color: Colors.red.shade600,
+                      warningValue: (idealProtein * 1.3).round().clamp(40, 300),
+                      dangerValue: (idealProtein * 1.6).round().clamp(50, 300),
+                      onChanged: (v) {
+                        setState(() => _proteinCtrl.text = v.toString());
+                        _save();
+                      },
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _fatCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Fat (g)',
-                          prefixIcon: Icon(Icons.opacity),
-                        ),
-                      ),
+                    const SizedBox(height: 12),
+                    _SettingsSlider(
+                      label: '🥑 Fat',
+                      value: int.tryParse(_fatCtrl.text) ?? prefs.dailyFatTargetG,
+                      min: 20, max: 250, step: 5,
+                      unit: 'g / day',
+                      color: Colors.green.shade600,
+                      warningValue: (idealFat * 1.3).round().clamp(25, 250),
+                      dangerValue: (idealFat * 1.6).round().clamp(35, 250),
+                      onChanged: (v) {
+                        setState(() => _fatCtrl.text = v.toString());
+                        _save();
+                      },
                     ),
+                    const SizedBox(height: 12),
+                    // Macro breakdown info
+                    Builder(builder: (_) {
+                      final carbVal = int.tryParse(_carbCtrl.text) ?? prefs.dailyCarbLimitG;
+                      final protVal = int.tryParse(_proteinCtrl.text) ?? prefs.dailyProteinTargetG;
+                      final fatVal = int.tryParse(_fatCtrl.text) ?? prefs.dailyFatTargetG;
+                      final total = carbVal * 4 + protVal * 4 + fatVal * 9;
+                      final pct = calories > 0 ? (total / calories * 100).round() : 0;
+                      return Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: goalType.lightColor,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: goalType.color.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 14, color: goalType.color),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Macros add up to $total kcal ($pct% of $calories kcal target)',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: goalType.color,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                   ],
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _save,
-                    child: const Text('Save Macro Targets'),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 24),
 
@@ -1527,6 +1570,81 @@ class _RemindersCardState extends State<_RemindersCard> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Settings macro slider (same green→yellow→orange→red as onboarding) ──────
+
+class _SettingsSlider extends StatelessWidget {
+  const _SettingsSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.step,
+    required this.unit,
+    required this.color,
+    required this.onChanged,
+    this.warningValue,
+    this.dangerValue,
+  });
+
+  final String label;
+  final int value;
+  final int min;
+  final int max;
+  final int step;
+  final String unit;
+  final Color color;
+  final ValueChanged<int> onChanged;
+  final int? warningValue;
+  final int? dangerValue;
+
+  Color get _activeColor {
+    if (dangerValue != null && value > dangerValue!) return Colors.red.shade600;
+    if (warningValue != null && dangerValue != null && value > (warningValue! + dangerValue!) / 2) {
+      return Colors.orange.shade700;
+    }
+    if (warningValue != null && value > warningValue!) return Colors.yellow.shade700;
+    return color;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = _activeColor;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 13)),
+            Text(
+              '$value $unit',
+              style: TextStyle(
+                  fontWeight: FontWeight.w700, color: activeColor, fontSize: 13),
+            ),
+          ],
+        ),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 4,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+          ),
+          child: Slider(
+            value: value.toDouble().clamp(min.toDouble(), max.toDouble()),
+            min: min.toDouble(),
+            max: max.toDouble(),
+            divisions: (max - min) ~/ step,
+            activeColor: activeColor,
+            inactiveColor: activeColor.withValues(alpha: 0.2),
+            onChanged: (v) => onChanged(v.round()),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -337,50 +337,132 @@ GOAL_CONFIGS = {
 # ─── Image URLs (curated from Unsplash — free, no key needed) ───────────────
 
 IMG_BREAKFAST = [
-    "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=480&q=80",  # oatmeal bowl
-    "https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=480&q=80",  # pancakes
-    "https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=480&q=80",  # eggs toast
-    "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=480&q=80",  # smoothie bowl
-    "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=480&q=80",  # breakfast spread
-    "https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?w=480&q=80",  # avocado toast
-    "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=480&q=80",  # yogurt parfait
-    "https://images.unsplash.com/photo-1517093602195-b40af9688b96?w=480&q=80",  # smoothie
-    "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=480&q=80",  # egg dish
-    "https://images.unsplash.com/photo-1495214783159-3503fd1b572d?w=480&q=80",  # breakfast burrito
+    "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=480&q=80",
+    "https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=480&q=80",
+    "https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=480&q=80",
+    "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=480&q=80",
+    "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=480&q=80",
+    "https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?w=480&q=80",
+    "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=480&q=80",
+    "https://images.unsplash.com/photo-1517093602195-b40af9688b96?w=480&q=80",
+    "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=480&q=80",
+    "https://images.unsplash.com/photo-1495214783159-3503fd1b572d?w=480&q=80",
+    "https://images.unsplash.com/photo-1493770348161-369560ae357d?w=480&q=80",
+    "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?w=480&q=80",
+    "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=480&q=80",
+    "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=480&q=80",
+    "https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?w=480&q=80",
+    "https://images.unsplash.com/photo-1494390248081-4e521a5940db?w=480&q=80",
+    "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=480&q=80",
+    "https://images.unsplash.com/photo-1432139555190-58524dae6a55?w=480&q=80",
+    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=480&q=80",
+    "https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?w=480&q=80",
+    "https://images.unsplash.com/photo-1497888329096-51c27beff665?w=480&q=80",
+    "https://images.unsplash.com/photo-1464454709131-ffd692591ee5?w=480&q=80",
+    "https://images.unsplash.com/photo-1511690743698-d9d18f7e20f1?w=480&q=80",
+    "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=480&q=80",
+    "https://images.unsplash.com/photo-1542691457-cbe4df43fc42?w=480&q=80",
+    "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?w=480&q=80",
+    "https://images.unsplash.com/photo-1478145046317-39f10e56b5e9?w=480&q=80",
+    "https://images.unsplash.com/photo-1459789034005-ba29c5783491?w=480&q=80",
+    "https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=480&q=80",
+    "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=480&q=80",
 ]
 IMG_LUNCH = [
-    "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=480&q=80",  # salad bowl
-    "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=480&q=80",  # grain bowl
-    "https://images.unsplash.com/photo-1547592180-85f173990554?w=480&q=80",  # stir fry
-    "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=480&q=80",  # wrap
-    "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?w=480&q=80",  # pasta dish
-    "https://images.unsplash.com/photo-1543339308-d595b7a4b8c0?w=480&q=80",  # fish plate
-    "https://images.unsplash.com/photo-1551248429-40975aa4de74?w=480&q=80",  # tacos
-    "https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=480&q=80",  # Mediterranean
-    "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=480&q=80",  # colorful bowl
-    "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=480&q=80",  # fresh salad
+    "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=480&q=80",
+    "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=480&q=80",
+    "https://images.unsplash.com/photo-1547592180-85f173990554?w=480&q=80",
+    "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=480&q=80",
+    "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?w=480&q=80",
+    "https://images.unsplash.com/photo-1543339308-d595b7a4b8c0?w=480&q=80",
+    "https://images.unsplash.com/photo-1551248429-40975aa4de74?w=480&q=80",
+    "https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=480&q=80",
+    "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=480&q=80",
+    "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=480&q=80",
+    "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=480&q=80",
+    "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=480&q=80",
+    "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=480&q=80",
+    "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=480&q=80",
+    "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=480&q=80",
+    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=480&q=80",
+    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=480&q=80",
+    "https://images.unsplash.com/photo-1560717789-0ac7c58ac90a?w=480&q=80",
+    "https://images.unsplash.com/photo-1484980972926-edee96e0960d?w=480&q=80",
+    "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=480&q=80",
+    "https://images.unsplash.com/photo-1432139555190-58524dae6a55?w=480&q=80",
+    "https://images.unsplash.com/photo-1478145046317-39f10e56b5e9?w=480&q=80",
+    "https://images.unsplash.com/photo-1459789034005-ba29c5783491?w=480&q=80",
+    "https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?w=480&q=80",
+    "https://images.unsplash.com/photo-1497888329096-51c27beff665?w=480&q=80",
+    "https://images.unsplash.com/photo-1464454709131-ffd692591ee5?w=480&q=80",
+    "https://images.unsplash.com/photo-1511690743698-d9d18f7e20f1?w=480&q=80",
+    "https://images.unsplash.com/photo-1542691457-cbe4df43fc42?w=480&q=80",
+    "https://images.unsplash.com/photo-1506354666786-959d6d497f1a?w=480&q=80",
+    "https://images.unsplash.com/photo-1544025162-d76694265947?w=480&q=80",
 ]
 IMG_DINNER = [
-    "https://images.unsplash.com/photo-1432139509613-5c4255a1d873?w=480&q=80",  # steak
-    "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=480&q=80",  # salmon
-    "https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?w=480&q=80",  # gourmet plate
-    "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=480&q=80",  # Asian dish
-    "https://images.unsplash.com/photo-1485963631004-f2f00b1d6571?w=480&q=80",  # curry
-    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=480&q=80",  # grilled meat
-    "https://images.unsplash.com/photo-1559847844-5315695dadae?w=480&q=80",  # bowl dinner
-    "https://images.unsplash.com/photo-1574484284002-952d92456975?w=480&q=80",  # stew
-    "https://images.unsplash.com/photo-1569058242567-93de6f36f8e6?w=480&q=80",  # pasta dinner
-    "https://images.unsplash.com/photo-1544025162-d76694265947?w=480&q=80",  # BBQ
+    "https://images.unsplash.com/photo-1432139509613-5c4255a1d873?w=480&q=80",
+    "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=480&q=80",
+    "https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?w=480&q=80",
+    "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=480&q=80",
+    "https://images.unsplash.com/photo-1485963631004-f2f00b1d6571?w=480&q=80",
+    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=480&q=80",
+    "https://images.unsplash.com/photo-1559847844-5315695dadae?w=480&q=80",
+    "https://images.unsplash.com/photo-1574484284002-952d92456975?w=480&q=80",
+    "https://images.unsplash.com/photo-1569058242567-93de6f36f8e6?w=480&q=80",
+    "https://images.unsplash.com/photo-1544025162-d76694265947?w=480&q=80",
+    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=480&q=80",
+    "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=480&q=80",
+    "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=480&q=80",
+    "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=480&q=80",
+    "https://images.unsplash.com/photo-1460306855393-0410f61241c7?w=480&q=80",
+    "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=480&q=80",
+    "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=480&q=80",
+    "https://images.unsplash.com/photo-1547592180-85f173990554?w=480&q=80",
+    "https://images.unsplash.com/photo-1543339308-d595b7a4b8c0?w=480&q=80",
+    "https://images.unsplash.com/photo-1560717789-0ac7c58ac90a?w=480&q=80",
+    "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=480&q=80",
+    "https://images.unsplash.com/photo-1484980972926-edee96e0960d?w=480&q=80",
+    "https://images.unsplash.com/photo-1506354666786-959d6d497f1a?w=480&q=80",
+    "https://images.unsplash.com/photo-1542691457-cbe4df43fc42?w=480&q=80",
+    "https://images.unsplash.com/photo-1493770348161-369560ae357d?w=480&q=80",
+    "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?w=480&q=80",
+    "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=480&q=80",
+    "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=480&q=80",
+    "https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?w=480&q=80",
+    "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=480&q=80",
 ]
 IMG_SNACK = [
-    "https://images.unsplash.com/photo-1604908177453-7462950a6a3b?w=480&q=80",  # nuts mix
-    "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=480&q=80",  # fruit snack
-    "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=480&q=80",  # energy balls
-    "https://images.unsplash.com/photo-1505576399279-0d06b8d0f2ea?w=480&q=80",  # smoothie
-    "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=480&q=80",  # veggie sticks
-    "https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?w=480&q=80",  # avocado toast
-    "https://images.unsplash.com/photo-1495214783159-3503fd1b572d?w=480&q=80",  # yogurt
-    "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=480&q=80",  # protein shake
+    "https://images.unsplash.com/photo-1604908177453-7462950a6a3b?w=480&q=80",
+    "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=480&q=80",
+    "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=480&q=80",
+    "https://images.unsplash.com/photo-1505576399279-0d06b8d0f2ea?w=480&q=80",
+    "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=480&q=80",
+    "https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?w=480&q=80",
+    "https://images.unsplash.com/photo-1495214783159-3503fd1b572d?w=480&q=80",
+    "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=480&q=80",
+    "https://images.unsplash.com/photo-1494390248081-4e521a5940db?w=480&q=80",
+    "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=480&q=80",
+    "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=480&q=80",
+    "https://images.unsplash.com/photo-1517093602195-b40af9688b96?w=480&q=80",
+    "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=480&q=80",
+    "https://images.unsplash.com/photo-1478145046317-39f10e56b5e9?w=480&q=80",
+    "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=480&q=80",
+    "https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?w=480&q=80",
+    "https://images.unsplash.com/photo-1497888329096-51c27beff665?w=480&q=80",
+    "https://images.unsplash.com/photo-1506354666786-959d6d497f1a?w=480&q=80",
+    "https://images.unsplash.com/photo-1464454709131-ffd692591ee5?w=480&q=80",
+    "https://images.unsplash.com/photo-1432139555190-58524dae6a55?w=480&q=80",
+    "https://images.unsplash.com/photo-1459789034005-ba29c5783491?w=480&q=80",
+    "https://images.unsplash.com/photo-1493770348161-369560ae357d?w=480&q=80",
+    "https://images.unsplash.com/photo-1542691457-cbe4df43fc42?w=480&q=80",
+    "https://images.unsplash.com/photo-1511690743698-d9d18f7e20f1?w=480&q=80",
+    "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?w=480&q=80",
+    "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=480&q=80",
+    "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=480&q=80",
+    "https://images.unsplash.com/photo-1460306855393-0410f61241c7?w=480&q=80",
+    "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=480&q=80",
+    "https://images.unsplash.com/photo-1484980972926-edee96e0960d?w=480&q=80",
 ]
 
 IMG_MAP = {"breakfast": IMG_BREAKFAST, "lunch": IMG_LUNCH, "dinner": IMG_DINNER, "snack": IMG_SNACK}
@@ -523,9 +605,34 @@ def make_recipe(idx, name, ings_with_grams, meal_type, goals, tags, mins, servin
     insulin = round(total_carbs / icr, 1) if total_carbs > 0 else 0
 
     imgs = IMG_MAP.get(meal_type, IMG_LUNCH)
-    img = imgs[idx % len(imgs)]
+    # Use a hash of the recipe name to pick a unique image and avoid
+    # obvious duplicates within the same visible list.
+    name_hash = int(hashlib.md5(name.encode()).hexdigest(), 16)
+    img = imgs[name_hash % len(imgs)]
 
     recipe_id = f"r{idx:04d}"
+
+    # Compute a more realistic cooking time based on the recipe name.
+    estimated_mins = mins  # default from template
+    name_lower = name.lower()
+    if any(kw in name_lower for kw in ("smoothie", "shake", "trail mix")):
+        estimated_mins = 5
+    elif any(kw in name_lower for kw in ("parfait", "overnight", "energy ball", "bites")):
+        estimated_mins = random.choice([5, 10])
+    elif any(kw in name_lower for kw in ("salad", "wrap", "toast", "sandwich")):
+        estimated_mins = random.choice([10, 15])
+    elif any(kw in name_lower for kw in ("scramble", "omelette", "frittata", "stir-fry", "stir fry", "tacos", "quesadilla", "lettuce wrap")):
+        estimated_mins = random.choice([15, 20])
+    elif any(kw in name_lower for kw in ("pan-seared", "grilled", "teriyaki", "blackened", "slaw")):
+        estimated_mins = random.choice([20, 25])
+    elif any(kw in name_lower for kw in ("pasta", "pilaf", "bowl", "curry")):
+        estimated_mins = random.choice([25, 30])
+    elif any(kw in name_lower for kw in ("baked", "herb-crusted", "sheet pan", "meatball", "casserole")):
+        estimated_mins = random.choice([30, 35, 40])
+    elif any(kw in name_lower for kw in ("stew", "chili", "soup")):
+        estimated_mins = random.choice([35, 40, 45])
+    elif any(kw in name_lower for kw in ("stuffed",)):
+        estimated_mins = random.choice([30, 40])
 
     return {
         "id": recipe_id,
@@ -533,7 +640,7 @@ def make_recipe(idx, name, ings_with_grams, meal_type, goals, tags, mins, servin
         "image": img,
         "meal_type": meal_type,
         "goals": goals,
-        "minutes": mins,
+        "minutes": estimated_mins,
         "servings": servings,
         "tags": tags,
         "ingredients": [

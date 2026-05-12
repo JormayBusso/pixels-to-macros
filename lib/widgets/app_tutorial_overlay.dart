@@ -136,6 +136,7 @@ final _kSteps = [
         'The hydration card tracks your daily water intake.\nUse the + drink button to log water, coffee, tea, and more.',
     tab: 0,
     targetKey: TourKeys.hydrationCard,
+    tipBelow: true,
     scroll: _ScrollTarget.hydration,
   ),
   // 8 – Hydration quick +200 button
@@ -145,6 +146,7 @@ final _kSteps = [
         'Need a fast water log? Tap +200 ml for one-tap hydration updates.',
     tab: 0,
     targetKey: TourKeys.hydrationQuickAdd200,
+    tipBelow: true,
     scroll: _ScrollTarget.hydration,
   ),
   // 9 – Smart recommendations card
@@ -154,6 +156,7 @@ final _kSteps = [
         'Recommendations now adapt to your goal and nutrient gaps (like low iron, vitamin D, B12, calcium, and more).',
     tab: 0,
     targetKey: TourKeys.recommendationsCard,
+    tipBelow: true,
     scroll: _ScrollTarget.recommendations,
   ),
   // 10 – Analytics tab
@@ -203,6 +206,7 @@ final _kSteps = [
         'At the start of each week, the app can show the badges you earned last week.\nUse this setting to turn that recap on or off.',
     tab: 5,
     targetKey: TourKeys.weeklyReviewCard,
+    tipBelow: true,
     scroll: _ScrollTarget.weeklyReview,
   ),
   // 17 – Vacation mode
@@ -212,6 +216,7 @@ final _kSteps = [
         'Protect your streak while you\'re away.\nTap the toggle to activate Vacation Mode.\nYou can also adjust your daily water goal and Glycemic Load settings here.',
     tab: 5,
     targetKey: TourKeys.vacationModeCard,
+    tipBelow: true,
     scroll: _ScrollTarget.vacation,
   ),
   // 18 – Outro
@@ -267,7 +272,7 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
       }
       if (step.scroll != _ScrollTarget.none) {
         // Wait for scroll animation (500ms in settings) + layout to settle.
-        await Future<void>.delayed(const Duration(milliseconds: 600));
+        await Future<void>.delayed(const Duration(milliseconds: 900));
       }
       // Re-measure after layout settles so the spotlight uses the final position.
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -468,15 +473,24 @@ class _TooltipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Vertical placement: opposite side of the spotlight.
-    // No spotlight → centre vertically.
+    // Vertical placement: below the spotlight (or centred if no spotlight).
+    // Clamp so the card never goes off-screen.
+    final safeTop = MediaQuery.of(context).padding.top + 48; // below status bar + skip btn
+    final safeBottom = 20.0;
     double? top, bottom;
     if (spotRect == null) {
       top = screenSize.height * 0.25;
     } else if (step.tipBelow) {
-      top = spotRect!.bottom + 12;
+      top = (spotRect!.bottom + 12).clamp(safeTop, screenSize.height - 200);
     } else {
+      // Place above the spotlight
       bottom = screenSize.height - spotRect!.top + 12;
+      // If it would go off the top, flip to below instead
+      final estimatedTop = screenSize.height - bottom! - 180;
+      if (estimatedTop < safeTop) {
+        bottom = null;
+        top = (spotRect!.bottom + 12).clamp(safeTop, screenSize.height - 200);
+      }
     }
 
     return Positioned(

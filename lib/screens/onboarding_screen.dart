@@ -774,7 +774,8 @@ class _TargetSlider extends StatelessWidget {
 
   Color get _activeColor {
     if (dangerValue != null && value > dangerValue!) return Colors.red.shade600;
-    if (warningValue != null && value > warningValue!) return Colors.orange.shade700;
+    if (warningValue != null && dangerValue != null && value > (warningValue! + dangerValue!) / 2) return Colors.orange.shade700;
+    if (warningValue != null && value > warningValue!) return Colors.yellow.shade700;
     return color;
   }
 

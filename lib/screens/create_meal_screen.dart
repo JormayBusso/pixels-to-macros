@@ -582,6 +582,19 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
         sugarsPer100g: result.sugarsPer100g,
         saturatedFatPer100g: result.saturatedFatPer100g,
         sodiumMgPer100g: result.sodiumMgPer100g,
+        cholesterolMgPer100g: result.cholesterolMgPer100g,
+        vitaminAUgPer100g: result.vitaminAUgPer100g,
+        vitaminCMgPer100g: result.vitaminCMgPer100g,
+        vitaminDUgPer100g: result.vitaminDUgPer100g,
+        vitaminEMgPer100g: result.vitaminEMgPer100g,
+        vitaminKUgPer100g: result.vitaminKUgPer100g,
+        vitaminB12UgPer100g: result.vitaminB12UgPer100g,
+        folateUgPer100g: result.folateUgPer100g,
+        calciumMgPer100g: result.calciumMgPer100g,
+        ironMgPer100g: result.ironMgPer100g,
+        magnesiumMgPer100g: result.magnesiumMgPer100g,
+        potassiumMgPer100g: result.potassiumMgPer100g,
+        zincMgPer100g: result.zincMgPer100g,
       );
       await DatabaseService.instance.insertFood(food);
       existing = await DatabaseService.instance.getFoodByLabel(result.name);

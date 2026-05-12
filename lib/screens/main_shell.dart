@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/scan_state_provider.dart';
+import '../providers/tab_navigation_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/app_recovery_service.dart';
 import '../services/debug_log.dart';
@@ -162,6 +163,21 @@ class _MainShellState extends ConsumerState<MainShell> {
 
     return Stack(
       children: [
+        Builder(
+          builder: (context) {
+            // Watch for programmatic tab navigation requests.
+            final requestedTab = ref.watch(tabNavigationProvider);
+            if (requestedTab >= 0 && requestedTab != _tabIndex) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  setState(() => _tabIndex = requestedTab);
+                  ref.read(tabNavigationProvider.notifier).state = -1;
+                }
+              });
+            }
+            return const SizedBox.shrink();
+          },
+        ),
         Scaffold(
           body: IndexedStack(
             index: _tabIndex,
@@ -171,6 +187,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             key: TourKeys.navBar,
             selectedIndex: _tabIndex,
             onDestinationSelected: (i) {
+              FocusScope.of(context).unfocus();
               setState(() => _tabIndex = i);
             },
             backgroundColor: Colors.white,

@@ -51,22 +51,19 @@ class RecipeRepository {
       if (mealType != null && r.mealType != mealType) continue;
       if (maxMinutes > 0 && r.minutes > maxMinutes) continue;
       if (q.isNotEmpty) {
-        final hay = '${r.name.toLowerCase()} '
-            '${r.tags.join(' ').toLowerCase()} '
-            '${r.ingredients.map((i) => i.name).join(' ').toLowerCase()}';
-        if (!hay.contains(q)) continue;
+        // Match against individual ingredient names so searching "bread"
+        // only returns recipes that have bread in their ingredient list,
+        // not recipes whose name or other ingredients accidentally contain
+        // the substring. Also allow recipe name match for category queries.
+        final ingredientMatch = r.ingredients.any(
+            (i) => i.name.toLowerCase().contains(q));
+        final nameMatch = r.name.toLowerCase().contains(q);
+        if (!ingredientMatch && !nameMatch) continue;
       }
       filtered.add(r);
     }
-    // Stable, deterministic ordering: recipes with image first, then with
-    // macros, then by shortest prep time.
-    filtered.sort((a, b) {
-      final imgCmp = (b.image != null ? 1 : 0) - (a.image != null ? 1 : 0);
-      if (imgCmp != 0) return imgCmp;
-      final macroCmp = (b.hasMacros ? 1 : 0) - (a.hasMacros ? 1 : 0);
-      if (macroCmp != 0) return macroCmp;
-      return a.minutes.compareTo(b.minutes);
-    });
+    // Sort alphabetically by name.
+    filtered.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     if (filtered.length > limit) return filtered.sublist(0, limit);
     return filtered;
   }

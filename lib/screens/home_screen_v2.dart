@@ -9,6 +9,7 @@ import '../providers/history_provider.dart';
 import '../providers/recommendations_provider.dart';
 import '../providers/streak_provider.dart';
 import '../providers/scroll_trigger_provider.dart';
+import '../providers/tab_navigation_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
@@ -358,6 +359,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     // ── Food breakdown ───────────────────────────────────────
                     _SectionTitle('Today\'s Foods'),
                     const SizedBox(height: 8),
+                    // ICR warning for diabetes users
+                    if (prefs.nutritionGoal == NutritionGoalType.diabetes &&
+                        prefs.icrGramsPerUnit <= 0)
+                      GestureDetector(
+                        onTap: () {
+                          // Navigate to Settings tab (index 5) to set ICR
+                          ref.read(tabNavigationProvider.notifier).state = 5;
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: Colors.red.shade300, width: 1.5),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded,
+                                  color: Colors.red.shade600, size: 22),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'ICR not set — bolus cannot be calculated',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.red.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Tap here to set your Insulin-to-Carb Ratio in Settings.',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.red.shade400,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.chevron_right,
+                                  color: Colors.red.shade400),
+                            ],
+                          ),
+                        ),
+                      ),
                     if (intake.foods.isEmpty)
                       Card(
                         child: Padding(
@@ -1129,58 +1182,131 @@ class _RecommendationsCard extends ConsumerWidget {
     if (state.recs.isEmpty) return const SizedBox.shrink();
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Professional gradient header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  context.primary500.withValues(alpha: 0.08),
+                  Colors.amber.shade50.withValues(alpha: 0.5),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(
               children: [
-                Icon(Icons.lightbulb_outline,
-                    size: 18, color: AppTheme.amber600),
-                SizedBox(width: 6),
-                Text(
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: AppTheme.amber600.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.auto_awesome,
+                      size: 16, color: AppTheme.amber600),
+                ),
+                const SizedBox(width: 10),
+                const Text(
                   'Smart Recommendations',
                   style: TextStyle(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     fontSize: 15,
                     color: AppTheme.gray900,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: context.primary500.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${state.recs.length} tips',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: context.primary600,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            ...state.recs.map((rec) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
+          ),
+          // Recommendation items
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              children: state.recs.asMap().entries.map((entry) {
+                final rec = entry.value;
+                final isLast = entry.key == state.recs.length - 1;
+                return Padding(
+                  padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: 36,
+                        height: 36,
                         decoration: BoxDecoration(
-                          color: rec.color.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
+                          color: rec.color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: rec.color.withValues(alpha: 0.2)),
                         ),
-                        child: Icon(rec.icon, size: 16, color: rec.color),
+                        child: Icon(rec.icon, size: 18, color: rec.color),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               rec.message,
-                              style: const TextStyle(fontSize: 13, height: 1.4),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1.4,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                             if (rec.suggestion != null) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                rec.suggestion!,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppTheme.gray400,
-                                  fontStyle: FontStyle.italic,
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: rec.color.withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.tips_and_updates_outlined,
+                                        size: 12,
+                                        color: rec.color.withValues(alpha: 0.7)),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        rec.suggestion!,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: AppTheme.gray500,
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -1189,9 +1315,11 @@ class _RecommendationsCard extends ConsumerWidget {
                       ),
                     ],
                   ),
-                )),
-          ],
-        ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
