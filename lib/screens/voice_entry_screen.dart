@@ -44,7 +44,87 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     'mixed nut': 'mixed nuts',
     'blueberries': 'blueberry',
     'strawberries': 'strawberry',
+    'raspberries': 'raspberry',
+    'blackberries': 'blackberry',
+    'cranberries': 'cranberry',
+    'cherries': 'cherry',
     'thee': 'tea',
+    'tater': 'potato',
+    'taters': 'potato',
+    'spud': 'potato',
+    'spuds': 'potato',
+    'fries': 'french fries',
+    'chips': 'potato chips',
+    'crisps': 'potato chips',
+    'chix': 'chicken',
+    'breast': 'chicken breast',
+    'thigh': 'chicken thigh',
+    'drumstick': 'chicken',
+    'steak': 'beef steak',
+    'ribeye': 'beef steak',
+    'sirloin': 'beef steak',
+    'filet': 'beef steak',
+    'mince': 'ground beef',
+    'ground meat': 'ground beef',
+    'pork chop': 'pork',
+    'ham': 'pork',
+    'bacon strip': 'bacon',
+    'oatmeal': 'oats',
+    'porridge': 'oats',
+    'cereal': 'oats',
+    'granola bar': 'granola',
+    'pb': 'peanut butter',
+    'almond butter': 'almond butter',
+    'oj': 'orange juice',
+    'juice': 'orange juice',
+    'soda': 'soft drink',
+    'pop': 'soft drink',
+    'coke': 'soft drink',
+    'pepsi': 'soft drink',
+    'sprite': 'soft drink',
+    'latte': 'coffee',
+    'espresso': 'coffee',
+    'cappuccino': 'coffee',
+    'toast': 'bread',
+    'naan': 'bread',
+    'pita': 'bread',
+    'tortilla': 'bread',
+    'wrap': 'bread',
+    'bagel': 'bread',
+    'croissant': 'bread',
+    'roll': 'bread',
+    'bun': 'bread',
+    'jam': 'fruit jam',
+    'jelly': 'fruit jam',
+    'marmalade': 'fruit jam',
+    'veggies': 'mixed vegetables',
+    'vegetables': 'mixed vegetables',
+    'greens': 'spinach',
+    'lettuce': 'salad',
+    'romaine': 'salad',
+    'arugula': 'salad',
+    'rocket': 'salad',
+    'sweetcorn': 'corn',
+    'maize': 'corn',
+    'tuna can': 'tuna',
+    'canned tuna': 'tuna',
+    'tinned tuna': 'tuna',
+    'sardine': 'sardines',
+    'prawn': 'shrimp',
+    'prawns': 'shrimp',
+    'shrimps': 'shrimp',
+    'curd': 'yogurt',
+    'greek yoghurt': 'greek yogurt',
+    'yoghurt': 'yogurt',
+    'cottage cheese': 'cottage cheese',
+    'cream cheese': 'cream cheese',
+    'cheddar': 'cheddar cheese',
+    'mozzarella': 'mozzarella cheese',
+    'parmesan': 'parmesan cheese',
+    'feta': 'feta cheese',
+    'gouda': 'cheese',
+    'brie': 'cheese',
+    'swiss': 'cheese',
   };
 
   static const _speechStopWords = {
@@ -77,6 +157,25 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     'little',
     'full',
     'hand',
+    'today',
+    'tonight',
+    'yesterday',
+    'morning',
+    'afternoon',
+    'evening',
+    'for',
+    'lunch',
+    'dinner',
+    'breakfast',
+    'snack',
+    'my',
+    'that',
+    'this',
+    'like',
+    'about',
+    'around',
+    'roughly',
+    'approximately',
   };
 
   @override
@@ -207,12 +306,25 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       seg = seg.trim();
       if (seg.isEmpty) continue;
 
-      // 4. Extract quantity
+      // 4. Convert word numbers to digits
+      const _wordNumbers = {
+        'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+        'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
+        'half': '0.5', 'quarter': '0.25',
+      };
+      for (final entry in _wordNumbers.entries) {
+        if (seg.startsWith('${entry.key} ')) {
+          seg = seg.replaceFirst(entry.key, entry.value);
+          break;
+        }
+      }
+
+      // 4b. Extract quantity
       double? grams;
       String foodQuery = seg;
 
       final qMatch = RegExp(
-              r'^(\d+(?:\.\d+)?)\s*(g|grams?|ml|pieces?|servings?|cups?|slices?|handfuls?)?\s*(?:of\s+)?(.+)$')
+              r'^(\d+(?:\.\d+)?)\s*(g|grams?|kg|ml|l|liters?|litres?|oz|ounces?|lbs?|pounds?|pieces?|servings?|cups?|slices?|handfuls?|tbsp|tablespoons?|tsp|teaspoons?|bowls?|plates?|scoops?)?\s*(?:of\s+)?(.+)$')
           .firstMatch(seg);
       if (qMatch != null) {
         final qty = double.tryParse(qMatch.group(1)!) ?? 100;
@@ -227,6 +339,22 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
           grams = qty * 30;
         } else if (unit.startsWith('handful')) {
           grams = qty * 30;
+        } else if (unit.startsWith('bowl') || unit.startsWith('plate')) {
+          grams = qty * 300;
+        } else if (unit.startsWith('scoop')) {
+          grams = qty * 30;
+        } else if (unit.startsWith('tbsp') || unit.startsWith('tablespoon')) {
+          grams = qty * 15;
+        } else if (unit.startsWith('tsp') || unit.startsWith('teaspoon')) {
+          grams = qty * 5;
+        } else if (unit.startsWith('oz') || unit.startsWith('ounce')) {
+          grams = qty * 28.35;
+        } else if (unit.startsWith('lb') || unit.startsWith('pound')) {
+          grams = qty * 453.6;
+        } else if (unit == 'kg') {
+          grams = qty * 1000;
+        } else if (unit.startsWith('l') && !unit.startsWith('lb')) {
+          grams = qty * 1000; // 1L ≈ 1000ml ≈ 1000g for most liquids
         } else if (unit.startsWith('g') || unit.startsWith('ml')) {
           grams = qty;
         } else {
@@ -269,10 +397,18 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         final fLabel = f.label.toLowerCase();
         final fWords = fLabel.split(' ');
 
-        // Exact full match
+        // Exact full match — highest priority
         if (fLabel == foodQuery) {
           match = f;
           bestScore = 10000;
+          break;
+        }
+
+        // Check for alias-based exact match
+        final aliased = _foodAliases[foodQuery];
+        if (aliased != null && fLabel == aliased) {
+          match = f;
+          bestScore = 9000;
           break;
         }
 
@@ -283,7 +419,8 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
               fw.contains(qw) ||
               qw.contains(fw) ||
               _depluralize(fw) == qw ||
-              fw == _depluralize(qw))) {
+              fw == _depluralize(qw) ||
+              _levenshteinClose(fw, qw))) {
             matched++;
           }
         }
@@ -299,7 +436,8 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                 fw.contains(qw) ||
                 qw.contains(fw) ||
                 _depluralize(fw) == qw ||
-                fw == _depluralize(qw)))
+                fw == _depluralize(qw) ||
+                _levenshteinClose(fw, qw)))
             .length;
 
         final score = matched * 10 - unmatched * 5;
@@ -423,6 +561,36 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     return word;
   }
 
+  /// Fuzzy match: allows 1 character edit distance for words > 4 chars.
+  /// Catches speech recognition typos like "chiken" → "chicken".
+  static bool _levenshteinClose(String a, String b) {
+    if (a == b) return true;
+    if ((a.length - b.length).abs() > 1) return false;
+    if (a.length < 4 || b.length < 4) return false;
+    int diffs = 0;
+    final maxLen = a.length > b.length ? a.length : b.length;
+    int ia = 0, ib = 0;
+    while (ia < a.length && ib < b.length) {
+      if (a[ia] != b[ib]) {
+        diffs++;
+        if (diffs > 1) return false;
+        if (a.length > b.length) {
+          ia++;
+        } else if (b.length > a.length) {
+          ib++;
+        } else {
+          ia++;
+          ib++;
+        }
+      } else {
+        ia++;
+        ib++;
+      }
+    }
+    diffs += (a.length - ia) + (b.length - ib);
+    return diffs <= 1;
+  }
+
   Future<void> _logAll() async {
     try {
       await _doLogAll();
@@ -515,9 +683,19 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Speech'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.keyboard_hide),
+            tooltip: 'Dismiss keyboard',
+            onPressed: () => FocusScope.of(context).unfocus(),
+          ),
+        ],
       ),
-      body: SafeArea(
-        child: Padding(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: SafeArea(
+          child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
@@ -535,18 +713,23 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: const [
                             Text(
-                              'Speak in English',
+                              'Tell me what you ate',
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 15,
                               ),
                             ),
-                            SizedBox(height: 2),
+                            SizedBox(height: 4),
                             Text(
-                              'Example: "200 grams of chicken and a banana"',
+                              'Say naturally, e.g.:\n'
+                              '• "200 grams of chicken and a banana"\n'
+                              '• "2 eggs, toast with peanut butter"\n'
+                              '• "a bowl of oatmeal and a coffee"\n'
+                              '• "150g salmon with rice and broccoli"',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.gray600,
+                                height: 1.4,
                               ),
                             ),
                           ],
@@ -589,9 +772,13 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
               const SizedBox(height: 8),
               Text(
                 _listening
-                    ? 'Listening…'
-                    : (_available ? 'Tap to speak' : 'Initialising…'),
-                style: const TextStyle(fontSize: 13, color: AppTheme.gray400),
+                    ? 'Listening… speak naturally'
+                    : (_available ? 'Tap to speak' : 'Initialising speech…'),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: _listening ? FontWeight.w600 : FontWeight.w400,
+                  color: _listening ? Colors.red.shade400 : AppTheme.gray400,
+                ),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 8),

@@ -40,10 +40,10 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
     'liver',
     'stomach',
     'intestines',
+    'kidneys',
     'bones',
     'muscles',
     'skin',
-    'veins',
   ];
 
   /// Mock data example requested by product spec.
@@ -56,7 +56,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
   @override
   void initState() {
     super.initState();
-    _rawSvgFuture = rootBundle.loadString('assets/body_map_svg.svg');
+    _rawSvgFuture = rootBundle.loadString('assets/good body map.svg');
   }
 
   static bool _hasOrganPathIds(String rawSvg) {
@@ -81,11 +81,11 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
     _OrganRegion.blood:       (cx: 0.460, cy: 0.245, size: 30),
   };
 
-  // The SVG viewport is 474 × 711.  Given the container size, compute the
+  // The SVG viewport is 2728 × 4096.  Given the container size, compute the
   // rendered image rect (BoxFit.contain centres the image).
   static ({double left, double top, double width, double height})
       _imageRect(double cw, double ch) {
-    const imgW = 474.0, imgH = 711.0;
+    const imgW = 2728.0, imgH = 4096.0;
     final scale = (cw / imgW).compareTo(ch / imgH) <= 0 ? cw / imgW : ch / imgH;
     final rw = imgW * scale, rh = imgH * scale;
     return (left: (cw - rw) / 2, top: (ch - rh) / 2, width: rw, height: rh);
@@ -148,7 +148,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                             children: [
                               Positioned.fill(
                                 child: Image.asset(
-                                  'assets/5C0CFA50-9D0D-4813-BAB6-950A06A6FF3F_1_105_c.jpeg',
+                                  'assets/E25E5E96-362D-4B79-9469-6128EBAF2201_1_102_a.jpeg',
                                   fit: BoxFit.contain,
                                   alignment: Alignment.center,
                                 ),

@@ -240,6 +240,10 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
               double mealProtein = 0;
               double mealFiber = 0;
               double mealGL = 0;
+              double mealFat = 0;
+              double mealSatFat = 0;
+              double mealCarbs = 0;
+              double mealSodium = 0;
               for (final f in _scan.foods) {
                 final fd = _foodMap[f.label.toLowerCase()];
                 if (fd == null) continue;
@@ -247,6 +251,10 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                 mealProtein += fd.proteinPer100g * g / 100;
                 mealFiber += fd.fiberPer100g * g / 100;
                 mealGL += fd.glForGrams(g);
+                mealFat += fd.fatPer100g * g / 100;
+                mealSatFat += fd.saturatedFatPer100g * g / 100;
+                mealCarbs += fd.carbsPer100g * g / 100;
+                mealSodium += fd.sodiumMgPer100g * g / 100;
               }
               final breakdown = calculatePlateScore(
                 mealCalories: mealCal,
@@ -255,6 +263,10 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                 fiberG: mealFiber,
                 foodCount: _scan.foods.length,
                 totalGL: mealGL,
+                fatG: mealFat,
+                saturatedFatG: mealSatFat,
+                carbsG: mealCarbs,
+                sodiumMg: mealSodium,
               );
               return PlateScoreReveal(
                 score: breakdown.total,

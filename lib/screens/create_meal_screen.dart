@@ -215,6 +215,11 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
       appBar: AppBar(
         title: Text(isEdit ? 'Edit Meal' : 'Create Meal'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.keyboard_hide),
+            tooltip: 'Dismiss keyboard',
+            onPressed: () => FocusScope.of(context).unfocus(),
+          ),
           if (_saving)
             const Padding(
                 padding: EdgeInsets.all(16),

@@ -12,6 +12,7 @@ import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/user_prefs_provider.dart';
+import '../services/barcode_lookup_service.dart';
 import '../services/database_service.dart';
 import '../services/recipe_repository.dart';
 import '../theme/app_theme.dart';
@@ -1273,6 +1274,65 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
     });
   }
 
+  Future<void> _scanBarcodeForIngredient() async {
+    // Connectivity check
+    try {
+      final result = await InternetAddress.lookup('world.openfoodfacts.org')
+          .timeout(const Duration(seconds: 3));
+      if (result.isEmpty || result[0].rawAddress.isEmpty) throw Exception();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Barcode scanning requires an internet connection.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    final result = await BarcodeLookupService.instance.scanAndLookup();
+    if (result == null || !mounted) return;
+
+    // Add to food DB if not already present
+    var existing = await DatabaseService.instance.getFoodByLabel(result.name);
+    if (existing == null) {
+      final lowerName = result.name.toLowerCase();
+      final isDrink = const [
+        'water', 'juice', 'drink', 'cola', 'soda', 'milk', 'tea', 'coffee',
+      ].any((kw) => lowerName.contains(kw));
+
+      final food = FoodData(
+        label: result.name,
+        densityMin: isDrink ? 0.99 : 0.80,
+        densityMax: isDrink ? 1.05 : 1.00,
+        kcalPer100g: result.kcalPer100g,
+        category: isDrink ? 'drink' : 'mixed',
+        proteinPer100g: result.proteinPer100g,
+        carbsPer100g: result.carbsPer100g,
+        fatPer100g: result.fatPer100g,
+        perMl: isDrink,
+        fiberPer100g: result.fiberPer100g,
+        sugarsPer100g: result.sugarsPer100g,
+        saturatedFatPer100g: result.saturatedFatPer100g,
+        sodiumMgPer100g: result.sodiumMgPer100g,
+      );
+      await DatabaseService.instance.insertFood(food);
+      _allFoods = await DatabaseService.instance.getAllFoods();
+    }
+
+    final grams = result.servingGrams ?? 100.0;
+    setState(() {
+      _ingredients.add(RecipeIngredient(
+        name: result.name,
+        amount: '${grams.round()}g',
+        grams: grams,
+      ));
+      _controllers.add(TextEditingController(text: grams.round().toString()));
+      _nameControllers.add(TextEditingController(text: result.name));
+    });
+  }
+
   Future<void> _initDefaults() async {
     _allFoods = await DatabaseService.instance.getAllFoods();
 
@@ -1573,7 +1633,10 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
   @override
   Widget build(BuildContext context) {
     final h = MediaQuery.of(context).size.height * 0.85;
-    return Container(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.translucent,
+      child: Container(
       height: h,
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1590,6 +1653,12 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                 children: [
                   Expanded(
                       child: Text('Log: ${widget.recipe.name}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+                  // Dismiss keyboard button
+                  IconButton(
+                    icon: const Icon(Icons.keyboard_hide, size: 22),
+                    tooltip: 'Dismiss keyboard',
+                    onPressed: () => FocusScope.of(context).unfocus(),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.of(context).pop(),
@@ -1638,12 +1707,26 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                   itemCount: _ingredients.length + 1, // +1 for add row
                   separatorBuilder: (_, __) => const Divider(height: 12),
                   itemBuilder: (_, i) {
-                    // Last slot = "Add ingredient" button
+                    // Last slot = "Add ingredient" buttons
                     if (i == _ingredients.length) {
-                      return TextButton.icon(
-                        onPressed: _addIngredient,
-                        icon: const Icon(Icons.add_circle_outline, size: 18),
-                        label: const Text('Add ingredient'),
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: TextButton.icon(
+                              onPressed: _scanBarcodeForIngredient,
+                              icon: const Icon(Icons.qr_code_scanner, size: 18),
+                              label: const Text('Scan Barcode'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextButton.icon(
+                              onPressed: _addIngredient,
+                              icon: const Icon(Icons.edit, size: 18),
+                              label: const Text('Add Manually'),
+                            ),
+                          ),
+                        ],
                       );
                     }
                     final ing = _ingredients[i];
@@ -1663,6 +1746,7 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                             children: [
                               TextField(
                                 controller: _nameControllers[i],
+                                textInputAction: TextInputAction.done,
                                 decoration: InputDecoration(
                                   hintText: ing.name.isEmpty ? 'Ingredient name' : ing.name,
                                   isDense: true,
@@ -1689,6 +1773,7 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                                 child: TextField(
                                   controller: _controllers[i],
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  textInputAction: TextInputAction.done,
                                   decoration: const InputDecoration(
                                     isDense: true,
                                     contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -1720,6 +1805,7 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

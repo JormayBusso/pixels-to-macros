@@ -685,6 +685,11 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
         title: const Text('Log Food Manually'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.keyboard_hide),
+            tooltip: 'Dismiss keyboard',
+            onPressed: () => FocusScope.of(context).unfocus(),
+          ),
+          IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: 'Scan barcode',
             onPressed: _openBarcodeScanner,

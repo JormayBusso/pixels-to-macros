@@ -112,23 +112,31 @@ class _PlateScoreRevealState extends State<PlateScoreReveal>
             _BreakdownRow(
                 label: 'Calorie balance',
                 points: widget.breakdown.caloriePoints,
-                max: 30),
+                max: 25),
             _BreakdownRow(
                 label: 'Protein',
                 points: widget.breakdown.proteinPoints,
-                max: 25),
+                max: 20),
             _BreakdownRow(
                 label: 'Fiber',
                 points: widget.breakdown.fiberPoints,
-                max: 15),
+                max: 12),
             _BreakdownRow(
                 label: 'Variety',
                 points: widget.breakdown.varietyPoints,
-                max: 15),
+                max: 10),
             _BreakdownRow(
-                label: 'Low sugar',
+                label: 'Glycemic quality',
                 points: widget.breakdown.sugarPoints,
-                max: 15),
+                max: 13),
+            _BreakdownRow(
+                label: 'Fat quality',
+                points: widget.breakdown.fatBalancePoints,
+                max: 10),
+            _BreakdownRow(
+                label: 'Micronutrients',
+                points: widget.breakdown.micronutrientPoints,
+                max: 10),
             const SizedBox(height: 12),
           ],
         );
@@ -253,26 +261,44 @@ class PlateScoreBreakdown {
     required this.fiberPoints,
     required this.varietyPoints,
     required this.sugarPoints,
+    required this.fatBalancePoints,
+    required this.micronutrientPoints,
   });
 
-  final int caloriePoints; // out of 30
-  final int proteinPoints; // out of 25
-  final int fiberPoints; // out of 15
-  final int varietyPoints; // out of 15
-  final int sugarPoints; // out of 15
+  final int caloriePoints;      // out of 25
+  final int proteinPoints;      // out of 20
+  final int fiberPoints;        // out of 12
+  final int varietyPoints;      // out of 10
+  final int sugarPoints;        // out of 13
+  final int fatBalancePoints;   // out of 10
+  final int micronutrientPoints; // out of 10
 
   int get total =>
-      caloriePoints + proteinPoints + fiberPoints + varietyPoints + sugarPoints;
+      caloriePoints + proteinPoints + fiberPoints + varietyPoints +
+      sugarPoints + fatBalancePoints + micronutrientPoints;
 }
 
-/// Calculate plate score for a meal.
+/// Calculate plate score for a meal — professionally evaluated on a 0–100 scale.
+///
+/// Scoring breakdown (7 dimensions, 100 total):
+///  • Calorie balance       (0–25): proximity to per-meal target (daily goal ÷ 3)
+///  • Protein adequacy      (0–20): optimal 25–40g per meal with diminishing returns
+///  • Dietary fiber          (0–12): aim for 8g+ per meal (WHO recommends 25–30g/day)
+///  • Food variety           (0–10): 3+ distinct food groups/items
+///  • Glycemic quality       (0–13): penalises high glycemic load meals
+///  • Fat quality            (0–10): rewards balanced fat, penalises excess saturated fat
+///  • Micronutrient density  (0–10): bonus for vitamin/mineral-rich meals
 ///
 /// [mealCalories] — total kcal in this meal
-/// [dailyGoal] — user's daily kcal goal (divide by 3 for per-meal target)
+/// [dailyGoal] — user's daily kcal goal
 /// [proteinG] — grams of protein in this meal
 /// [fiberG] — grams of fiber in this meal
 /// [foodCount] — number of distinct food items detected
 /// [totalGL] — total glycemic load of the meal
+/// [fatG] — total fat grams (optional, for fat quality scoring)
+/// [saturatedFatG] — saturated fat grams (optional)
+/// [carbsG] — total carbohydrates (optional, for macro balance)
+/// [sodiumMg] — sodium in mg (optional, for excess sodium penalty)
 PlateScoreBreakdown calculatePlateScore({
   required double mealCalories,
   required int dailyGoal,
@@ -280,31 +306,143 @@ PlateScoreBreakdown calculatePlateScore({
   required double fiberG,
   required int foodCount,
   required double totalGL,
+  double fatG = 0,
+  double saturatedFatG = 0,
+  double carbsG = 0,
+  double sodiumMg = 0,
 }) {
-  // Calorie balance (30 pts): how close to 1/3 of daily goal
+  // ── Calorie balance (25 pts) ────────────────────────────────────────
+  // Perfect: exactly 1/3 of daily goal. Penalise both under- and over-eating.
+  // Use a bell-curve-style scoring: within ±10% = full marks, degrades linearly.
   final mealTarget = dailyGoal / 3.0;
-  final calRatio = mealTarget > 0 ? mealCalories / mealTarget : 0.0;
-  final calDeviation = (calRatio - 1.0).abs(); // 0 = perfect
-  final caloriePoints = (30 * (1 - calDeviation).clamp(0.0, 1.0)).round();
+  double calScore;
+  if (mealTarget <= 0) {
+    calScore = 0.5;
+  } else {
+    final calRatio = mealCalories / mealTarget;
+    final deviation = (calRatio - 1.0).abs();
+    if (deviation <= 0.10) {
+      calScore = 1.0; // within ±10% of target = perfect
+    } else if (deviation <= 0.25) {
+      calScore = 1.0 - (deviation - 0.10) / 0.15 * 0.3; // 1.0 → 0.7
+    } else if (deviation <= 0.50) {
+      calScore = 0.7 - (deviation - 0.25) / 0.25 * 0.4; // 0.7 → 0.3
+    } else {
+      calScore = (0.3 - (deviation - 0.50) * 0.4).clamp(0.0, 0.3);
+    }
+    // Extra penalty for extreme overconsumption (>2x target)
+    if (calRatio > 2.0) calScore = 0.0;
+  }
+  final caloriePoints = (25 * calScore.clamp(0.0, 1.0)).round();
 
-  // Protein (25 pts): aim for ~25g+ per meal
-  final proteinPoints = (25 * (proteinG / 25.0).clamp(0.0, 1.0)).round();
+  // ── Protein adequacy (20 pts) ────────────────────────────────────────
+  // Optimal range: 25–40g per meal for most adults.
+  // Below 10g = poor. 10–25g = linear improvement. 25–40g = full marks.
+  // Above 40g = slight diminishing (still good but no extra points).
+  double proteinScore;
+  if (proteinG >= 25) {
+    proteinScore = 1.0;
+  } else if (proteinG >= 15) {
+    proteinScore = 0.6 + (proteinG - 15) / 10.0 * 0.4; // 0.6 → 1.0
+  } else if (proteinG >= 5) {
+    proteinScore = 0.2 + (proteinG - 5) / 10.0 * 0.4; // 0.2 → 0.6
+  } else {
+    proteinScore = proteinG / 5.0 * 0.2; // 0 → 0.2
+  }
+  final proteinPoints = (20 * proteinScore.clamp(0.0, 1.0)).round();
 
-  // Fiber (15 pts): aim for ~8g+ per meal
-  final fiberPoints = (15 * (fiberG / 8.0).clamp(0.0, 1.0)).round();
+  // ── Dietary fiber (12 pts) ──────────────────────────────────────────
+  // WHO recommends 25–30g/day ≈ 8–10g per meal.
+  // Logarithmic curve: first few grams matter most.
+  double fiberScore;
+  if (fiberG >= 10) {
+    fiberScore = 1.0;
+  } else if (fiberG >= 5) {
+    fiberScore = 0.6 + (fiberG - 5) / 5.0 * 0.4;
+  } else if (fiberG >= 2) {
+    fiberScore = 0.2 + (fiberG - 2) / 3.0 * 0.4;
+  } else {
+    fiberScore = fiberG / 2.0 * 0.2;
+  }
+  final fiberPoints = (12 * fiberScore.clamp(0.0, 1.0)).round();
 
-  // Variety (15 pts): more distinct foods = better
-  final varietyPoints = (15 * (foodCount / 4.0).clamp(0.0, 1.0)).round();
+  // ── Food variety (10 pts) ────────────────────────────────────────────
+  // Diverse meals are associated with better micronutrient coverage.
+  // 1 food = 25%, 2 = 50%, 3 = 75%, 4+ = 100%.
+  double varietyScore;
+  if (foodCount >= 4) {
+    varietyScore = 1.0;
+  } else if (foodCount == 3) {
+    varietyScore = 0.75;
+  } else if (foodCount == 2) {
+    varietyScore = 0.50;
+  } else if (foodCount == 1) {
+    varietyScore = 0.25;
+  } else {
+    varietyScore = 0.0;
+  }
+  final varietyPoints = (10 * varietyScore).round();
 
-  // Sugar/GL (15 pts): lower GL = better
-  final glScore = totalGL <= 10
-      ? 1.0
-      : totalGL <= 20
-          ? 0.6
-          : totalGL <= 30
-              ? 0.3
-              : 0.0;
-  final sugarPoints = (15 * glScore).round();
+  // ── Glycemic quality (13 pts) ────────────────────────────────────────
+  // Low GL (<10) = excellent, moderate (10–20) = good, high (>20) = poor.
+  // Uses a smooth curve rather than hard cutoffs.
+  double glScore;
+  if (totalGL <= 5) {
+    glScore = 1.0;
+  } else if (totalGL <= 10) {
+    glScore = 1.0 - (totalGL - 5) / 5.0 * 0.15; // 1.0 → 0.85
+  } else if (totalGL <= 15) {
+    glScore = 0.85 - (totalGL - 10) / 5.0 * 0.25; // 0.85 → 0.60
+  } else if (totalGL <= 25) {
+    glScore = 0.60 - (totalGL - 15) / 10.0 * 0.35; // 0.60 → 0.25
+  } else if (totalGL <= 40) {
+    glScore = 0.25 - (totalGL - 25) / 15.0 * 0.20; // 0.25 → 0.05
+  } else {
+    glScore = 0.0;
+  }
+  final sugarPoints = (13 * glScore.clamp(0.0, 1.0)).round();
+
+  // ── Fat quality (10 pts) ─────────────────────────────────────────────
+  // Rewards meals with moderate total fat and low saturated fat ratio.
+  // Penalises >15g sat fat per meal or >50% of fat from saturated sources.
+  double fatScore = 0.7; // neutral default when fat data unavailable
+  if (fatG > 0) {
+    final satRatio = saturatedFatG / fatG;
+    // Saturated fat should be <1/3 of total fat (AHA recommendation)
+    if (satRatio <= 0.30) {
+      fatScore = 1.0;
+    } else if (satRatio <= 0.45) {
+      fatScore = 1.0 - (satRatio - 0.30) / 0.15 * 0.4;
+    } else {
+      fatScore = 0.6 - ((satRatio - 0.45) * 2.0).clamp(0.0, 0.6);
+    }
+    // Absolute saturated fat penalty: >15g is concerning
+    if (saturatedFatG > 15) {
+      fatScore *= 0.5;
+    } else if (saturatedFatG > 10) {
+      fatScore *= 0.75;
+    }
+  }
+  final fatBalancePoints = (10 * fatScore.clamp(0.0, 1.0)).round();
+
+  // ── Micronutrient density (10 pts) ───────────────────────────────────
+  // Proxy: meals with more variety, adequate protein, fiber, and moderate
+  // sodium are more likely to be micronutrient-dense.
+  double microScore = 0.5; // baseline
+  // Bonus for high fiber (indicates whole foods)
+  if (fiberG >= 5) microScore += 0.15;
+  // Bonus for food variety (more foods = more micronutrients)
+  if (foodCount >= 3) microScore += 0.15;
+  if (foodCount >= 5) microScore += 0.10;
+  // Penalty for excessive sodium (>800mg per meal)
+  if (sodiumMg > 1200) {
+    microScore -= 0.3;
+  } else if (sodiumMg > 800) {
+    microScore -= 0.15;
+  }
+  // Bonus for adequate protein (complete amino acids)
+  if (proteinG >= 20) microScore += 0.10;
+  final micronutrientPoints = (10 * microScore.clamp(0.0, 1.0)).round();
 
   return PlateScoreBreakdown(
     caloriePoints: caloriePoints,
@@ -312,5 +450,7 @@ PlateScoreBreakdown calculatePlateScore({
     fiberPoints: fiberPoints,
     varietyPoints: varietyPoints,
     sugarPoints: sugarPoints,
+    fatBalancePoints: fatBalancePoints,
+    micronutrientPoints: micronutrientPoints,
   );
 }
