@@ -15,9 +15,9 @@ final class FramePreprocessor {
 
     // MARK: – Configuration
 
-    /// DeepLabV3 MobileNet default input size.
-    let modelInputWidth  = 513
-    let modelInputHeight = 513
+    /// Model input size must match the bundled FoodSegmentation.mlmodelc.
+    let modelInputWidth  = 512
+    let modelInputHeight = 512
 
     // MARK: – Private state
 

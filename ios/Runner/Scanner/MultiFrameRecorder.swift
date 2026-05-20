@@ -33,8 +33,11 @@ final class MultiFrameRecorder {
     /// All sampled frames that had depth data available.
     private(set) var lightFrames: [LightFrame] = []
 
-    var frameCount: Int { lightFrames.count }
-    var hasDepthData: Bool { !lightFrames.isEmpty }
+    /// First few top-view depth frames, captured before the phone moves to a side view.
+    private(set) var topViewFrames: [LightFrame] = []
+
+    var frameCount: Int { topViewFrames.count + lightFrames.count }
+    var hasDepthData: Bool { !topViewFrames.isEmpty || !lightFrames.isEmpty }
 
     /// Current phone pitch angle in radians. Updated every sample.
     /// -π/2 = pointing straight down (top-view), 0 = horizontal (side-view).
@@ -49,6 +52,8 @@ final class MultiFrameRecorder {
     private let sampleInterval: TimeInterval = 0.1
     /// 20 frames == 2 seconds at 10 fps.
     private let maxFrames = 20
+    /// Keep a short stable top-view lock before side-view depth is allowed to influence volume.
+    private let maxTopViewFrames = 4
 
     // MARK: – Control
 
@@ -57,6 +62,7 @@ final class MultiFrameRecorder {
     func startRecording(sessionManager: ARSessionManager) {
         guard !isActive else { return }
         topFrame    = nil
+        topViewFrames = []
         lightFrames = []
         isActive    = true
 
@@ -79,6 +85,7 @@ final class MultiFrameRecorder {
     func releaseAll() {
         stopRecording()
         topFrame    = nil
+        topViewFrames = []
         lightFrames = []
     }
 
@@ -106,10 +113,11 @@ final class MultiFrameRecorder {
             let intrinsics = arFrame.camera.intrinsics
             let w = CVPixelBufferGetWidth(pixBuf)
             let h = CVPixelBufferGetHeight(pixBuf)
+            let isTopView = MultiFrameRecorder.isLikelyTopView(pitch: currentPitch)
 
             // First frame → full top frame (RGB + depth).
             // Deep-copy pixel buffers so ARKit can reuse its internal pool.
-            if topFrame == nil {
+            if topFrame == nil && isTopView {
                 topFrame = FrameCaptureService.CapturedFrame(
                     pixelBuffer:     MultiFrameRecorder.copyPixelBuffer(pixBuf),
                     depthBuffer:     depthBuf.flatMap { MultiFrameRecorder.copyPixelBuffer($0) },
@@ -121,15 +129,24 @@ final class MultiFrameRecorder {
 
             // All frames with depth → lightweight record (deep-copy depth).
             if let depth = depthBuf, lightFrames.count < maxFrames {
-                lightFrames.append(LightFrame(
+                let frame = LightFrame(
                     depthBuffer:      MultiFrameRecorder.copyPixelBuffer(depth),
                     cameraTransform:  transform,
                     cameraIntrinsics: intrinsics,
                     imageWidth:  w,
                     imageHeight: h
-                ))
+                )
+                if isTopView && topViewFrames.count < maxTopViewFrames {
+                    topViewFrames.append(frame)
+                } else if topFrame != nil {
+                    lightFrames.append(frame)
+                }
             }
         }
+    }
+
+    private static func isLikelyTopView(pitch: Float) -> Bool {
+        abs(Double(pitch) + Double.pi / 2.0) < 0.55
     }
 
     // MARK: – Pixel buffer deep copy

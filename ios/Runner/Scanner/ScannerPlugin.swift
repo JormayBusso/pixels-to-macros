@@ -242,6 +242,9 @@ final class ScannerPlugin {
                 result(-1.0)
             }
 
+        case "getScanImage":
+            result(pipeline.lastScanImagePath)
+
         default:
             result(FlutterMethodNotImplemented)
         }

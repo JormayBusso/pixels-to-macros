@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
+import '../core/app_locale.dart';
 import '../models/mascot_type.dart';
 import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../providers/scroll_trigger_provider.dart';
+import '../providers/locale_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/auth_service.dart';
 import '../services/data_export_service.dart';
@@ -16,6 +21,7 @@ import '../widgets/tour_keys.dart';
 import 'auth_screen.dart';
 import 'eval_dashboard_screen.dart';
 import 'food_database_screen.dart';
+import 'onboarding_screen.dart';
 
 /// Settings screen for editing user profile and calorie goal.
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -39,6 +45,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // Private keys replaced by TourKeys so AppTutorialOverlay can measure them.
   int _lastVacationTrigger = 0;
   int _lastWeeklyReviewTrigger = 0;
+  Timer? _saveDebounce;
 
   @override
   void initState() {
@@ -48,7 +55,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _goalCtrl = TextEditingController(text: prefs.dailyCalorieGoal.toString());
     _passwordCtrl = TextEditingController();
     _carbCtrl = TextEditingController(text: prefs.dailyCarbLimitG.toString());
-    _proteinCtrl = TextEditingController(text: prefs.dailyProteinTargetG.toString());
+    _proteinCtrl =
+        TextEditingController(text: prefs.dailyProteinTargetG.toString());
     _fatCtrl = TextEditingController(text: prefs.dailyFatTargetG.toString());
     _waterCtrl = TextEditingController(text: prefs.dailyWaterGoalMl.toString());
     _loadFoodCount();
@@ -61,6 +69,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   void dispose() {
+    _saveDebounce?.cancel();
     _nameCtrl.dispose();
     _goalCtrl.dispose();
     _passwordCtrl.dispose();
@@ -73,6 +82,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _save() async {
+    _saveDebounce?.cancel();
+    await _persistPrefs();
+    if (mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Settings saved')),
+      );
+    }
+  }
+
+  /// Debounced save used by sliders — only persists after the user stops
+  /// dragging for 400 ms and never shows a toast on every tick.
+  void _saveSilent() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 400), () async {
+      await _persistPrefs();
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Settings saved')),
+        );
+      }
+    });
+  }
+
+  Future<void> _persistPrefs() async {
     final goal = int.tryParse(_goalCtrl.text) ?? 2000;
     final carb = int.tryParse(_carbCtrl.text) ?? 250;
     final protein = int.tryParse(_proteinCtrl.text) ?? 80;
@@ -87,11 +122,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           dailyWaterGoalMl: water.clamp(500, 10000),
         );
     await ref.read(userPrefsProvider.notifier).update(prefs);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Settings saved')),
-      );
-    }
   }
 
   Future<void> _exportCsv({required bool detailed}) async {
@@ -109,6 +139,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final vacationTrigger = ref.watch(scrollToVacationProvider);
     final weeklyReviewTrigger = ref.watch(scrollToWeeklyReviewProvider);
     if (vacationTrigger != _lastVacationTrigger) {
@@ -155,14 +186,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Settings'),
-          bottom: const TabBar(
+          title: Text(l10n.settings),
+          bottom: TabBar(
             isScrollable: true,
+            padding: EdgeInsets.zero,
+            labelPadding: const EdgeInsets.symmetric(horizontal: 12),
             tabs: [
-              Tab(icon: Icon(Icons.person_outline), text: 'Account'),
-              Tab(icon: Icon(Icons.palette_outlined), text: 'Appearance'),
-              Tab(icon: Icon(Icons.privacy_tip_outlined), text: 'Privacy'),
-              Tab(icon: Icon(Icons.science_outlined), text: 'Evaluation'),
+              Tab(icon: const Icon(Icons.person_outline), text: l10n.account),
+              Tab(
+                  icon: const Icon(Icons.palette_outlined),
+                  text: l10n.appearance),
+              Tab(
+                  icon: const Icon(Icons.privacy_tip_outlined),
+                  text: l10n.privacy),
+              Tab(
+                  icon: const Icon(Icons.science_outlined),
+                  text: l10n.evaluation),
             ],
           ),
         ),
@@ -188,6 +227,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildAccountTab() {
+    final l10n = AppLocalizations.of(context);
     return ListView(
       controller: _accountScrollController,
       padding: const EdgeInsets.all(16),
@@ -336,63 +376,81 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     _SettingsSlider(
                       label: '🍞 Carbs',
-                      value: int.tryParse(_carbCtrl.text) ?? prefs.dailyCarbLimitG,
-                      min: 15, max: 500, step: 5,
+                      value:
+                          int.tryParse(_carbCtrl.text) ?? prefs.dailyCarbLimitG,
+                      min: 15,
+                      max: 500,
+                      step: 5,
                       unit: 'g / day',
                       color: Colors.amber.shade700,
+                      recommendedValue: idealCarb,
                       warningValue: (idealCarb * 1.3).round().clamp(20, 500),
                       dangerValue: (idealCarb * 1.6).round().clamp(30, 500),
                       onChanged: (v) {
                         setState(() => _carbCtrl.text = v.toString());
-                        _save();
+                        _saveSilent();
                       },
                     ),
                     const SizedBox(height: 12),
                     _SettingsSlider(
                       label: '💪 Protein',
-                      value: int.tryParse(_proteinCtrl.text) ?? prefs.dailyProteinTargetG,
-                      min: 30, max: 300, step: 5,
+                      value: int.tryParse(_proteinCtrl.text) ??
+                          prefs.dailyProteinTargetG,
+                      min: 30,
+                      max: 300,
+                      step: 5,
                       unit: 'g / day',
                       color: Colors.red.shade600,
+                      recommendedValue: idealProtein,
                       warningValue: (idealProtein * 1.3).round().clamp(40, 300),
                       dangerValue: (idealProtein * 1.6).round().clamp(50, 300),
                       onChanged: (v) {
                         setState(() => _proteinCtrl.text = v.toString());
-                        _save();
+                        _saveSilent();
                       },
                     ),
                     const SizedBox(height: 12),
                     _SettingsSlider(
                       label: '🥑 Fat',
-                      value: int.tryParse(_fatCtrl.text) ?? prefs.dailyFatTargetG,
-                      min: 20, max: 250, step: 5,
+                      value:
+                          int.tryParse(_fatCtrl.text) ?? prefs.dailyFatTargetG,
+                      min: 20,
+                      max: 250,
+                      step: 5,
                       unit: 'g / day',
                       color: Colors.green.shade600,
+                      recommendedValue: idealFat,
                       warningValue: (idealFat * 1.3).round().clamp(25, 250),
                       dangerValue: (idealFat * 1.6).round().clamp(35, 250),
                       onChanged: (v) {
                         setState(() => _fatCtrl.text = v.toString());
-                        _save();
+                        _saveSilent();
                       },
                     ),
                     const SizedBox(height: 12),
                     // Macro breakdown info
                     Builder(builder: (_) {
-                      final carbVal = int.tryParse(_carbCtrl.text) ?? prefs.dailyCarbLimitG;
-                      final protVal = int.tryParse(_proteinCtrl.text) ?? prefs.dailyProteinTargetG;
-                      final fatVal = int.tryParse(_fatCtrl.text) ?? prefs.dailyFatTargetG;
+                      final carbVal =
+                          int.tryParse(_carbCtrl.text) ?? prefs.dailyCarbLimitG;
+                      final protVal = int.tryParse(_proteinCtrl.text) ??
+                          prefs.dailyProteinTargetG;
+                      final fatVal =
+                          int.tryParse(_fatCtrl.text) ?? prefs.dailyFatTargetG;
                       final total = carbVal * 4 + protVal * 4 + fatVal * 9;
-                      final pct = calories > 0 ? (total / calories * 100).round() : 0;
+                      final pct =
+                          calories > 0 ? (total / calories * 100).round() : 0;
                       return Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: goalType.lightColor,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: goalType.color.withValues(alpha: 0.3)),
+                          border: Border.all(
+                              color: goalType.color.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.info_outline, size: 14, color: goalType.color),
+                            Icon(Icons.info_outline,
+                                size: 14, color: goalType.color),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
@@ -437,8 +495,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   spacing: 8,
                   children: [1500, 2000, 2500, 3000].map((ml) {
                     return ActionChip(
-                      label: Text('${ml ~/ 1000}.${(ml % 1000) ~/ 100 == 0 ? '0' : (ml % 1000) ~/ 100}L'),
-                      onPressed: () => setState(() => _waterCtrl.text = ml.toString()),
+                      label: Text(
+                          '${ml ~/ 1000}.${(ml % 1000) ~/ 100 == 0 ? '0' : (ml % 1000) ~/ 100}L'),
+                      onPressed: () =>
+                          setState(() => _waterCtrl.text = ml.toString()),
                     );
                   }).toList(),
                 ),
@@ -473,12 +533,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   label: 'Food database entries',
                   value: '$_foodCount',
                 ),
-                const SizedBox(height: 8),
-                _InfoRow(
-                  icon: Icons.storage,
-                  label: 'Database version',
-                  value: '24',
-                ),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
@@ -498,12 +552,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
 
         const SizedBox(height: 24),
-        _SectionHeader('Cloud Sync'),
+        _SectionHeader(l10n.cloudSync),
         const SizedBox(height: 12),
         const _CloudSyncCard(),
 
         const SizedBox(height: 24),
-        _SectionHeader('About'),
+        _SectionHeader(l10n.aboutSection),
         const SizedBox(height: 12),
         Card(
           child: ListTile(
@@ -516,9 +570,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               child: Icon(Icons.tour_outlined, color: context.primary600),
             ),
-            title: const Text('Replay App Tour',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: const Text('Re-watch the guided feature tour'),
+            title: Text(l10n.replayAppTour,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text(l10n.replayAppTourSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               ref.read(userPrefsProvider.notifier).replayAppTutorial();
@@ -528,7 +582,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 24),
 
-        _SectionHeader('Weekly Review'),
+        _SectionHeader(l10n.weeklyReview),
         const SizedBox(height: 12),
         Container(
           key: TourKeys.weeklyReviewCard,
@@ -536,7 +590,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 24),
 
-        _SectionHeader('Vacation Mode'),
+        _SectionHeader(l10n.vacationMode),
         const SizedBox(height: 12),
         Container(
           key: TourKeys.vacationModeCard,
@@ -559,14 +613,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Vacation Mode',
-                                    style: TextStyle(
+                                Text(l10n.vacationMode,
+                                    style: const TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 15)),
                                 const SizedBox(height: 2),
-                                const Text(
-                                  'Keeps your streak alive while you\'re away.',
-                                  style: TextStyle(
+                                Text(
+                                  l10n.vacationModeDesc,
+                                  style: const TextStyle(
                                       fontSize: 12, color: AppTheme.gray600),
                                 ),
                               ],
@@ -617,18 +671,64 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildAppearanceTab() {
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _SectionHeader('Text Size'),
+        _SectionHeader(l10n.language),
+        const SizedBox(height: 12),
+        Consumer(
+          builder: (context, ref, _) {
+            final current = ref.watch(localeProvider);
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: AppLanguage.values.map((lang) {
+                    final selected = lang == current;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: ListTile(
+                        leading: Text(lang.flag,
+                            style: const TextStyle(fontSize: 22)),
+                        title: Text(
+                          lang.nativeName,
+                          style: TextStyle(
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w400,
+                          ),
+                        ),
+                        trailing: selected
+                            ? Icon(Icons.check_circle,
+                                color: context.primary500)
+                            : null,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        selectedTileColor:
+                            context.primary500.withValues(alpha: 0.08),
+                        selected: selected,
+                        onTap: () {
+                          ref.read(localeProvider.notifier).setLanguage(lang);
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 24),
+        _SectionHeader(l10n.textSize),
         const SizedBox(height: 12),
         _TextSizePickerCard(),
         const SizedBox(height: 24),
-        _SectionHeader('Mascot'),
+        _SectionHeader(l10n.mascot),
         const SizedBox(height: 12),
         _MascotPickerCard(),
         const SizedBox(height: 24),
-        _SectionHeader('App Color Theme'),
+        _SectionHeader(l10n.appColorTheme),
         const SizedBox(height: 12),
         _ThemeColorPickerCard(),
       ],
@@ -700,7 +800,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         builder: (ctx) => AlertDialog(
                           title: const Text('Clear Scan History?'),
                           content: const Text(
-                            'This will permanently delete all your scan records. This cannot be undone.'),
+                              'This will permanently delete all your scan records. This cannot be undone.'),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
@@ -708,7 +808,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, true),
-                              style: TextButton.styleFrom(foregroundColor: Colors.red),
+                              style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red),
                               child: const Text('Delete'),
                             ),
                           ],
@@ -719,7 +820,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         await db.delete('scan_results');
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Scan history cleared')),
+                            const SnackBar(
+                                content: Text('Scan history cleared')),
                           );
                         }
                       }
@@ -795,6 +897,79 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         builder: (_) => const EvalDashboardScreen(),
                       ),
                     ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _SectionHeader('Debug'),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Testing tools — reset the app to the initial state.',
+                  style: TextStyle(fontSize: 13, color: AppTheme.gray400),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.restart_alt, color: Colors.red),
+                    label: const Text(
+                      'Full App Reset (Testing)',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red),
+                    ),
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Reset Entire App?'),
+                          content: const Text(
+                            'This will delete ALL data (scans, meals, preferences, '
+                            'recipes, grocery list) and return to the onboarding '
+                            'screen. This cannot be undone.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red),
+                              child: const Text('Reset Everything'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true && mounted) {
+                        await DatabaseService.instance.resetAllData();
+                        await ref.read(userPrefsProvider.notifier).reset();
+                        if (mounted) {
+                          // Sign out if auth is active
+                          try {
+                            if (isSupabaseConfigured) {
+                              await supabase.auth.signOut();
+                            }
+                          } catch (_) {}
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                                builder: (_) => const OnboardingScreen()),
+                            (route) => false,
+                          );
+                        }
+                      }
+                    },
                   ),
                 ),
               ],
@@ -1200,8 +1375,24 @@ class _MascotPickerCard extends ConsumerStatefulWidget {
 }
 
 class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
+  String _mascotLabel(MascotType mt, AppLocalizations l10n) {
+    switch (mt) {
+      case MascotType.auto:
+        return l10n.mascotAuto;
+      case MascotType.gorilla:
+        return l10n.mascotGorilla;
+      case MascotType.plant:
+        return l10n.mascotPlant;
+      case MascotType.flame:
+        return l10n.mascotFlame;
+      case MascotType.sugar:
+        return l10n.mascotSugarCube;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final prefs = ref.watch(userPrefsProvider);
     final current = prefs.mascotType;
 
@@ -1211,9 +1402,9 @@ class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Choose your companion mascot',
-              style: TextStyle(fontSize: 13, color: AppTheme.gray600),
+            Text(
+              l10n.chooseMascot,
+              style: const TextStyle(fontSize: 13, color: AppTheme.gray600),
             ),
             const SizedBox(height: 16),
             // Live preview — show all 4 stages
@@ -1241,7 +1432,7 @@ class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
                 final selected = current == mt;
                 return ChoiceChip(
                   avatar: Text(mt.emoji, style: const TextStyle(fontSize: 16)),
-                  label: Text(mt.label),
+                  label: Text(_mascotLabel(mt, l10n)),
                   selected: selected,
                   onSelected: (_) async {
                     final updated = prefs.copyWith(mascotType: mt);
@@ -1262,6 +1453,7 @@ class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
 class _ThemeColorPickerCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final prefs = ref.watch(userPrefsProvider);
     final current = prefs.themeColorSeed;
 
@@ -1271,9 +1463,9 @@ class _ThemeColorPickerCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Pick an accent color for the whole app',
-              style: TextStyle(fontSize: 13, color: AppTheme.gray600),
+            Text(
+              l10n.pickAccentColor,
+              style: const TextStyle(fontSize: 13, color: AppTheme.gray600),
             ),
             const SizedBox(height: 16),
             Wrap(
@@ -1428,8 +1620,7 @@ class _CloudSyncCard extends ConsumerWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () =>
-                        ref.read(authProvider.notifier).signOut(),
+                    onPressed: () => ref.read(authProvider.notifier).signOut(),
                     child: const Text('Sign Out'),
                   ),
                 ),
@@ -1586,6 +1777,7 @@ class _SettingsSlider extends StatelessWidget {
     required this.unit,
     required this.color,
     required this.onChanged,
+    this.recommendedValue,
     this.warningValue,
     this.dangerValue,
   });
@@ -1598,16 +1790,28 @@ class _SettingsSlider extends StatelessWidget {
   final String unit;
   final Color color;
   final ValueChanged<int> onChanged;
+  final int? recommendedValue;
   final int? warningValue;
   final int? dangerValue;
 
   Color get _activeColor {
+    if (recommendedValue != null && recommendedValue! > 0) {
+      final deviation =
+          (value - recommendedValue!).abs() / recommendedValue!.toDouble();
+      if (deviation <= 0.15) return Colors.green.shade600;
+      if (deviation <= 0.30) return Colors.yellow.shade700;
+      if (deviation <= 0.45) return Colors.orange.shade700;
+      return Colors.red.shade600;
+    }
     if (dangerValue != null && value > dangerValue!) return Colors.red.shade600;
-    if (warningValue != null && dangerValue != null && value > (warningValue! + dangerValue!) / 2) {
+    if (warningValue != null &&
+        dangerValue != null &&
+        value > (warningValue! + dangerValue!) / 2) {
       return Colors.orange.shade700;
     }
-    if (warningValue != null && value > warningValue!) return Colors.yellow.shade700;
-    return color;
+    if (warningValue != null && value > warningValue!)
+      return Colors.yellow.shade700;
+    return Colors.green.shade600;
   }
 
   @override
@@ -1620,12 +1824,14 @@ class _SettingsSlider extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 13)),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             Text(
               '$value $unit',
               style: TextStyle(
-                  fontWeight: FontWeight.w700, color: activeColor, fontSize: 13),
+                  fontWeight: FontWeight.w700,
+                  color: activeColor,
+                  fontSize: 13),
             ),
           ],
         ),

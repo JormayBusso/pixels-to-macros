@@ -11,6 +11,9 @@ class ScanResult {
   final String? sideCameraPosition;
   final String? sideCameraTransform;
 
+  /// File path of the rendered scan overlay image (camera + segmentation mask).
+  final String? imagePath;
+
   const ScanResult({
     this.id,
     required this.timestamp,
@@ -20,6 +23,7 @@ class ScanResult {
     this.topCameraTransform,
     this.sideCameraPosition,
     this.sideCameraTransform,
+    this.imagePath,
   });
 
   double get totalCaloriesMin =>
@@ -37,6 +41,7 @@ class ScanResult {
       if (topCameraTransform != null) 'top_camera_transform': topCameraTransform,
       if (sideCameraPosition != null) 'side_camera_position': sideCameraPosition,
       if (sideCameraTransform != null) 'side_camera_transform': sideCameraTransform,
+      if (imagePath != null) 'image_path': imagePath,
     };
   }
 
@@ -51,6 +56,7 @@ class ScanResult {
       topCameraTransform: map['top_camera_transform'] as String?,
       sideCameraPosition: map['side_camera_position'] as String?,
       sideCameraTransform: map['side_camera_transform'] as String?,
+      imagePath: map['image_path'] as String?,
     );
   }
 }

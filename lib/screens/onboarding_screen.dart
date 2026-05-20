@@ -1,8 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
+import '../core/app_locale.dart';
 import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
+import '../providers/locale_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -22,23 +25,26 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _nameCtrl = TextEditingController();
 
   // Page 2: gender
-  UserGender _selectedGender = UserGender.preferNotToSay;
+  UserGender _selectedGender = UserGender.male;
 
   // Page 3: goal type
   NutritionGoalType _selectedGoalType = NutritionGoalType.maintain;
 
+  // Weight (kg) — collected between name and gender
+  double _weightKg = 70.0;
+
   // Page 4: macro targets (pre-filled from goal defaults, editable)
-  late int _calories    = GoalDefaults.calories(_selectedGoalType);
-  late int _carbLimit   = GoalDefaults.carbLimitG(_selectedGoalType);
+  late int _calories = GoalDefaults.calories(_selectedGoalType);
+  late int _carbLimit = GoalDefaults.carbLimitG(_selectedGoalType);
   late int _proteinTarget = GoalDefaults.proteinTargetG(_selectedGoalType);
-  late int _fatTarget   = GoalDefaults.fatTargetG(_selectedGoalType);
+  late int _fatTarget = GoalDefaults.fatTargetG(_selectedGoalType);
 
   // Page 5 (diabetes only): ICR — 0.0 means user chose to skip
   double _icr = 0.0;
   final _icrCtrl = TextEditingController();
 
   bool get _isDiabetes => _selectedGoalType == NutritionGoalType.diabetes;
-  int get _totalPages => _isDiabetes ? 6 : 5;
+  int get _totalPages => _isDiabetes ? 8 : 7;
 
   @override
   void dispose() {
@@ -68,27 +74,35 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   void _selectGender(UserGender gender) {
     final isMale = gender == UserGender.male;
-    final newCal = GoalDefaults.calories(_selectedGoalType, male: isMale);
+    final newCal = GoalDefaults.caloriesForWeight(
+      _selectedGoalType,
+      weightKg: _weightKg,
+      male: isMale,
+    );
     final r = GoalDefaults.macroRatios(_selectedGoalType);
     setState(() {
       _selectedGender = gender;
-      _calories      = newCal;
-      _carbLimit     = (newCal * r.carb    / 4).round().clamp(15, 500);
+      _calories = newCal;
+      _carbLimit = (newCal * r.carb / 4).round().clamp(15, 500);
       _proteinTarget = (newCal * r.protein / 4).round().clamp(30, 300);
-      _fatTarget     = (newCal * r.fat     / 9).round().clamp(20, 250);
+      _fatTarget = (newCal * r.fat / 9).round().clamp(20, 250);
     });
   }
 
   void _selectGoal(NutritionGoalType goal) {
     final isMale = _selectedGender == UserGender.male;
-    final newCal = GoalDefaults.calories(goal, male: isMale);
+    final newCal = GoalDefaults.caloriesForWeight(
+      goal,
+      weightKg: _weightKg,
+      male: isMale,
+    );
     final r = GoalDefaults.macroRatios(goal);
     setState(() {
       _selectedGoalType = goal;
-      _calories      = newCal;
-      _carbLimit     = (newCal * r.carb    / 4).round().clamp(15, 500);
+      _calories = newCal;
+      _carbLimit = (newCal * r.carb / 4).round().clamp(15, 500);
       _proteinTarget = (newCal * r.protein / 4).round().clamp(30, 300);
-      _fatTarget     = (newCal * r.fat     / 9).round().clamp(20, 250);
+      _fatTarget = (newCal * r.fat / 9).round().clamp(20, 250);
     });
   }
 
@@ -97,10 +111,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   void _onCaloriesChanged(int newCalories) {
     final r = GoalDefaults.macroRatios(_selectedGoalType);
     setState(() {
-      _calories      = newCalories;
-      _carbLimit     = (newCalories * r.carb    / 4).round().clamp(15, 500);
+      _calories = newCalories;
+      _carbLimit = (newCalories * r.carb / 4).round().clamp(15, 500);
       _proteinTarget = (newCalories * r.protein / 4).round().clamp(30, 300);
-      _fatTarget     = (newCalories * r.fat     / 9).round().clamp(20, 250);
+      _fatTarget = (newCalories * r.fat / 9).round().clamp(20, 250);
     });
   }
 
@@ -114,11 +128,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           dailyFatTargetG: _fatTarget,
           gender: _selectedGender,
           icrGramsPerUnit: _icr,
+          weightKg: _weightKg,
         );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: context.primary50,
       body: SafeArea(
@@ -135,7 +151,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     width: _page == i ? 24 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: _page == i ? context.primary600 : context.primary200,
+                      color:
+                          _page == i ? context.primary600 : context.primary200,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   );
@@ -150,8 +167,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 onPageChanged: (i) => setState(() => _page = i),
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
+                  _LanguagePage(
+                    onNext: _next,
+                    onSelect: (lang) {
+                      ref.read(localeProvider.notifier).setLanguage(lang);
+                    },
+                  ),
                   _WelcomePage(onNext: _next),
-                  _NamePage(controller: _nameCtrl, onNext: _next, onBack: _back),
+                  _NamePage(
+                      controller: _nameCtrl, onNext: _next, onBack: _back),
+                  _WeightPage(
+                    weightKg: _weightKg,
+                    onChanged: (w) => setState(() => _weightKg = w),
+                    onNext: _next,
+                    onBack: _back,
+                  ),
                   _GenderPage(
                     selected: _selectedGender,
                     onSelect: _selectGender,
@@ -176,7 +206,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     onFatChanged: (v) => setState(() => _fatTarget = v),
                     onFinish: _isDiabetes ? _next : _finish,
                     onBack: _back,
-                    finishLabel: _isDiabetes ? 'Next' : 'Start Scanning! 🚀',
+                    finishLabel: _isDiabetes ? l10n.next : l10n.startScanning,
                   ),
                   if (_isDiabetes)
                     _IcrPage(
@@ -195,6 +225,35 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 }
 
+class _OnboardingScrollFrame extends StatelessWidget {
+  const _OnboardingScrollFrame({
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(horizontal: 32),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.only(bottom: 12),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: padding,
+              child: Center(child: child),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 // â”€â”€ Page 0: Welcome â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _WelcomePage extends StatelessWidget {
@@ -203,8 +262,8 @@ class _WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+    final l10n = AppLocalizations.of(context);
+    return _OnboardingScrollFrame(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -220,7 +279,7 @@ class _WelcomePage extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           Text(
-            'Pixels to Macros',
+            l10n.welcomeTitle,
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
@@ -228,18 +287,21 @@ class _WelcomePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Point your camera at any meal to instantly see\n'
-            'calories, macros & key nutrients \u2014 100% offline.',
+          Text(
+            l10n.welcomeSubtitle,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: AppTheme.gray400, height: 1.5),
+            style: const TextStyle(
+              fontSize: 16,
+              color: AppTheme.gray400,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 48),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: onNext,
-              child: const Text('Get Started'),
+              child: Text(l10n.getStarted),
             ),
           ),
         ],
@@ -251,15 +313,15 @@ class _WelcomePage extends StatelessWidget {
 // â”€â”€ Page 1: Name â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _NamePage extends StatelessWidget {
-  const _NamePage({required this.controller, required this.onNext, required this.onBack});
+  const _NamePage(
+      {required this.controller, required this.onNext, required this.onBack});
   final TextEditingController controller;
   final VoidCallback onNext;
   final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+    return _OnboardingScrollFrame(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -282,6 +344,8 @@ class _NamePage extends StatelessWidget {
           TextField(
             controller: controller,
             textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => FocusScope.of(context).unfocus(),
             decoration: const InputDecoration(
               hintText: 'Your name',
               prefixIcon: Icon(Icons.person_outline),
@@ -291,7 +355,10 @@ class _NamePage extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: onNext,
+              onPressed: () {
+                FocusScope.of(context).unfocus();
+                onNext();
+              },
               child: const Text('Continue'),
             ),
           ),
@@ -319,12 +386,12 @@ class _GenderPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+    return _OnboardingScrollFrame(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.person_search_outlined, size: 56, color: context.primary500),
+          Icon(Icons.person_search_outlined,
+              size: 56, color: context.primary500),
           const SizedBox(height: 24),
           const Text(
             'Biological sex',
@@ -338,7 +405,8 @@ class _GenderPage extends StatelessWidget {
           const Text(
             'Used to personalise your nutrient targets\n(vitamin, mineral & calorie recommendations).',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: AppTheme.gray400, height: 1.5),
+            style:
+                TextStyle(fontSize: 14, color: AppTheme.gray400, height: 1.5),
           ),
           const SizedBox(height: 32),
           _GenderOption(
@@ -411,7 +479,8 @@ class _GenderOption extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 24,
+            Icon(icon,
+                size: 24,
                 color: isSelected ? context.primary600 : AppTheme.gray400),
             const SizedBox(width: 14),
             Text(
@@ -431,7 +500,6 @@ class _GenderOption extends StatelessWidget {
     );
   }
 }
-
 
 class _GoalTypePage extends StatelessWidget {
   const _GoalTypePage({
@@ -496,8 +564,7 @@ class _GoalTypePage extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(goal.emoji,
-                            style: const TextStyle(fontSize: 36)),
+                        Text(goal.emoji, style: const TextStyle(fontSize: 36)),
                         const SizedBox(height: 6),
                         Text(
                           goal.label,
@@ -525,7 +592,8 @@ class _GoalTypePage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: selected.lightColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: selected.color.withValues(alpha: 0.4)),
+                border:
+                    Border.all(color: selected.color.withValues(alpha: 0.4)),
               ),
               child: Row(
                 children: [
@@ -773,10 +841,13 @@ class _TargetSlider extends StatelessWidget {
   final int? dangerValue;
 
   Color get _activeColor {
-    if (dangerValue != null && value > dangerValue!) return Colors.red.shade600;
-    if (warningValue != null && dangerValue != null && value > (warningValue! + dangerValue!) / 2) return Colors.orange.shade700;
-    if (warningValue != null && value > warningValue!) return Colors.yellow.shade700;
-    return color;
+    if (warningValue == null || dangerValue == null)
+      return Colors.green.shade600;
+    if (value > dangerValue!) return Colors.red.shade600;
+    if (value > (warningValue! + dangerValue!) / 2)
+      return Colors.orange.shade700;
+    if (value > warningValue!) return Colors.yellow.shade700;
+    return Colors.green.shade600;
   }
 
   @override
@@ -789,12 +860,14 @@ class _TargetSlider extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 14)),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
             Text(
               '$value $unit',
               style: TextStyle(
-                  fontWeight: FontWeight.w700, color: activeColor, fontSize: 14),
+                  fontWeight: FontWeight.w700,
+                  color: activeColor,
+                  fontSize: 14),
             ),
           ],
         ),
@@ -808,6 +881,95 @@ class _TargetSlider extends StatelessWidget {
           onChanged: (v) => onChanged(v.round()),
         ),
       ],
+    );
+  }
+}
+
+// ── Page 2: Weight ─────────────────────────────────────────────────────────────
+
+class _WeightPage extends StatelessWidget {
+  const _WeightPage({
+    required this.weightKg,
+    required this.onChanged,
+    required this.onNext,
+    required this.onBack,
+  });
+  final double weightKg;
+  final ValueChanged<double> onChanged;
+  final VoidCallback onNext;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return _OnboardingScrollFrame(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.monitor_weight_outlined,
+              size: 56, color: context.primary500),
+          const SizedBox(height: 24),
+          const Text(
+            'Current Weight',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.gray900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Used to estimate your daily calorie needs\nvia the Mifflin-St Jeor equation.',
+            textAlign: TextAlign.center,
+            style:
+                TextStyle(fontSize: 14, color: AppTheme.gray400, height: 1.5),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            '${weightKg.round()} kg',
+            style: TextStyle(
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
+              color: context.primary700,
+            ),
+          ),
+          Text(
+            '≈ ${(weightKg * 2.20462).round()} lbs',
+            style: const TextStyle(fontSize: 14, color: AppTheme.gray400),
+          ),
+          const SizedBox(height: 16),
+          Slider(
+            value: weightKg,
+            min: 30,
+            max: 200,
+            divisions: 170,
+            activeColor: context.primary600,
+            inactiveColor: context.primary200,
+            onChanged: onChanged,
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('30 kg', style: TextStyle(fontSize: 11, color: AppTheme.gray400)),
+              Text('200 kg', style: TextStyle(fontSize: 11, color: AppTheme.gray400)),
+            ],
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: onNext,
+              child: const Text('Continue'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back, size: 16),
+            label: const Text('Back'),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.gray500),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -859,23 +1021,36 @@ class _IcrPage extends StatelessWidget {
               'Example: an ICR of 10 means 1 unit covers 10 g of carbs.\n\n'
               'This value is personal and should be set by your diabetes care team. '
               'Do NOT use a pre-set value — an incorrect ICR can cause dangerous blood sugar swings.',
-              style: TextStyle(fontSize: 13, color: Color(0xFF1565C0), height: 1.5),
+              style: TextStyle(
+                  fontSize: 13, color: Color(0xFF1565C0), height: 1.5),
             ),
           ),
           const SizedBox(height: 20),
           TextField(
             controller: controller,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.done,
             decoration: const InputDecoration(
               labelText: 'ICR — grams of carbs per 1 unit of insulin',
               hintText: 'e.g. 10',
               prefixIcon: Icon(Icons.vaccines_outlined),
               suffixText: 'g / unit',
             ),
+            onTapOutside: (_) => FocusScope.of(context).unfocus(),
+            onSubmitted: (_) => FocusScope.of(context).unfocus(),
             onChanged: (v) {
               final parsed = double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
               onChanged(parsed);
             },
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => FocusScope.of(context).unfocus(),
+              icon: const Icon(Icons.keyboard_hide_outlined, size: 18),
+              label: const Text('Hide keyboard'),
+            ),
           ),
           const SizedBox(height: 28),
           SizedBox(
@@ -911,6 +1086,71 @@ class _IcrPage extends StatelessWidget {
             style: TextButton.styleFrom(foregroundColor: AppTheme.gray500),
           ),
           const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Language Selection Page ──────────────────────────────────────────────────
+
+class _LanguagePage extends StatelessWidget {
+  const _LanguagePage({required this.onNext, required this.onSelect});
+  final VoidCallback onNext;
+  final ValueChanged<AppLanguage> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return _OnboardingScrollFrame(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.translate, size: 56, color: AppTheme.gray600),
+          const SizedBox(height: 24),
+          Text(
+            l10n.chooseLanguage,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.gray900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.languageChangeLater,
+            style: const TextStyle(fontSize: 14, color: AppTheme.gray400),
+          ),
+          const SizedBox(height: 32),
+          ...AppLanguage.values.map((lang) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      onSelect(lang);
+                      onNext();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 20),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(lang.flag, style: const TextStyle(fontSize: 24)),
+                        const SizedBox(width: 14),
+                        Text(
+                          lang.nativeName,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )),
         ],
       ),
     );

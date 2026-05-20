@@ -24,15 +24,20 @@ class EditFoodScreen extends ConsumerStatefulWidget {
 
 class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
   late TextEditingController _labelCtrl;
+  late TextEditingController _weightCtrl;
   late TextEditingController _calMinCtrl;
   late TextEditingController _calMaxCtrl;
   List<FoodData> _suggestions = [];
   bool _showSuggestions = false;
+  bool _weightTouched = false;
 
   @override
   void initState() {
     super.initState();
     _labelCtrl = TextEditingController(text: widget.food.label);
+    _weightCtrl = TextEditingController(
+      text: widget.food.volumeCm3.round().toString(),
+    );
     _calMinCtrl = TextEditingController(
         text: widget.food.caloriesMin.round().toString());
     _calMaxCtrl = TextEditingController(
@@ -42,28 +47,39 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
 
   Future<void> _loadSuggestions() async {
     final foods = await DatabaseService.instance.getAllFoods();
-    setState(() => _suggestions = foods);
+    if (!mounted) return;
+    setState(() {
+      _suggestions = foods;
+      if (!_weightTouched) _syncWeightFromCurrentFood();
+    });
   }
 
   void _applyFoodSuggestion(FoodData food) {
     _labelCtrl.text = food.label;
-    // Recalculate calories using the food's data and original volume
-    final range = food.calorieRange(widget.food.volumeCm3);
-    _calMinCtrl.text = range.min.round().toString();
-    _calMaxCtrl.text = range.max.round().toString();
+    if (!_weightTouched) {
+      _syncWeightFromCurrentFood(food);
+    }
+    _recalculateCaloriesFromWeight(foodData: food, notify: false);
     setState(() => _showSuggestions = false);
   }
 
   Future<void> _save() async {
+    final label = _labelCtrl.text.trim();
+    final foodData = _foodForLabel(label);
+    final grams = _parsePositiveDouble(_weightCtrl.text);
+    final volumeCm3 = grams == null
+        ? widget.food.volumeCm3
+        : grams / _averageDensity(foodData);
     final calMin = double.tryParse(_calMinCtrl.text) ?? widget.food.caloriesMin;
     final calMax = double.tryParse(_calMaxCtrl.text) ?? widget.food.caloriesMax;
 
     if (widget.food.id != null) {
       await DatabaseService.instance.updateDetectedFood(
         widget.food.id!,
-        label: _labelCtrl.text.trim(),
+        label: label,
         caloriesMin: calMin,
         caloriesMax: calMax,
+        volumeCm3: volumeCm3,
       );
     }
 
@@ -81,6 +97,7 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
   @override
   void dispose() {
     _labelCtrl.dispose();
+    _weightCtrl.dispose();
     _calMinCtrl.dispose();
     _calMaxCtrl.dispose();
     super.dispose();
@@ -91,6 +108,8 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
     final avg = ((double.tryParse(_calMinCtrl.text) ?? 0) +
             (double.tryParse(_calMaxCtrl.text) ?? 0)) /
         2;
+    final grams = _parsePositiveDouble(_weightCtrl.text) ?? _currentWeightG();
+    final volume = _currentVolumeCm3();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Edit Food')),
@@ -113,7 +132,8 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${widget.food.volumeCm3.toStringAsFixed(1)} cm³ volume',
+                    '${grams.toStringAsFixed(grams >= 10 ? 0 : 1)} g • '
+                    '${volume.toStringAsFixed(1)} cm³ volume',
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppTheme.gray400,
@@ -141,7 +161,7 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
                     setState(() => _showSuggestions = !_showSuggestions),
               ),
             ),
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => _recalculateCaloriesFromWeight(),
           ),
 
           // ── Quick-pick from DB ──────────────────────────────────────
@@ -169,6 +189,21 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 16),
+
+          TextField(
+            controller: _weightCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Weight',
+              suffixText: 'g',
+              prefixIcon: Icon(Icons.scale),
+            ),
+            onChanged: (_) {
+              _weightTouched = true;
+              _recalculateCaloriesFromWeight();
+            },
+          ),
           const SizedBox(height: 16),
 
           // ── Calorie fields ──────────────────────────────────────────
@@ -219,5 +254,55 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
     final q = _labelCtrl.text.toLowerCase();
     if (q.isEmpty) return _suggestions;
     return _suggestions.where((f) => f.label.toLowerCase().contains(q)).toList();
+  }
+
+  FoodData? _foodForLabel([String? label]) {
+    final q = (label ?? _labelCtrl.text).trim().toLowerCase();
+    if (q.isEmpty) return null;
+    for (final food in _suggestions) {
+      if (food.label.toLowerCase() == q) return food;
+    }
+    return null;
+  }
+
+  double _averageDensity(FoodData? foodData) {
+    if (foodData == null) return 1.0;
+    final density = (foodData.densityMin + foodData.densityMax) / 2.0;
+    return density <= 0 ? 1.0 : density;
+  }
+
+  double _currentWeightG([FoodData? foodData]) {
+    return widget.food.volumeCm3 * _averageDensity(foodData ?? _foodForLabel());
+  }
+
+  double _currentVolumeCm3() {
+    final grams = _parsePositiveDouble(_weightCtrl.text);
+    if (grams == null) return widget.food.volumeCm3;
+    return grams / _averageDensity(_foodForLabel());
+  }
+
+  void _syncWeightFromCurrentFood([FoodData? foodData]) {
+    final weight = _currentWeightG(foodData);
+    _weightCtrl.text = weight.toStringAsFixed(weight >= 10 ? 0 : 1);
+  }
+
+  void _recalculateCaloriesFromWeight({
+    FoodData? foodData,
+    bool notify = true,
+  }) {
+    final grams = _parsePositiveDouble(_weightCtrl.text);
+    final food = foodData ?? _foodForLabel();
+    if (grams != null && food != null && food.kcalPer100g > 0) {
+      final kcal = food.kcalPer100g * grams / 100.0;
+      _calMinCtrl.text = (kcal * 0.95).round().toString();
+      _calMaxCtrl.text = (kcal * 1.05).round().toString();
+    }
+    if (notify && mounted) setState(() {});
+  }
+
+  double? _parsePositiveDouble(String raw) {
+    final value = double.tryParse(raw.replaceAll(',', '.'));
+    if (value == null || value <= 0) return null;
+    return value;
   }
 }

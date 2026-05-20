@@ -7,6 +7,7 @@ import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/app_localizations.dart';
 import '../models/grocery_item.dart';
 import '../providers/grocery_provider.dart';
 import '../providers/history_provider.dart';
@@ -143,6 +144,95 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   }
 
   // ── Smart suggestions ─────────────────────────────────────────────────────
+
+  /// Scan a photo of the user's fridge/pantry and check off matching grocery items.
+  Future<void> _scanWhatIHave() async {
+    final file = await _picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      imageQuality: 80,
+    );
+    if (file == null || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Scanning your ingredients…'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      final inputImage = InputImage.fromFilePath(file.path);
+
+      // Visual labels
+      final labeler = ImageLabeler(
+        options: ImageLabelerOptions(confidenceThreshold: 0.4),
+      );
+      final labels = await labeler.processImage(inputImage);
+      await labeler.close();
+
+      // OCR text
+      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      final recognizedText = await textRecognizer.processImage(inputImage);
+      await textRecognizer.close();
+
+      // Collect all detected food terms
+      final detectedTerms = <String>{};
+      for (final label in labels) {
+        detectedTerms.add(label.label.toLowerCase().trim());
+      }
+      for (final line in recognizedText.text.split(RegExp(r'\n+'))) {
+        for (final word in line.toLowerCase().split(RegExp(r'[\s,;]+'))) {
+          if (word.length >= 3) detectedTerms.add(word.trim());
+        }
+      }
+
+      // Cross-check against grocery list items
+      final groceryItems = ref.read(groceryProvider).items;
+      int checkedOff = 0;
+      for (final item in groceryItems) {
+        if (item.checked) continue;
+        final itemWords = item.name.toLowerCase().split(' ');
+        // Check if any word of the grocery item name appears in detected terms
+        final found = itemWords.any((word) =>
+            word.length >= 3 &&
+            detectedTerms.any((term) =>
+                term.contains(word) || word.contains(term)));
+        if (found) {
+          ref.read(groceryProvider.notifier).toggleChecked(item);
+          checkedOff++;
+        }
+      }
+
+      if (!mounted) return;
+      if (checkedOff > 0) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Found $checkedOff ingredient${checkedOff > 1 ? 's' : ''} you already have!'),
+            backgroundColor: AppTheme.green600,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No matching grocery items found in the photo. Try scanning closer to the items.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not analyze the photo.')),
+        );
+      }
+    }
+  }
 
   /// Normalise a detected food label to a specific grocery product.
   /// E.g. "plain yogurt" → "Yogurt (plain)", "banana" stays "Banana".
@@ -863,14 +953,21 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final grocery   = ref.watch(groceryProvider);
     final unchecked = grocery.items.where((i) => !i.checked).toList();
     final checked   = grocery.items.where((i) =>  i.checked).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Grocery List'),
+        title: Text(l10n.groceryList),
         actions: [
+          // Scan what you have — check off ingredients from photos
+          IconButton(
+            icon: const Icon(Icons.camera_alt_outlined),
+            tooltip: 'Scan what you have at home',
+            onPressed: _scanWhatIHave,
+          ),
           // Smart suggestion — always visible
           IconButton(
             icon:    const Icon(Icons.auto_awesome_outlined),
@@ -902,7 +999,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                       Icon(Icons.shopping_cart_outlined,
                           size: 64, color: AppTheme.gray300),
                       const SizedBox(height: 16),
-                      const Text('Your grocery list is empty',
+                      Text('Your ${l10n.groceryList.toLowerCase()} is empty',
                           style: TextStyle(
                               fontSize: 16, color: AppTheme.gray400)),
                       const SizedBox(height: 16),
@@ -911,13 +1008,13 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                         children: [
                           OutlinedButton.icon(
                             icon:     const Icon(Icons.add, size: 18),
-                            label:    const Text('Add item'),
+                            label:    Text(l10n.addToGroceryList),
                             onPressed: _showAddDialog,
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton.icon(
                             icon:     const Icon(Icons.auto_awesome, size: 18),
-                            label:    const Text('Suggest'),
+                            label:    Text(l10n.scanReceipt),
                             onPressed: _showSmartSuggestSheet,
                           ),
                         ],

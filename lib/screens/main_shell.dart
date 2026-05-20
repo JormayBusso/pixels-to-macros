@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
 import '../providers/scan_state_provider.dart';
 import '../providers/tab_navigation_provider.dart';
 import '../providers/user_prefs_provider.dart';
@@ -152,6 +153,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     ref.watch(userPrefsProvider);
 
     // Watch showTourProvider so we can re-show tour on demand (from Settings).
@@ -183,50 +185,62 @@ class _MainShellState extends ConsumerState<MainShell> {
             index: _tabIndex,
             children: _tabs,
           ),
-          bottomNavigationBar: NavigationBar(
-            key: TourKeys.navBar,
-            selectedIndex: _tabIndex,
-            onDestinationSelected: (i) {
-              FocusScope.of(context).unfocus();
-              setState(() => _tabIndex = i);
-            },
-            backgroundColor: Colors.white,
-            indicatorColor: context.primary100,
-            destinations: [
-              NavigationDestination(
-                icon: const Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home, color: context.primary700),
-                label: 'Home',
+          bottomNavigationBar: NavigationBarTheme(
+            data: NavigationBarThemeData(
+              labelTextStyle: WidgetStateProperty.all(
+                const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              NavigationDestination(
-                icon: const Icon(Icons.bar_chart_outlined),
-                selectedIcon: Icon(Icons.bar_chart, color: context.primary700),
-                label: 'Analytics',
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.restaurant_menu_outlined),
-                selectedIcon:
-                    Icon(Icons.restaurant_menu, color: context.primary700),
-                label: 'Recipes',
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.shopping_cart_outlined),
-                selectedIcon:
-                    Icon(Icons.shopping_cart, color: context.primary700),
-                label: 'Groceries',
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.calendar_month_outlined),
-                selectedIcon:
-                    Icon(Icons.calendar_month, color: context.primary700),
-                label: 'Planner',
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings, color: context.primary700),
-                label: 'Settings',
-              ),
-            ],
+            ),
+            child: NavigationBar(
+              key: TourKeys.navBar,
+              selectedIndex: _tabIndex,
+              onDestinationSelected: (i) {
+                FocusScope.of(context).unfocus();
+                setState(() => _tabIndex = i);
+              },
+              backgroundColor: Colors.white,
+              indicatorColor: context.primary100,
+              destinations: [
+                NavigationDestination(
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home, color: context.primary700),
+                  label: l10n.home,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.bar_chart_outlined),
+                  selectedIcon:
+                      Icon(Icons.bar_chart, color: context.primary700),
+                  label: l10n.analytics,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.restaurant_menu_outlined),
+                  selectedIcon:
+                      Icon(Icons.restaurant_menu, color: context.primary700),
+                  label: l10n.recipes,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.shopping_cart_outlined),
+                  selectedIcon:
+                      Icon(Icons.shopping_cart, color: context.primary700),
+                  label: l10n.groceryList,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  selectedIcon:
+                      Icon(Icons.calendar_month, color: context.primary700),
+                  label: l10n.mealPlanner,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.settings_outlined),
+                  selectedIcon: Icon(Icons.settings, color: context.primary700),
+                  label: l10n.settings,
+                ),
+              ],
+            ),
           ),
           floatingActionButton: _tabIndex == 0
               ? Column(
@@ -234,86 +248,89 @@ class _MainShellState extends ConsumerState<MainShell> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     // ── AI Speech (voice) ─────────────────────────────────
-                    SizedBox(
-                      width: 125,
-                      child: FloatingActionButton.extended(                        key: TourKeys.speechFab,                        heroTag: 'voice',
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => const VoiceEntryScreen()),
-                        ),
-                        backgroundColor: Colors.white,
-                        foregroundColor: context.primary700,
-                        elevation: 2,
-                        icon: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            const Icon(Icons.mic, size: 20),
-                            Positioned(
-                              right: -5,
-                              bottom: -5,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: context.primary600,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.auto_awesome,
-                                    size: 8, color: Colors.white),
+                    FloatingActionButton.extended(
+                      key: TourKeys.speechFab,
+                      heroTag: 'voice',
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const VoiceEntryScreen()),
+                      ),
+                      backgroundColor: Colors.white,
+                      foregroundColor: context.primary700,
+                      elevation: 2,
+                      icon: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(Icons.mic, size: 20),
+                          Positioned(
+                            right: -5,
+                            bottom: -5,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: context.primary600,
+                                shape: BoxShape.circle,
                               ),
+                              child: const Icon(Icons.auto_awesome,
+                                  size: 8, color: Colors.white),
                             ),
-                          ],
-                        ),
-                        label: const Text('AI Speech',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                      label: Text(
+                        l10n.aiSpeech,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 12),
                       ),
                     ),
                     const SizedBox(height: 8),
                     // ── Manual Log ────────────────────────────────────────
-                    SizedBox(
-                      width: 125,
-                      child: FloatingActionButton.extended(                        key: TourKeys.manualFab,                        heroTag: 'manual',
-                        onPressed: _openManualEntry,
-                        backgroundColor: Colors.white,
-                        foregroundColor: context.primary700,
-                        elevation: 2,
-                        icon: const Icon(Icons.edit_note, size: 20),
-                        label: const Text('Manual Log',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 12)),
+                    FloatingActionButton.extended(
+                      key: TourKeys.manualFab,
+                      heroTag: 'manual',
+                      onPressed: _openManualEntry,
+                      backgroundColor: Colors.white,
+                      foregroundColor: context.primary700,
+                      elevation: 2,
+                      icon: const Icon(Icons.edit_note, size: 20),
+                      label: Text(
+                        l10n.manualLog,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 12),
                       ),
                     ),
                     const SizedBox(height: 8),
                     // ── AI Scan ───────────────────────────────────────────
-                    SizedBox(
-                      width: 125,
-                      child: FloatingActionButton.extended(                        key: TourKeys.scanFab,                        heroTag: 'scan',
-                        onPressed: _openScan,
-                        backgroundColor: context.primary600,
-                        foregroundColor: Colors.white,
-                        elevation: 4,
-                        icon: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            const Icon(Icons.camera_alt, size: 20),
-                            Positioned(
-                              right: -5,
-                              bottom: -5,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(Icons.auto_awesome,
-                                    size: 8, color: context.primary600),
+                    FloatingActionButton.extended(
+                      key: TourKeys.scanFab,
+                      heroTag: 'scan',
+                      onPressed: _openScan,
+                      backgroundColor: context.primary600,
+                      foregroundColor: Colors.white,
+                      elevation: 4,
+                      icon: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(Icons.camera_alt, size: 20),
+                          Positioned(
+                            right: -5,
+                            bottom: -5,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
                               ),
+                              child: Icon(Icons.auto_awesome,
+                                  size: 8, color: context.primary600),
                             ),
-                          ],
-                        ),
-                        label: const Text('AI Scan',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                      label: Text(
+                        l10n.aiScan,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 12),
                       ),
                     ),
                   ],

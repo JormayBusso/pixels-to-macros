@@ -301,9 +301,9 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     // Non-food labels are already filtered by _normaliseLabel; this gate
     // only applies physical size/confidence thresholds.
     if (fallbackReason != null) return false;
-    if (volumeCm3 < 3.0) return false;
-    if (pixelCount < 450) return false;
-    if (confidence != null && confidence < 0.55) return false;
+    if (volumeCm3 < 6.0) return false;
+    if (pixelCount < 650) return false;
+    if (confidence != null && confidence < 0.62) return false;
     return true;
   }
 

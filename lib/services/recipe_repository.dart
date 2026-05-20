@@ -6,8 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/nutrition_goal.dart';
 import '../models/recipe.dart';
 
-/// Loads the bundled `assets/recipes.json` lazily and caches it for the app
-/// lifetime. The whole list (~1.5 MB) is parsed once on first access.
+/// Loads real scraped recipes from the bundled offline JSON asset.
 class RecipeRepository {
   RecipeRepository._();
   static final RecipeRepository instance = RecipeRepository._();
@@ -15,20 +14,34 @@ class RecipeRepository {
   List<Recipe>? _cache;
   Future<List<Recipe>>? _inFlight;
 
+  /// Clear cached results after the bundled recipe asset changes.
+  void clearCache() {
+    _cache = null;
+    _inFlight = null;
+  }
+
   Future<List<Recipe>> all() {
     if (_cache != null) return Future.value(_cache);
     return _inFlight ??= _load();
   }
 
   Future<List<Recipe>> _load() async {
-    final raw = await rootBundle.loadString('assets/recipes.json');
-    final list = (jsonDecode(raw) as List)
-        .cast<Map<String, dynamic>>()
-        .map(Recipe.fromJson)
-        .toList(growable: false);
+    final list = await _loadAssetRecipes('assets/bundled_recipes.json');
     _cache = list;
     _inFlight = null;
     return list;
+  }
+
+  Future<List<Recipe>> _loadAssetRecipes(String assetPath) async {
+    try {
+      final raw = await rootBundle.loadString(assetPath);
+      return (jsonDecode(raw) as List)
+          .cast<Map<String, dynamic>>()
+          .map(Recipe.fromJson)
+          .toList(growable: false);
+    } catch (_) {
+      return const <Recipe>[];
+    }
   }
 
   /// Filter + score for ranking. Recipes matching all selected facets win.
@@ -37,15 +50,19 @@ class RecipeRepository {
     RecipeMealType? mealType,
     String? search,
     int maxMinutes = 0,
-    int limit = 200,
+    int limit = 0,
     bool strictGoalRules = true,
+    bool includeGenerated = false,
   }) async {
-    final list = await all();
     final q = (search ?? '').trim().toLowerCase();
+    final list = await all();
     final filtered = <Recipe>[];
     for (final r in list) {
+      if (!includeGenerated && r.source.toLowerCase() == 'generated') continue;
       if (goal != null && !r.goals.contains(goal)) continue;
-      if (goal != null && strictGoalRules && !_isRecipeEligibleForGoal(r, goal)) {
+      if (goal != null &&
+          strictGoalRules &&
+          !_isRecipeEligibleForGoal(r, goal)) {
         continue;
       }
       if (mealType != null && r.mealType != mealType) continue;
@@ -55,16 +72,17 @@ class RecipeRepository {
         // only returns recipes that have bread in their ingredient list,
         // not recipes whose name or other ingredients accidentally contain
         // the substring. Also allow recipe name match for category queries.
-        final ingredientMatch = r.ingredients.any(
-            (i) => i.name.toLowerCase().contains(q));
+        final ingredientMatch =
+            r.ingredients.any((i) => i.name.toLowerCase().contains(q));
         final nameMatch = r.name.toLowerCase().contains(q);
         if (!ingredientMatch && !nameMatch) continue;
       }
       filtered.add(r);
     }
     // Sort alphabetically by name.
-    filtered.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    if (filtered.length > limit) return filtered.sublist(0, limit);
+    filtered
+        .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    if (limit > 0 && filtered.length > limit) return filtered.sublist(0, limit);
     return filtered;
   }
 
@@ -77,11 +95,13 @@ class RecipeRepository {
     switch (goal) {
       case NutritionGoalType.diabetes:
         // Strong diabetes safety rule: breakfast must stay very low-carb.
-        if (recipe.mealType == RecipeMealType.breakfast && carbsPerServing > 20) {
+        if (recipe.mealType == RecipeMealType.breakfast &&
+            carbsPerServing > 20) {
           return false;
         }
         // Other meals should still avoid large carb spikes.
-        if (recipe.mealType != RecipeMealType.breakfast && carbsPerServing > 35) {
+        if (recipe.mealType != RecipeMealType.breakfast &&
+            carbsPerServing > 35) {
           return false;
         }
         if (gi > 0 && gi > 55) return false;
@@ -94,13 +114,137 @@ class RecipeRepository {
         return caloriesPerServing <= 600 && proteinPerServing >= 15;
 
       case NutritionGoalType.muscleGrowth:
-        return proteinPerServing >= 25 && caloriesPerServing >= 300;
+        final minCalories = switch (recipe.mealType) {
+          RecipeMealType.breakfast => 450,
+          RecipeMealType.lunch => 550,
+          RecipeMealType.dinner => 650,
+          RecipeMealType.snack => 250,
+          RecipeMealType.dessert => 350,
+        };
+        return proteinPerServing >= 30 && caloriesPerServing >= minCalories;
 
       case NutritionGoalType.vegan:
+        return _isVeganRecipe(recipe);
+      case NutritionGoalType.vegetarian:
+        return _isVegetarianRecipe(recipe);
       case NutritionGoalType.maintain:
         return true;
     }
   }
+
+  bool _isVeganRecipe(Recipe recipe) {
+    final text = _recipeIngredientText(recipe);
+    return !_containsAnyTerm(text, _meatSeafoodTerms) &&
+        !_containsAnyTerm(text, _dairyEggHoneyTerms);
+  }
+
+  bool _isVegetarianRecipe(Recipe recipe) {
+    final text = _recipeIngredientText(recipe);
+    return !_containsAnyTerm(text, _meatSeafoodTerms);
+  }
+
+  String _recipeIngredientText(Recipe recipe) {
+    return recipe.ingredients
+        .map((ingredient) => '${ingredient.name} ${ingredient.amount}')
+        .join(' ')
+        .toLowerCase();
+  }
+
+  bool _containsAnyTerm(String text, List<String> terms) {
+    for (final term in terms) {
+      final escaped = RegExp.escape(term.toLowerCase());
+      if (RegExp('(^|[^a-z])$escaped([^a-z]|\u{0000})')
+          .hasMatch('$text\u{0000}')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static const _meatSeafoodTerms = [
+    'beef',
+    'steak',
+    'chicken',
+    'pork',
+    'bacon',
+    'ham',
+    'turkey',
+    'lamb',
+    'veal',
+    'duck',
+    'fish',
+    'salmon',
+    'tuna',
+    'shrimp',
+    'prawn',
+    'anchovy',
+    'gelatin',
+    'gelatine',
+    'salami',
+    'sausage',
+    'prosciutto',
+    'chorizo',
+    'pancetta',
+    'kip',
+    'rund',
+    'varken',
+    'spek',
+    'hähnchen',
+    'haehnchen',
+    'huhn',
+    'rind',
+    'schwein',
+    'speck',
+    'schinken',
+    'wurst',
+    'kurczak',
+    'wołow',
+    'wolow',
+    'wieprz',
+    'pollo',
+    'ternera',
+    'cerdo',
+    'jamón',
+    'jamon',
+  ];
+
+  static const _dairyEggHoneyTerms = [
+    'egg',
+    'milk',
+    'cream',
+    'butter',
+    'cheese',
+    'cheddar',
+    'feta',
+    'mozzarella',
+    'parmesan',
+    'ricotta',
+    'goat cheese',
+    'cream cheese',
+    'yogurt',
+    'yoghurt',
+    'honey',
+    'mayonnaise',
+    'whey',
+    'ghee',
+    'ei',
+    'melk',
+    'kaas',
+    'boter',
+    'milch',
+    'käse',
+    'kaese',
+    'jaj',
+    'mleko',
+    'ser',
+    'masło',
+    'maslo',
+    'huevo',
+    'leche',
+    'queso',
+    'mantequilla',
+    'miel',
+  ];
 }
 
 final recipeRepositoryProvider = Provider<RecipeRepository>(

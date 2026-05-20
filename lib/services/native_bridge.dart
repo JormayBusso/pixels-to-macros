@@ -39,8 +39,8 @@ class NativeBridge {
   /// If [generation] is provided, only stops if it matches the current
   /// generation — prevents a stale stop from killing a newer session.
   Future<void> stopSession({int? generation}) async {
-    await _channel.invokeMethod<void>('stopSession', 
-        generation != null ? {'generation': generation} : null);
+    await _channel.invokeMethod<void>(
+        'stopSession', generation != null ? {'generation': generation} : null);
   }
 
   /// Get the last session error message, or null if no error.
@@ -129,6 +129,16 @@ class NativeBridge {
   Future<String?> exportPointCloud() async {
     try {
       return await _channel.invokeMethod<String>('exportPointCloud');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Get the file path of the most recently rendered scan overlay image.
+  /// Returns null if no image was generated (e.g. no food detected).
+  Future<String?> getScanImage() async {
+    try {
+      return await _channel.invokeMethod<String>('getScanImage');
     } catch (_) {
       return null;
     }

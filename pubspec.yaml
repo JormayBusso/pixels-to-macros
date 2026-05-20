@@ -12,6 +12,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # State management
   flutter_riverpod: ^2.5.1
@@ -79,7 +81,8 @@ flutter:
     - .env
     - assets/mascots/
     - assets/ptm_enter.mp4
-    - assets/recipes.json
+    - assets/bundled_recipes.json
+    - assets/images/recipes/
     - assets/good body map.svg
     - assets/E25E5E96-362D-4B79-9469-6128EBAF2201_1_102_a.jpeg
     - assets/Calcium.png

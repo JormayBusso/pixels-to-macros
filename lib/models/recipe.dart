@@ -7,41 +7,61 @@ enum RecipeMealType { breakfast, lunch, dinner, snack, dessert }
 extension RecipeMealTypeX on RecipeMealType {
   String get jsonKey {
     switch (this) {
-      case RecipeMealType.breakfast: return 'breakfast';
-      case RecipeMealType.lunch:     return 'lunch';
-      case RecipeMealType.dinner:    return 'dinner';
-      case RecipeMealType.snack:     return 'snack';
-      case RecipeMealType.dessert:   return 'dessert';
+      case RecipeMealType.breakfast:
+        return 'breakfast';
+      case RecipeMealType.lunch:
+        return 'lunch';
+      case RecipeMealType.dinner:
+        return 'dinner';
+      case RecipeMealType.snack:
+        return 'snack';
+      case RecipeMealType.dessert:
+        return 'dessert';
     }
   }
 
   String get label {
     switch (this) {
-      case RecipeMealType.breakfast: return 'Breakfast';
-      case RecipeMealType.lunch:     return 'Lunch';
-      case RecipeMealType.dinner:    return 'Dinner';
-      case RecipeMealType.snack:     return 'Snack';
-      case RecipeMealType.dessert:   return 'Dessert';
+      case RecipeMealType.breakfast:
+        return 'Breakfast';
+      case RecipeMealType.lunch:
+        return 'Lunch';
+      case RecipeMealType.dinner:
+        return 'Dinner';
+      case RecipeMealType.snack:
+        return 'Snack';
+      case RecipeMealType.dessert:
+        return 'Dessert';
     }
   }
 
   String get emoji {
     switch (this) {
-      case RecipeMealType.breakfast: return '🍳';
-      case RecipeMealType.lunch:     return '🥗';
-      case RecipeMealType.dinner:    return '🍽️';
-      case RecipeMealType.snack:     return '🍎';
-      case RecipeMealType.dessert:   return '🍰';
+      case RecipeMealType.breakfast:
+        return '🍳';
+      case RecipeMealType.lunch:
+        return '🥗';
+      case RecipeMealType.dinner:
+        return '🍽️';
+      case RecipeMealType.snack:
+        return '🍎';
+      case RecipeMealType.dessert:
+        return '🍰';
     }
   }
 
   static RecipeMealType fromJson(String? key) {
     switch (key) {
-      case 'breakfast': return RecipeMealType.breakfast;
-      case 'lunch':     return RecipeMealType.lunch;
-      case 'snack':     return RecipeMealType.snack;
-      case 'dessert':   return RecipeMealType.dessert;
-      default:          return RecipeMealType.dinner;
+      case 'breakfast':
+        return RecipeMealType.breakfast;
+      case 'lunch':
+        return RecipeMealType.lunch;
+      case 'snack':
+        return RecipeMealType.snack;
+      case 'dessert':
+        return RecipeMealType.dessert;
+      default:
+        return RecipeMealType.dinner;
     }
   }
 }
@@ -57,8 +77,7 @@ class RecipeIngredient {
   final String amount;
   final double grams;
 
-  factory RecipeIngredient.fromJson(Map<String, dynamic> j) =>
-      RecipeIngredient(
+  factory RecipeIngredient.fromJson(Map<String, dynamic> j) => RecipeIngredient(
         name: (j['name'] as String?)?.trim() ?? '',
         amount: (j['amount'] as String?)?.trim() ?? '',
         grams: (j['grams'] as num?)?.toDouble() ?? 0,
@@ -91,6 +110,8 @@ class Recipe {
     required this.ingredients,
     required this.steps,
     required this.source,
+    this.healthScore = 0,
+    this.healthScoreReason = '',
     this.vitaminAUg = 0,
     this.vitaminCMg = 0,
     this.vitaminDUg = 0,
@@ -126,6 +147,8 @@ class Recipe {
   final List<RecipeIngredient> ingredients;
   final List<String> steps;
   final String source;
+  final int healthScore;
+  final String healthScoreReason;
 
   // Micronutrients
   final double vitaminAUg;
@@ -197,32 +220,61 @@ class Recipe {
         glycemicLoad: glycemicLoad * scale,
         insulinUnits: insulinUnits * scale,
         tags: tags,
-        ingredients: ingredients
-            .map((i) => i.copyWithGrams(i.grams * scale))
-            .toList(),
+        ingredients:
+            ingredients.map((i) => i.copyWithGrams(i.grams * scale)).toList(),
         steps: steps,
         source: source,
+        healthScore: healthScore,
+        healthScoreReason: healthScoreReason,
       );
 
   factory Recipe.fromJson(Map<String, dynamic> j) {
     final goalsRaw = (j['goals'] as List?)?.cast<String>() ?? const [];
     final id = (j['id'] as String?)?.trim() ?? '';
-    final name = (j['name'] as String?)?.trim() ?? '';
+    final name = ((j['name'] ?? j['title']) as String?)?.trim() ?? '';
     final rawImage = (j['image'] as String?)?.trim() ?? '';
+    final rawHealthScore = j['health_score'] ?? j['healthScore'];
+    final rawHealthReason = j['health_score_reason'] ?? j['healthScoreReason'];
+    final macros = (j['macros'] as Map?) ?? const {};
+    final language = (j['language'] as String?)?.trim().toLowerCase();
+    final parsedGoals =
+        goalsRaw.map(_goalFromKey).whereType<NutritionGoalType>().toSet();
+    final rawIngredients = (j['ingredients'] as List?) ?? const [];
+    final parsedIngredients = rawIngredients
+        .map((e) {
+          if (e is Map<String, dynamic>) return RecipeIngredient.fromJson(e);
+          final text = e.toString().trim();
+          return RecipeIngredient(name: text, amount: text, grams: 0);
+        })
+        .where((i) => i.name.isNotEmpty)
+        .toList();
+    final rawInstructions = j['instructions'];
+    final parsedSteps = rawInstructions is String
+        ? rawInstructions
+            .split(RegExp(r'\n+|(?<=\.)\s+(?=(Step|[0-9]+\.|[A-Z]))'))
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList()
+        : ((j['steps'] as List?) ?? const [])
+            .cast<dynamic>()
+            .map((e) => e.toString().trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
     return Recipe(
       id: id,
       name: name,
       image: rawImage.isNotEmpty ? rawImage : null,
       mealType: RecipeMealTypeX.fromJson(j['meal_type'] as String?),
-      goals: goalsRaw.map(_goalFromKey).whereType<NutritionGoalType>().toSet(),
-      minutes: (j['minutes'] as num?)?.toInt() ?? 30,
+      goals: parsedGoals.isEmpty ? {NutritionGoalType.maintain} : parsedGoals,
+      minutes: ((j['minutes'] ?? j['time']) as num?)?.toInt() ?? 30,
       servings: (j['servings'] as num?)?.toInt() ?? 1,
-      calories: (j['calories'] as num?)?.toInt() ?? 0,
-      proteinG: (j['protein_g'] as num?)?.toDouble() ?? 0,
-      carbsG: (j['carbs_g'] as num?)?.toDouble() ?? 0,
-      fatG: (j['fat_g'] as num?)?.toDouble() ?? 0,
-      fiberG: (j['fiber_g'] as num?)?.toDouble() ?? 0,
-      sugarG: (j['sugar_g'] as num?)?.toDouble() ?? 0,
+      calories: ((j['calories'] ?? macros['calories']) as num?)?.toInt() ?? 0,
+      proteinG:
+          ((j['protein_g'] ?? macros['protein']) as num?)?.toDouble() ?? 0,
+      carbsG: ((j['carbs_g'] ?? macros['carbs']) as num?)?.toDouble() ?? 0,
+      fatG: ((j['fat_g'] ?? macros['fat']) as num?)?.toDouble() ?? 0,
+      fiberG: ((j['fiber_g'] ?? macros['fiber']) as num?)?.toDouble() ?? 0,
+      sugarG: ((j['sugar_g'] ?? macros['sugar']) as num?)?.toDouble() ?? 0,
       vitaminAUg: (j['vitamin_a_ug'] as num?)?.toDouble() ?? 0,
       vitaminCMg: (j['vitamin_c_mg'] as num?)?.toDouble() ?? 0,
       vitaminDUg: (j['vitamin_d_ug'] as num?)?.toDouble() ?? 0,
@@ -239,33 +291,53 @@ class Recipe {
       glycemicIndex: (j['glycemic_index'] as num?)?.toInt() ?? 0,
       glycemicLoad: (j['glycemic_load'] as num?)?.toDouble() ?? 0,
       insulinUnits: (j['insulin_units'] as num?)?.toDouble() ?? 0,
-      tags: ((j['tags'] as List?) ?? const [])
-          .cast<dynamic>()
-          .map((e) => e.toString())
-          .where((s) => s.trim().isNotEmpty)
-          .toList(),
-      ingredients: ((j['ingredients'] as List?) ?? const [])
-          .cast<Map<String, dynamic>>()
-          .map(RecipeIngredient.fromJson)
-          .where((i) => i.name.isNotEmpty)
-          .toList(),
-      steps: ((j['steps'] as List?) ?? const [])
-          .cast<dynamic>()
-          .map((e) => e.toString().trim())
-          .where((s) => s.isNotEmpty)
-          .toList(),
-      source: (j['source'] as String?) ?? 'Unknown',
+      tags: [
+        ...((j['tags'] as List?) ?? const [])
+            .cast<dynamic>()
+            .map((e) => e.toString()),
+        if (language != null && language.isNotEmpty) language,
+      ].where((s) => s.trim().isNotEmpty).toList(),
+      ingredients: parsedIngredients,
+      steps: parsedSteps,
+      source: (j['source'] as String?) ?? 'Bundled scraper',
+      healthScore: (rawHealthScore as num?)?.toInt().clamp(0, 100) ?? 0,
+      healthScoreReason: (rawHealthReason as String?)?.trim() ?? '',
     );
   }
 
   static NutritionGoalType? _goalFromKey(String k) {
-    switch (k) {
-      case 'muscle':       return NutritionGoalType.muscleGrowth;
-      case 'diabetes':     return NutritionGoalType.diabetes;
-      case 'vegan':        return NutritionGoalType.vegan;
-      case 'weight_loss':  return NutritionGoalType.weightLoss;
-      case 'keto':         return NutritionGoalType.keto;
-      case 'maintain':     return NutritionGoalType.maintain;
+    switch (k.trim().toLowerCase()) {
+      case 'muscle':
+      case 'muscle_growth':
+      case 'musclegrowth':
+      case 'bulk':
+        return NutritionGoalType.muscleGrowth;
+      case 'diabetes':
+      case 'diabetic':
+      case 'blood_sugar':
+        return NutritionGoalType.diabetes;
+      case 'vegan':
+      case 'vegan_diet':
+      case 'plant_based':
+        return NutritionGoalType.vegan;
+      case 'vegetarian':
+      case 'vegetarian_diet':
+      case 'veggie':
+      case 'meatless':
+        return NutritionGoalType.vegetarian;
+      case 'weight_loss':
+      case 'weightloss':
+      case 'lose_weight':
+      case 'loseweight':
+      case 'cut':
+        return NutritionGoalType.weightLoss;
+      case 'keto':
+      case 'ketogenic':
+        return NutritionGoalType.keto;
+      case 'maintain':
+      case 'maintain_weight':
+      case 'maintenance':
+        return NutritionGoalType.maintain;
     }
     return null;
   }

@@ -20,6 +20,7 @@ import '../services/native_bridge.dart';
 import '../services/perf_monitor.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
+import '../widgets/generated_food_preview.dart';
 import '../widgets/scan_guidance_overlay.dart';
 import '../widgets/scan_tutorial_overlay.dart';
 import 'scan_detail_screen.dart';
@@ -52,6 +53,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   double _currentPitch = 0.0; // radians: -π/2 = top, 0 = horizontal
   String _detectedDepthMode = 'unknown';
   ScanResult? _savedScanResult;
+  List<DetectedFood> _buildPreviewFoods = const [];
   int? _sessionGeneration; // generation counter for safe stop()
 
   /// Flashlight (torch) state and ambient light (lux) for low-light warning.
@@ -312,6 +314,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     setState(() {
       _isRecording = true;
       _recordProgress = 0.0;
+      _buildPreviewFoods = const [];
     });
     _recordStartedAt = DateTime.now();
     ref.read(scanStateProvider.notifier).startedRecording();
@@ -422,14 +425,24 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       _hapticError();
       ref.read(scanStateProvider.notifier).modelFailed();
     } else {
+      final successfulResult = result;
+      if (mounted) {
+        setState(() {
+          _buildPreviewFoods = List<DetectedFood>.from(successfulResult.foods);
+        });
+      }
+      if (successfulResult.foods.isNotEmpty) {
+        await Future<void>.delayed(const Duration(milliseconds: 900));
+      }
+      if (!mounted) return;
       DebugLog.instance.log(
           'Scan',
-          'Inference done: ${result.foods.length} items, '
-              '${result.totalCaloriesMin.round()}-${result.totalCaloriesMax.round()} kcal');
+          'Inference done: ${successfulResult.foods.length} items, '
+              '${successfulResult.totalCaloriesMin.round()}-${successfulResult.totalCaloriesMax.round()} kcal');
       _hapticSuccess();
       ref.read(scanStateProvider.notifier).calculationDone();
       DebugLog.instance.log('Perf', PerfMonitor.instance.report());
-      if (mounted) await _saveScanResult(result);
+      if (mounted) await _saveScanResult(successfulResult);
     }
   }
 
@@ -451,6 +464,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   Future<void> _saveScanResult(ScanResultState resultState) async {
     try {
+      // Get the scan overlay image path from native side
+      final scanImagePath = await _bridge.getScanImage();
+
       final scanResult = ScanResult(
         timestamp: DateTime.now(),
         depthMode: _detectedDepthMode,
@@ -459,6 +475,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         topCameraTransform: null,
         sideCameraPosition: null,
         sideCameraTransform: null,
+        imagePath: scanImagePath,
       );
       await ref.read(historyProvider.notifier).addScan(scanResult);
       if (!mounted) return;
@@ -511,6 +528,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _sessionStarted = false;
     _sessionErrorDetail = null;
     _noFoodMessage = null;
+    _buildPreviewFoods = const [];
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();
     _startSession();
@@ -543,6 +561,21 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           // ── Guidance overlay ─────────────────────────────────────────
           ScanGuidanceOverlay(
               scanState: scanState, currentPitch: _currentPitch),
+
+          if (scanState == ScanState.calculating)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 104,
+              left: 16,
+              right: 16,
+              child: GeneratedFoodPreview(
+                foods: _buildPreviewFoods,
+                isBuilding: true,
+                height: 250,
+                title: _buildPreviewFoods.isEmpty
+                    ? 'Building 3D scan preview'
+                    : 'Refining generated 3D food model',
+              ),
+            ),
 
           // ── Bottom action panel ─────────────────────────────────────
           Positioned(

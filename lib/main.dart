@@ -33,7 +33,8 @@ void main() {
     unawaited(
       initSupabase()
           .then((_) => DebugLog.instance.log('App', 'Supabase initialized'))
-          .catchError((e) => DebugLog.instance.log('App', 'Supabase init skipped: $e')),
+          .catchError(
+              (e) => DebugLog.instance.log('App', 'Supabase init skipped: $e')),
     );
 
     unawaited(

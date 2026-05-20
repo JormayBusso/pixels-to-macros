@@ -48,6 +48,9 @@ class UserPreferences {
   /// Used only when [nutritionGoal] == [NutritionGoalType.diabetes].
   final double icrGramsPerUnit;
 
+  /// User's current body weight in kg (used for BMR-based calorie targets).
+  final double weightKg;
+
   /// When true, streaks are not broken by missed days. Persisted across app restarts.
   final bool vacationMode;
 
@@ -85,6 +88,7 @@ class UserPreferences {
     this.gender = UserGender.preferNotToSay,
     this.fontScale = 1.0,
     this.icrGramsPerUnit = 15.0,
+    this.weightKg = 70.0,
     this.vacationMode = false,
     this.dailyWaterGoalMl = 2000,
     this.waterIntakeMl = 0,
@@ -111,6 +115,7 @@ class UserPreferences {
       'gender': gender.dbValue,
       'font_scale': fontScale,
       'icr_grams_per_unit': icrGramsPerUnit,
+      'weight_kg': weightKg,
       'vacation_mode': vacationMode ? 1 : 0,
       'daily_water_goal_ml': dailyWaterGoalMl,
       'water_intake_ml': waterIntakeMl,
@@ -140,6 +145,7 @@ class UserPreferences {
       gender: UserGender.fromDbValue(map['gender'] as String?),
       fontScale: (map['font_scale'] as num?)?.toDouble() ?? 1.0,
       icrGramsPerUnit: (map['icr_grams_per_unit'] as num?)?.toDouble() ?? 15.0,
+      weightKg: (map['weight_kg'] as num?)?.toDouble() ?? 70.0,
       vacationMode: (map['vacation_mode'] as int?) == 1,
       dailyWaterGoalMl: (map['daily_water_goal_ml'] as int?) ?? 2000,
       waterIntakeMl: (map['water_intake_ml'] as int?) ?? 0,
@@ -166,6 +172,7 @@ class UserPreferences {
     UserGender? gender,
     double? fontScale,
     double? icrGramsPerUnit,
+    double? weightKg,
     bool? vacationMode,
     int? dailyWaterGoalMl,
     int? waterIntakeMl,
@@ -190,6 +197,7 @@ class UserPreferences {
       gender: gender ?? this.gender,
       fontScale: fontScale ?? this.fontScale,
       icrGramsPerUnit: icrGramsPerUnit ?? this.icrGramsPerUnit,
+      weightKg: weightKg ?? this.weightKg,
       vacationMode: vacationMode ?? this.vacationMode,
       dailyWaterGoalMl: dailyWaterGoalMl ?? this.dailyWaterGoalMl,
       waterIntakeMl: waterIntakeMl ?? this.waterIntakeMl,

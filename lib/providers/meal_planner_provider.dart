@@ -23,6 +23,9 @@ class MealPlanState {
   /// Assigned recipes per slot.
   final Map<String, Recipe> assignments;
 
+  /// Per-slot portion multipliers (1.0 = normal serving).
+  final Map<String, double> portionMultipliers;
+
   final bool loading;
 
   const MealPlanState({
@@ -30,6 +33,7 @@ class MealPlanState {
     required this.year,
     this.enabledSlots = const {},
     this.assignments = const {},
+    this.portionMultipliers = const {},
     this.loading = false,
   });
 
@@ -43,9 +47,13 @@ class MealPlanState {
   Recipe? recipeFor(int dayOfWeek, RecipeMealType mealType) =>
       assignments[slotKey(dayOfWeek, mealType)];
 
+  double portionMultiplierFor(int dayOfWeek, RecipeMealType mealType) =>
+      portionMultipliers[slotKey(dayOfWeek, mealType)] ?? 1.0;
+
   MealPlanState copyWith({
     Set<String>? enabledSlots,
     Map<String, Recipe>? assignments,
+    Map<String, double>? portionMultipliers,
     bool? loading,
   }) =>
       MealPlanState(
@@ -53,6 +61,7 @@ class MealPlanState {
         year: year,
         enabledSlots: enabledSlots ?? this.enabledSlots,
         assignments: assignments ?? this.assignments,
+        portionMultipliers: portionMultipliers ?? this.portionMultipliers,
         loading: loading ?? this.loading,
       );
 }
@@ -87,10 +96,12 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
 
     final enabled = <String>{};
     final assignments = <String, Recipe>{};
+    final portionMultipliers = <String, double>{};
     for (final row in rows) {
       final mealType = RecipeMealTypeX.fromJson(row['meal_type'] as String?);
       final key = MealPlanState.slotKey(row['day_of_week'] as int, mealType);
       enabled.add(key);
+      portionMultipliers[key] = 1.0;
       final id = row['recipe_id'] as String;
       final recipe = recipeById[id] ?? customById[id];
       if (recipe != null) assignments[key] = recipe;
@@ -100,6 +111,7 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
       loading: false,
       enabledSlots: enabled,
       assignments: assignments,
+      portionMultipliers: portionMultipliers,
     );
   }
 
@@ -107,8 +119,9 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
   Future<void> toggleSlot(
     int dayOfWeek,
     RecipeMealType mealType,
-    NutritionGoalType goal,
-  ) async {
+    NutritionGoalType goal, {
+    int dailyCalorieGoal = 0,
+  }) async {
     final key = MealPlanState.slotKey(dayOfWeek, mealType);
     final nowEnabled = state.enabledSlots.contains(key);
 
@@ -116,9 +129,11 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
       // Turn off — remove from DB and state
       final newEnabled = {...state.enabledSlots}..remove(key);
       final newAssignments = {...state.assignments}..remove(key);
+      final newPortions = {...state.portionMultipliers}..remove(key);
       state = state.copyWith(
         enabledSlots: newEnabled,
         assignments: newAssignments,
+        portionMultipliers: newPortions,
       );
       await DatabaseService.instance.deleteMealPlanEntry(
         weekNumber: state.weekNumber,
@@ -129,8 +144,13 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     } else {
       // Turn on — pick a recipe and save
       final newEnabled = {...state.enabledSlots}..add(key);
-      state = state.copyWith(enabledSlots: newEnabled);
-      await _assignRecipe(dayOfWeek, mealType, goal, forceNew: false);
+      final newPortions = {...state.portionMultipliers}
+        ..putIfAbsent(key, () => 1.0);
+      state = state.copyWith(
+          enabledSlots: newEnabled, portionMultipliers: newPortions);
+      await _assignRecipe(dayOfWeek, mealType, goal,
+          forceNew: false, dailyCalorieGoal: dailyCalorieGoal);
+      await _autoTuneDayCalories(dayOfWeek, goal, dailyCalorieGoal);
     }
   }
 
@@ -138,23 +158,31 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
   Future<void> shuffleSlot(
     int dayOfWeek,
     RecipeMealType mealType,
-    NutritionGoalType goal,
-  ) async {
-    await _assignRecipe(dayOfWeek, mealType, goal, forceNew: true);
+    NutritionGoalType goal, {
+    int dailyCalorieGoal = 0,
+  }) async {
+    await _assignRecipe(dayOfWeek, mealType, goal,
+        forceNew: true, dailyCalorieGoal: dailyCalorieGoal);
+    await _autoTuneDayCalories(dayOfWeek, goal, dailyCalorieGoal);
   }
 
   /// Replace the recipe for a slot with the given recipe.
   Future<void> assignRecipe(
     int dayOfWeek,
     RecipeMealType mealType,
-    Recipe recipe,
-  ) async {
+    Recipe recipe, {
+    NutritionGoalType goal = NutritionGoalType.maintain,
+    int dailyCalorieGoal = 0,
+  }) async {
     final key = MealPlanState.slotKey(dayOfWeek, mealType);
     final newEnabled = {...state.enabledSlots}..add(key);
     final newAssignments = {...state.assignments}..[key] = recipe;
+    final newPortions = {...state.portionMultipliers}
+      ..putIfAbsent(key, () => 1.0);
     state = state.copyWith(
       enabledSlots: newEnabled,
       assignments: newAssignments,
+      portionMultipliers: newPortions,
     );
     await DatabaseService.instance.upsertMealPlanEntry(
       weekNumber: state.weekNumber,
@@ -164,6 +192,10 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
       recipeId: recipe.id,
       recipeName: recipe.name,
     );
+    // Recalculate portions for the whole day after swapping a recipe.
+    if (dailyCalorieGoal > 0) {
+      await _autoTuneDayCalories(dayOfWeek, goal, dailyCalorieGoal);
+    }
   }
 
   Future<void> _assignRecipe(
@@ -171,6 +203,7 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     RecipeMealType mealType,
     NutritionGoalType goal, {
     required bool forceNew,
+    int dailyCalorieGoal = 0,
   }) async {
     final key = MealPlanState.slotKey(dayOfWeek, mealType);
     final currentId = state.assignments[key]?.id;
@@ -186,16 +219,46 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     // Avoid already-assigned recipes across the whole week when possible
     final usedIds = state.assignments.values.map((r) => r.id).toSet();
     final fresh = candidates.where((r) => !usedIds.contains(r.id)).toList();
-    final pool = (fresh.isNotEmpty && (forceNew || currentId == null))
+    var pool = (fresh.isNotEmpty && (forceNew || currentId == null))
         ? fresh
         : candidates;
 
+    // ── Calorie-budget filtering ──────────────────────────────────────────
+    // If the caller provided a daily calorie goal, pick a recipe that keeps
+    // the day's total close to the target.
+    if (dailyCalorieGoal > 0) {
+      // Sum calories already assigned for this day
+      int usedCalories = 0;
+      for (final mt in RecipeMealType.values) {
+        final dayKey = MealPlanState.slotKey(dayOfWeek, mt);
+        if (dayKey == key) continue; // skip the slot we're filling
+        final r = state.assignments[dayKey];
+        if (r != null) usedCalories += r.caloriesPerServing(r.servings);
+      }
+      final remaining = dailyCalorieGoal - usedCalories;
+
+      // Prefer recipes within ±30% of a fair share of the remaining budget
+      final targetCal = remaining.clamp(100, dailyCalorieGoal);
+      final lo = (targetCal * 0.5).round();
+      final hi = (targetCal * 1.3).round();
+      final calorieFiltered = pool
+          .where((r) =>
+              r.caloriesPerServing(r.servings) >= lo &&
+              r.caloriesPerServing(r.servings) <= hi)
+          .toList();
+      if (calorieFiltered.isNotEmpty) pool = calorieFiltered;
+    }
+
     // Pick deterministically but varied — seed from day + mealType + current assignments count
-    final rng = Random(dayOfWeek * 100 + mealType.index + state.assignments.length);
+    final rng =
+        Random(dayOfWeek * 100 + mealType.index + state.assignments.length);
     final recipe = pool[rng.nextInt(pool.length)];
 
     final newAssignments = {...state.assignments}..[key] = recipe;
-    state = state.copyWith(assignments: newAssignments);
+    final newPortions = {...state.portionMultipliers}
+      ..putIfAbsent(key, () => 1.0);
+    state = state.copyWith(
+        assignments: newAssignments, portionMultipliers: newPortions);
 
     await DatabaseService.instance.upsertMealPlanEntry(
       weekNumber: state.weekNumber,
@@ -207,6 +270,69 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     );
   }
 
+  int _dayCalories(int dayOfWeek) {
+    int total = 0;
+    for (final mt in RecipeMealType.values) {
+      final key = MealPlanState.slotKey(dayOfWeek, mt);
+      if (!state.enabledSlots.contains(key)) continue;
+      final recipe = state.assignments[key];
+      if (recipe == null) continue;
+      final mult = state.portionMultipliers[key] ?? 1.0;
+      total += (recipe.caloriesPerServing(recipe.servings) * mult).round();
+    }
+    return total;
+  }
+
+  Future<void> _autoTuneDayCalories(
+    int dayOfWeek,
+    NutritionGoalType goal,
+    int dailyCalorieGoal,
+  ) async {
+    if (dailyCalorieGoal <= 0) return;
+
+    // Reset all portion multipliers to 1.0 for this day first, then recalculate.
+    final newPortions = {...state.portionMultipliers};
+    for (final mt in RecipeMealType.values) {
+      final key = MealPlanState.slotKey(dayOfWeek, mt);
+      if (state.enabledSlots.contains(key) && state.assignments[key] != null) {
+        newPortions[key] = 1.0;
+      }
+    }
+    state = state.copyWith(portionMultipliers: newPortions);
+
+    // Recompute deficit after resetting to base portions.
+    final deficit = dailyCalorieGoal - _dayCalories(dayOfWeek);
+
+    // Scale portions proportionally to fill the remaining budget.
+    if (deficit.abs() > 50) {
+      final adjustable = <String>[];
+      for (final mt in RecipeMealType.values) {
+        final key = MealPlanState.slotKey(dayOfWeek, mt);
+        if (state.enabledSlots.contains(key) &&
+            state.assignments[key] != null) {
+          adjustable.add(key);
+        }
+      }
+      if (adjustable.isNotEmpty) {
+        // Calculate total base calories for the day.
+        int baseCal = 0;
+        for (final key in adjustable) {
+          baseCal += state.assignments[key]!
+              .caloriesPerServing(state.assignments[key]!.servings);
+        }
+        if (baseCal > 0) {
+          // Single uniform multiplier that brings the total to the target.
+          final multiplier = (dailyCalorieGoal / baseCal).clamp(0.8, 1.5);
+          final updated = {...state.portionMultipliers};
+          for (final key in adjustable) {
+            updated[key] = multiplier;
+          }
+          state = state.copyWith(portionMultipliers: updated);
+        }
+      }
+    }
+  }
+
   Future<void> clearWeek() async {
     await DatabaseService.instance.clearMealPlanWeek(
       weekNumber: state.weekNumber,
@@ -215,6 +341,7 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     state = state.copyWith(
       enabledSlots: {},
       assignments: {},
+      portionMultipliers: {},
     );
   }
 }
@@ -231,8 +358,7 @@ int _isoWeekNumber(DateTime date) {
 
 final _now = DateTime.now();
 
-final mealPlanProvider =
-    StateNotifierProvider<MealPlanNotifier, MealPlanState>(
+final mealPlanProvider = StateNotifierProvider<MealPlanNotifier, MealPlanState>(
   (ref) => MealPlanNotifier(_isoWeekNumber(_now), _now.year),
 );
 

@@ -198,7 +198,7 @@ final class PointCloudExporter {
         if let topDepth = topFrame.depthBuffer {
             depthBuffer = topDepth
             intrinsicsMatrix = topFrame.cameraIntrinsics
-        } else if let firstDepthFrame = recorder.lightFrames.first {
+        } else if let firstDepthFrame = recorder.topViewFrames.first ?? recorder.lightFrames.first {
             depthBuffer = firstDepthFrame.depthBuffer
             intrinsicsMatrix = firstDepthFrame.cameraIntrinsics
         } else {

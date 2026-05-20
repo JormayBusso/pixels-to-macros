@@ -111,6 +111,7 @@ final class DepthFusion {
         plateRect:         CGRect,
         topFrameTransform: simd_float4x4,
         topFrameIntrinsics: simd_float3x3,
+        topDepthBuffer:    CVPixelBuffer? = nil,
         maskWidth:  Int,
         maskHeight: Int,
         imageWidth:  Int,
@@ -153,6 +154,25 @@ final class DepthFusion {
         let pRh = Float(plateRect.height)
         guard pRw > 0.001 && pRh > 0.001 else { return }
 
+        var topDepthPtr: UnsafeMutablePointer<Float32>?
+        var topDepthWidth = 0
+        var topDepthHeight = 0
+        var topDepthFloatsPerRow = 0
+        if let topDepthBuffer {
+            CVPixelBufferLockBaseAddress(topDepthBuffer, .readOnly)
+            topDepthWidth = CVPixelBufferGetWidth(topDepthBuffer)
+            topDepthHeight = CVPixelBufferGetHeight(topDepthBuffer)
+            topDepthFloatsPerRow = CVPixelBufferGetBytesPerRow(topDepthBuffer) /
+                MemoryLayout<Float32>.stride
+            topDepthPtr = CVPixelBufferGetBaseAddress(topDepthBuffer)?
+                .assumingMemoryBound(to: Float32.self)
+        }
+        defer {
+            if let topDepthBuffer {
+                CVPixelBufferUnlockBaseAddress(topDepthBuffer, .readOnly)
+            }
+        }
+
         // Collect pending label assignments — mutating a Dictionary during
         // for-in enumeration is undefined behaviour in Swift (can crash).
         var pendingLabels: [(key: VoxelKey, label: Int32)] = []
@@ -176,6 +196,7 @@ final class DepthFusion {
             // Normalise to [0, 1].
             let u_n = u_px / Float(imageWidth)
             let v_n = v_px / Float(imageHeight)
+            guard u_n >= 0 && u_n < 1 && v_n >= 0 && v_n < 1 else { continue }
 
             // Map into plate crop region (same top-left-origin convention).
             let pu = (u_n - pRx) / pRw
@@ -189,6 +210,15 @@ final class DepthFusion {
 
             let label = combinedMask[mv * maskWidth + mu]
             if label > 0 {
+                if let topDepthPtr, topDepthWidth > 0, topDepthHeight > 0 {
+                    let du = min(max(Int(u_n * Float(topDepthWidth)), 0), topDepthWidth - 1)
+                    let dv = min(max(Int(v_n * Float(topDepthHeight)), 0), topDepthHeight - 1)
+                    let topDepth = topDepthPtr[dv * topDepthFloatsPerRow + du]
+                    if topDepth > 0.05 && topDepth < 1.5 {
+                        let delta = cam.z - topDepth
+                        guard delta >= -0.025 && delta <= 0.08 else { continue }
+                    }
+                }
                 pendingLabels.append((key: key, label: label))
             }
         }

@@ -43,11 +43,11 @@ extension ScanStateLabel on ScanState {
   String get label {
     switch (this) {
       case ScanState.waitingForTopView:
-        return 'Hold your phone flat, pointing straight down at the food';
+        return 'Hold flat above the plate to lock what should be scanned';
       case ScanState.readyToRecord:
         return 'Press the button to start scanning';
       case ScanState.recording:
-        return 'Slowly tilt your phone upright (~2 seconds)…';
+        return 'Slowly tilt upright; only the locked plate area is measured';
       case ScanState.calculating:
         return 'Building 3-D model & calculating nutrition…';
       case ScanState.done:

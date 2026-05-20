@@ -334,7 +334,7 @@ class _InstructionBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final (String text, IconData icon, Color bg) = switch (state) {
       ScanState.waitingForTopView => (
-          'Point phone straight down at your food',
+          'Lock the plate from the top view',
           Icons.phone_android,
           context.primary600,
         ),
@@ -344,7 +344,7 @@ class _InstructionBanner extends StatelessWidget {
           context.primary600,
         ),
       ScanState.recording => (
-          'Slowly tilt your phone upright',
+          'Tilt slowly; background is ignored',
           Icons.videocam,
           AppTheme.amber600,
         ),

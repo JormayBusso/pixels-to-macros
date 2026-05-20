@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +16,7 @@ import '../services/database_service.dart';
 import '../services/native_bridge.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
+import '../widgets/generated_food_preview.dart';
 import '../widgets/glucose_spike_card.dart';
 import '../widgets/plate_score_widget.dart';
 import 'edit_food_screen.dart';
@@ -96,7 +99,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
     if (ply == null || ply.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No depth data available for point cloud')),
+          const SnackBar(
+              content: Text('No depth data available for point cloud')),
         );
       }
       return;
@@ -159,8 +163,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  Icon(Icons.check_circle,
-                      size: 48, color: context.primary500),
+                  Icon(Icons.check_circle, size: 48, color: context.primary500),
                   const SizedBox(height: 12),
                   Text(
                     '${avgTotal.round()} kcal',
@@ -204,6 +207,59 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           ),
           const SizedBox(height: 16),
 
+          if (_scan.foods.isNotEmpty) ...[
+            // Show the real scan overlay image if available,
+            // otherwise fall back to the generated preview.
+            if (_scan.imagePath != null && File(_scan.imagePath!).existsSync())
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Stack(
+                  children: [
+                    Image.file(
+                      File(_scan.imagePath!),
+                      height: 240,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                    Positioned(
+                      left: 14,
+                      top: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.view_in_ar,
+                                size: 16, color: Color(0xFF86EFAC)),
+                            const SizedBox(width: 6),
+                            Text(
+                              '3D Scan — ${_scan.foods.length} item${_scan.foods.length == 1 ? '' : 's'}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              GeneratedFoodPreview(
+                foods: _scan.foods,
+                height: 240,
+              ),
+            const SizedBox(height: 16),
+          ],
+
           // ── Date info ────────────────────────────────────────────────
           Card(
             child: Padding(
@@ -236,7 +292,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           // ── Plate Score ──────────────────────────────────────────────
           if (_scan.foods.isNotEmpty) ...[
             Builder(builder: (context) {
-              final mealCal = (_scan.totalCaloriesMin + _scan.totalCaloriesMax) / 2;
+              final mealCal =
+                  (_scan.totalCaloriesMin + _scan.totalCaloriesMax) / 2;
               double mealProtein = 0;
               double mealFiber = 0;
               double mealGL = 0;
@@ -345,18 +402,24 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
             const SizedBox(height: 8),
             // ── Glucose Spike Prediction Chart ──────────────────────────
             GlucoseSpikeCard(
-              mealItems: _scan.foods.map((f) {
-                final fd = _foodMap[f.label.toLowerCase()];
-                if (fd == null) return null;
-                final g = _gramsFor(f);
-                return MealItemInput(
-                  netCarbsG: (fd.carbsPer100g - fd.fiberPer100g).clamp(0, 999) * g / 100,
-                  gi: fd.estimatedGI.toDouble(),
-                  proteinG: fd.proteinPer100g * g / 100,
-                  fatG: fd.fatPer100g * g / 100,
-                  fiberG: fd.fiberPer100g * g / 100,
-                );
-              }).whereType<MealItemInput>().toList(),
+              mealItems: _scan.foods
+                  .map((f) {
+                    final fd = _foodMap[f.label.toLowerCase()];
+                    if (fd == null) return null;
+                    final g = _gramsFor(f);
+                    return MealItemInput(
+                      netCarbsG:
+                          (fd.carbsPer100g - fd.fiberPer100g).clamp(0, 999) *
+                              g /
+                              100,
+                      gi: fd.estimatedGI.toDouble(),
+                      proteinG: fd.proteinPer100g * g / 100,
+                      fatG: fd.fatPer100g * g / 100,
+                      fiberG: fd.fiberPer100g * g / 100,
+                    );
+                  })
+                  .whereType<MealItemInput>()
+                  .toList(),
             ),
             const SizedBox(height: 16),
           ],
@@ -481,14 +544,18 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                           ),
                         ),
                         Expanded(
-                          flex: (avgTotal - _scan.totalCaloriesMin).round().clamp(1, 9999),
+                          flex: (avgTotal - _scan.totalCaloriesMin)
+                              .round()
+                              .clamp(1, 9999),
                           child: Container(
                             height: 8,
                             color: context.primary200,
                           ),
                         ),
                         Expanded(
-                          flex: (_scan.totalCaloriesMax - avgTotal).round().clamp(1, 9999),
+                          flex: (_scan.totalCaloriesMax - avgTotal)
+                              .round()
+                              .clamp(1, 9999),
                           child: Container(
                             height: 8,
                             color: AppTheme.amber500.withValues(alpha: 0.4),
@@ -551,8 +618,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete scan?'),
-        content:
-            const Text('This will permanently remove this scan entry.'),
+        content: const Text('This will permanently remove this scan entry.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -580,8 +646,18 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
 
   String _formatFullDate(DateTime dt) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
     ];
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year} at ${_formatTime(dt)}';
   }
@@ -831,8 +907,7 @@ class _FoodDetailCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: uColor,
                             shape: BoxShape.circle,
-                            border: Border.all(
-                                color: Colors.white, width: 1.5),
+                            border: Border.all(color: Colors.white, width: 1.5),
                           ),
                         ),
                       ],
@@ -984,7 +1059,7 @@ class _GlThermometerCard extends StatelessWidget {
                         ),
                         Positioned(
                           left: barFraction *
-                              (MediaQuery.of(context).size.width - 80) -
+                                  (MediaQuery.of(context).size.width - 80) -
                               6,
                           top: 0,
                           child: Container(
@@ -1023,8 +1098,7 @@ class _GlThermometerCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Text(tip,
-                style: TextStyle(fontSize: 11, color: color)),
+            Text(tip, style: TextStyle(fontSize: 11, color: color)),
             const SizedBox(height: 6),
             Row(
               children: [

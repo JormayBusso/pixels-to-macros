@@ -21,7 +21,7 @@ class InteractiveBodyMapSvg extends StatelessWidget {
     this.fit = BoxFit.contain,
   });
 
-  static const double _overlayOpacity = 0.60;
+  static const double _overlayOpacity = 1.0;
 
   /// Raw SVG xml text.
   final String rawSvg;
@@ -67,7 +67,7 @@ class InteractiveBodyMapSvg extends StatelessWidget {
       caseSensitive: false,
     );
 
-    return svg.replaceFirstMapped(tagPattern, (m) {
+    final withDirectTag = svg.replaceFirstMapped(tagPattern, (m) {
       var tag = m.group(1)!;
       // Some SVGs store paint in style="fill:...;opacity:..." rather than
       // dedicated attributes, so update both forms for reliability.
@@ -79,10 +79,38 @@ class InteractiveBodyMapSvg extends StatelessWidget {
       tag = _replaceOrAddAttribute(tag, 'fill-opacity', opacityValue);
       return tag;
     });
+
+    // If the ID belongs to a <g> element, its child paths often define their
+    // own fill, so group-level fill alone is not enough. Recolor descendants.
+    final groupPattern = RegExp(
+      '(<g[^>]*\\bid="${RegExp.escape(organId)}"[^>]*>)([\\s\\S]*?)(</g>)',
+      caseSensitive: false,
+    );
+    return withDirectTag.replaceFirstMapped(groupPattern, (m) {
+      final open = m.group(1)!;
+      final inner = m.group(2)!;
+      final close = m.group(3)!;
+      final shapePattern = RegExp(
+        '(<(?:path|rect|circle|ellipse|polygon|polyline)\\b[^>]*>)',
+        caseSensitive: false,
+      );
+      final recoloredInner = inner.replaceAllMapped(shapePattern, (shapeMatch) {
+        var tag = shapeMatch.group(1)!;
+        tag = _replaceStyleProperty(tag, 'fill', _toHex(color));
+        tag = _replaceStyleProperty(tag, 'opacity', opacityValue);
+        tag = _replaceStyleProperty(tag, 'fill-opacity', opacityValue);
+        tag = _replaceOrAddAttribute(tag, 'fill', _toHex(color));
+        tag = _replaceOrAddAttribute(tag, 'opacity', opacityValue);
+        tag = _replaceOrAddAttribute(tag, 'fill-opacity', opacityValue);
+        return tag;
+      });
+      return '$open$recoloredInner$close';
+    });
   }
 
   static String _replaceStyleProperty(String tag, String name, String value) {
-    final styleRegex = RegExp('\\bstyle\\s*=\\s*"([^"]*)"', caseSensitive: false);
+    final styleRegex =
+        RegExp('\\bstyle\\s*=\\s*"([^"]*)"', caseSensitive: false);
     final match = styleRegex.firstMatch(tag);
     if (match == null) {
       return tag;
@@ -92,7 +120,8 @@ class InteractiveBodyMapSvg extends StatelessWidget {
     final propRegex = RegExp('(^|;)\\s*$name\\s*:[^;]*', caseSensitive: false);
     final hasProp = propRegex.hasMatch(style);
     final nextStyle = hasProp
-        ? style.replaceFirstMapped(propRegex, (m) => '${m.group(1)}$name:$value')
+        ? style.replaceFirstMapped(
+            propRegex, (m) => '${m.group(1)}$name:$value')
         : style.trim().isEmpty
             ? '$name:$value'
             : '${style.trim()};$name:$value';
@@ -119,9 +148,12 @@ class InteractiveBodyMapSvg extends StatelessWidget {
   }
 
   static String _toHex(Color c) {
-    final r = (c.r * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
-    final g = (c.g * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
-    final b = (c.b * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final r =
+        (c.r * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final g =
+        (c.g * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final b =
+        (c.b * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
     return '#${(r + g + b).toUpperCase()}';
   }
 

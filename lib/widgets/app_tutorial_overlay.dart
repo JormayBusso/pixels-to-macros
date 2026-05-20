@@ -142,8 +142,7 @@ final _kSteps = [
   // 8 – Hydration quick +200 button
   _Step(
     title: 'Quick Add +200 ml',
-    body:
-        'Need a fast water log? Tap +200 ml for one-tap hydration updates.',
+    body: 'Need a fast water log? Tap +200 ml for one-tap hydration updates.',
     tab: 0,
     targetKey: TourKeys.hydrationQuickAdd200,
     tipBelow: true,
@@ -475,13 +474,24 @@ class _TooltipCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Vertical placement: below the spotlight (or centred if no spotlight).
     // Clamp so the card never goes off-screen.
-    final safeTop = MediaQuery.of(context).padding.top + 48; // below status bar + skip btn
+    final safeTop =
+        MediaQuery.of(context).padding.top + 48; // below status bar + skip btn
     final safeBottom = 20.0;
+    final maxCardHeight = screenSize.height - safeTop - safeBottom;
+    const estimatedCardHeight = 280.0;
     double? top, bottom;
     if (spotRect == null) {
       top = screenSize.height * 0.25;
     } else if (step.tipBelow) {
-      top = (spotRect!.bottom + 12).clamp(safeTop, screenSize.height - 200);
+      final proposedTop = spotRect!.bottom + 12;
+      final maxTopForCard =
+          screenSize.height - safeBottom - estimatedCardHeight;
+      if (proposedTop <= maxTopForCard) {
+        top = proposedTop.clamp(safeTop, maxTopForCard);
+      } else {
+        // Not enough room below target: place above it.
+        bottom = screenSize.height - spotRect!.top + 12;
+      }
     } else {
       // Place above the spotlight
       bottom = screenSize.height - spotRect!.top + 12;
@@ -502,6 +512,7 @@ class _TooltipCard extends StatelessWidget {
         color: Colors.transparent,
         child: Container(
           padding: const EdgeInsets.all(20),
+          constraints: BoxConstraints(maxHeight: maxCardHeight),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
@@ -517,20 +528,32 @@ class _TooltipCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title
-              Text(
-                step.title,
-                style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1A1A2E)),
-              ),
-              const SizedBox(height: 8),
-              // Body
-              Text(
-                step.body,
-                style: const TextStyle(
-                    fontSize: 14, color: AppTheme.gray600, height: 1.45),
+              Flexible(
+                fit: FlexFit.loose,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Text(
+                        step.title,
+                        style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1A1A2E)),
+                      ),
+                      const SizedBox(height: 8),
+                      // Body
+                      Text(
+                        step.body,
+                        style: const TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.gray600,
+                            height: 1.45),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               // Progress dots + button row

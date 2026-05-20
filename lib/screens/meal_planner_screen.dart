@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
 import '../models/custom_meal.dart';
 import '../models/food_data.dart';
 import '../models/meal_plan.dart';
@@ -77,6 +78,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     RecipeMealType.lunch,
     RecipeMealType.dinner,
     RecipeMealType.snack,
+    RecipeMealType.dessert,
   ];
 
   @override
@@ -90,6 +92,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final plan = ref.watch(mealPlanProvider);
     final prefs = ref.watch(userPrefsProvider);
 
@@ -99,8 +102,9 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Weekly Meal Planner',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
+            Text(l10n.weeklyMealPlanner,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
             Text(
               'Week ${plan.weekNumber}, ${plan.year}',
               style: const TextStyle(fontSize: 11, color: AppTheme.gray500),
@@ -112,7 +116,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
             TextButton.icon(
               onPressed: () => _generateGroceryList(context),
               icon: const Icon(Icons.shopping_basket_outlined, size: 18),
-              label: const Text('Grocery List'),
+              label: Text(l10n.groceryList),
               style: TextButton.styleFrom(
                 foregroundColor: context.primary500,
               ),
@@ -133,7 +137,8 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                     color: prefs.nutritionGoal.lightColor,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: prefs.nutritionGoal.color.withValues(alpha: 0.3)),
+                        color:
+                            prefs.nutritionGoal.color.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
@@ -233,8 +238,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
             'All meal assignments for this week will be removed. This cannot be undone.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
@@ -321,11 +325,67 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
 
   String _guessCategory(String name) {
     final l = name.toLowerCase();
-    const fruits = ['apple', 'banana', 'berry', 'orange', 'grape', 'mango', 'peach', 'pear', 'melon', 'kiwi', 'lemon', 'cherry', 'avocado'];
-    const vegs = ['broc', 'carrot', 'pepper', 'tomato', 'onion', 'lettuce', 'spinach', 'cucumber', 'zucchini', 'kale', 'celery', 'potato', 'pea', 'bean', 'asparagus', 'corn'];
-    const proteins = ['chicken', 'beef', 'pork', 'salmon', 'tuna', 'shrimp', 'egg', 'tofu', 'steak', 'fish', 'lamb', 'turkey', 'tempeh'];
+    const fruits = [
+      'apple',
+      'banana',
+      'berry',
+      'orange',
+      'grape',
+      'mango',
+      'peach',
+      'pear',
+      'melon',
+      'kiwi',
+      'lemon',
+      'cherry',
+      'avocado'
+    ];
+    const vegs = [
+      'broc',
+      'carrot',
+      'pepper',
+      'tomato',
+      'onion',
+      'lettuce',
+      'spinach',
+      'cucumber',
+      'zucchini',
+      'kale',
+      'celery',
+      'potato',
+      'pea',
+      'bean',
+      'asparagus',
+      'corn'
+    ];
+    const proteins = [
+      'chicken',
+      'beef',
+      'pork',
+      'salmon',
+      'tuna',
+      'shrimp',
+      'egg',
+      'tofu',
+      'steak',
+      'fish',
+      'lamb',
+      'turkey',
+      'tempeh'
+    ];
     const dairy = ['milk', 'cheese', 'yogurt', 'cream', 'butter', 'whey'];
-    const grains = ['rice', 'pasta', 'bread', 'oat', 'cereal', 'quinoa', 'wheat', 'flour', 'noodle', 'tortilla'];
+    const grains = [
+      'rice',
+      'pasta',
+      'bread',
+      'oat',
+      'cereal',
+      'quinoa',
+      'wheat',
+      'flour',
+      'noodle',
+      'tortilla'
+    ];
     if (fruits.any(l.contains)) return 'Fruits';
     if (vegs.any(l.contains)) return 'Vegetables';
     if (proteins.any(l.contains)) return 'Protein';
@@ -351,7 +411,19 @@ class _DayCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final plan = ref.watch(mealPlanProvider);
+    final prefs = ref.watch(userPrefsProvider);
     final hasAny = mealTypes.any((m) => plan.isEnabled(dayIndex, m));
+
+    // Sum calories for this day
+    int dayCal = 0;
+    for (final m in mealTypes) {
+      final r = plan.recipeFor(dayIndex, m);
+      if (r != null && plan.isEnabled(dayIndex, m)) {
+        final mult = plan.portionMultiplierFor(dayIndex, m);
+        dayCal += (r.caloriesPerServing(r.servings) * mult).round();
+      }
+    }
+    final dailyGoal = prefs.dailyCalorieGoal;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -374,6 +446,21 @@ class _DayCard extends ConsumerWidget {
                   ),
                 ),
                 const Spacer(),
+                if (hasAny && dayCal > 0) ...[
+                  Text(
+                    '$dayCal / $dailyGoal kcal',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: dayCal > dailyGoal * 1.1
+                          ? Colors.red.shade600
+                          : dayCal > dailyGoal * 0.9
+                              ? Colors.green.shade600
+                              : AppTheme.gray500,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 Text(
                   hasAny
                       ? '${mealTypes.where((m) => plan.isEnabled(dayIndex, m)).length} meals'
@@ -411,7 +498,9 @@ class _MealSlotRow extends ConsumerWidget {
     final plan = ref.watch(mealPlanProvider);
     final isEnabled = plan.isEnabled(dayIndex, mealType);
     final recipe = plan.recipeFor(dayIndex, mealType);
+    final portionMultiplier = plan.portionMultiplierFor(dayIndex, mealType);
     final goal = ref.watch(userPrefsProvider).nutritionGoal;
+    final dailyCal = ref.watch(userPrefsProvider).dailyCalorieGoal;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -433,16 +522,15 @@ class _MealSlotRow extends ConsumerWidget {
             // Slot header toggle
             InkWell(
               borderRadius: BorderRadius.circular(10),
-              onTap: () => ref
-                  .read(mealPlanProvider.notifier)
-                  .toggleSlot(dayIndex, mealType, goal),
+              onTap: () => ref.read(mealPlanProvider.notifier).toggleSlot(
+                  dayIndex, mealType, goal,
+                  dailyCalorieGoal: dailyCal),
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Row(
                   children: [
-                    Text(mealType.emoji,
-                        style: const TextStyle(fontSize: 16)),
+                    Text(mealType.emoji, style: const TextStyle(fontSize: 16)),
                     const SizedBox(width: 8),
                     Text(
                       mealType.label,
@@ -458,15 +546,16 @@ class _MealSlotRow extends ConsumerWidget {
                       GestureDetector(
                         onTap: () => ref
                             .read(mealPlanProvider.notifier)
-                            .shuffleSlot(dayIndex, mealType, goal),
+                            .shuffleSlot(dayIndex, mealType, goal,
+                                dailyCalorieGoal: dailyCal),
                         child: Container(
-                          padding: const EdgeInsets.all(4),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: context.primary500.withValues(alpha: 0.1),
+                            color: context.primary500.withValues(alpha: 0.12),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(Icons.shuffle_rounded,
-                              size: 14, color: context.primary500),
+                              size: 22, color: context.primary500),
                         ),
                       ),
                     const SizedBox(width: 8),
@@ -474,7 +563,8 @@ class _MealSlotRow extends ConsumerWidget {
                       value: isEnabled,
                       onChanged: (_) => ref
                           .read(mealPlanProvider.notifier)
-                          .toggleSlot(dayIndex, mealType, goal),
+                          .toggleSlot(dayIndex, mealType, goal,
+                              dailyCalorieGoal: dailyCal),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ],
@@ -484,8 +574,8 @@ class _MealSlotRow extends ConsumerWidget {
             // Assigned recipe preview
             if (isEnabled && recipe != null)
               InkWell(
-                borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(10)),
+                borderRadius:
+                    const BorderRadius.vertical(bottom: Radius.circular(10)),
                 onTap: () => _openDetail(context, recipe),
                 child: Container(
                   decoration: BoxDecoration(
@@ -565,16 +655,33 @@ class _MealSlotRow extends ConsumerWidget {
                               const SizedBox(height: 3),
                               Row(
                                 children: [
-                                  const Icon(Icons.local_fire_department_outlined,
-                                      size: 11, color: AppTheme.gray400),
+                                  const Icon(
+                                      Icons.local_fire_department_outlined,
+                                      size: 11,
+                                      color: AppTheme.gray400),
                                   const SizedBox(width: 2),
-                                  Text('${recipe.calories} kcal',
+                                  Text(
+                                      '${(recipe.caloriesPerServing(recipe.servings) * portionMultiplier).round()} kcal',
                                       style: const TextStyle(
-                                          fontSize: 10, color: AppTheme.gray500)),
+                                          fontSize: 10,
+                                          color: AppTheme.gray500)),
+                                  if (portionMultiplier > 1.05) ...[
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'x${portionMultiplier.toStringAsFixed(1)} portion',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.orange.shade700,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                   const SizedBox(width: 8),
-                                  _MacroBadge('P', recipe.proteinG, Colors.blue),
+                                  _MacroBadge(
+                                      'P', recipe.proteinG, Colors.blue),
                                   const SizedBox(width: 4),
-                                  _MacroBadge('C', recipe.carbsG, Colors.orange),
+                                  _MacroBadge(
+                                      'C', recipe.carbsG, Colors.orange),
                                   const SizedBox(width: 4),
                                   _MacroBadge('F', recipe.fatG, Colors.red),
                                 ],
@@ -586,10 +693,15 @@ class _MealSlotRow extends ConsumerWidget {
                       // Swap recipe button
                       GestureDetector(
                         onTap: () => _pickDifferentRecipe(context, ref, goal),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
+                        child: Container(
+                          margin: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: context.primary500.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
                           child: Icon(Icons.swap_horiz_rounded,
-                              size: 20, color: context.primary500),
+                              size: 26, color: context.primary500),
                         ),
                       ),
                     ],
@@ -618,8 +730,7 @@ class _MealSlotRow extends ConsumerWidget {
 
   void _openDetail(BuildContext context, Recipe recipe) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-          builder: (_) => RecipeDetailScreen(recipe: recipe)),
+      MaterialPageRoute(builder: (_) => RecipeDetailScreen(recipe: recipe)),
     );
   }
 
@@ -644,9 +755,8 @@ class _MealSlotRow extends ConsumerWidget {
       };
       return mt == mealType;
     }).toList();
-    final customAsRecipes = matchingCustom
-        .map((m) => _customMealToRecipe(m, allFoods))
-        .toList();
+    final customAsRecipes =
+        matchingCustom.map((m) => _customMealToRecipe(m, allFoods)).toList();
     if (!context.mounted) return;
     final picked = await showModalBottomSheet<Recipe>(
       context: context,
@@ -658,9 +768,10 @@ class _MealSlotRow extends ConsumerWidget {
       ),
     );
     if (picked != null) {
-      await ref
-          .read(mealPlanProvider.notifier)
-          .assignRecipe(dayIndex, mealType, picked);
+      final prefs = ref.read(userPrefsProvider);
+      await ref.read(mealPlanProvider.notifier).assignRecipe(
+          dayIndex, mealType, picked,
+          goal: prefs.nutritionGoal, dailyCalorieGoal: prefs.dailyCalorieGoal);
     }
   }
 }
@@ -683,8 +794,8 @@ class _MacroBadge extends StatelessWidget {
       ),
       child: Text(
         '$label ${grams.round()}g',
-        style: TextStyle(
-            fontSize: 9, fontWeight: FontWeight.w700, color: color),
+        style:
+            TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }
@@ -830,8 +941,7 @@ class _GroceryPreviewSheet extends StatelessWidget {
 // ── Pick recipe sheet ──────────────────────────────────────────────────────────
 
 class _PickRecipeSheet extends StatefulWidget {
-  const _PickRecipeSheet(
-      {required this.candidates, required this.mealType});
+  const _PickRecipeSheet({required this.candidates, required this.mealType});
   final List<Recipe> candidates;
   final RecipeMealType mealType;
 
@@ -947,8 +1057,8 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                                     color: AppTheme.gray100,
                                     child: Center(
                                         child: Text(widget.mealType.emoji,
-                                            style: const TextStyle(
-                                                fontSize: 20))),
+                                            style:
+                                                const TextStyle(fontSize: 20))),
                                   ),
                                 )
                               : CachedNetworkImage(
@@ -966,8 +1076,8 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                                     color: AppTheme.gray100,
                                     child: Center(
                                         child: Text(widget.mealType.emoji,
-                                            style: const TextStyle(
-                                                fontSize: 20))),
+                                            style:
+                                                const TextStyle(fontSize: 20))),
                                   ),
                                 ))
                           : Container(
@@ -1002,5 +1112,3 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
     );
   }
 }
-
-

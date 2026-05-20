@@ -18,6 +18,11 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     state = prefs;
   }
 
+  /// Reset to factory defaults (for testing/debug).
+  Future<void> reset() async {
+    state = const UserPreferences();
+  }
+
   Future<void> completeOnboarding({
     required String name,
     required int dailyCalorieGoal,
@@ -27,6 +32,7 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     required int dailyFatTargetG,
     UserGender gender = UserGender.preferNotToSay,
     double icrGramsPerUnit = 0.0,
+    double weightKg = 70.0,
   }) async {
     final prefs = state.copyWith(
       name: name,
@@ -38,6 +44,7 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
       dailyFatTargetG: dailyFatTargetG,
       gender: gender,
       icrGramsPerUnit: icrGramsPerUnit,
+      weightKg: weightKg,
     );
     await update(prefs);
   }

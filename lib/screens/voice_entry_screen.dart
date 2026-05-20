@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../core/app_localizations.dart';
 import '../models/custom_meal.dart';
 import '../models/food_data.dart';
 import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
+import '../providers/locale_provider.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 
@@ -178,6 +180,21 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     'approximately',
   };
 
+  /// Single words that speech recognition captures but are not food items.
+  static const _nonFoodWords = {
+    'it', 'is', 'was', 'were', 'be', 'been', 'am', 'are',
+    'so', 'no', 'yes', 'not', 'but', 'or', 'if', 'at',
+    'in', 'on', 'to', 'up', 'me', 'he', 'she', 'they',
+    'what', 'when', 'how', 'much', 'many', 'very', 'really',
+    'thing', 'stuff', 'lot', 'good', 'bad', 'nice',
+    'big', 'small', 'more', 'less', 'enough', 'too',
+    'well', 'pretty', 'kind', 'type', 'sort', 'way',
+    'something', 'anything', 'nothing', 'everything',
+    'maybe', 'actually', 'basically', 'literally',
+    'ok', 'okay', 'yeah', 'yep', 'nope', 'um', 'uh',
+    'hmm', 'ah', 'oh',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -227,9 +244,18 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       _parsed = [];
     });
     try {
+      // Use the app language for speech recognition
+      final langCode = ref.read(localeProvider).code;
+      final localeMap = {
+        'en': 'en_US',
+        'pl': 'pl_PL',
+        'nl': 'nl_NL',
+        'es': 'es_ES',
+        'de': 'de_DE',
+      };
       _speech.listen(
         onResult: _onResult,
-        localeId: 'en_US', // English only
+        localeId: localeMap[langCode] ?? 'en_US',
         listenMode: ListenMode.dictation,
         partialResults: true,
       );
@@ -393,6 +419,12 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
 
       if (queryWords.isEmpty) continue;
 
+      // Skip single common non-food words that speech recognition often picks up
+      if (queryWords.length == 1) {
+        final w = queryWords.first;
+        if (_nonFoodWords.contains(w)) continue;
+      }
+
       for (final f in _allFoods) {
         final fLabel = f.label.toLowerCase();
         final fWords = fLabel.split(' ');
@@ -447,10 +479,14 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         }
       }
 
-      if (match != null && bestScore >= 0) {
+      if (match != null && bestScore >= 5) {
         results.add(_ParsedFood(food: match, grams: grams));
       } else {
-        results.add(_ParsedFood(food: null, query: foodQuery, grams: grams));
+        // Only add unrecognized items if the query looks like a plausible food name
+        // (3+ characters, not a single common word)
+        if (foodQuery.length >= 3 && queryWords.isNotEmpty) {
+          results.add(_ParsedFood(food: null, query: foodQuery, grams: grams));
+        }
       }
     }
 
@@ -680,9 +716,10 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI Speech'),
+        title: Text(l10n.aiSpeech),
         actions: [
           IconButton(
             icon: const Icon(Icons.keyboard_hide),

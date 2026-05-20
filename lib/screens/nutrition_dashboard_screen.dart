@@ -17,9 +17,9 @@ class NutritionDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final intake = ref.watch(dailyIntakeProvider);
-    final prefs  = ref.watch(userPrefsProvider);
+    final prefs = ref.watch(userPrefsProvider);
     final isFemale = prefs.gender == UserGender.female;
-    final isMale   = prefs.gender == UserGender.male;
+    final isMale = prefs.gender == UserGender.male;
     // Resolve goal-specific DRVs — "prefer not to say" uses male baseline.
     final drv = NutrientDRV.forContext(
       isMale: !isFemale,
@@ -53,7 +53,8 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 // ── Macronutrients ────────────────────────────────────────
                 const _SectionHeader('Macronutrients'),
                 Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Column(
                     children: [
                       _NutrientRow(
@@ -104,7 +105,8 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 // ── Vitamins ──────────────────────────────────────────────
                 const _SectionHeader('Vitamins'),
                 Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Column(
                     children: [
                       _NutrientRow(
@@ -170,11 +172,13 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 // ── Minerals ──────────────────────────────────────────────
                 const _SectionHeader('Minerals'),
                 Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Column(
                     children: [
                       _NutrientRow(
-                        icon: Image.asset('assets/Calcium.png', width: 28, height: 28, fit: BoxFit.contain),
+                        icon: Image.asset('assets/Calcium.png',
+                            width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Calcium',
                         current: intake.nutrientTotals.calciumMg,
                         drv: drv.calciumMg,
@@ -182,7 +186,8 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: Image.asset('assets/Iron.png', width: 28, height: 28, fit: BoxFit.contain),
+                        icon: Image.asset('assets/Iron.png',
+                            width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Iron',
                         current: intake.nutrientTotals.ironMg,
                         drv: drv.ironMg,
@@ -190,7 +195,8 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: Image.asset('assets/Magnesium.png', width: 28, height: 28, fit: BoxFit.contain),
+                        icon: Image.asset('assets/Magnesium.png',
+                            width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Magnesium',
                         current: intake.nutrientTotals.magnesiumMg,
                         drv: drv.magnesiumMg,
@@ -198,7 +204,8 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: Image.asset('assets/Potassium.png', width: 28, height: 28, fit: BoxFit.contain),
+                        icon: Image.asset('assets/Potassium.png',
+                            width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Potassium',
                         current: intake.nutrientTotals.potassiumMg,
                         drv: drv.potassiumMg,
@@ -206,7 +213,8 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: Image.asset('assets/Sodium.png', width: 28, height: 28, fit: BoxFit.contain),
+                        icon: Image.asset('assets/Sodium.png',
+                            width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Sodium',
                         current: intake.nutrientTotals.sodiumMg,
                         drv: drv.sodiumMaxMg,
@@ -215,7 +223,8 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       ),
                       const _Divider(),
                       _NutrientRow(
-                        icon: Image.asset('assets/Zink.png', width: 28, height: 28, fit: BoxFit.contain),
+                        icon: Image.asset('assets/Zink.png',
+                            width: 28, height: 28, fit: BoxFit.contain),
                         name: 'Zinc',
                         current: intake.nutrientTotals.zincMg,
                         drv: drv.zincMg,
@@ -229,7 +238,8 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 // ── Essential fatty acids & trace minerals (new 2026) ─────
                 const _SectionHeader('Essential Fats & Trace Minerals'),
                 Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Column(
                     children: [
                       _NutrientRow(
@@ -270,8 +280,10 @@ class NutritionDashboardScreen extends ConsumerWidget {
 
                 // ── Goal context note ─────────────────────────────────────
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: _GoalContextNote(goal: prefs.nutritionGoal, isMale: isMale),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: _GoalContextNote(
+                      goal: prefs.nutritionGoal, isMale: isMale),
                 ),
                 const SizedBox(height: 8),
 
@@ -328,6 +340,10 @@ class _GoalContextNote extends StatelessWidget {
             'bioavailability: iron ×1.8, zinc ×1.5, B12 ×2.5, omega-3, '
             'iodine, and selenium. Supplementing B12 and vitamin D is '
             'strongly advised. (Craig et al. 2021)';
+      case NutritionGoalType.vegetarian:
+        note = 'Vegetarian targets are adjusted for nutrients that can run low '
+            'without meat or seafood: iron, zinc, iodine, omega-3, and B12. '
+            'Dairy and eggs can help, while fortified foods are still useful.';
       case NutritionGoalType.maintain:
         note = 'Targets are standard NASEM/NIH Dietary Reference Intakes for '
             'healthy adults, adjusted for your biological sex.';
@@ -347,7 +363,8 @@ class _GoalContextNote extends StatelessWidget {
           Expanded(
             child: Text(
               note,
-              style: TextStyle(fontSize: 12, color: AppTheme.gray400, height: 1.4),
+              style:
+                  TextStyle(fontSize: 12, color: AppTheme.gray400, height: 1.4),
             ),
           ),
         ],
@@ -373,7 +390,8 @@ class _GoalContextNote extends StatelessWidget {
 //   95% – 110%    → amber  (near limit)
 //   >110%         → red    (over limit)
 
-Color _nutrientBarColor(double pct, {
+Color _nutrientBarColor(
+  double pct, {
   required bool isLimit,
   required BuildContext context,
 }) {
@@ -410,7 +428,8 @@ class _SummaryCard extends StatelessWidget {
     final pct = calorieGoal > 0 ? (calories / calorieGoal * 100).round() : 0;
     final pctFrac = calorieGoal > 0 ? calories / calorieGoal : 0.0;
     // 7-zone color for calories (not a hard limit, treat as target)
-    final pctColor = _nutrientBarColor(pctFrac, isLimit: false, context: context);
+    final pctColor =
+        _nutrientBarColor(pctFrac, isLimit: false, context: context);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -437,7 +456,8 @@ class _SummaryCard extends StatelessWidget {
                   ),
                   Text(
                     'of $calorieGoal kcal goal',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.gray400),
+                    style:
+                        const TextStyle(fontSize: 12, color: AppTheme.gray400),
                   ),
                 ],
               ),
@@ -510,7 +530,8 @@ class _NutrientInfo {
 
 const _kNutrientInfo = <String, _NutrientInfo>{
   'Calories': _NutrientInfo(
-    description: 'Energy currency of the body — powers every heartbeat, thought, and movement. Balancing intake with daily expenditure is the foundation of healthy weight management.',
+    description:
+        'Energy currency of the body — powers every heartbeat, thought, and movement. Balancing intake with daily expenditure is the foundation of healthy weight management.',
     topFoods: [
       ('Oils (coconut, olive)', '~900 kcal'),
       ('Butter / ghee', '~720 kcal'),
@@ -520,7 +541,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Protein': _NutrientInfo(
-    description: 'Builds and repairs muscles, skin, enzymes, and hormones. Essential for immune function and satiety — helps keep you feeling full longer after meals.',
+    description:
+        'Builds and repairs muscles, skin, enzymes, and hormones. Essential for immune function and satiety — helps keep you feeling full longer after meals.',
     topFoods: [
       ('Spirulina (dried)', '57 g'),
       ('Parmesan cheese', '38 g'),
@@ -530,7 +552,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Carbohydrates': _NutrientInfo(
-    description: 'Primary fuel for the brain and muscles. Complex carbs provide steady energy and fibre; refined carbs cause rapid blood sugar spikes. Whole grains and legumes are the best choices.',
+    description:
+        'Primary fuel for the brain and muscles. Complex carbs provide steady energy and fibre; refined carbs cause rapid blood sugar spikes. Whole grains and legumes are the best choices.',
     topFoods: [
       ('Cornflakes (dry)', '84 g'),
       ('White rice (dry)', '80 g'),
@@ -540,7 +563,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Fat': _NutrientInfo(
-    description: 'Needed to absorb fat-soluble vitamins (A, D, E, K), produce hormones, and protect organs. Unsaturated fats from avocado, olive oil, and nuts actively support heart and brain health.',
+    description:
+        'Needed to absorb fat-soluble vitamins (A, D, E, K), produce hormones, and protect organs. Unsaturated fats from avocado, olive oil, and nuts actively support heart and brain health.',
     topFoods: [
       ('Coconut oil / olive oil', '100 g'),
       ('Butter / ghee', '81 g'),
@@ -550,7 +574,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Dietary Fiber': _NutrientInfo(
-    description: 'Feeds beneficial gut bacteria, slows sugar absorption, lowers LDL cholesterol, and keeps bowels regular. High-fibre diets reduce the risk of type 2 diabetes and colon cancer.',
+    description:
+        'Feeds beneficial gut bacteria, slows sugar absorption, lowers LDL cholesterol, and keeps bowels regular. High-fibre diets reduce the risk of type 2 diabetes and colon cancer.',
     topFoods: [
       ('Wheat bran', '43 g'),
       ('Chia seeds', '34 g'),
@@ -560,7 +585,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Vitamin A': _NutrientInfo(
-    description: 'Essential for vision (especially night vision), immune defense, and skin-cell renewal. Also supports healthy bone growth and reproductive function. Retinol in animal foods; beta-carotene in plants.',
+    description:
+        'Essential for vision (especially night vision), immune defense, and skin-cell renewal. Also supports healthy bone growth and reproductive function. Retinol in animal foods; beta-carotene in plants.',
     topFoods: [
       ('Beef liver', '9 442 μg'),
       ('Sweet potato', '961 μg'),
@@ -570,7 +596,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Vitamin C': _NutrientInfo(
-    description: 'Potent antioxidant that strengthens immunity, synthesises collagen for skin and joints, and significantly enhances iron absorption from plant-based foods.',
+    description:
+        'Potent antioxidant that strengthens immunity, synthesises collagen for skin and joints, and significantly enhances iron absorption from plant-based foods.',
     topFoods: [
       ('Guava', '228 mg'),
       ('Bell pepper (red)', '183 mg'),
@@ -580,7 +607,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Vitamin D': _NutrientInfo(
-    description: 'Regulates calcium and phosphorus absorption for strong bones and teeth. Also supports immune function, mood, and muscle health. Sunlight is the primary source; dietary sources are scarce.',
+    description:
+        'Regulates calcium and phosphorus absorption for strong bones and teeth. Also supports immune function, mood, and muscle health. Sunlight is the primary source; dietary sources are scarce.',
     topFoods: [
       ('Cod liver oil', '250 μg'),
       ('Pickled herring', '27 μg'),
@@ -590,7 +618,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Vitamin E': _NutrientInfo(
-    description: 'Fat-soluble antioxidant that protects cell membranes from oxidative stress. Supports immune function, skin integrity, and healthy eyes. Works synergistically with vitamin C.',
+    description:
+        'Fat-soluble antioxidant that protects cell membranes from oxidative stress. Supports immune function, skin integrity, and healthy eyes. Works synergistically with vitamin C.',
     topFoods: [
       ('Wheat germ oil', '149 mg'),
       ('Sunflower seeds', '35 mg'),
@@ -600,7 +629,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Vitamin K': _NutrientInfo(
-    description: 'Essential for blood clotting — stops wounds from bleeding. Also activates proteins that direct calcium into bones and keep it out of arteries, benefiting both bone density and heart health.',
+    description:
+        'Essential for blood clotting — stops wounds from bleeding. Also activates proteins that direct calcium into bones and keep it out of arteries, benefiting both bone density and heart health.',
     topFoods: [
       ('Fresh parsley', '1 640 μg'),
       ('Kale (raw)', '817 μg'),
@@ -610,7 +640,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Folate (B9)': _NutrientInfo(
-    description: 'Critical for DNA synthesis and cell division — especially during pregnancy to prevent neural tube defects. Also supports red blood cell formation and lowers homocysteine levels.',
+    description:
+        'Critical for DNA synthesis and cell division — especially during pregnancy to prevent neural tube defects. Also supports red blood cell formation and lowers homocysteine levels.',
     topFoods: [
       ('Chicken liver', '578 μg'),
       ('Edamame', '311 μg'),
@@ -620,7 +651,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Vitamin B12': _NutrientInfo(
-    description: 'Required for healthy nerve function, red blood cell production, and DNA synthesis. Found almost exclusively in animal products — vegans and vegetarians should supplement regularly.',
+    description:
+        'Required for healthy nerve function, red blood cell production, and DNA synthesis. Found almost exclusively in animal products — vegans and vegetarians should supplement regularly.',
     topFoods: [
       ('Clams (cooked)', '98 μg'),
       ('Beef liver', '83 μg'),
@@ -630,7 +662,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Calcium': _NutrientInfo(
-    description: 'The primary mineral in bones and teeth, providing structural strength. Also regulates muscle contractions (including the heartbeat), nerve signals, and blood clotting.',
+    description:
+        'The primary mineral in bones and teeth, providing structural strength. Also regulates muscle contractions (including the heartbeat), nerve signals, and blood clotting.',
     topFoods: [
       ('Parmesan cheese', '1 184 mg'),
       ('Sesame seeds (whole)', '975 mg'),
@@ -640,7 +673,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Iron': _NutrientInfo(
-    description: 'Carries oxygen in haemoglobin (red blood cells) and myoglobin (muscles). Deficiency causes fatigue, weakness, and anaemia. Vitamin C consumed alongside iron-rich foods significantly boosts absorption.',
+    description:
+        'Carries oxygen in haemoglobin (red blood cells) and myoglobin (muscles). Deficiency causes fatigue, weakness, and anaemia. Vitamin C consumed alongside iron-rich foods significantly boosts absorption.',
     topFoods: [
       ('Spirulina (dried)', '28 mg'),
       ('Chicken liver', '13 mg'),
@@ -650,7 +684,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Magnesium': _NutrientInfo(
-    description: 'Involved in over 300 enzyme reactions — energy production, muscle and nerve function, blood sugar regulation, and bone density. Most people consume less than the recommended amount.',
+    description:
+        'Involved in over 300 enzyme reactions — energy production, muscle and nerve function, blood sugar regulation, and bone density. Most people consume less than the recommended amount.',
     topFoods: [
       ('Pumpkin seeds', '592 mg'),
       ('Cocoa powder (raw)', '499 mg'),
@@ -660,7 +695,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Potassium': _NutrientInfo(
-    description: 'Maintains fluid and electrolyte balance, supports nerve transmission and muscle contractions, and directly counteracts the blood-pressure-raising effect of sodium.',
+    description:
+        'Maintains fluid and electrolyte balance, supports nerve transmission and muscle contractions, and directly counteracts the blood-pressure-raising effect of sodium.',
     topFoods: [
       ('Dried apricots', '1 162 mg'),
       ('Pistachios', '1 025 mg'),
@@ -670,7 +706,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Sodium': _NutrientInfo(
-    description: 'Essential for fluid balance and nerve function, but excess intake raises blood pressure and increases cardiovascular and kidney disease risk. Most sodium is hidden in processed and packaged foods.',
+    description:
+        'Essential for fluid balance and nerve function, but excess intake raises blood pressure and increases cardiovascular and kidney disease risk. Most sodium is hidden in processed and packaged foods.',
     topFoods: [
       ('Table salt', '38 758 mg'),
       ('Soy sauce', '5 765 mg'),
@@ -680,7 +717,8 @@ const _kNutrientInfo = <String, _NutrientInfo>{
     ],
   ),
   'Zinc': _NutrientInfo(
-    description: 'Supports immune function, wound healing, protein synthesis, and the senses of taste and smell. Also crucial for testosterone production, healthy growth during adolescence, and DNA repair.',
+    description:
+        'Supports immune function, wound healing, protein synthesis, and the senses of taste and smell. Also crucial for testosterone production, healthy growth during adolescence, and DNA repair.',
     topFoods: [
       ('Oysters (cooked)', '78 mg'),
       ('Hemp seeds', '10 mg'),
@@ -728,7 +766,8 @@ class _NutrientRowState extends State<_NutrientRow> {
 
   @override
   Widget build(BuildContext context) {
-    final pct = widget.drv > 0 ? (widget.current / widget.drv).clamp(0.0, 1.5) : 0.0;
+    final pct =
+        widget.drv > 0 ? (widget.current / widget.drv).clamp(0.0, 1.5) : 0.0;
     final displayPct = (pct * 100).round().clamp(0, 999);
     final barColor = _barColor(pct, context);
     final info = _kNutrientInfo[widget.name];
@@ -743,7 +782,8 @@ class _NutrientRowState extends State<_NutrientRow> {
           children: [
             Row(
               children: [
-                SizedBox(width: 24, height: 24, child: Center(child: widget.icon)),
+                SizedBox(
+                    width: 24, height: 24, child: Center(child: widget.icon)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -851,8 +891,8 @@ class _NutrientDetailPanel extends StatelessWidget {
                 child: Row(
                   children: [
                     Text('• ',
-                        style: TextStyle(
-                            color: context.primary500, fontSize: 12)),
+                        style:
+                            TextStyle(color: context.primary500, fontSize: 12)),
                     Expanded(
                       child: Text(
                         f.$1,

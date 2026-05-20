@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
 import '../models/custom_meal.dart';
 import '../models/food_data.dart';
 import '../models/nutrition_goal.dart';
@@ -50,19 +51,19 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final query = ref.watch(recipeQueryProvider);
     final resultsAsync = ref.watch(recipeResultsProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Recipes'),
+        title: Text(l10n.recipes),
         actions: [
           IconButton(
-            tooltip: 'Weekly Meal Planner',
+            tooltip: l10n.weeklyMealPlanner,
             icon: const Icon(Icons.calendar_month_outlined),
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                  builder: (_) => const MealPlannerScreen()),
+              MaterialPageRoute(builder: (_) => const MealPlannerScreen()),
             ),
           ),
         ],
@@ -76,7 +77,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
               onChanged: (s) =>
                   ref.read(recipeQueryProvider.notifier).setSearch(s),
               decoration: InputDecoration(
-                hintText: 'Search recipes or ingredients…',
+                hintText: '${l10n.search} ${l10n.recipes.toLowerCase()}…',
                 prefixIcon: const Icon(Icons.search, size: 20),
                 suffixIcon: query.search.isNotEmpty
                     ? IconButton(
@@ -111,7 +112,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
                 _FilterChip(
-                  label: 'All goals',
+                  label: l10n.allGoals,
                   selected: query.goal == null,
                   onTap: () =>
                       ref.read(recipeQueryProvider.notifier).setGoal(null),
@@ -135,12 +136,13 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
                 _FilterChip(
-                  label: 'All meals',
+                  label: l10n.allMeals,
                   selected: query.mealType == null,
                   onTap: () =>
                       ref.read(recipeQueryProvider.notifier).setMealType(null),
                 ),
-                for (final m in RecipeMealType.values.where((t) => t != RecipeMealType.snack))
+                for (final m in RecipeMealType.values
+                    .where((t) => t != RecipeMealType.snack))
                   _FilterChip(
                     label: m.label,
                     emoji: m.emoji,
@@ -155,8 +157,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           // ── Results ──
           Expanded(
             child: resultsAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (recipes) {
                 // Filter custom meals by search + meal type
@@ -180,13 +181,13 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                 }).toList();
 
                 if (recipes.isEmpty && filteredCustom.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Padding(
-                      padding: EdgeInsets.all(32),
+                      padding: const EdgeInsets.all(32),
                       child: Text(
-                        'No recipes match your filters.\nTry widening your search.',
+                        l10n.noRecipesMatch,
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: AppTheme.gray400),
+                        style: const TextStyle(color: AppTheme.gray400),
                       ),
                     ),
                   );
@@ -207,7 +208,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                     if (i == 0) {
                       // "My Meals" section header
                       return _SectionHeader(
-                        title: 'My Meals',
+                        title: l10n.myMeals,
                         onAdd: () async {
                           await Navigator.of(context).push(MaterialPageRoute(
                               builder: (_) => const CreateMealScreen()));
@@ -223,7 +224,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                     }
                     if (i == filteredCustom.length + 1) {
                       // "Recipes" section header
-                      return const _SectionHeader(title: 'Recipes');
+                      return _SectionHeader(title: l10n.recipes);
                     }
                     return _RecipeCard(
                         recipe: recipes[i - filteredCustom.length - 2]);
@@ -318,15 +319,16 @@ class _CustomMealCard extends ConsumerWidget {
             SizedBox(
               width: 90,
               height: 90,
-              child: meal.imagePath != null && File(meal.imagePath!).existsSync()
-                  ? Image.file(File(meal.imagePath!), fit: BoxFit.cover)
-                  : Container(
-                      color: AppTheme.gray100,
-                      child: Center(
-                        child: Text(mealTypeEmoji,
-                            style: const TextStyle(fontSize: 28)),
-                      ),
-                    ),
+              child:
+                  meal.imagePath != null && File(meal.imagePath!).existsSync()
+                      ? Image.file(File(meal.imagePath!), fit: BoxFit.cover)
+                      : Container(
+                          color: AppTheme.gray100,
+                          child: Center(
+                            child: Text(mealTypeEmoji,
+                                style: const TextStyle(fontSize: 28)),
+                          ),
+                        ),
             ),
             Expanded(
               child: Padding(
@@ -452,7 +454,8 @@ class _CustomMealDetailSheetState
     final map = _kcalMap;
     double total = 0;
     for (var i = 0; i < _ingredients.length; i++) {
-      final g = double.tryParse(_gramsControllers[i].text) ?? _ingredients[i].grams;
+      final g =
+          double.tryParse(_gramsControllers[i].text) ?? _ingredients[i].grams;
       total += (map[_ingredients[i].foodLabel] ?? 0) * g / 100.0;
     }
     return total;
@@ -463,8 +466,8 @@ class _CustomMealDetailSheetState
     final foods = <DetectedFood>[];
     final map = _kcalMap;
     for (var i = 0; i < _ingredients.length; i++) {
-      final g = double.tryParse(_gramsControllers[i].text) ??
-          _ingredients[i].grams;
+      final g =
+          double.tryParse(_gramsControllers[i].text) ?? _ingredients[i].grams;
       if (g <= 0) continue;
       final label = _ingredients[i].foodLabel;
       final kcalPer100 = map[label] ?? 0.0;
@@ -540,8 +543,7 @@ class _CustomMealDetailSheetState
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Row(
                 children: [
-                  Text(mealTypeEmoji,
-                      style: const TextStyle(fontSize: 24)),
+                  Text(mealTypeEmoji, style: const TextStyle(fontSize: 24)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -556,8 +558,7 @@ class _CustomMealDetailSheetState
                     onPressed: () async {
                       Navigator.of(context).pop();
                       await Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) =>
-                              CreateMealScreen(meal: widget.meal)));
+                          builder: (_) => CreateMealScreen(meal: widget.meal)));
                       widget.onChanged();
                     },
                   ),
@@ -601,8 +602,8 @@ class _CustomMealDetailSheetState
                                   contentPadding: EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 8),
                                   border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.all(
-                                          Radius.circular(8))),
+                                      borderRadius:
+                                          BorderRadius.all(Radius.circular(8))),
                                 ),
                                 onChanged: (_) => setState(() {}),
                               ),
@@ -654,17 +655,14 @@ class _CustomMealDetailSheetState
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Meal?'),
-        content:
-            Text('Remove "${widget.meal.name}" from your saved meals?'),
+        content: Text('Remove "${widget.meal.name}" from your saved meals?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await DatabaseService.instance
-                  .deleteCustomMeal(widget.meal.id!);
+              await DatabaseService.instance.deleteCustomMeal(widget.meal.id!);
               widget.onChanged();
               if (mounted) Navigator.of(context).pop();
             },
@@ -751,13 +749,7 @@ class _RecipeCard extends StatelessWidget {
               SizedBox(
                 width: 90,
                 height: 90,
-                child: CachedNetworkImage(
-                  imageUrl: recipe.image!,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(color: AppTheme.gray100),
-                  errorWidget: (_, __, ___) =>
-                      Container(color: AppTheme.gray100),
-                ),
+                child: _RecipeImage(path: recipe.image!),
               )
             else
               Container(
@@ -803,6 +795,10 @@ class _RecipeCard extends StatelessWidget {
                           Text('${recipe.calories} kcal',
                               style: const TextStyle(
                                   fontSize: 11, color: AppTheme.gray500)),
+                          if (recipe.healthScore > 0) ...[
+                            const SizedBox(width: 10),
+                            _HealthScoreChip(score: recipe.healthScore),
+                          ],
                         ],
                       ],
                     ),
@@ -877,13 +873,147 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
+class _HealthScoreChip extends StatelessWidget {
+  const _HealthScoreChip({required this.score});
+  final int score;
+
+  Color get _color {
+    if (score >= 80) return AppTheme.green600;
+    if (score >= 60) return AppTheme.amber600;
+    if (score >= 40) return Colors.orange.shade700;
+    return AppTheme.red500;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _color;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '$score/100',
+        style: TextStyle(
+          fontSize: 10,
+          color: color,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _RecipeImage extends StatelessWidget {
+  const _RecipeImage({required this.path, this.overlay = false});
+  final String path;
+  final bool overlay;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = path.startsWith('assets/')
+        ? Image.asset(path, fit: BoxFit.cover)
+        : CachedNetworkImage(
+            imageUrl: path,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => Container(color: AppTheme.gray100),
+            errorWidget: (_, __, ___) => Container(color: AppTheme.gray100),
+          );
+
+    if (!overlay) return image;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        image,
+        Container(color: Colors.black26),
+      ],
+    );
+  }
+}
+
+class _HealthScorePanel extends StatelessWidget {
+  const _HealthScorePanel({required this.recipe});
+  final Recipe recipe;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = recipe.healthScore.clamp(0, 100);
+    final color = score >= 80
+        ? AppTheme.green600
+        : score >= 60
+            ? AppTheme.amber600
+            : score >= 40
+                ? Colors.orange.shade700
+                : AppTheme.red500;
+    final reason = recipe.healthScoreReason.trim().isEmpty
+        ? 'Score based on calories, protein, fiber, sugar, saturated fat, sodium, ingredient quality, and goal fit.'
+        : recipe.healthScoreReason;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: color.withValues(alpha: 0.35)),
+            ),
+            child: Text(
+              '$score',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Food score',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.gray900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  reason,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 1.35,
+                    color: AppTheme.gray600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   const RecipeDetailScreen({super.key, required this.recipe});
   final Recipe recipe;
 
   @override
-  ConsumerState<RecipeDetailScreen> createState() =>
-      _RecipeDetailScreenState();
+  ConsumerState<RecipeDetailScreen> createState() => _RecipeDetailScreenState();
 }
 
 class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
@@ -893,27 +1023,37 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   String _scaleAmount(String amount, int selected, int original) {
     if (selected == original) return amount;
     final ratio = selected / original;
-    // Try to find a leading number (int or decimal, possibly fractional like "1/2")
+    String format(double value, String suffix) {
+      final text = value == value.roundToDouble()
+          ? value.round().toString()
+          : value.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+      return '$text$suffix';
+    }
+
+    // Try to find a leading number (int, decimal, fraction, or mixed fraction).
+    final mixedFractionRegex = RegExp(r'^(\d+)\s+(\d+)/(\d+)(.*)$');
     final fractionRegex = RegExp(r'^(\d+)/(\d+)(.*)$');
     final numberRegex = RegExp(r'^(\d+\.?\d*)(.*)$');
+    final mixedMatch = mixedFractionRegex.firstMatch(amount);
+    if (mixedMatch != null) {
+      final whole = int.parse(mixedMatch.group(1)!);
+      final num = int.parse(mixedMatch.group(2)!);
+      final den = int.parse(mixedMatch.group(3)!);
+      final suffix = mixedMatch.group(4) ?? '';
+      return format((whole + (num / den)) * ratio, suffix);
+    }
     final fractionMatch = fractionRegex.firstMatch(amount);
     if (fractionMatch != null) {
       final num = int.parse(fractionMatch.group(1)!);
       final den = int.parse(fractionMatch.group(2)!);
-      final scaled = (num / den) * ratio;
       final suffix = fractionMatch.group(3) ?? '';
-      return scaled == scaled.roundToDouble()
-          ? '${scaled.round()}$suffix'
-          : '${scaled.toStringAsFixed(1)}$suffix';
+      return format((num / den) * ratio, suffix);
     }
     final match = numberRegex.firstMatch(amount);
     if (match != null) {
       final value = double.parse(match.group(1)!);
       final suffix = match.group(2) ?? '';
-      final scaled = value * ratio;
-      return scaled == scaled.roundToDouble()
-          ? '${scaled.round()}$suffix'
-          : '${scaled.toStringAsFixed(1)}$suffix';
+      return format(value * ratio, suffix);
     }
     return amount; // non-numeric like "to taste", "pinch"
   }
@@ -943,12 +1083,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             pinned: true,
             flexibleSpace: r.image != null
                 ? FlexibleSpaceBar(
-                    background: CachedNetworkImage(
-                      imageUrl: r.image!,
-                      fit: BoxFit.cover,
-                      color: Colors.black26,
-                      colorBlendMode: BlendMode.darken,
-                    ),
+                    background: _RecipeImage(path: r.image!, overlay: true),
                   )
                 : null,
             title: Text(r.name, style: const TextStyle(fontSize: 15)),
@@ -978,11 +1113,16 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 ),
                 if (r.hasMacros) ...[
                   const SizedBox(height: 16),
+                  if (r.healthScore > 0) ...[
+                    _HealthScorePanel(recipe: r),
+                    const SizedBox(height: 16),
+                  ],
                   // ── Macro bar (per person, does not change with serving selector) ──
                   const Padding(
                     padding: EdgeInsets.only(bottom: 6),
                     child: Text('Per person',
-                        style: TextStyle(fontSize: 11, color: Color(0xFF888888))),
+                        style:
+                            TextStyle(fontSize: 11, color: Color(0xFF888888))),
                   ),
                   _NutritionTable(
                     recipe: r,
@@ -1015,7 +1155,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                           Expanded(
                             child: Text(
                               'Multiple servings: verify portion accuracy before bolusing.',
-                              style: TextStyle(fontSize: 11, color: Colors.brown),
+                              style:
+                                  TextStyle(fontSize: 11, color: Colors.brown),
                             ),
                           ),
                         ],
@@ -1057,7 +1198,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                                 ),
                                 if (i.amount.isNotEmpty)
                                   TextSpan(
-                                    text: '  ${_scaleAmount(i.amount, _selectedServings, r.servings)}',
+                                    text:
+                                        '  ${_scaleAmount(i.amount, _selectedServings, r.servings)}',
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: AppTheme.gray500,
@@ -1268,7 +1410,8 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
 
   void _addIngredient() {
     setState(() {
-      _ingredients.add(const RecipeIngredient(name: '', amount: '', grams: 0.0));
+      _ingredients
+          .add(const RecipeIngredient(name: '', amount: '', grams: 0.0));
       _controllers.add(TextEditingController(text: '100'));
       _nameControllers.add(TextEditingController());
     });
@@ -1299,7 +1442,14 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
     if (existing == null) {
       final lowerName = result.name.toLowerCase();
       final isDrink = const [
-        'water', 'juice', 'drink', 'cola', 'soda', 'milk', 'tea', 'coffee',
+        'water',
+        'juice',
+        'drink',
+        'cola',
+        'soda',
+        'milk',
+        'tea',
+        'coffee',
       ].any((kw) => lowerName.contains(kw));
 
       final food = FoodData(
@@ -1374,13 +1524,15 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
       // Use the numeric grams field directly if available, otherwise parse from amount string
       final grams = ing.grams > 0
           ? (ing.grams * widget.servings / widget.recipe.servings)
-          : _estimateGrams(ing.amount, widget.servings, widget.recipe.servings, ing.name);
+          : _estimateGrams(
+              ing.amount, widget.servings, widget.recipe.servings, ing.name);
       _controllers[i].text = grams.round().toString();
     }
     setState(() {});
   }
 
-  double _estimateGrams(String amount, int selected, int original, String name) {
+  double _estimateGrams(
+      String amount, int selected, int original, String name) {
     // Scale simple numeric amounts first (fractional support)
     final fractionRegex = RegExp(r'^(\d+)\s+(\d+)/(\d+)(.*) ');
     final simpleFraction = RegExp(r'^(\d+)/(\d+)(.*) ');
@@ -1396,7 +1548,10 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
         final den = int.parse(fracMatch.group(3)!);
         final suffix = fracMatch.group(4) ?? '';
         final val = (whole + (num / den)) * ratio;
-        scaled = (val == val.roundToDouble() ? val.round().toString() : val.toStringAsFixed(1)) + suffix;
+        scaled = (val == val.roundToDouble()
+                ? val.round().toString()
+                : val.toStringAsFixed(1)) +
+            suffix;
       } else {
         final fracMatch2 = simpleFraction.firstMatch(scaled);
         if (fracMatch2 != null) {
@@ -1404,21 +1559,28 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
           final den = int.parse(fracMatch2.group(2)!);
           final suffix = fracMatch2.group(3) ?? '';
           final val = (num / den) * ratio;
-          scaled = (val == val.roundToDouble() ? val.round().toString() : val.toStringAsFixed(1)) + suffix;
+          scaled = (val == val.roundToDouble()
+                  ? val.round().toString()
+                  : val.toStringAsFixed(1)) +
+              suffix;
         } else {
           final match = numberRegex.firstMatch(scaled);
           if (match != null) {
             final v = double.tryParse(match.group(1)!) ?? 0.0;
             final suffix = match.group(2) ?? '';
             final val = v * ratio;
-            scaled = (val == val.roundToDouble() ? val.round().toString() : val.toStringAsFixed(1)) + suffix;
+            scaled = (val == val.roundToDouble()
+                    ? val.round().toString()
+                    : val.toStringAsFixed(1)) +
+                suffix;
           }
         }
       }
     }
 
     // Extract numeric value and unit
-    final numMatch = RegExp(r'(\d+\.?\d*|\d+\/\d+|\d+\s+\d+\/\d+)').firstMatch(scaled);
+    final numMatch =
+        RegExp(r'(\d+\.?\d*|\d+\/\d+|\d+\s+\d+\/\d+)').firstMatch(scaled);
     double value = 0.0;
     if (numMatch != null) {
       final raw = numMatch.group(0)!.trim();
@@ -1447,19 +1609,30 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
     final unit = unitMatch?.group(1) ?? '';
 
     double grams = 0.0;
-    if (unit.contains('kg')) grams = value * 1000.0;
-    else if (unit.contains('g')) grams = value;
-    else if (unit.contains('ml')) grams = value; // assume 1 ml ≈ 1 g
-    else if (unit.contains('tbsp') || unit.contains('tablespoon')) grams = value * 15.0;
-    else if (unit.contains('tsp') || unit.contains('teaspoon')) grams = value * 5.0;
-    else if (unit.contains('cup')) grams = value * 240.0;
-    else if (unit.contains('oz')) grams = value * 28.35;
-    else if (unit.contains('lb')) grams = value * 453.592;
+    if (unit.contains('kg'))
+      grams = value * 1000.0;
+    else if (unit.contains('g'))
+      grams = value;
+    else if (unit.contains('ml'))
+      grams = value; // assume 1 ml ≈ 1 g
+    else if (unit.contains('tbsp') || unit.contains('tablespoon'))
+      grams = value * 15.0;
+    else if (unit.contains('tsp') || unit.contains('teaspoon'))
+      grams = value * 5.0;
+    else if (unit.contains('cup'))
+      grams = value * 240.0;
+    else if (unit.contains('oz'))
+      grams = value * 28.35;
+    else if (unit.contains('lb'))
+      grams = value * 453.592;
     else if (value > 0) {
       final lname = name.toLowerCase();
-      if (lname.contains('egg')) grams = value * 50.0;
-      else if (lname.contains('slice')) grams = value * 30.0;
-      else grams = value * 100.0; // fallback guess
+      if (lname.contains('egg'))
+        grams = value * 50.0;
+      else if (lname.contains('slice'))
+        grams = value * 30.0;
+      else
+        grams = value * 100.0; // fallback guess
     }
 
     // Clamp to reasonable range
@@ -1542,15 +1715,18 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
         continue;
       }
 
-      final ingredientTokens = normalizedIngredient.split(' ').where((t) => t.isNotEmpty).toSet();
-      final labelTokens = labelNorm.split(' ').where((t) => t.isNotEmpty).toSet();
+      final ingredientTokens =
+          normalizedIngredient.split(' ').where((t) => t.isNotEmpty).toSet();
+      final labelTokens =
+          labelNorm.split(' ').where((t) => t.isNotEmpty).toSet();
       final overlap = ingredientTokens.intersection(labelTokens).length;
       var score = overlap * 100 + labelNorm.length;
 
       if (isMilkIngredient && !labelNorm.contains('milk')) {
         score -= 500;
       }
-      if (normalizedIngredient.contains('almond milk') && labelNorm == 'almond') {
+      if (normalizedIngredient.contains('almond milk') &&
+          labelNorm == 'almond') {
         score -= 1000;
       }
 
@@ -1613,18 +1789,22 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
 
     if (foods.isEmpty) {
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No ingredient amounts provided.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No ingredient amounts provided.')));
       return;
     }
 
-    final scan = ScanResult(timestamp: DateTime.now(), depthMode: 'recipe', foods: foods);
+    final scan = ScanResult(
+        timestamp: DateTime.now(), depthMode: 'recipe', foods: foods);
     try {
       await DatabaseService.instance.insertScanResult(scan);
       widget.onLogged();
       if (mounted) Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logged recipe.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Logged recipe.')));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to log recipe: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Failed to log recipe: $e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -1637,175 +1817,204 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
       onTap: () => FocusScope.of(context).unfocus(),
       behavior: HitTestBehavior.translucent,
       child: Container(
-      height: h,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                      child: Text('Log: ${widget.recipe.name}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
-                  // Dismiss keyboard button
-                  IconButton(
-                    icon: const Icon(Icons.keyboard_hide, size: 22),
-                    tooltip: 'Dismiss keyboard',
-                    onPressed: () => FocusScope.of(context).unfocus(),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  )
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text('Adjust grams per ingredient (cooking for ${widget.servings})', style: const TextStyle(color: Color(0xFF666666))),
-              if (widget.isDiabetic) ...[
-                const SizedBox(height: 10),
-                // ICR-not-set warning
-                if (widget.icr <= 0)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.red.shade300),
+        height: h,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                        child: Text('Log: ${widget.recipe.name}',
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w700))),
+                    // Dismiss keyboard button
+                    IconButton(
+                      icon: const Icon(Icons.keyboard_hide, size: 22),
+                      tooltip: 'Dismiss keyboard',
+                      onPressed: () => FocusScope.of(context).unfocus(),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.warning_amber_rounded,
-                            color: Colors.red.shade600, size: 20),
-                        const SizedBox(width: 10),
-                        const Expanded(
-                          child: Text(
-                            'Your ICR is not set. Bolus calculations will be inaccurate.\n'
-                            'Go to Settings → Diabetes to set your personal ICR.',
-                            style: TextStyle(fontSize: 12, color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                _BolusCard(
-                  carbsG: widget.carbsPerServing,
-                  bolusUnits: widget.bolusUnits,
-                  icr: widget.icr <= 0 ? 10.0 : widget.icr,
-                  glycemicIndex: widget.recipe.glycemicIndex,
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    )
+                  ],
                 ),
-              ],
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: _ingredients.length + 1, // +1 for add row
-                  separatorBuilder: (_, __) => const Divider(height: 12),
-                  itemBuilder: (_, i) {
-                    // Last slot = "Add ingredient" buttons
-                    if (i == _ingredients.length) {
+                const SizedBox(height: 8),
+                Text(
+                    'Adjust grams per ingredient (cooking for ${widget.servings})',
+                    style: const TextStyle(color: Color(0xFF666666))),
+                if (widget.isDiabetic) ...[
+                  const SizedBox(height: 10),
+                  // ICR-not-set warning
+                  if (widget.icr <= 0)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.red.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              color: Colors.red.shade600, size: 20),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Your ICR is not set. Bolus calculations will be inaccurate.\n'
+                              'Go to Settings → Diabetes to set your personal ICR.',
+                              style: TextStyle(fontSize: 12, color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  _BolusCard(
+                    carbsG: widget.carbsPerServing,
+                    bolusUnits: widget.bolusUnits,
+                    icr: widget.icr <= 0 ? 10.0 : widget.icr,
+                    glycemicIndex: widget.recipe.glycemicIndex,
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: _ingredients.length + 1, // +1 for add row
+                    separatorBuilder: (_, __) => const Divider(height: 12),
+                    itemBuilder: (_, i) {
+                      // Last slot = "Add ingredient" buttons
+                      if (i == _ingredients.length) {
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: TextButton.icon(
+                                onPressed: _scanBarcodeForIngredient,
+                                icon:
+                                    const Icon(Icons.qr_code_scanner, size: 18),
+                                label: const Text('Scan Barcode'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextButton.icon(
+                                onPressed: _addIngredient,
+                                icon: const Icon(Icons.edit, size: 18),
+                                label: const Text('Add Manually'),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      final ing = _ingredients[i];
                       return Row(
                         children: [
+                          // Remove button
+                          GestureDetector(
+                            onTap: () => _removeIngredient(i),
+                            child: const Icon(Icons.remove_circle_outline,
+                                color: Colors.red, size: 20),
+                          ),
+                          const SizedBox(width: 8),
+                          // Name field (editable)
                           Expanded(
-                            child: TextButton.icon(
-                              onPressed: _scanBarcodeForIngredient,
-                              icon: const Icon(Icons.qr_code_scanner, size: 18),
-                              label: const Text('Scan Barcode'),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextField(
+                                  controller: _nameControllers[i],
+                                  textInputAction: TextInputAction.done,
+                                  decoration: InputDecoration(
+                                    hintText: ing.name.isEmpty
+                                        ? 'Ingredient name'
+                                        : ing.name,
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 0, vertical: 4),
+                                    border: InputBorder.none,
+                                  ),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14),
+                                ),
+                                if (ing.amount.isNotEmpty)
+                                  Text(
+                                    _scaleAmountLocal(
+                                        ing.amount,
+                                        widget.servings,
+                                        widget.recipe.servings),
+                                    style: const TextStyle(
+                                        color: Color(0xFF888888), fontSize: 12),
+                                  ),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: TextButton.icon(
-                              onPressed: _addIngredient,
-                              icon: const Icon(Icons.edit, size: 18),
-                              label: const Text('Add Manually'),
+                          // Grams field
+                          SizedBox(
+                            width: 90,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _controllers[i],
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
+                                    textInputAction: TextInputAction.done,
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 8),
+                                      border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.all(
+                                              Radius.circular(8))),
+                                    ),
+                                    onChanged: (_) => setState(() {}),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text('g',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w700)),
+                              ],
                             ),
                           ),
                         ],
                       );
-                    }
-                    final ing = _ingredients[i];
-                    return Row(
-                      children: [
-                        // Remove button
-                        GestureDetector(
-                          onTap: () => _removeIngredient(i),
-                          child: const Icon(Icons.remove_circle_outline,
-                              color: Colors.red, size: 20),
-                        ),
-                        const SizedBox(width: 8),
-                        // Name field (editable)
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              TextField(
-                                controller: _nameControllers[i],
-                                textInputAction: TextInputAction.done,
-                                decoration: InputDecoration(
-                                  hintText: ing.name.isEmpty ? 'Ingredient name' : ing.name,
-                                  isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-                                  border: InputBorder.none,
-                                ),
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                              ),
-                              if (ing.amount.isNotEmpty)
-                                Text(
-                                  _scaleAmountLocal(ing.amount, widget.servings, widget.recipe.servings),
-                                  style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Grams field
-                        SizedBox(
-                          width: 90,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _controllers[i],
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  textInputAction: TextInputAction.done,
-                                  decoration: const InputDecoration(
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-                                  ),
-                                  onChanged: (_) => setState(() {}),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Text('g', style: TextStyle(fontWeight: FontWeight.w700)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: Text('Total: ${_totalKcal.round()} kcal', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
-                  FilledButton(
-                    onPressed: _saving ? null : _submit,
-                    child: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Log Meal'),
+                    },
                   ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                        child: Text('Total: ${_totalKcal.round()} kcal',
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w700))),
+                    FilledButton(
+                      onPressed: _saving ? null : _submit,
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Text('Log Meal'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -1896,10 +2105,8 @@ class _NutritionTableState extends State<_NutritionTable> {
           _NutrientRow('Protein', r.proteinPerServing(s), 'g'),
           _NutrientRow('Carbs', r.carbsPerServing(s), 'g'),
           _NutrientRow('Fat', r.fatPerServing(s), 'g'),
-          if (r.fiberG > 0)
-            _NutrientRow('Fiber', r.fiberPerServing(s), 'g'),
-          if (r.sugarG > 0)
-            _NutrientRow('Sugar', r.sugarPerServing(s), 'g'),
+          if (r.fiberG > 0) _NutrientRow('Fiber', r.fiberPerServing(s), 'g'),
+          if (r.sugarG > 0) _NutrientRow('Sugar', r.sugarPerServing(s), 'g'),
           if (_expanded) ...[
             const Divider(height: 16),
             const Align(
@@ -1920,20 +2127,15 @@ class _NutritionTableState extends State<_NutritionTable> {
               _NutrientRow('Vitamin K', r.vitaminKUg / s, 'µg'),
             if (r.vitaminB12Ug > 0)
               _NutrientRow('Vitamin B12', r.vitaminB12Ug / s, 'µg'),
-            if (r.folateUg > 0)
-              _NutrientRow('Folate', r.folateUg / s, 'µg'),
-            if (r.calciumMg > 0)
-              _NutrientRow('Calcium', r.calciumMg / s, 'mg'),
-            if (r.ironMg > 0)
-              _NutrientRow('Iron', r.ironMg / s, 'mg'),
+            if (r.folateUg > 0) _NutrientRow('Folate', r.folateUg / s, 'µg'),
+            if (r.calciumMg > 0) _NutrientRow('Calcium', r.calciumMg / s, 'mg'),
+            if (r.ironMg > 0) _NutrientRow('Iron', r.ironMg / s, 'mg'),
             if (r.magnesiumMg > 0)
               _NutrientRow('Magnesium', r.magnesiumMg / s, 'mg'),
             if (r.potassiumMg > 0)
               _NutrientRow('Potassium', r.potassiumMg / s, 'mg'),
-            if (r.zincMg > 0)
-              _NutrientRow('Zinc', r.zincMg / s, 'mg'),
-            if (r.sodiumMg > 0)
-              _NutrientRow('Sodium', r.sodiumMg / s, 'mg'),
+            if (r.zincMg > 0) _NutrientRow('Zinc', r.zincMg / s, 'mg'),
+            if (r.sodiumMg > 0) _NutrientRow('Sodium', r.sodiumMg / s, 'mg'),
           ],
           const SizedBox(height: 6),
           GestureDetector(
@@ -1978,9 +2180,8 @@ class _NutrientRow extends StatelessWidget {
                   fontWeight: FontWeight.w500)),
           const Spacer(),
           Text('${value.round()}$unit',
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700)),
+              style:
+                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -2005,9 +2206,12 @@ class _BolusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     String giLabel = '';
     if (glycemicIndex > 0) {
-      if (glycemicIndex <= 35) giLabel = 'Low GI ($glycemicIndex)';
-      else if (glycemicIndex <= 55) giLabel = 'Medium GI ($glycemicIndex)';
-      else giLabel = 'High GI ($glycemicIndex)';
+      if (glycemicIndex <= 35)
+        giLabel = 'Low GI ($glycemicIndex)';
+      else if (glycemicIndex <= 55)
+        giLabel = 'Medium GI ($glycemicIndex)';
+      else
+        giLabel = 'High GI ($glycemicIndex)';
     }
     return Container(
       padding: const EdgeInsets.all(12),
@@ -2358,8 +2562,7 @@ class _CurrentRecipeMini extends StatelessWidget {
                         fontSize: 13, fontWeight: FontWeight.w600)),
                 Text(
                   '${recipe.calories} kcal · P${recipe.proteinG.round()}g · C${recipe.carbsG.round()}g · F${recipe.fatG.round()}g',
-                  style: const TextStyle(
-                      fontSize: 10, color: AppTheme.gray500),
+                  style: const TextStyle(fontSize: 10, color: AppTheme.gray500),
                 ),
               ],
             ),
@@ -2450,7 +2653,8 @@ class _SwapCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, size: 18, color: AppTheme.gray400),
+              const Icon(Icons.chevron_right,
+                  size: 18, color: AppTheme.gray400),
             ],
           ),
         ),
@@ -2536,8 +2740,9 @@ class _DiffBadge extends StatelessWidget {
     }
 
     final sign = delta > 0 ? '+' : '';
-    final deltaStr =
-        isInteger ? '$sign${delta.round()}' : '$sign${delta.toStringAsFixed(1)}g';
+    final deltaStr = isInteger
+        ? '$sign${delta.round()}'
+        : '$sign${delta.toStringAsFixed(1)}g';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

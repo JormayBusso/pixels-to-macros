@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../models/mascot_type.dart';
 import '../models/nutrition_goal.dart';
@@ -30,12 +30,20 @@ class GoalMascotWidget extends StatelessWidget {
   MascotType get _effectiveMascot {
     if (mascotOverride != MascotType.auto) return mascotOverride;
     switch (goalType) {
-      case NutritionGoalType.muscleGrowth: return MascotType.gorilla;
-      case NutritionGoalType.vegan:        return MascotType.plant;
-      case NutritionGoalType.keto:         return MascotType.flame;
-      case NutritionGoalType.weightLoss:   return MascotType.flame;
-      case NutritionGoalType.diabetes:     return MascotType.sugar;
-      case NutritionGoalType.maintain:     return MascotType.plant;
+      case NutritionGoalType.muscleGrowth:
+        return MascotType.gorilla;
+      case NutritionGoalType.vegan:
+        return MascotType.plant;
+      case NutritionGoalType.vegetarian:
+        return MascotType.plant;
+      case NutritionGoalType.keto:
+        return MascotType.flame;
+      case NutritionGoalType.weightLoss:
+        return MascotType.flame;
+      case NutritionGoalType.diabetes:
+        return MascotType.sugar;
+      case NutritionGoalType.maintain:
+        return MascotType.plant;
     }
   }
 
@@ -225,9 +233,9 @@ class _ImageMascot extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = _stage;
     // Circle colours follow the app's chosen theme seed.
-    final bgColor           = context.primary100;
+    final bgColor = context.primary100;
     final borderActiveColor = context.primary400;
-    final borderIdleColor   = context.primary200;
+    final borderIdleColor = context.primary200;
     final isBest = s == 3;
 
     final col = Column(
@@ -285,9 +293,7 @@ class _ImageMascot extends StatelessWidget {
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 13,
-              color: isBest
-                  ? context.primary700
-                  : AppTheme.gray700,
+              color: isBest ? context.primary700 : AppTheme.gray700,
             ),
           ),
         ),
@@ -307,8 +313,6 @@ class _ImageMascot extends StatelessWidget {
       ],
     );
 
-    return onTap != null
-        ? GestureDetector(onTap: onTap, child: col)
-        : col;
+    return onTap != null ? GestureDetector(onTap: onTap, child: col) : col;
   }
 }

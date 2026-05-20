@@ -66,30 +66,96 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
 
   // Organ positions as fractions of the body_map.jpeg (1024×1536).
   // Each entry: (cx, cy) = normalised centre; size = tap-circle diameter in px.
-  static const _organLayout = <_OrganRegion, ({double cx, double cy, double size})>{
-    _OrganRegion.brain:       (cx: 0.500, cy: 0.080, size: 50),
-    _OrganRegion.eyes:        (cx: 0.500, cy: 0.105, size: 36),
-    _OrganRegion.lungs:       (cx: 0.500, cy: 0.265, size: 56),
-    _OrganRegion.heart:       (cx: 0.440, cy: 0.260, size: 38),
-    _OrganRegion.liver:       (cx: 0.570, cy: 0.330, size: 42),
-    _OrganRegion.stomach:     (cx: 0.430, cy: 0.350, size: 38),
-    _OrganRegion.intestines:  (cx: 0.500, cy: 0.440, size: 50),
-    _OrganRegion.kidneys:     (cx: 0.500, cy: 0.380, size: 38),
-    _OrganRegion.bones:       (cx: 0.500, cy: 0.295, size: 32),
-    _OrganRegion.muscles:     (cx: 0.240, cy: 0.300, size: 38),
-    _OrganRegion.skin:        (cx: 0.740, cy: 0.200, size: 32),
-    _OrganRegion.blood:       (cx: 0.460, cy: 0.245, size: 30),
+  static const _organLayout =
+      <_OrganRegion, ({double cx, double cy, double size})>{
+    _OrganRegion.brain: (cx: 0.500, cy: 0.080, size: 50),
+    _OrganRegion.eyes: (cx: 0.500, cy: 0.105, size: 36),
+    _OrganRegion.lungs: (cx: 0.500, cy: 0.265, size: 56),
+    _OrganRegion.heart: (cx: 0.440, cy: 0.260, size: 38),
+    _OrganRegion.liver: (cx: 0.570, cy: 0.330, size: 42),
+    _OrganRegion.stomach: (cx: 0.430, cy: 0.350, size: 38),
+    _OrganRegion.intestines: (cx: 0.500, cy: 0.440, size: 50),
+    _OrganRegion.kidneys: (cx: 0.500, cy: 0.380, size: 38),
+    _OrganRegion.bones: (cx: 0.500, cy: 0.295, size: 32),
+    _OrganRegion.muscles: (cx: 0.240, cy: 0.300, size: 38),
+    _OrganRegion.skin: (cx: 0.740, cy: 0.200, size: 32),
+    _OrganRegion.blood: (cx: 0.460, cy: 0.245, size: 30),
   };
 
   // The SVG viewport is 2728 × 4096.  Given the container size, compute the
   // rendered image rect (BoxFit.contain centres the image).
-  static ({double left, double top, double width, double height})
-      _imageRect(double cw, double ch) {
+  static ({double left, double top, double width, double height}) _imageRect(
+      double cw, double ch) {
     const imgW = 2728.0, imgH = 4096.0;
     final scale = (cw / imgW).compareTo(ch / imgH) <= 0 ? cw / imgW : ch / imgH;
     final rw = imgW * scale, rh = imgH * scale;
     return (left: (cw - rw) / 2, top: (ch - rh) / 2, width: rw, height: rh);
   }
+
+  static const List<_OrganRegion> _svgHitOrder = [
+    _OrganRegion.skin,
+    _OrganRegion.muscles,
+    _OrganRegion.bones,
+    _OrganRegion.blood,
+    _OrganRegion.lungs,
+    _OrganRegion.kidneys,
+    _OrganRegion.intestines,
+    _OrganRegion.stomach,
+    _OrganRegion.liver,
+    _OrganRegion.heart,
+    _OrganRegion.eyes,
+    _OrganRegion.brain,
+  ];
+
+  static const Map<_OrganRegion, List<_SvgHitArea>> _organHitAreas = {
+    _OrganRegion.brain: [
+      _SvgHitArea(1170, 58, 378, 255),
+    ],
+    _OrganRegion.eyes: [
+      _SvgHitArea(1172, 274, 372, 110),
+    ],
+    _OrganRegion.lungs: [
+      _SvgHitArea(1028, 820, 268, 590),
+      _SvgHitArea(1408, 820, 282, 590),
+    ],
+    _OrganRegion.heart: [
+      _SvgHitArea(1228, 805, 280, 495),
+    ],
+    _OrganRegion.liver: [
+      _SvgHitArea(1054, 1270, 548, 315),
+    ],
+    _OrganRegion.stomach: [
+      _SvgHitArea(1205, 1336, 448, 345),
+    ],
+    _OrganRegion.intestines: [
+      _SvgHitArea(1044, 1570, 535, 620),
+    ],
+    _OrganRegion.kidneys: [
+      _SvgHitArea(1068, 1506, 162, 224),
+      _SvgHitArea(1530, 1510, 130, 245),
+    ],
+    _OrganRegion.bones: [
+      _SvgHitArea(1418, 785, 370, 470),
+      _SvgHitArea(1748, 790, 525, 1685),
+      _SvgHitArea(1385, 1730, 365, 2310),
+      _SvgHitArea(1510, 2140, 145, 1160),
+    ],
+    _OrganRegion.muscles: [
+      _SvgHitArea(810, 760, 360, 1020),
+      _SvgHitArea(410, 1900, 330, 590),
+      _SvgHitArea(900, 2100, 455, 1930),
+      _SvgHitArea(1080, 645, 280, 780),
+    ],
+    _OrganRegion.skin: [
+      _SvgHitArea(1140, 315, 430, 310),
+      _SvgHitArea(1660, 760, 630, 1690),
+      _SvgHitArea(945, 2900, 245, 1120),
+      _SvgHitArea(1640, 2900, 245, 1120),
+    ],
+    _OrganRegion.blood: [
+      _SvgHitArea(1320, 955, 170, 360),
+    ],
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +190,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                 final img = _imageRect(cw, ch);
                 final organScores100 = <String, int>{
                   for (final e in scores.entries)
-                    e.key.svgId: (e.value.score * 100).round().clamp(0, 100),
+                    e.key.svgId: _scoreToSvgHealthPercent(e.value.score),
                 };
 
                 return Stack(
@@ -135,7 +201,8 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                         future: _rawSvgFuture,
                         builder: (context, snapshot) {
                           if (!snapshot.hasData) {
-                            return const Center(child: CircularProgressIndicator());
+                            return const Center(
+                                child: CircularProgressIndicator());
                           }
                           final rawSvg = snapshot.data!;
                           final hasOrganPaths = _hasOrganPathIds(rawSvg);
@@ -154,10 +221,13 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                                 ),
                               ),
                               Positioned.fill(
-                                child: InteractiveBodyMapSvg(
-                                  rawSvg: rawSvg,
-                                  organScores: organScores100,
-                                  fit: BoxFit.contain,
+                                child: Opacity(
+                                  opacity: 0.45,
+                                  child: InteractiveBodyMapSvg(
+                                    rawSvg: rawSvg,
+                                    organScores: organScores100,
+                                    fit: BoxFit.contain,
+                                  ),
                                 ),
                               ),
                               if (!hasOrganPaths)
@@ -208,9 +278,9 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                                         height: d,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: color.withOpacity(0.28),
+                                          color: color.withOpacity(0.45),
                                           border: Border.all(
-                                            color: color.withOpacity(0.6),
+                                            color: color.withOpacity(0.45),
                                             width: 1.5,
                                           ),
                                         ),
@@ -223,27 +293,25 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                         },
                       ),
                     ),
-                    // Gesture layer for opening organ details.
-                    ..._organLayout.entries.map((e) {
-                      final region = e.key;
-                      final layout = e.value;
-                      final cx = img.left + layout.cx * img.width;
-                      final cy = img.top + layout.cy * img.height;
-                      final d = layout.size;
-                      return Positioned(
-                        left: cx - d / 2,
-                        top: cy - d / 2,
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() => _selected = region);
-                            _showDetail(region, scores[region]!, foods, drv);
-                          },
-                          behavior: HitTestBehavior.translucent,
-                          child: SizedBox(width: d, height: d),
-                        ),
-                      );
+                    // Gesture layer aligned to the SVG coordinate system.
+                    ..._svgHitOrder.expand((region) {
+                      final areas =
+                          _organHitAreas[region] ?? const <_SvgHitArea>[];
+                      return areas.map((area) {
+                        final rect = area.toScreenRect(img);
+                        return Positioned.fromRect(
+                          rect: rect,
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() => _selected = region);
+                              _showDetail(region, scores[region]!, foods, drv);
+                            },
+                            behavior: HitTestBehavior.translucent,
+                            child: const SizedBox.expand(),
+                          ),
+                        );
+                      });
                     }),
-                    // Transparent gesture layer for opening detail sheet.
                   ],
                 );
               },
@@ -264,199 +332,213 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
     final colorScheme = _scoreColor(score.score);
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: colorScheme.withOpacity(0.18),
-                    border: Border.all(color: colorScheme, width: 2),
+      builder: (_) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: colorScheme.withOpacity(0.18),
+                      border: Border.all(color: colorScheme, width: 2),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(region.icon, color: colorScheme),
                   ),
-                  alignment: Alignment.center,
-                      child: Icon(region.icon, color: colorScheme),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          region.label,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          '${(score.score * 100).round()}% nourished today',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colorScheme,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                region.explanation,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.gray600,
+                  height: 1.5,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              const SizedBox(height: 12),
+              _BodyMapInsightCard(
+                icon: Icons.restaurant_menu_outlined,
+                title: 'Best food focus',
+                body: region.foodFocus,
+              ),
+              const SizedBox(height: 8),
+              _BodyMapInsightCard(
+                icon: Icons.monitor_heart_outlined,
+                title: 'Today\'s signal',
+                body: _statusMessage(region, score.score),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Key nutrients today',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              ...score.nutrients.map(
+                (n) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
                     children: [
-                      Text(
-                        region.label,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
+                      SizedBox(
+                        width: 100,
+                        child: Text(
+                          n.name,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.gray600,
+                          ),
                         ),
                       ),
-                      Text(
-                        '${(score.score * 100).round()}% nourished today',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: colorScheme,
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: n.intakeRatio.clamp(0.0, 1.0),
+                            backgroundColor: AppTheme.gray100,
+                            valueColor: AlwaysStoppedAnimation(
+                              _scoreColor(n.healthScore),
+                            ),
+                            minHeight: 7,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 42,
+                        child: Text(
+                          '${(n.intakeRatio * 100).round().clamp(0, 999)}%',
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              region.explanation,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppTheme.gray600,
-                height: 1.5,
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Key nutrients today',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            ...score.nutrients.map(
-              (n) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 100,
-                      child: Text(
-                        n.name,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.gray600,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(3),
-                        child: LinearProgressIndicator(
-                          value: n.intakeRatio.clamp(0.0, 1.0),
-                          backgroundColor: AppTheme.gray100,
-                          valueColor: AlwaysStoppedAnimation(
-                            _scoreColor(n.healthScore),
-                          ),
-                          minHeight: 7,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 42,
-                      child: Text(
-                        '${(n.intakeRatio * 100).round().clamp(0, 999)}%',
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 16),
+              const Text(
+                'Top foods affecting this body part',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              FutureBuilder<List<_FoodContribution>>(
+                future: _computeTopFoodsForRegion(
+                  region: region,
+                  foods: foods,
+                  drv: drv,
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Top foods affecting this body part',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            FutureBuilder<List<_FoodContribution>>(
-              future: _computeTopFoodsForRegion(
-                region: region,
-                foods: foods,
-                drv: drv,
-              ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'Calculating food impact...',
-                      style: TextStyle(fontSize: 12, color: AppTheme.gray600),
-                    ),
-                  );
-                }
-
-                final items = snapshot.data ?? const <_FoodContribution>[];
-                if (items.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'No food contributors available yet. Log meals to see which foods drive this color.',
-                      style: TextStyle(fontSize: 12, color: AppTheme.gray600),
-                    ),
-                  );
-                }
-
-                return Column(
-                  children: items.map((f) {
-                    final pct = (f.impact * 100).clamp(0, 999).round();
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              f.label,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${f.kcal.round()} kcal',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.gray600,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _scoreColor(f.impact).withOpacity(0.14),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              '$pct%',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _scoreColor(f.impact),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Calculating food impact...',
+                        style: TextStyle(fontSize: 12, color: AppTheme.gray600),
                       ),
                     );
-                  }).toList(),
-                );
-              },
-            ),
-          ],
+                  }
+
+                  final items = snapshot.data ?? const <_FoodContribution>[];
+                  if (items.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'No food contributors available yet. Log meals to see which foods drive this color.',
+                        style: TextStyle(fontSize: 12, color: AppTheme.gray600),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: items.map((f) {
+                      final pct = (f.impact * 100).clamp(0, 999).round();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                f.label,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${f.kcal.round()} kcal',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.gray600,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _scoreColor(f.impact).withOpacity(0.14),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '$pct%',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: _scoreColor(f.impact),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -489,7 +571,92 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
   }
 }
 
+class _BodyMapInsightCard extends StatelessWidget {
+  const _BodyMapInsightCard({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.gray50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.gray100),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: context.primary600),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.gray800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 1.35,
+                    color: AppTheme.gray600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+int _scoreToSvgHealthPercent(double score) {
+  // 0.0 -> 0% (severe deficiency), 1.0 -> 100% (healthy target met),
+  // 2.0 -> 0% (severe over-intake).
+  final s = score.clamp(0.0, 2.0);
+  final health = s <= 1.0 ? s : (2.0 - s);
+  return (health * 100).round().clamp(0, 100);
+}
+
 // ───────────────────────── Score model ─────────────────────────
+
+class _SvgHitArea {
+  const _SvgHitArea(this.x, this.y, this.width, this.height);
+
+  final double x;
+  final double y;
+  final double width;
+  final double height;
+
+  Rect toScreenRect(
+      ({double left, double top, double width, double height}) img) {
+    const svgWidth = 2728.0;
+    const svgHeight = 4096.0;
+    return Rect.fromLTWH(
+      img.left + (x / svgWidth) * img.width,
+      img.top + (y / svgHeight) * img.height,
+      (width / svgWidth) * img.width,
+      (height / svgHeight) * img.height,
+    );
+  }
+}
 
 enum _OrganRegion {
   brain,
@@ -515,7 +682,8 @@ extension on _OrganRegion {
         _OrganRegion.liver => 'liver',
         _OrganRegion.stomach => 'stomach',
         _OrganRegion.intestines => 'intestines',
-        _OrganRegion.kidneys => 'kidneys', // no SVG path; falls back to overlay dot
+        _OrganRegion.kidneys =>
+          'kidneys', // no SVG path; falls back to overlay dot
         _OrganRegion.bones => 'bones',
         _OrganRegion.muscles => 'muscles',
         _OrganRegion.skin => 'skin',
@@ -578,6 +746,53 @@ extension on _OrganRegion {
         _OrganRegion.blood =>
           'Iron is the core of haemoglobin. B12 and folate are required to produce healthy red blood cells.',
       };
+
+  String get foodFocus => switch (this) {
+        _OrganRegion.brain =>
+          'Prioritise eggs, fish, dairy, lean meat, legumes, leafy greens, and iron-rich foods paired with vitamin C.',
+        _OrganRegion.eyes =>
+          'Look for carrots, sweet potato, spinach, bell pepper, citrus, eggs, shellfish, seeds, and zinc-rich proteins.',
+        _OrganRegion.lungs =>
+          'Colourful fruit, leafy greens, nuts, seeds, olive oil, and vitamin C-rich produce help cover antioxidant needs.',
+        _OrganRegion.heart =>
+          'Potassium-rich fruit and vegetables, legumes, nuts, seeds, whole grains, and magnesium-rich foods are most useful.',
+        _OrganRegion.liver =>
+          'Use eggs, leafy greens, fermented dairy, fish, nuts, seeds, and varied proteins to cover K, E, and B12.',
+        _OrganRegion.stomach =>
+          'Zinc-rich seafood, meat, legumes, dairy, eggs, and B-vitamin foods support the stomach lining and digestion.',
+        _OrganRegion.intestines =>
+          'Beans, lentils, oats, whole grains, vegetables, fruit, nuts, seeds, and enough fluids are the strongest levers.',
+        _OrganRegion.kidneys =>
+          'Hydration plus balanced potassium and magnesium from fruit, vegetables, legumes, and nuts supports filtering.',
+        _OrganRegion.bones =>
+          'Dairy or fortified alternatives, sardines, tofu, leafy greens, eggs, fish, and vitamin K vegetables support bone strength.',
+        _OrganRegion.muscles =>
+          'Pair protein with magnesium, potassium, and calcium from dairy, legumes, potatoes, bananas, nuts, and greens.',
+        _OrganRegion.skin =>
+          'Vitamin C fruit, nuts, seeds, avocado, olive oil, seafood, legumes, and zinc-rich proteins help collagen and repair.',
+        _OrganRegion.blood =>
+          'Iron, B12, and folate come from red meat, fish, eggs, dairy, legumes, spinach, fortified grains, and citrus pairings.',
+      };
+}
+
+String _statusMessage(_OrganRegion region, double score) {
+  final pct = (score * 100).round().clamp(0, 200);
+  if (score <= 0) {
+    return 'No meaningful nutrient data has been logged yet, so ${region.label.toLowerCase()} cannot be assessed today.';
+  }
+  if (score < 0.50) {
+    return '$pct% coverage: this area is missing several key nutrients today. Add one or two food sources from the list above.';
+  }
+  if (score < 0.80) {
+    return '$pct% coverage: improving, but still below the target range for this body part.';
+  }
+  if (score <= 1.15) {
+    return '$pct% coverage: this is in the healthy target zone for today.';
+  }
+  if (score < 1.55) {
+    return '$pct% coverage: above target. Usually okay short term, but the map starts warning when intake keeps rising.';
+  }
+  return '$pct% coverage: very high today. Repeated high intake can become unhealthy, especially for fat-soluble vitamins and minerals.';
 }
 
 class _OrganScore {
@@ -634,25 +849,26 @@ List<String> _nutrientNamesForRegion(_OrganRegion region) {
   };
 }
 
-double _ratioForNutrientName(String name, NutrientTotals totals, NutrientDRV drv) {
+double _ratioForNutrientName(
+    String name, NutrientTotals totals, NutrientDRV drv) {
   double r(double current, double target) => target > 0 ? current / target : 0;
   return switch (name) {
-    'Vitamin A'  => r(totals.vitaminAUg,  drv.vitaminAUg),
-    'Vitamin C'  => r(totals.vitaminCMg,  drv.vitaminCMg),
-    'Vitamin D'  => r(totals.vitaminDUg,  drv.vitaminDUg),
-    'Vitamin E'  => r(totals.vitaminEMg,  drv.vitaminEMg),
-    'Vitamin K'  => r(totals.vitaminKUg,  drv.vitaminKUg),
-    'Folate'     => r(totals.folateMcg,   drv.folateMcg),
-    'B12'        => r(totals.b12Mcg,      drv.b12Mcg),
-    'Calcium'    => r(totals.calciumMg,   drv.calciumMg),
-    'Iron'       => r(totals.ironMg,      drv.ironMg),
-    'Magnesium'  => r(totals.magnesiumMg, drv.magnesiumMg),
-    'Potassium'  => r(totals.potassiumMg, drv.potassiumMg),
-    'Zinc'       => r(totals.zincMg,      drv.zincMg),
-    'Fiber'      => r(totals.fiberG,      drv.fiberG),
-    'Omega-3'    => r(totals.omega3G,     drv.omega3G),
-    'Selenium'   => r(totals.seleniumMcg, drv.seleniumMcg),
-    _            => 0,
+    'Vitamin A' => r(totals.vitaminAUg, drv.vitaminAUg),
+    'Vitamin C' => r(totals.vitaminCMg, drv.vitaminCMg),
+    'Vitamin D' => r(totals.vitaminDUg, drv.vitaminDUg),
+    'Vitamin E' => r(totals.vitaminEMg, drv.vitaminEMg),
+    'Vitamin K' => r(totals.vitaminKUg, drv.vitaminKUg),
+    'Folate' => r(totals.folateMcg, drv.folateMcg),
+    'B12' => r(totals.b12Mcg, drv.b12Mcg),
+    'Calcium' => r(totals.calciumMg, drv.calciumMg),
+    'Iron' => r(totals.ironMg, drv.ironMg),
+    'Magnesium' => r(totals.magnesiumMg, drv.magnesiumMg),
+    'Potassium' => r(totals.potassiumMg, drv.potassiumMg),
+    'Zinc' => r(totals.zincMg, drv.zincMg),
+    'Fiber' => r(totals.fiberG, drv.fiberG),
+    'Omega-3' => r(totals.omega3G, drv.omega3G),
+    'Selenium' => r(totals.seleniumMcg, drv.seleniumMcg),
+    _ => 0,
   };
 }
 
@@ -706,9 +922,8 @@ double _healthScoreForNutrientRatio({
   if (intakeRatio <= 0) return 0;
   if (intakeRatio <= 1.0) return intakeRatio;
 
-  final redAt = upperLimitRatio.isFinite
-      ? upperLimitRatio.clamp(1.15, 8.0)
-      : 3.0;
+  final redAt =
+      upperLimitRatio.isFinite ? upperLimitRatio.clamp(1.15, 8.0) : 3.0;
   final t = ((intakeRatio - 1.0) / (redAt - 1.0)).clamp(0.0, 1.0);
   return 1.0 + t;
 }
@@ -751,13 +966,13 @@ Future<List<_FoodContribution>> _computeTopFoodsForRegion({
 
     final nt = nutrientsForFood(food: foodData, weightG: weightG);
     final ratios = keys.map((k) => _ratioForNutrientName(k, nt, drv)).toList();
-    final impact = ratios.isEmpty
-        ? 0.0
-        : ratios.reduce((a, b) => a + b) / ratios.length;
+    final impact =
+        ratios.isEmpty ? 0.0 : ratios.reduce((a, b) => a + b) / ratios.length;
 
     if (impact <= 0) continue;
 
-    final acc = byLabel.putIfAbsent(food.label, () => _FoodContributionAcc(food.label));
+    final acc =
+        byLabel.putIfAbsent(food.label, () => _FoodContributionAcc(food.label));
     acc.impactTimesKcal += impact * kcal;
     acc.kcal += kcal;
   }
@@ -785,33 +1000,33 @@ Map<_OrganRegion, _OrganScore> _computeOrganScores(
   double avg(List<double> v) =>
       v.isEmpty ? 0 : v.reduce((a, b) => a + b) / v.length;
 
-  final vitARaw      = r(totals.vitaminAUg, drv.vitaminAUg);
-  final vitCRaw      = r(totals.vitaminCMg, drv.vitaminCMg);
-  final vitDRaw      = r(totals.vitaminDUg, drv.vitaminDUg);
-  final vitERaw      = r(totals.vitaminEMg, drv.vitaminEMg);
-  final vitKRaw      = r(totals.vitaminKUg, drv.vitaminKUg);
-  final folateRaw    = r(totals.folateMcg, drv.folateMcg);
-  final b12Raw       = r(totals.b12Mcg, drv.b12Mcg);
-  final calciumRaw   = r(totals.calciumMg, drv.calciumMg);
-  final ironRaw      = r(totals.ironMg, drv.ironMg);
+  final vitARaw = r(totals.vitaminAUg, drv.vitaminAUg);
+  final vitCRaw = r(totals.vitaminCMg, drv.vitaminCMg);
+  final vitDRaw = r(totals.vitaminDUg, drv.vitaminDUg);
+  final vitERaw = r(totals.vitaminEMg, drv.vitaminEMg);
+  final vitKRaw = r(totals.vitaminKUg, drv.vitaminKUg);
+  final folateRaw = r(totals.folateMcg, drv.folateMcg);
+  final b12Raw = r(totals.b12Mcg, drv.b12Mcg);
+  final calciumRaw = r(totals.calciumMg, drv.calciumMg);
+  final ironRaw = r(totals.ironMg, drv.ironMg);
   final magnesiumRaw = r(totals.magnesiumMg, drv.magnesiumMg);
   final potassiumRaw = r(totals.potassiumMg, drv.potassiumMg);
-  final zincRaw      = r(totals.zincMg, drv.zincMg);
-  final fiberRaw     = r(totals.fiberG, drv.fiberG);
+  final zincRaw = r(totals.zincMg, drv.zincMg);
+  final fiberRaw = r(totals.fiberG, drv.fiberG);
 
-  final vitA      = _healthScoreForNutrientName('Vitamin A', totals, drv);
-  final vitC      = _healthScoreForNutrientName('Vitamin C', totals, drv);
-  final vitD      = _healthScoreForNutrientName('Vitamin D', totals, drv);
-  final vitE      = _healthScoreForNutrientName('Vitamin E', totals, drv);
-  final vitK      = _healthScoreForNutrientName('Vitamin K', totals, drv);
-  final folate    = _healthScoreForNutrientName('Folate', totals, drv);
-  final b12       = _healthScoreForNutrientName('B12', totals, drv);
-  final calcium   = _healthScoreForNutrientName('Calcium', totals, drv);
-  final iron      = _healthScoreForNutrientName('Iron', totals, drv);
-  final mag       = _healthScoreForNutrientName('Magnesium', totals, drv);
+  final vitA = _healthScoreForNutrientName('Vitamin A', totals, drv);
+  final vitC = _healthScoreForNutrientName('Vitamin C', totals, drv);
+  final vitD = _healthScoreForNutrientName('Vitamin D', totals, drv);
+  final vitE = _healthScoreForNutrientName('Vitamin E', totals, drv);
+  final vitK = _healthScoreForNutrientName('Vitamin K', totals, drv);
+  final folate = _healthScoreForNutrientName('Folate', totals, drv);
+  final b12 = _healthScoreForNutrientName('B12', totals, drv);
+  final calcium = _healthScoreForNutrientName('Calcium', totals, drv);
+  final iron = _healthScoreForNutrientName('Iron', totals, drv);
+  final mag = _healthScoreForNutrientName('Magnesium', totals, drv);
   final potassium = _healthScoreForNutrientName('Potassium', totals, drv);
-  final zinc      = _healthScoreForNutrientName('Zinc', totals, drv);
-  final fiber     = _healthScoreForNutrientName('Fiber', totals, drv);
+  final zinc = _healthScoreForNutrientName('Zinc', totals, drv);
+  final fiber = _healthScoreForNutrientName('Fiber', totals, drv);
 
   return {
     _OrganRegion.brain: _OrganScore(
@@ -841,8 +1056,10 @@ Map<_OrganRegion, _OrganScore> _computeOrganScores(
     _OrganRegion.heart: _OrganScore(
       avg([potassium, mag, vitE]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Potassium', intakeRatio: potassiumRaw, healthScore: potassium),
-        _NutrientRatio('Magnesium', intakeRatio: magnesiumRaw, healthScore: mag),
+        _NutrientRatio('Potassium',
+            intakeRatio: potassiumRaw, healthScore: potassium),
+        _NutrientRatio('Magnesium',
+            intakeRatio: magnesiumRaw, healthScore: mag),
         _NutrientRatio('Vitamin E', intakeRatio: vitERaw, healthScore: vitE),
       ],
     ),
@@ -865,21 +1082,26 @@ Map<_OrganRegion, _OrganScore> _computeOrganScores(
       avg([fiber, mag, potassium]).clamp(0.0, 2.0),
       [
         _NutrientRatio('Fiber', intakeRatio: fiberRaw, healthScore: fiber),
-        _NutrientRatio('Magnesium', intakeRatio: magnesiumRaw, healthScore: mag),
-        _NutrientRatio('Potassium', intakeRatio: potassiumRaw, healthScore: potassium),
+        _NutrientRatio('Magnesium',
+            intakeRatio: magnesiumRaw, healthScore: mag),
+        _NutrientRatio('Potassium',
+            intakeRatio: potassiumRaw, healthScore: potassium),
       ],
     ),
     _OrganRegion.kidneys: _OrganScore(
       avg([potassium, mag]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Potassium', intakeRatio: potassiumRaw, healthScore: potassium),
-        _NutrientRatio('Magnesium', intakeRatio: magnesiumRaw, healthScore: mag),
+        _NutrientRatio('Potassium',
+            intakeRatio: potassiumRaw, healthScore: potassium),
+        _NutrientRatio('Magnesium',
+            intakeRatio: magnesiumRaw, healthScore: mag),
       ],
     ),
     _OrganRegion.bones: _OrganScore(
       avg([calcium, vitD, vitK]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Calcium', intakeRatio: calciumRaw, healthScore: calcium),
+        _NutrientRatio('Calcium',
+            intakeRatio: calciumRaw, healthScore: calcium),
         _NutrientRatio('Vitamin D', intakeRatio: vitDRaw, healthScore: vitD),
         _NutrientRatio('Vitamin K', intakeRatio: vitKRaw, healthScore: vitK),
       ],
@@ -887,9 +1109,12 @@ Map<_OrganRegion, _OrganScore> _computeOrganScores(
     _OrganRegion.muscles: _OrganScore(
       avg([mag, potassium, calcium]).clamp(0.0, 2.0),
       [
-        _NutrientRatio('Magnesium', intakeRatio: magnesiumRaw, healthScore: mag),
-        _NutrientRatio('Potassium', intakeRatio: potassiumRaw, healthScore: potassium),
-        _NutrientRatio('Calcium', intakeRatio: calciumRaw, healthScore: calcium),
+        _NutrientRatio('Magnesium',
+            intakeRatio: magnesiumRaw, healthScore: mag),
+        _NutrientRatio('Potassium',
+            intakeRatio: potassiumRaw, healthScore: potassium),
+        _NutrientRatio('Calcium',
+            intakeRatio: calciumRaw, healthScore: calcium),
       ],
     ),
     _OrganRegion.skin: _OrganScore(
@@ -922,30 +1147,30 @@ Map<_OrganRegion, _OrganScore> _computeOrganScores(
 Color _scoreColor(double score) {
   if (score <= 0) return const Color(0xFFB0BEC5); // grey: no data
 
-  const red    = Color(0xFFFF3B30);
+  const red = Color(0xFFFF3B30);
   const orange = Color(0xFFFF9500);
   const yellow = Color(0xFFFFCC00);
-  const green  = Color(0xFF34C759);
+  const green = Color(0xFF34C759);
 
   if (score <= 1.0) {
     // Under-intake: red → orange → yellow → green
     if (score < 0.33) {
-      return Color.lerp(red,    orange, score / 0.33)!;
+      return Color.lerp(red, orange, score / 0.33)!;
     } else if (score < 0.66) {
       return Color.lerp(orange, yellow, (score - 0.33) / 0.33)!;
     } else {
-      return Color.lerp(yellow, green,  (score - 0.66) / 0.34)!;
+      return Color.lerp(yellow, green, (score - 0.66) / 0.34)!;
     }
   }
 
   // Over-intake: green → yellow → orange → red
   final t = ((score - 1.0) / 1.0).clamp(0.0, 1.0);
   if (t < 0.33) {
-    return Color.lerp(green,  yellow, t / 0.33)!;
+    return Color.lerp(green, yellow, t / 0.33)!;
   } else if (t < 0.66) {
     return Color.lerp(yellow, orange, (t - 0.33) / 0.33)!;
   } else {
-    return Color.lerp(orange, red,    (t - 0.66) / 0.34)!;
+    return Color.lerp(orange, red, (t - 0.66) / 0.34)!;
   }
 }
 

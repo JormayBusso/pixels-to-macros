@@ -1,18 +1,29 @@
 """
-Train a semantic segmentation model for food segmentation.
+Production FoodSeg154 semantic-segmentation training for Pixels to Macros.
 
-Supported architectures (--model flag):
-  mobilenet   – DeepLabV3 MobileNetV3-Large (lightweight, fast)
-  resnet101   – DeepLabV3 ResNet-101 (much stronger backbone)
-  segformer   – SegFormer-B3 (transformer-based, HuggingFace)
+Architecture:
+  - Hugging Face SegFormer-B2: nvidia/segformer-b2-finetuned-ade-512-512
+  - 155 classes by default: 154 food classes + background
+  - id2label/label2id configured before loading pretrained weights
 
-Usage:
-    python training/train.py --data_dir ./data/FoodSeg103 --epochs 100 --model resnet101 --img_size 640
+Loss:
+  - 0.5 * segmentation_models_pytorch.losses.FocalLoss
+  - 0.5 * segmentation_models_pytorch.losses.DiceLoss
 
-Outputs:
-    training/output/best.pth             - best validation weights
-    training/output/last_checkpoint.pth  - resumable training checkpoint
-    training/output/metrics.json         - training metrics per epoch
+Safety:
+  - last_checkpoint.pth saved every 300 seconds
+  - best.pth saved whenever validation mIoU improves
+  - AMP enabled on CUDA for Kaggle T4/T4x2
+
+Kaggle install:
+  pip install -q transformers albumentations segmentation-models-pytorch \
+    opencv-python-headless safetensors tqdm Pillow
+
+Example:
+  python training/train.py \
+    --data-dir /kaggle/input/foodseg154/FoodSeg154 \
+    --output-dir /kaggle/working/foodseg154_segformer_b2 \
+    --epochs 80 --batch-size 8 --num-labels 155
 """
 
 from __future__ import annotations
@@ -21,253 +32,376 @@ import argparse
 import json
 import random
 import time
+from dataclasses import dataclass
 from pathlib import Path
-import os
-import tempfile
 
+import albumentations as A
+import cv2
 import numpy as np
+import segmentation_models_pytorch as smp
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import segmentation_models_pytorch as smp
+from albumentations.pytorch import ToTensorV2
 from PIL import Image
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset as TorchDataset
-from torch.utils.data import ConcatDataset
-from torchvision.models.segmentation import (
-    DeepLabV3_MobileNet_V3_Large_Weights,
-    deeplabv3_mobilenet_v3_large,
-)
-from torchvision.transforms import InterpolationMode
-from torchvision.transforms import functional as tvf
-from torchvision.transforms import v2 as T
+from torch.utils.data import ConcatDataset, DataLoader, Dataset
 from tqdm import tqdm
-import sys
+from transformers import (
+    SegformerConfig,
+    SegformerForSemanticSegmentation,
+    get_cosine_schedule_with_warmup,
+)
 
-from dataset import FoodSeg103Dataset
-
-
-def _parse_data_dirs(primary: str, extra: list[str]) -> list[str]:
-    dirs = [primary, *extra]
-    deduped = []
-    seen = set()
-    for d in dirs:
-        norm = str(Path(d)).strip()
-        if not norm or norm in seen:
-            continue
-        seen.add(norm)
-        deduped.append(norm)
-    return deduped
+IGNORE_INDEX = 255
+IMAGENET_MEAN = (0.485, 0.456, 0.406)
+IMAGENET_STD = (0.229, 0.224, 0.225)
+IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+MASK_EXTS = (".png", ".jpg", ".jpeg", ".tif", ".tiff")
 
 
-def get_model(num_classes: int, pretrained: bool = True, arch: str = "resnet101") -> nn.Module:
-    """Build segmentation model by architecture name."""
-    if arch == "segformer":
-        return _get_segformer(num_classes, pretrained)
-    elif arch == "resnet101":
-        return smp.DeepLabV3Plus(
-            encoder_name="efficientnet-b3",
-            encoder_weights="imagenet" if pretrained else None,
-            classes=num_classes,
-            activation=None,
-        )
-    else:  # mobilenet
-        return _get_deeplabv3_mobilenet(num_classes, pretrained)
-
-
-def _get_deeplabv3_mobilenet(num_classes: int, pretrained: bool) -> nn.Module:
-    weights = DeepLabV3_MobileNet_V3_Large_Weights.DEFAULT if pretrained else None
-    model = deeplabv3_mobilenet_v3_large(weights=weights)
-    in_channels = model.classifier[4].in_channels
-    model.classifier[4] = nn.Conv2d(in_channels, num_classes, kernel_size=1)
-    if model.aux_classifier is not None:
-        aux_in = model.aux_classifier[4].in_channels
-        model.aux_classifier[4] = nn.Conv2d(aux_in, num_classes, kernel_size=1)
-    return model
-
-
-def _get_segformer(num_classes: int, pretrained: bool) -> nn.Module:
-    """SegFormer-B3 from HuggingFace transformers, wrapped for compatibility."""
-    try:
-        from transformers import SegformerForSemanticSegmentation, SegformerConfig
-    except ImportError:
-        raise ImportError("Install transformers: pip install transformers")
-
-    if pretrained:
-        model = SegformerForSemanticSegmentation.from_pretrained(
-            "nvidia/segformer-b3-finetuned-ade-512-512",
-            num_labels=num_classes,
-            ignore_mismatched_sizes=True,
-        )
-    else:
-        config = SegformerConfig(
-            num_labels=num_classes,
-            depths=[3, 4, 18, 3],
-            hidden_sizes=[64, 128, 320, 512],
-            decoder_hidden_size=256,
-        )
-        model = SegformerForSemanticSegmentation(config)
-
-    return _SegFormerWrapper(model)
-
-
-class _SegFormerWrapper(nn.Module):
-    """Wraps HF SegFormer to match torchvision segmentation model interface.
-
-    Input:  (B, 3, H, W) normalised tensors
-    Output: dict with key 'out' → (B, num_classes, H, W)
-    """
-
-    def __init__(self, hf_model):
-        super().__init__()
-        self.hf_model = hf_model
-
-    def forward(self, pixel_values):
-        outputs = self.hf_model(pixel_values=pixel_values)
-        logits = outputs.logits  # (B, num_classes, H/4, W/4)
-        # Upsample to input resolution
-        logits = F.interpolate(
-            logits, size=pixel_values.shape[2:], mode="bilinear", align_corners=False
-        )
-        return {"out": logits}
-
-
-class SoftDiceLoss(nn.Module):
-    def __init__(self, num_classes: int, ignore_index: int = 255) -> None:
-        super().__init__()
-        self.num_classes = num_classes
-        self.ignore_index = ignore_index
-
-    def forward(self, logits: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        valid = target != self.ignore_index
-        target_safe = target.clone()
-        target_safe[~valid] = 0
-        probs = logits.softmax(dim=1)
-        one_hot = F.one_hot(target_safe, self.num_classes).permute(0, 3, 1, 2)
-        one_hot = one_hot.to(dtype=probs.dtype)
-        valid = valid.unsqueeze(1)
-        probs = probs * valid
-        one_hot = one_hot * valid
-
-        dims = (0, 2, 3)
-        intersection = (probs * one_hot).sum(dim=dims)
-        cardinality = probs.sum(dim=dims) + one_hot.sum(dim=dims)
-        dice = (2 * intersection + 1.0) / (cardinality + 1.0)
-        return 1 - dice.mean()
-
-
-class CombinedSegmentationLoss(nn.Module):
-    def __init__(
-        self,
-        num_classes: int,
-        class_weights: torch.Tensor | None,
-        label_smoothing: float,
-    ) -> None:
-        super().__init__()
-        self.ce = nn.CrossEntropyLoss(
-            ignore_index=255,
-            weight=class_weights,
-            label_smoothing=label_smoothing,
-        )
-        self.dice = SoftDiceLoss(num_classes=num_classes)
-
-    def forward(self, logits: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        return 0.72 * self.ce(logits, target) + 0.28 * self.dice(logits, target)
-
-
-def choose_device() -> torch.device:
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
+@dataclass(frozen=True)
+class Sample:
+    image_path: Path
+    mask_path: Path
 
 
 def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = True
 
 
-def _iter_mask_paths(dataset) -> list[Path]:
-    if hasattr(dataset, "mask_paths"):
-        return list(dataset.mask_paths)
-    if isinstance(dataset, ConcatDataset):
-        paths = []
-        for sub in dataset.datasets:
-            paths.extend(_iter_mask_paths(sub))
-        return paths
-    return []
-
-
-def compute_class_weights(
-    dataset,
-    num_classes: int,
-    max_masks: int = 512,
-) -> torch.Tensor:
-    counts = np.ones(num_classes, dtype=np.float64)
-    mask_paths = _iter_mask_paths(dataset)
-    for mask_path in tqdm(mask_paths[:max_masks], desc="Class weights", leave=False):
-        if not mask_path.exists():
+def read_category_file(data_dir: Path, num_labels: int) -> tuple[dict[int, str], dict[str, int]]:
+    id2label = {0: "background"}
+    for name in ("category_id.txt", "categories.txt", "classes.txt", "labels.txt"):
+        label_file = data_dir / name
+        if not label_file.exists():
             continue
-        mask = np.array(Image.open(mask_path), dtype=np.int64)
-        valid = (mask >= 0) & (mask < num_classes)
-        bincount = np.bincount(mask[valid].ravel(), minlength=num_classes)
-        counts += bincount
+        for line in label_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split(None, 1)
+            if len(parts) == 1:
+                idx = len(id2label)
+                label = parts[0]
+            else:
+                try:
+                    idx = int(parts[0])
+                    label = parts[1]
+                except ValueError:
+                    idx = len(id2label)
+                    label = line
+            if 0 <= idx < num_labels:
+                id2label[idx] = label.strip() or f"class_{idx}"
+        break
 
-    freq = counts / counts.sum()
-    weights = 1.0 / np.log(1.02 + freq)
-    weights = weights / weights.mean()
-    weights[0] *= 0.35
-    return torch.tensor(weights, dtype=torch.float32)
-
-
-def confusion_matrix(pred: np.ndarray, target: np.ndarray, num_classes: int) -> np.ndarray:
-    valid = (target >= 0) & (target < num_classes)
-    encoded = num_classes * target[valid].astype(np.int64) + pred[valid]
-    return np.bincount(encoded, minlength=num_classes**2).reshape(num_classes, num_classes)
-
-
-def metrics_from_confusion(confusion: np.ndarray) -> tuple[float, float]:
-    intersection = np.diag(confusion)
-    union = confusion.sum(axis=1) + confusion.sum(axis=0) - intersection
-    valid = union > 0
-    miou = float(np.mean(intersection[valid] / union[valid])) if valid.any() else 0.0
-    pixel_acc = float(intersection.sum() / max(confusion.sum(), 1))
-    return miou, pixel_acc
+    for idx in range(num_labels):
+        id2label.setdefault(idx, f"class_{idx}")
+    label2id = {label: idx for idx, label in id2label.items()}
+    return id2label, label2id
 
 
-def batch_to_tensors(batch: dict, device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
-    non_blocking = device.type == "cuda"
-    images = torch.from_numpy(np.stack(batch["image"])).contiguous().to(device, non_blocking=non_blocking)
-    masks = torch.from_numpy(np.stack(batch["mask"])).long().contiguous().to(device, non_blocking=non_blocking)
-    return images, masks
+def list_files(directory: Path, exts: tuple[str, ...]) -> list[Path]:
+    if not directory.exists():
+        return []
+    files: list[Path] = []
+    for ext in exts:
+        files.extend(directory.rglob(f"*{ext}"))
+    return sorted(files)
 
 
-def _extract_logits(output) -> torch.Tensor:
-    """Normalize model outputs to a logits tensor.
+def pair_images_and_masks(image_dir: Path, mask_dir: Path) -> list[Sample]:
+    images = list_files(image_dir, IMAGE_EXTS)
+    masks = {p.stem: p for p in list_files(mask_dir, MASK_EXTS)}
+    samples: list[Sample] = []
+    for image_path in images:
+        mask_path = masks.get(image_path.stem)
+        if mask_path is not None:
+            samples.append(Sample(image_path=image_path, mask_path=mask_path))
+    return samples
 
-    Supports models returning:
-    - torch.Tensor
-    - dict with key "out" (torchvision, SegFormer wrapper)
-    - tuple/list with tensor as first element
-    """
-    if isinstance(output, torch.Tensor):
-        return output
-    if isinstance(output, dict):
-        out = output.get("out")
-        if isinstance(out, torch.Tensor):
-            return out
-        # Fallback: first tensor value in dict
-        for v in output.values():
-            if isinstance(v, torch.Tensor):
-                return v
-    if isinstance(output, (list, tuple)) and output:
-        if isinstance(output[0], torch.Tensor):
-            return output[0]
-    raise TypeError(f"Unsupported model output type: {type(output)}")
+
+def candidate_layouts(data_dir: Path, split: str) -> list[tuple[Path, Path]]:
+    return [
+        (data_dir / "Images" / "img_dir" / split, data_dir / "Annotations" / "ann_dir" / split),
+        (data_dir / "images" / split, data_dir / "annotations" / split),
+        (data_dir / "images" / split, data_dir / "masks" / split),
+        (data_dir / "Images" / split, data_dir / "Masks" / split),
+        (data_dir / split / "images", data_dir / split / "masks"),
+        (data_dir / split / "Images", data_dir / split / "Masks"),
+        (data_dir / "JPEGImages" / split, data_dir / "SegmentationClass" / split),
+    ]
+
+
+def split_aliases(split: str) -> tuple[str, ...]:
+    if split == "train":
+        return ("train", "training")
+    if split == "val":
+        return ("val", "validation", "valid", "test")
+    if split == "test":
+        return ("test", "val", "validation", "valid")
+    return (split,)
+
+
+def discover_samples(data_dir: Path, split: str, seed: int) -> list[Sample]:
+    for candidate_split in split_aliases(split):
+        for image_dir, mask_dir in candidate_layouts(data_dir, candidate_split):
+            samples = pair_images_and_masks(image_dir, mask_dir)
+            if samples:
+                return samples
+
+    if split in {"train", "val"}:
+        for image_dir, mask_dir in candidate_layouts(data_dir, "train"):
+            samples = pair_images_and_masks(image_dir, mask_dir)
+            if samples:
+                rng = random.Random(seed)
+                rng.shuffle(samples)
+                cut = int(len(samples) * 0.85)
+                return samples[:cut] if split == "train" else samples[cut:]
+
+    flat_images = data_dir / "Images"
+    flat_masks = data_dir / "Masks"
+    samples = pair_images_and_masks(flat_images, flat_masks)
+    if samples:
+        rng = random.Random(seed)
+        rng.shuffle(samples)
+        train_end = int(len(samples) * 0.80)
+        val_end = int(len(samples) * 0.90)
+        if split == "train":
+            return samples[:train_end]
+        if split == "val":
+            return samples[train_end:val_end]
+        return samples[val_end:]
+
+    raise FileNotFoundError(
+        f"Could not find image/mask pairs for split '{split}' under {data_dir}. "
+        "Supported layouts include Images/img_dir/train + Annotations/ann_dir/train, "
+        "images/train + masks/train, or flat Images + Masks."
+    )
+
+
+def shift_scale_rotate(**kwargs):
+    common = dict(
+        shift_limit=0.06,
+        scale_limit=0.16,
+        rotate_limit=18,
+        interpolation=cv2.INTER_LINEAR,
+        mask_interpolation=cv2.INTER_NEAREST,
+        border_mode=cv2.BORDER_CONSTANT,
+        p=0.75,
+    )
+    common.update(kwargs)
+    try:
+        return A.ShiftScaleRotate(fill=(0, 0, 0), fill_mask=0, **common)
+    except TypeError:
+        return A.ShiftScaleRotate(value=(0, 0, 0), mask_value=0, **common)
+
+
+def build_transforms(img_size: int, train: bool) -> A.Compose:
+    if train:
+        return A.Compose(
+            [
+                A.RandomRotate90(p=0.35),
+                shift_scale_rotate(),
+                A.ColorJitter(
+                    brightness=0.22,
+                    contrast=0.22,
+                    saturation=0.18,
+                    hue=0.04,
+                    p=0.55,
+                ),
+                A.RandomBrightnessContrast(
+                    brightness_limit=0.20,
+                    contrast_limit=0.20,
+                    p=0.55,
+                ),
+                A.HorizontalFlip(p=0.5),
+                A.Resize(img_size, img_size, interpolation=cv2.INTER_LINEAR),
+                A.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+                ToTensorV2(),
+            ]
+        )
+    return A.Compose(
+        [
+            A.Resize(img_size, img_size, interpolation=cv2.INTER_LINEAR),
+            A.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+            ToTensorV2(),
+        ]
+    )
+
+
+class FoodSegDataset(Dataset):
+    def __init__(
+        self,
+        data_dir: str | Path,
+        split: str,
+        img_size: int,
+        num_labels: int,
+        seed: int,
+    ) -> None:
+        self.data_dir = Path(data_dir)
+        self.split = split
+        self.num_labels = num_labels
+        self.samples = discover_samples(self.data_dir, split, seed)
+        self.transforms = build_transforms(img_size, train=split == "train")
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
+        sample = self.samples[idx]
+        image = cv2.imread(str(sample.image_path), cv2.IMREAD_COLOR)
+        if image is None:
+            raise FileNotFoundError(sample.image_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        mask = np.array(Image.open(sample.mask_path))
+        if mask.ndim == 3:
+            mask = mask[..., 0]
+        mask = mask.astype(np.int64)
+        mask[(mask < 0) | (mask >= self.num_labels)] = IGNORE_INDEX
+
+        augmented = self.transforms(image=image, mask=mask)
+        return {
+            "pixel_values": augmented["image"].float(),
+            "labels": augmented["mask"].long(),
+        }
+
+
+class SegFormerFoodModel(nn.Module):
+    def __init__(self, model_name: str, num_labels: int, id2label: dict[int, str], label2id: dict[str, int]) -> None:
+        super().__init__()
+        config = SegformerConfig.from_pretrained(
+            model_name,
+            num_labels=num_labels,
+            id2label={str(k): v for k, v in id2label.items()},
+            label2id=label2id,
+        )
+        self.model = SegformerForSemanticSegmentation.from_pretrained(
+            model_name,
+            config=config,
+            ignore_mismatched_sizes=True,
+        )
+
+    def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
+        return self.model(pixel_values=pixel_values).logits
+
+
+class ComboLoss(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.focal = smp.losses.FocalLoss(
+            mode="multiclass",
+            ignore_index=IGNORE_INDEX,
+            normalized=True,
+        )
+        self.dice = smp.losses.DiceLoss(
+            mode="multiclass",
+            from_logits=True,
+            ignore_index=IGNORE_INDEX,
+        )
+
+    def forward(self, logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+        if logits.shape[-2:] != labels.shape[-2:]:
+            logits = F.interpolate(logits, size=labels.shape[-2:], mode="bilinear", align_corners=False)
+        return 0.5 * self.focal(logits, labels) + 0.5 * self.dice(logits, labels)
+
+
+def unwrap_model(model: nn.Module) -> nn.Module:
+    return model.module if isinstance(model, nn.DataParallel) else model
+
+
+def save_checkpoint(
+    path: Path,
+    model: nn.Module,
+    optimizer: torch.optim.Optimizer,
+    scheduler,
+    scaler: torch.cuda.amp.GradScaler,
+    epoch: int,
+    global_step: int,
+    best_miou: float,
+    args: argparse.Namespace,
+    id2label: dict[int, str],
+    label2id: dict[str, int],
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    checkpoint = {
+        "epoch": epoch,
+        "global_step": global_step,
+        "best_miou": best_miou,
+        "model_state_dict": unwrap_model(model).state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "scheduler_state_dict": scheduler.state_dict(),
+        "scaler_state_dict": scaler.state_dict(),
+        "args": vars(args),
+        "id2label": id2label,
+        "label2id": label2id,
+    }
+    tmp = path.with_suffix(".tmp")
+    torch.save(checkpoint, tmp)
+    tmp.replace(path)
+
+
+def load_checkpoint(
+    path: Path,
+    model: nn.Module,
+    optimizer: torch.optim.Optimizer | None = None,
+    scheduler=None,
+    scaler: torch.cuda.amp.GradScaler | None = None,
+) -> tuple[int, int, float]:
+    checkpoint = torch.load(path, map_location="cpu")
+    unwrap_model(model).load_state_dict(checkpoint["model_state_dict"], strict=True)
+    if optimizer is not None and "optimizer_state_dict" in checkpoint:
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    if scheduler is not None and "scheduler_state_dict" in checkpoint:
+        scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+    if scaler is not None and "scaler_state_dict" in checkpoint:
+        scaler.load_state_dict(checkpoint["scaler_state_dict"])
+    return (
+        int(checkpoint.get("epoch", -1)) + 1,
+        int(checkpoint.get("global_step", 0)),
+        float(checkpoint.get("best_miou", 0.0)),
+    )
+
+
+@torch.no_grad()
+def evaluate(model: nn.Module, loader: DataLoader, device: torch.device, num_labels: int) -> dict[str, float]:
+    model.eval()
+    intersections = torch.zeros(num_labels, dtype=torch.float64, device=device)
+    unions = torch.zeros(num_labels, dtype=torch.float64, device=device)
+    correct = torch.tensor(0.0, device=device)
+    total = torch.tensor(0.0, device=device)
+
+    for batch in tqdm(loader, desc="Validation", leave=False):
+        pixel_values = batch["pixel_values"].to(device, non_blocking=True)
+        labels = batch["labels"].to(device, non_blocking=True)
+        logits = model(pixel_values)
+        logits = F.interpolate(logits, size=labels.shape[-2:], mode="bilinear", align_corners=False)
+        preds = logits.argmax(dim=1)
+
+        valid = labels != IGNORE_INDEX
+        correct += (preds[valid] == labels[valid]).sum()
+        total += valid.sum()
+
+        for cls in range(num_labels):
+            pred_c = (preds == cls) & valid
+            label_c = (labels == cls) & valid
+            intersections[cls] += (pred_c & label_c).sum()
+            unions[cls] += (pred_c | label_c).sum()
+
+    valid_classes = unions > 0
+    ious = torch.zeros_like(unions)
+    ious[valid_classes] = intersections[valid_classes] / unions[valid_classes]
+    miou = ious[valid_classes].mean().item() if valid_classes.any() else 0.0
+
+    fg_valid = valid_classes.clone()
+    fg_valid[0] = False
+    fg_miou = ious[fg_valid].mean().item() if fg_valid.any() else 0.0
+    pixel_acc = (correct / total.clamp_min(1)).item()
+    return {"miou": miou, "foreground_miou": fg_miou, "pixel_accuracy": pixel_acc}
 
 
 def train_one_epoch(
@@ -275,634 +409,247 @@ def train_one_epoch(
     loader: DataLoader,
     criterion: nn.Module,
     optimizer: torch.optim.Optimizer,
+    scheduler,
+    scaler: torch.cuda.amp.GradScaler,
     device: torch.device,
-    scaler,
-    grad_clip: float,
     use_amp: bool,
-    epoch: int = 1,
-    output_dir: Path = Path("training/output"),
-    save_every_batches: int = 200,
-    save_every_secs: float = 600.0,
-    resume_batch: int = 0,
-) -> float:
+    grad_clip: float,
+) -> tuple[float, int]:
     model.train()
-    total_loss = 0.0
-    seen = 0
-    pbar = tqdm(loader, desc="  Train", leave=True)
-    last_save_time = time.time()
-    for i, batch in enumerate(pbar, start=1):
-        # If resuming from a mid-epoch checkpoint, skip already-processed batches
-        if resume_batch and i <= resume_batch:
-            # advance progress bar visually and continue
-            pbar.update(0)
-            continue
-        images, masks = batch_to_tensors(batch, device)
+    losses: list[float] = []
+    steps = 0
+    progress = tqdm(loader, desc="Training", leave=False)
+    for batch in progress:
+        pixel_values = batch["pixel_values"].to(device, non_blocking=True)
+        labels = batch["labels"].to(device, non_blocking=True)
+
         optimizer.zero_grad(set_to_none=True)
+        with torch.cuda.amp.autocast(enabled=use_amp):
+            logits = model(pixel_values)
+            loss = criterion(logits, labels)
 
-        with torch.amp.autocast('cuda', enabled=use_amp):
-            output = _extract_logits(model(images)).contiguous()
-            loss = criterion(output, masks)
-
-        if use_amp:
-            scaler.scale(loss).backward()
+        scaler.scale(loss).backward()
+        if grad_clip > 0:
             scaler.unscale_(optimizer)
-            if grad_clip > 0:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
-            scaler.step(optimizer)
-            scaler.update()
-        else:
-            loss.backward()
-            if grad_clip > 0:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
-            optimizer.step()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+        scaler.step(optimizer)
+        scaler.update()
+        scheduler.step()
 
-        batch_n = images.size(0)
-        total_loss += loss.item() * batch_n
-        seen += batch_n
+        loss_value = float(loss.detach().cpu())
+        losses.append(loss_value)
+        steps += 1
+        progress.set_postfix(loss=f"{loss_value:.4f}")
 
-        running_loss = total_loss / max(seen, 1)
-        lr = optimizer.param_groups[0]["lr"]
-        pbar.set_postfix({"loss": f"{running_loss:.4f}", "lr": f"{lr:.1e}"})
-
-        # Periodic atomic checkpointing mid-epoch so Colab disconnects don't lose much
-        now = time.time()
-        do_save = False
-        if save_every_batches and (i % save_every_batches == 0):
-            do_save = True
-        if save_every_secs and (now - last_save_time) >= save_every_secs:
-            do_save = True
-        if do_save:
-            last_save_time = now
-            checkpoint = {
-                "epoch": epoch,
-                "batch_idx": i,
-                "model_state": model.state_dict(),
-                "optimizer_state": optimizer.state_dict(),
-                "scheduler_state": {},
-                "scaler_state": getattr(scaler, "state_dict", lambda: {})(),
-                "best_miou": None,
-                "metrics": [],
-                "num_classes": getattr(model, "num_classes", None) or None,
-            }
-            try:
-                _save_checkpoint_atomic(Path(output_dir), checkpoint)
-                pbar.write(f"[Save] checkpoint at epoch {epoch} batch {i} -> last_checkpoint.pth")
-            except Exception as e:
-                pbar.write(f"[Save] failed: {e}")
-
-    return total_loss / len(loader.dataset)
+    return float(np.mean(losses)) if losses else 0.0, steps
 
 
-@torch.no_grad()
-def evaluate(
-    model: nn.Module,
-    loader: DataLoader,
-    criterion: nn.Module,
-    device: torch.device,
-    num_classes: int,
-) -> tuple[float, float, float]:
-    model.eval()
-    total_loss = 0.0
-    confusion = np.zeros((num_classes, num_classes), dtype=np.int64)
-    seen = 0
-
-    pbar = tqdm(loader, desc="  Val  ", leave=True)
-    for i, batch in enumerate(pbar, start=1):
-        images, masks = batch_to_tensors(batch, device)
-        output = _extract_logits(model(images)).contiguous()
-        loss = criterion(output, masks)
-        batch_n = images.size(0)
-        total_loss += loss.item() * batch_n
-        seen += batch_n
-
-        preds = output.argmax(dim=1).cpu().numpy()
-        targets = masks.cpu().numpy()
-        confusion += confusion_matrix(preds, targets, num_classes)
-
-        running_loss = total_loss / max(seen, 1)
-        pbar.set_postfix({"loss": f"{running_loss:.4f}"})
-
-    avg_loss = total_loss / len(loader.dataset)
-    miou, pixel_acc = metrics_from_confusion(confusion)
-    return avg_loss, miou, pixel_acc
+def write_metrics(path: Path, rows: list[dict]) -> None:
+    path.write_text(json.dumps(rows, indent=2), encoding="utf-8")
 
 
-def set_backbone_trainable(model: nn.Module, trainable: bool) -> None:
-    if isinstance(model, _SegFormerWrapper):
-        # Freeze encoder layers for SegFormer
-        encoder = model.hf_model.segformer
-        for param in encoder.parameters():
-            param.requires_grad = trainable
-    elif hasattr(model, "backbone"):
-        for param in model.backbone.parameters():
-            param.requires_grad = trainable
-
-
-def _collate(batch):
-    return {
-        "image": [b["image"] for b in batch],
-        "mask": [b["mask"] for b in batch],
-        "path": [b["path"] for b in batch],
-    }
-
-
-class SegmentationAugmentV2:
-    """Torchvision pair augmentations for segmentation training."""
-
-    def __init__(self, size: tuple[int, int]):
-        self.size = size
-        self.flip = T.RandomHorizontalFlip(p=0.5)
-        self.jitter = T.ColorJitter(
-            brightness=0.25,
-            contrast=0.20,
-            saturation=0.20,
-            hue=0.06,
-        )
-        self.rotation = T.RandomRotation(degrees=12)
-        self.rrc = T.RandomResizedCrop(
-            size=size,
-            scale=(0.72, 1.0),
-            ratio=(0.8, 1.25),
-            interpolation=InterpolationMode.BILINEAR,
-            antialias=True,
-        )
-
-    def __call__(self, img: Image.Image, mask: Image.Image) -> tuple[Image.Image, Image.Image]:
-        # RandomHorizontalFlip (same decision for image and mask)
-        if random.random() < self.flip.p:
-            img = tvf.hflip(img)
-            mask = tvf.hflip(mask)
-
-        # RandomRotation (same angle for image and mask)
-        angle = T.RandomRotation.get_params(self.rotation.degrees)
-        img = tvf.rotate(
-            img,
-            angle=angle,
-            interpolation=InterpolationMode.BILINEAR,
-            fill=[0, 0, 0],
-        )
-        mask = tvf.rotate(
-            mask,
-            angle=angle,
-            interpolation=InterpolationMode.NEAREST,
-            fill=0,
-        )
-
-        # RandomResizedCrop (same crop for image and mask)
-        i, j, h, w = T.RandomResizedCrop.get_params(
-            img,
-            scale=self.rrc.scale,
-            ratio=self.rrc.ratio,
-        )
-        img = tvf.resized_crop(
-            img, i, j, h, w,
-            size=self.size,
-            interpolation=InterpolationMode.BILINEAR,
-        )
-        mask = tvf.resized_crop(
-            mask, i, j, h, w,
-            size=self.size,
-            interpolation=InterpolationMode.NEAREST,
-        )
-
-        # ColorJitter (image only)
-        img = self.jitter(img)
-        return img, mask
-
-
-class RepeatDataset(TorchDataset):
-    """Virtual dataset expansion via repeated indexing with fresh augmentation."""
-
-    def __init__(self, base: TorchDataset, repeats: int):
-        self.base = base
-        self.repeats = max(1, int(repeats))
-
-    def __len__(self) -> int:
-        return len(self.base) * self.repeats
-
-    def __getitem__(self, idx):
-        return self.base[idx % len(self.base)]
-
-
-def _save_checkpoint_atomic(
-    output_dir: Path,
-    checkpoint: dict,
-    temp_prefix: str = "tmp_ckpt",
-):
-    """Save checkpoint atomically (write tmp -> rename).
-
-    The file is written inside the same directory and then replaced so mounts like
-    Google Drive see a coherent file.
-    """
-    output_dir.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(prefix=temp_prefix, dir=str(output_dir))
-    os.close(fd)
-    try:
-        torch.save(checkpoint, tmp_path)
-        target = output_dir / "last_checkpoint.pth"
-        # atomic replace
-        os.replace(tmp_path, str(target))
-    finally:
-        if os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except Exception:
-                pass
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Train food segmentation model")
-    parser.add_argument("--data_dir", type=str, required=True)
-    parser.add_argument(
-        "--extra_data_dir",
-        action="append",
-        default=[],
-        help=(
-            "Additional dataset root(s) to concatenate with --data_dir. "
-            "Example: --data_dir ./data/FoodSeg103 --extra_data_dir ./data/FoodSeg154"
-        ),
-    )
-    parser.add_argument("--model", type=str, default="resnet101",
-                        choices=["mobilenet", "resnet101", "segformer"],
-                        help="Model architecture")
-    parser.add_argument("--epochs", type=int, default=100)
-    parser.add_argument("--batch_size", type=int, default=4)
-    parser.add_argument("--lr", type=float, default=2e-4)
-    parser.add_argument("--output_dir", type=str, default="training/output")
-    parser.add_argument("--img_size", type=int, default=640)
-    parser.add_argument("--num_workers", type=int, default=2)
-    parser.add_argument("--patience", type=int, default=20)
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Train SegFormer-B2 on FoodSeg154")
+    parser.add_argument("--data-dir", "--data_dir", dest="data_dir", required=True, help="FoodSeg154 root directory")
+    parser.add_argument("--output-dir", "--output_dir", dest="output_dir", default="training/output", help="Checkpoint output directory")
+    parser.add_argument("--model-name", "--model", dest="model_name", default="nvidia/segformer-b2-finetuned-ade-512-512")
+    parser.add_argument("--num-labels", type=int, default=155)
+    parser.add_argument("--img-size", "--img_size", dest="img_size", type=int, default=512)
+    parser.add_argument("--epochs", type=int, default=80)
+    parser.add_argument("--batch-size", "--batch_size", dest="batch_size", type=int, default=8)
+    parser.add_argument("--workers", "--num-workers", "--num_workers", dest="workers", type=int, default=2)
+    parser.add_argument("--lr", type=float, default=6e-5)
+    parser.add_argument("--weight-decay", type=float, default=0.01)
+    parser.add_argument("--warmup-ratio", type=float, default=0.08)
+    parser.add_argument("--grad-clip", type=float, default=1.0)
+    parser.add_argument("--checkpoint-seconds", "--save-every-secs", "--save_every_secs", dest="checkpoint_seconds", type=int, default=300)
+    parser.add_argument("--val-every", "--val_every", dest="val_every", type=int, default=1)
+    parser.add_argument("--virtual-train-multiplier", "--virtual_train_multiplier", dest="virtual_train_multiplier", type=int, default=1)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--freeze_backbone_epochs", type=int, default=1)
-    parser.add_argument("--label_smoothing", type=float, default=0.03)
-    parser.add_argument("--grad_clip", type=float, default=1.0)
-    parser.add_argument("--no_class_weights", action="store_true")
-    parser.add_argument("--no_pretrained", action="store_true")
-    parser.add_argument("--resume", type=str, default="")
-    parser.add_argument("--amp", action="store_true")
-    parser.add_argument("--compile", action="store_true",
-                        help="Wrap model with torch.compile for ~20-40%% faster forward passes (PyTorch 2+)")
-    parser.add_argument("--val_every", type=int, default=1,
-                        help="Run validation every N epochs instead of every epoch")
-    parser.add_argument(
-        "--save_every_batches",
-        type=int,
-        default=200,
-        help="Save intermediate checkpoint every N batches (0 to disable)",
-    )
-    parser.add_argument(
-        "--save_every_secs",
-        type=float,
-        default=600.0,
-        help="Save intermediate checkpoint at least every N seconds (0 to disable)",
-    )
-    parser.add_argument(
-        "--virtual_train_multiplier",
-        type=int,
-        default=10,
-        help=(
-            "Repeat training samples this many times per epoch with random "
-            "augmentation (4235 x 10 ~= 42k effective samples)."
-        ),
-    )
-    parser.add_argument(
-        "--no_torchvision_aug",
-        action="store_true",
-        help="Disable torchvision flip/jitter/rotation/resized-crop augmentation.",
-    )
-    args = parser.parse_args()
+    parser.add_argument("--resume", default="", help="Path to last_checkpoint.pth")
+    parser.add_argument("--amp", action="store_true", help="Compatibility flag; CUDA AMP is enabled by default")
+    parser.add_argument("--no-amp", action="store_true", help="Disable CUDA AMP")
+    parser.add_argument("--no-data-parallel", action="store_true", help="Disable multi-GPU DataParallel")
+    return parser
 
+
+def main() -> int:
+    args = build_arg_parser().parse_args()
+    if args.model_name.lower() in {"resnet101", "deeplabv3_resnet101"}:
+        print("Legacy --model value detected; using SegFormer-B2 for FoodSeg154 instead.")
+        args.model_name = "nvidia/segformer-b2-finetuned-ade-512-512"
+    args.val_every = max(1, args.val_every)
+    args.virtual_train_multiplier = max(1, args.virtual_train_multiplier)
     set_seed(args.seed)
+
+    data_dir = Path(args.data_dir)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    metrics_path = output_dir / "metrics.json"
+    best_path = output_dir / "best.pth"
+    last_path = output_dir / "last_checkpoint.pth"
 
-    # Auto-resume from last checkpoint if --resume not explicitly given
-    if not args.resume:
-        auto_ckpt = output_dir / "last_checkpoint.pth"
-        if auto_ckpt.exists():
-            args.resume = str(auto_ckpt)
-            print(f"Auto-resuming from {args.resume}")
+    id2label, label2id = read_category_file(data_dir, args.num_labels)
+    (output_dir / "id2label.json").write_text(json.dumps(id2label, indent=2), encoding="utf-8")
 
-    device = choose_device()
-    use_amp = args.amp and device.type == "cuda"
-    print(f"Device: {device}")
-    print(f"AMP: {'on' if use_amp else 'off'}")
-
-    if device.type == "cuda":
-        # Let cuDNN auto-tune the fastest kernels for our fixed input size
-        torch.backends.cudnn.benchmark = True
-        # TF32 gives free throughput on Ampere+ GPUs (A100, 3090, etc.)
-        torch.backends.cuda.matmul.allow_tf32 = True
-        torch.backends.cudnn.allow_tf32 = True
-
-    target_size = (args.img_size, args.img_size)
-    pair_transform = None
-    if not args.no_torchvision_aug:
-        pair_transform = SegmentationAugmentV2(size=target_size)
-
-    data_dirs = _parse_data_dirs(args.data_dir, args.extra_data_dir)
-    train_bases = []
-    val_bases = []
-    for data_dir in data_dirs:
-        train_bases.append(
-            FoodSeg103Dataset(
-                data_dir,
-                split="train",
-                target_size=target_size,
-                seed=args.seed,
-                augment=True,
-                pair_transform=pair_transform,
-            )
-        )
-        val_bases.append(
-            FoodSeg103Dataset(
-                data_dir,
-                split="val",
-                target_size=target_size,
-                seed=args.seed,
-                augment=False,
-            )
+    train_ds = FoodSegDataset(data_dir, "train", args.img_size, args.num_labels, args.seed)
+    val_ds = FoodSegDataset(data_dir, "val", args.img_size, args.num_labels, args.seed)
+    print(f"Train samples: {len(train_ds)} | Val samples: {len(val_ds)}")
+    train_data = train_ds
+    if args.virtual_train_multiplier > 1:
+        train_data = ConcatDataset([train_ds] * args.virtual_train_multiplier)
+        print(
+            f"Virtual train multiplier: {args.virtual_train_multiplier} "
+            f"({len(train_data)} augmented samples per epoch)"
         )
 
-    if not train_bases:
-        raise ValueError("No datasets found. Provide --data_dir and optional --extra_data_dir.")
-
-    num_classes = train_bases[0].num_classes
-    for i, ds in enumerate(train_bases[1:], start=2):
-        if ds.num_classes != num_classes:
-            raise ValueError(
-                f"Dataset class mismatch at dataset #{i}: "
-                f"expected {num_classes}, got {ds.num_classes}."
-            )
-
-    if len(train_bases) == 1:
-        train_base_ds = train_bases[0]
-        val_ds = val_bases[0]
-    else:
-        train_base_ds = ConcatDataset(train_bases)
-        val_ds = ConcatDataset(val_bases)
-
-    train_ds = RepeatDataset(train_base_ds, args.virtual_train_multiplier)
-    per_dir_counts = [len(ds) for ds in train_bases]
-    print(
-        f"Datasets: {data_dirs}\n"
-        f"Train per dataset: {per_dir_counts}\n"
-        f"Classes: {num_classes}, Train base: {len(train_base_ds)}, "
-        f"Train effective: {len(train_ds)}, Val: {len(val_ds)}"
-    )
-
-    use_persistent = args.num_workers > 0
     train_loader = DataLoader(
-        train_ds,
+        train_data,
         batch_size=args.batch_size,
         shuffle=True,
-        num_workers=args.num_workers,
-        pin_memory=device.type == "cuda",
-        persistent_workers=use_persistent,
-        prefetch_factor=2 if use_persistent else None,
-        collate_fn=_collate,
+        num_workers=args.workers,
+        pin_memory=torch.cuda.is_available(),
+        persistent_workers=args.workers > 0,
         drop_last=True,
     )
     val_loader = DataLoader(
         val_ds,
-        batch_size=args.batch_size * 2,  # val has no grad, double batch for speed
+        batch_size=max(1, args.batch_size // 2),
         shuffle=False,
-        num_workers=args.num_workers,
-        pin_memory=device.type == "cuda",
-        persistent_workers=use_persistent,
-        prefetch_factor=2 if use_persistent else None,
-        collate_fn=_collate,
+        num_workers=args.workers,
+        pin_memory=torch.cuda.is_available(),
+        persistent_workers=args.workers > 0,
     )
 
-    print(f"Model: {args.model}")
-    model = get_model(num_classes, pretrained=not args.no_pretrained, arch=args.model).to(device)
-    set_backbone_trainable(model, args.freeze_backbone_epochs <= 0)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    use_amp = device.type == "cuda" and not args.no_amp
+    model = SegFormerFoodModel(args.model_name, args.num_labels, id2label, label2id)
+    model.to(device)
+    if device.type == "cuda" and torch.cuda.device_count() > 1 and not args.no_data_parallel:
+        print(f"Using DataParallel across {torch.cuda.device_count()} GPUs")
+        model = nn.DataParallel(model)
 
-    class_weights = None
-    if not args.no_class_weights:
-        class_weights = compute_class_weights(train_base_ds, num_classes).to(device)
-
-    criterion = CombinedSegmentationLoss(
-        num_classes=num_classes,
-        class_weights=class_weights,
-        label_smoothing=args.label_smoothing,
+    criterion = ComboLoss()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    total_steps = max(1, len(train_loader) * args.epochs)
+    warmup_steps = int(total_steps * args.warmup_ratio)
+    scheduler = get_cosine_schedule_with_warmup(
+        optimizer,
+        num_warmup_steps=warmup_steps,
+        num_training_steps=total_steps,
     )
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
-    scaler = torch.amp.GradScaler('cuda', enabled=use_amp)
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
 
-    start_epoch = 1
+    start_epoch = 0
+    global_step = 0
     best_miou = 0.0
-    metrics = []
-    resume_batch = 0
     if args.resume:
-        payload = torch.load(args.resume, map_location=device)
-        state = payload.get("model_state", payload)
+        start_epoch, global_step, best_miou = load_checkpoint(
+            Path(args.resume), model, optimizer, scheduler, scaler
+        )
+        print(f"Resumed from {args.resume}: epoch={start_epoch}, best_miou={best_miou:.4f}")
 
-        # Strip _orig_mod. prefix added by torch.compile so checkpoints saved
-        # from a compiled model can be loaded into an uncompiled model.
-        state = {
-            (k[len("_orig_mod."):] if k.startswith("_orig_mod.") else k): v
-            for k, v in state.items()
-        }
-
-        # Safely copy matching parameters only. This allows resuming from
-        # checkpoints trained with a different number of classes (classifier
-        # heads will be skipped and remain freshly initialized).
-        model_state = model.state_dict()
-        compatible = {}
-        skipped = []
-        for k, v in state.items():
-            if k not in model_state:
-                skipped.append((k, getattr(v, "shape", None), None))
-                continue
-            target_shape = tuple(model_state[k].shape)
-            src_shape = tuple(v.shape) if hasattr(v, "shape") else None
-            if src_shape == target_shape:
-                compatible[k] = v
-            else:
-                skipped.append((k, src_shape, target_shape))
-
-        if compatible:
-            model_state.update(compatible)
-            model.load_state_dict(model_state)
-        else:
-            print("Warning: no compatible parameters found in checkpoint; using model defaults.")
-
-        if skipped:
-            print(f"Skipped {len(skipped)} incompatible state_dict keys when resuming:")
-            for k, src, tgt in skipped:
-                print(f"  - {k}: checkpoint={src} model={tgt}")
-
-        # Try loading optimizer/scheduler state where possible. If we skipped
-        # any parameters due to shape mismatches (e.g., different classifier
-        # head sizes), do NOT load optimizer/scheduler state because it maps
-        # by parameter IDs and will corrupt state for newly initialized
-        # parameters.
-        if skipped:
-            print("Skipping optimizer/scheduler state load due to incompatible checkpoint parameters.")
-        else:
-            if "optimizer_state" in payload:
-                try:
-                    optimizer.load_state_dict(payload["optimizer_state"])
-                except Exception as e:
-                    print(f"Warning: could not load optimizer state: {e}")
-            if "scheduler_state" in payload:
-                try:
-                    scheduler.load_state_dict(payload["scheduler_state"])
-                except Exception as e:
-                    print(f"Warning: could not load scheduler state: {e}")
-
-        # Determine whether checkpoint was saved mid-epoch (contains batch_idx)
-        payload_epoch = int(payload.get("epoch", 0))
-        payload_batch = int(payload.get("batch_idx") or 0)
-        best_miou = float(payload.get("best_miou") or 0.0)
-        metrics = list(payload.get("metrics") or [])
-
-        if payload_batch and 0 < payload_batch < len(train_loader):
-            # Resume mid-epoch: start at the same epoch and skip processed batches
-            start_epoch = payload_epoch
-            resume_batch = payload_batch
-            print(f"Resumed from {args.resume} at epoch {start_epoch} after batch {resume_batch}")
-        else:
-            # Resume between epochs (or no batch info)
-            start_epoch = payload_epoch + 1
-            resume_batch = 0
-            print(f"Resumed from {args.resume} at epoch {start_epoch}")
-
-    # Apply torch.compile AFTER checkpoint loading so state_dict keys are
-    # not prefixed with '_orig_mod.' during weight comparison above.
-    if args.compile and hasattr(torch, "compile"):
+    history: list[dict] = []
+    if metrics_path.exists():
         try:
-            model = torch.compile(model, mode="default")
-            print("torch.compile enabled")
-        except Exception as e:
-            print(f"torch.compile skipped: {e}")
+            history = json.loads(metrics_path.read_text(encoding="utf-8"))
+        except Exception:
+            history = []
 
-    epochs_without_improvement = 0
-    for epoch in range(start_epoch, args.epochs + 1):
-        if epoch == args.freeze_backbone_epochs + 1:
-            set_backbone_trainable(model, True)
-            print("Backbone unfrozen")
-
-        t0 = time.time()
-        # If resuming mid-epoch, only skip batches for the first resumed epoch
-        current_resume_batch = resume_batch if epoch == start_epoch else 0
-
-        # Run validation only every val_every epochs (or on the last epoch)
-        run_val = (epoch % args.val_every == 0) or (epoch == args.epochs)
-
-        train_loss = train_one_epoch(
+    last_checkpoint_time = time.monotonic()
+    for epoch in range(start_epoch, args.epochs):
+        print(f"\nEpoch {epoch + 1}/{args.epochs}")
+        train_loss, steps = train_one_epoch(
             model,
             train_loader,
             criterion,
             optimizer,
-            device,
+            scheduler,
             scaler,
-            args.grad_clip,
+            device,
             use_amp,
-            epoch=epoch,
-            output_dir=output_dir,
-            save_every_batches=args.save_every_batches,
-            save_every_secs=args.save_every_secs,
-            resume_batch=current_resume_batch,
+            args.grad_clip,
         )
-        # after applying resume for the first resumed epoch, clear it
-        resume_batch = 0
+        global_step += steps
 
-        if run_val:
-            val_loss, val_miou, pixel_acc = evaluate(
+        now = time.monotonic()
+        if now - last_checkpoint_time >= args.checkpoint_seconds:
+            save_checkpoint(
+                last_path,
                 model,
-                val_loader,
-                criterion,
-                device,
-                num_classes,
+                optimizer,
+                scheduler,
+                scaler,
+                epoch,
+                global_step,
+                best_miou,
+                args,
+                id2label,
+                label2id,
             )
-            improved = val_miou > best_miou + 1e-4
-            if improved:
-                best_miou = val_miou
-                epochs_without_improvement = 0
-                torch.save(model.state_dict(), output_dir / "best.pth")
-            else:
-                epochs_without_improvement += 1
-        else:
-            val_loss = val_miou = pixel_acc = None
-            improved = False
-        scheduler.step()
-        elapsed = time.time() - t0
+            print(f"Saved timed checkpoint: {last_path}")
+            last_checkpoint_time = now
 
-        entry = {
-            "epoch": epoch,
-            "train_loss": round(train_loss, 4),
-            "val_loss": round(val_loss, 4) if val_loss is not None else None,
-            "val_miou": round(val_miou, 4) if val_miou is not None else None,
-            "pixel_acc": round(pixel_acc, 4) if pixel_acc is not None else None,
-            "best_miou": round(best_miou, 4),
-            "val_ran": run_val,
-            "lr": round(optimizer.param_groups[0]["lr"], 7),
-            "time_s": round(elapsed, 1),
+        should_validate = ((epoch + 1) % args.val_every == 0) or (epoch + 1 == args.epochs)
+        metrics = evaluate(model, val_loader, device, args.num_labels) if should_validate else {
+            "miou": best_miou,
+            "foreground_miou": 0.0,
+            "pixel_accuracy": 0.0,
         }
-        metrics.append(entry)
-        if run_val:
+        row = {
+            "epoch": epoch + 1,
+            "train_loss": train_loss,
+            "validated": should_validate,
+            "miou": metrics["miou"],
+            "foreground_miou": metrics["foreground_miou"],
+            "pixel_accuracy": metrics["pixel_accuracy"],
+            "lr": scheduler.get_last_lr()[0],
+        }
+        history.append(row)
+        write_metrics(metrics_path, history)
+
+        if should_validate:
             print(
-                f"Epoch {epoch:3d}/{args.epochs} | "
-                f"train_loss={entry['train_loss']:.4f} | "
-                f"val_loss={entry['val_loss']:.4f} | "
-                f"mIoU={entry['val_miou']:.4f} | "
-                f"pixel_acc={entry['pixel_acc']:.4f} | "
-                f"best_mIoU={best_miou:.4f} | "
-                f"{entry['time_s']:.0f}s"
+                f"loss={train_loss:.4f} | mIoU={metrics['miou']:.4f} | "
+                f"fg_mIoU={metrics['foreground_miou']:.4f} | "
+                f"pixel_acc={metrics['pixel_accuracy']:.4f}"
             )
         else:
-            print(
-                f"Epoch {epoch:3d}/{args.epochs} | "
-                f"train_loss={entry['train_loss']:.4f} | "
-                f"[val skipped, runs every {args.val_every} epochs] | "
-                f"best_mIoU={best_miou:.4f} | "
-                f"{entry['time_s']:.0f}s"
+            print(f"loss={train_loss:.4f} | validation skipped until epoch multiple of {args.val_every}")
+
+        save_checkpoint(
+            last_path,
+            model,
+            optimizer,
+            scheduler,
+            scaler,
+            epoch,
+            global_step,
+            best_miou,
+            args,
+            id2label,
+            label2id,
+        )
+        if should_validate and metrics["miou"] > best_miou:
+            best_miou = metrics["miou"]
+            save_checkpoint(
+                best_path,
+                model,
+                optimizer,
+                scheduler,
+                scaler,
+                epoch,
+                global_step,
+                best_miou,
+                args,
+                id2label,
+                label2id,
             )
-        if improved:
-            print(f"  -> New best model (mIoU={best_miou:.4f})")
+            print(f"New best mIoU {best_miou:.4f}; saved {best_path}")
 
-        checkpoint = {
-            "epoch": epoch,
-            "batch_idx": 0,
-            "model_state": model.state_dict(),
-            "optimizer_state": optimizer.state_dict(),
-            "scheduler_state": scheduler.state_dict(),
-            "scaler_state": getattr(scaler, "state_dict", lambda: {})(),
-            "best_miou": best_miou,
-            "metrics": metrics,
-            "num_classes": num_classes,
-        }
-        try:
-            _save_checkpoint_atomic(output_dir, checkpoint)
-        except Exception:
-            torch.save(checkpoint, output_dir / "last_checkpoint.pth")
-        with open(output_dir / "metrics.json", "w") as f:
-            json.dump(metrics, f, indent=2)
-
-        if epochs_without_improvement >= args.patience:
-            print(f"Early stopping after {args.patience} stale epochs")
-            break
-
-    print(f"\nDone. Best mIoU: {best_miou:.4f}")
-    print(f"Checkpoint: {output_dir / 'best.pth'}")
-
-    # Auto-export to Core ML immediately after training
-    best_ckpt = output_dir / "best.pth"
-    if best_ckpt.exists():
-        print("\n--- Auto-exporting best model to Core ML ---")
-        try:
-            import sys as _sys
-            _sys.path.insert(0, str(Path(__file__).parent))
-            from export_coreml import load_model as _load_model, convert_coreml as _convert_coreml
-            _model, _nclasses = _load_model(best_ckpt, num_classes)
-            _convert_coreml(_model, _nclasses, args.img_size, output_dir)
-            print("Core ML export complete ✅")
-        except Exception as e:
-            print(f"Auto-export failed ({e}) — run export_coreml.py manually.")
+    print(f"Training complete. Best mIoU: {best_miou:.4f}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

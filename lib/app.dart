@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/app_locale.dart';
+import 'core/app_localizations.dart';
+import 'providers/locale_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/user_prefs_provider.dart';
 import 'screens/main_shell.dart';
@@ -18,12 +22,21 @@ class PixelsToMacrosApp extends ConsumerWidget {
       final fontScale = ref.watch(
         userPrefsProvider.select((p) => p.fontScale),
       );
+      final appLanguage = ref.watch(localeProvider);
       return MaterialApp(
         title: 'Pixels to Macros',
         debugShowCheckedModeBanner: false,
         navigatorKey: AppRecoveryService.navigatorKey,
         scaffoldMessengerKey: AppRecoveryService.scaffoldMessengerKey,
         theme: theme,
+        locale: appLanguage.locale,
+        supportedLocales: AppLanguage.values.map((l) => l.locale),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         // Apply user-selected font scale to every screen in the app
         builder: (ctx, child) => MediaQuery(
           data: MediaQuery.of(ctx).copyWith(
@@ -73,6 +86,7 @@ class _AppGateState extends ConsumerState<_AppGate> {
         _loadFailed = false;
       });
     try {
+      await ref.read(localeProvider.notifier).load();
       await ref
           .read(userPrefsProvider.notifier)
           .load()

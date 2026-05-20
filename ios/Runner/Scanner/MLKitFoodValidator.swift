@@ -68,14 +68,14 @@ final class MLKitFoodValidator {
 
     /// Minimum confidence for the food-presence gate to pass.
     /// Must be hit by *any* food-related label (category or specific).
-    /// Kept at 0.40 because packaged food (e.g. bananas in a bag) often
-    /// scores lower than unpackaged items.
-    static let foodPresenceThreshold: Float = 0.40
+    /// Kept moderate because packaged food (e.g. bananas in a bag) often
+    /// scores lower than unpackaged items, but weak labels should not pass.
+    static let foodPresenceThreshold: Float = 0.45
 
     /// Minimum confidence for a specific food label to override the
-    /// segmentation label. Lowered from 0.70 to catch more out-of-vocabulary
-    /// foods that the mini model can't classify.
-    static let specificOverrideThreshold: Float = 0.55
+    /// segmentation label. This is intentionally conservative: a lower value
+    /// made the scanner more eager, but also caused incorrect food guesses.
+    static let specificOverrideThreshold: Float = 0.68
 
     // MARK: – Internal
 

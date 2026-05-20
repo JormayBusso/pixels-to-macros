@@ -1,5 +1,7 @@
 import CoreVideo
+import CoreImage
 import Foundation
+import UIKit
 
 /// Orchestrates the full scan pipeline:
 ///
@@ -21,6 +23,9 @@ final class InferencePipeline {
     /// fixes mislabelled foods that the bundled 10-class mini segmentation
     /// model cannot recognise (tomato, banana, broccoli, …).
     private let mlKitValidator     = MLKitFoodValidator()
+
+    /// File path of the most recently rendered scan overlay image.
+    private(set) var lastScanImagePath: String?
 
     // MARK: – Types
 
@@ -195,6 +200,14 @@ final class InferencePipeline {
             hasDepth: preprocessedDepth != nil
         )
 
+        // ── 10. Render and save scan overlay image ─────────────────────
+        renderAndSaveScanOverlay(
+            topFrameBuffer: topFrame.pixelBuffer,
+            segments: segments,
+            plateRect: plate.rect,
+            topDepthBuffer: topFrame.depthBuffer
+        )
+
         return json
     }
 
@@ -261,7 +274,7 @@ final class InferencePipeline {
 
         // ── 1. Plate detection ──────────────────────────────────────────
         let plate    = plateDetector.detect(in: topFrame.pixelBuffer)
-        let cropRect: CGRect? = plate.detected ? plate.rect : nil
+        let cropRect: CGRect? = plate.rect
 
         // ── 2. Preprocess top frame for CoreML ─────────────────────────
         guard let preprocessedRGB = autoreleasepool(invoking: {
@@ -341,7 +354,18 @@ final class InferencePipeline {
             )
         }
 
-        // Fuse all recorded light frames.
+        // Fuse locked top-view depth first, then the side-view sweep.
+        for frame in recorder.topViewFrames {
+            fusion.integrate(
+                depthBuffer:      frame.depthBuffer,
+                cameraTransform:  frame.cameraTransform,
+                cameraIntrinsics: frame.cameraIntrinsics,
+                imageWidth:  frame.imageWidth,
+                imageHeight: frame.imageHeight
+            )
+        }
+
+        // Fuse recorded side-view light frames.
         for frame in recorder.lightFrames {
             fusion.integrate(
                 depthBuffer:      frame.depthBuffer,
@@ -353,15 +377,14 @@ final class InferencePipeline {
         }
 
         // ── 5. Label voxels from top-frame segmentation ─────────────────
-        let plateNormRect = plate.detected
-            ? plate.rect
-            : CGRect(x: 0, y: 0, width: 1, height: 1)
+        let plateNormRect = plate.rect
 
         fusion.assignLabels(
             segments:           segments,
             plateRect:          plateNormRect,
             topFrameTransform:  topFrame.cameraTransform,
             topFrameIntrinsics: topFrame.cameraIntrinsics,
+            topDepthBuffer:     topFrame.depthBuffer,
             maskWidth:          preprocessor.modelInputWidth,
             maskHeight:         preprocessor.modelInputHeight,
             imageWidth:  CVPixelBufferGetWidth(topFrame.pixelBuffer),
@@ -413,12 +436,20 @@ final class InferencePipeline {
         else { return "[]" }
 
         print("──────────── Video Scan Result ──────────")
-        print("Frames: \(recorder.lightFrames.count), Voxels: \(fusion.totalOccupiedVoxels)")
+        print("Frames: \(recorder.frameCount), Voxels: \(fusion.totalOccupiedVoxels)")
         for seg in segments {
             let v = String(format: "%.1f", volumes[seg.label] ?? 0)
             print("  \(seg.label): \(v) cm³, conf \(String(format: "%.2f", seg.confidence))")
         }
         print("─────────────────────────────────────────")
+
+        // Render and save scan overlay image
+        renderAndSaveScanOverlay(
+            topFrameBuffer: topFrame.pixelBuffer,
+            segments: segments,
+            plateRect: plate.rect,
+            topDepthBuffer: topFrame.depthBuffer
+        )
 
         return json
     }
@@ -618,5 +649,312 @@ final class InferencePipeline {
         let heightCm = Double(max(0, far - near) * 100.0)
         guard heightCm >= 0.5 else { return nil }
         return min(8.0, max(0.8, heightCm))
+    }
+
+    // MARK: – Scan Image Rendering
+
+    /// Render the camera frame with colored segmentation mask overlay,
+    /// save as JPEG, and store the path in `lastScanImagePath`.
+    func renderAndSaveScanOverlay(
+        topFrameBuffer: CVPixelBuffer,
+        segments: [SegmentationService.SegmentedObject],
+        plateRect: CGRect?,
+        topDepthBuffer: CVPixelBuffer? = nil
+    ) {
+        lastScanImagePath = nil
+
+        // 1. Create base image from the original camera frame
+        let ciBase = CIImage(cvPixelBuffer: topFrameBuffer)
+        let imgWidth = CGFloat(CVPixelBufferGetWidth(topFrameBuffer))
+        let imgHeight = CGFloat(CVPixelBufferGetHeight(topFrameBuffer))
+
+        // Crop to the plate region for a clean food-only view
+        let cropRect: CGRect
+        if let plate = plateRect {
+            cropRect = CGRect(
+                x: plate.origin.x * imgWidth,
+                y: (1.0 - plate.origin.y - plate.height) * imgHeight,
+                width: plate.width * imgWidth,
+                height: plate.height * imgHeight
+            )
+        } else {
+            cropRect = CGRect(x: 0, y: 0, width: imgWidth, height: imgHeight)
+        }
+
+        var baseCropped = ciBase.cropped(to: cropRect)
+        baseCropped = baseCropped.transformed(
+            by: CGAffineTransform(
+                translationX: -cropRect.origin.x,
+                y: -cropRect.origin.y
+            )
+        )
+
+        // Determine mask dimensions from first segment
+        guard let firstSeg = segments.first else { return }
+        let maskH = firstSeg.mask.count
+        let maskW = maskH > 0 ? firstSeg.mask[0].count : 0
+        guard maskW > 0 && maskH > 0 else { return }
+
+        // 2. Build a bright food alpha mask and a crisp edge/fill overlay.
+        var maskPixels = [UInt8](repeating: 0, count: maskW * maskH * 4)
+        var overlayPixels = [UInt8](repeating: 0, count: maskW * maskH * 4)
+        var occupied = [Bool](repeating: false, count: maskW * maskH)
+        var red = [UInt8](repeating: 0, count: maskW * maskH)
+        var green = [UInt8](repeating: 0, count: maskW * maskH)
+        var blue = [UInt8](repeating: 0, count: maskW * maskH)
+
+        for segment in segments {
+            let (r, g, b) = rgbForLabel(segment.label)
+            for row in 0..<min(maskH, segment.mask.count) {
+                let maskRow = segment.mask[row]
+                for col in 0..<min(maskW, maskRow.count) where maskRow[col] == 1 {
+                    let pixel = row * maskW + col
+                    occupied[pixel] = true
+                    red[pixel] = r
+                    green[pixel] = g
+                    blue[pixel] = b
+                }
+            }
+        }
+
+        for row in 0..<maskH {
+            for col in 0..<maskW {
+                let pixel = row * maskW + col
+                guard occupied[pixel] else { continue }
+
+                var isEdge = row == 0 || col == 0 || row == maskH - 1 || col == maskW - 1
+                if !isEdge {
+                    for dy in -1...1 where !isEdge {
+                        for dx in -1...1 where !isEdge {
+                            if dx == 0 && dy == 0 { continue }
+                            let n = (row + dy) * maskW + (col + dx)
+                            if !occupied[n] { isEdge = true }
+                        }
+                    }
+                }
+
+                let rgba = pixel * 4
+                maskPixels[rgba] = 255
+                maskPixels[rgba + 1] = 255
+                maskPixels[rgba + 2] = 255
+                maskPixels[rgba + 3] = 255
+
+                let alpha: UInt8 = isEdge ? 230 : 42
+                overlayPixels[rgba]     = UInt8(min(255, Int(red[pixel]) * Int(alpha) / 255))
+                overlayPixels[rgba + 1] = UInt8(min(255, Int(green[pixel]) * Int(alpha) / 255))
+                overlayPixels[rgba + 2] = UInt8(min(255, Int(blue[pixel]) * Int(alpha) / 255))
+                overlayPixels[rgba + 3] = alpha
+            }
+        }
+
+        // 3. Create CIImages from mask and overlay pixels.
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let maskData = Data(maskPixels)
+        guard let maskProvider = CGDataProvider(data: maskData as CFData),
+              let maskCG = CGImage(
+                  width: maskW,
+                  height: maskH,
+                  bitsPerComponent: 8,
+                  bitsPerPixel: 32,
+                  bytesPerRow: maskW * 4,
+                  space: colorSpace,
+                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                  provider: maskProvider,
+                  decode: nil,
+                  shouldInterpolate: true,
+                  intent: .defaultIntent
+              ) else { return }
+
+        let overlayData = Data(overlayPixels)
+        guard let provider = CGDataProvider(data: overlayData as CFData),
+              let overlayCG = CGImage(
+                  width: maskW,
+                  height: maskH,
+                  bitsPerComponent: 8,
+                  bitsPerPixel: 32,
+                  bytesPerRow: maskW * 4,
+                  space: colorSpace,
+                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                  provider: provider,
+                  decode: nil,
+                  shouldInterpolate: true,
+                  intent: .defaultIntent
+              ) else { return }
+
+        // Scale mask/overlay to match cropped base image size.
+        let ciMask = CIImage(cgImage: maskCG)
+        let ciOverlay = CIImage(cgImage: overlayCG)
+        let scaleX = baseCropped.extent.width / CGFloat(maskW)
+        let scaleY = baseCropped.extent.height / CGFloat(maskH)
+        let scaledMask = ciMask.transformed(
+            by: CGAffineTransform(scaleX: scaleX, y: scaleY)
+        )
+        let scaledOverlay = ciOverlay.transformed(
+            by: CGAffineTransform(scaleX: scaleX, y: scaleY)
+        )
+
+        // 4. Composite: dim the non-food region, keep the real food pixels
+        // bright and sharp, then draw a colored silhouette/edge overlay.
+        let dimmedBase = baseCropped.applyingFilter("CIColorControls", parameters: [
+            kCIInputSaturationKey: 0.72,
+            kCIInputBrightnessKey: -0.10,
+            kCIInputContrastKey: 0.92,
+        ])
+        let enhancedFood = baseCropped.applyingFilter("CIColorControls", parameters: [
+            kCIInputSaturationKey: 1.12,
+            kCIInputBrightnessKey: 0.03,
+            kCIInputContrastKey: 1.08,
+        ])
+        let cutout = enhancedFood.applyingFilter("CIBlendWithAlphaMask", parameters: [
+            kCIInputBackgroundImageKey: dimmedBase,
+            kCIInputMaskImageKey: scaledMask,
+        ])
+        let composite = scaledOverlay.composited(over: cutout)
+
+        // 5. Render to JPEG and save
+        let ciContext = CIContext(options: [.useSoftwareRenderer: false])
+        guard let cgResult = ciContext.createCGImage(
+            composite,
+            from: baseCropped.extent
+        ) else { return }
+
+        let uiImage = UIImage(cgImage: cgResult)
+        let previewImage = renderPointCloudPreview(
+            baseImage: uiImage,
+            segments: segments,
+            maskWidth: maskW,
+            maskHeight: maskH,
+            hasDepth: topDepthBuffer != nil
+        )
+        guard let jpegData = previewImage.jpegData(compressionQuality: 0.85) else { return }
+
+        let docs = FileManager.default.urls(
+            for: .documentDirectory, in: .userDomainMask
+        ).first!
+        let filename = "scan_\(Int(Date().timeIntervalSince1970 * 1000)).jpg"
+        let url = docs.appendingPathComponent(filename)
+
+        do {
+            try jpegData.write(to: url)
+            lastScanImagePath = url.path
+            print("[InferencePipeline] Scan overlay saved: \(url.path)")
+        } catch {
+            print("[InferencePipeline] Failed to save scan overlay: \(error)")
+        }
+    }
+
+    /// Adds a lightweight pseudo-3D point rendering over the real food pixels.
+    /// The real camera crop remains visible, so the preview resembles the scanned food,
+    /// while the raised colored dots make the result feel like a generated 3-D scan.
+    private func renderPointCloudPreview(
+        baseImage: UIImage,
+        segments: [SegmentationService.SegmentedObject],
+        maskWidth: Int,
+        maskHeight: Int,
+        hasDepth: Bool
+    ) -> UIImage {
+        let size = baseImage.size
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            let rect = CGRect(origin: .zero, size: size)
+            UIColor(white: 0.05, alpha: 1.0).setFill()
+            context.cgContext.fill(rect)
+            baseImage.draw(in: rect)
+
+            let cg = context.cgContext
+            cg.setBlendMode(.normal)
+            cg.setLineWidth(max(1.0, min(size.width, size.height) / 220.0))
+
+            for segment in segments {
+                let (r, g, b) = rgbForLabel(segment.label)
+                let color = UIColor(
+                    red: CGFloat(r) / 255.0,
+                    green: CGFloat(g) / 255.0,
+                    blue: CGFloat(b) / 255.0,
+                    alpha: 0.72
+                )
+                let edgeColor = color.withAlphaComponent(0.95)
+                let stride = max(5, Int(sqrt(Double(max(segment.pixelCount, 1))) / 18.0))
+                let dotSize = max(2.0, min(size.width, size.height) / 170.0)
+
+                var minRow = maskHeight
+                var maxRow = 0
+                var minCol = maskWidth
+                var maxCol = 0
+                for row in 0..<min(maskHeight, segment.mask.count) {
+                    let maskRow = segment.mask[row]
+                    for col in 0..<min(maskWidth, maskRow.count) where maskRow[col] == 1 {
+                        minRow = min(minRow, row)
+                        maxRow = max(maxRow, row)
+                        minCol = min(minCol, col)
+                        maxCol = max(maxCol, col)
+                    }
+                }
+
+                if minRow <= maxRow && minCol <= maxCol {
+                    let shadowRect = CGRect(
+                        x: CGFloat(minCol) / CGFloat(maskWidth) * size.width,
+                        y: CGFloat(minRow) / CGFloat(maskHeight) * size.height + dotSize * 2.0,
+                        width: CGFloat(maxCol - minCol + 1) / CGFloat(maskWidth) * size.width,
+                        height: CGFloat(maxRow - minRow + 1) / CGFloat(maskHeight) * size.height
+                    )
+                    UIColor.black.withAlphaComponent(0.20).setFill()
+                    cg.fillEllipse(in: shadowRect.insetBy(dx: -dotSize * 2.5, dy: -dotSize * 1.5))
+                }
+
+                for row in Swift.stride(from: 0, to: min(maskHeight, segment.mask.count), by: stride) {
+                    let maskRow = segment.mask[row]
+                    for col in Swift.stride(from: 0, to: min(maskWidth, maskRow.count), by: stride) where maskRow[col] == 1 {
+                        let x = CGFloat(col) / CGFloat(maskWidth) * size.width
+                        let y = CGFloat(row) / CGFloat(maskHeight) * size.height
+                        let dy = abs(CGFloat(row - segment.centroid.row)) / max(1.0, CGFloat(maskHeight) * 0.5)
+                        let lift = max(0.0, 1.0 - dy) * (hasDepth ? 22.0 : 14.0)
+                        let pointRect = CGRect(
+                            x: x - dotSize * 0.5,
+                            y: y - lift - dotSize * 0.5,
+                            width: dotSize,
+                            height: dotSize
+                        )
+                        color.setFill()
+                        cg.fillEllipse(in: pointRect)
+                    }
+                }
+
+                edgeColor.setStroke()
+                for row in Swift.stride(from: 1, to: min(maskHeight - 1, segment.mask.count - 1), by: max(3, stride / 2)) {
+                    let maskRow = segment.mask[row]
+                    for col in Swift.stride(from: 1, to: min(maskWidth - 1, maskRow.count - 1), by: max(3, stride / 2)) where maskRow[col] == 1 {
+                        let edge = segment.mask[row - 1][col] == 0 ||
+                            segment.mask[row + 1][col] == 0 ||
+                            maskRow[col - 1] == 0 ||
+                            maskRow[col + 1] == 0
+                        guard edge else { continue }
+                        let x = CGFloat(col) / CGFloat(maskWidth) * size.width
+                        let y = CGFloat(row) / CGFloat(maskHeight) * size.height
+                        cg.strokeEllipse(in: CGRect(x: x - dotSize, y: y - dotSize, width: dotSize * 2, height: dotSize * 2))
+                    }
+                }
+            }
+        }
+    }
+
+    /// Map food labels to RGB colors for mask overlay rendering.
+    private func rgbForLabel(_ label: String) -> (UInt8, UInt8, UInt8) {
+        let lower = label.lowercased()
+        if lower.contains("rice") || lower.contains("egg") { return (253, 230, 138) }
+        if lower.contains("bread") || lower.contains("pasta") || lower.contains("potato") { return (217, 119, 6) }
+        if lower.contains("chicken") || lower.contains("fish") || lower.contains("steak") || lower.contains("beef") { return (252, 165, 165) }
+        if lower.contains("salad") || lower.contains("broccoli") || lower.contains("cucumber") { return (34, 197, 94) }
+        if lower.contains("tomato") || lower.contains("apple") || lower.contains("berry") || lower.contains("strawberry") { return (239, 68, 68) }
+        if lower.contains("banana") || lower.contains("corn") { return (250, 204, 21) }
+        let hash = abs(label.hashValue)
+        let palette: [(UInt8, UInt8, UInt8)] = [
+            (56, 189, 248),
+            (249, 115, 22),
+            (167, 139, 250),
+            (20, 184, 166),
+            (251, 113, 133),
+        ]
+        return palette[hash % palette.count]
     }
 }
