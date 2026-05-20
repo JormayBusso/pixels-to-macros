@@ -1,10 +1,11 @@
 # Kaggle Cells: FoodSeg154 SegFormer-B2 Training
 
-Set Kaggle accelerator to **GPU T4 x2**. Add your previous checkpoint as a Kaggle input if you want to resume.
+Set Kaggle accelerator to **GPU T4 x2**. Start this SegFormer run fresh; do not resume from the old ResNet checkpoint.
 
-## Cell 1 - Clone repo and install
+## Cell 1 - Clone, Install, and Check GPUs
 
 ```python
+# Cell 1 - Clone repo and install dependencies
 !git clone https://github.com/JormayBusso/pixels-to-macros.git
 %cd pixels-to-macros
 
@@ -23,11 +24,11 @@ for i in range(torch.cuda.device_count()):
   print(i, torch.cuda.get_device_name(i))
 ```
 
-## Cell 2 - Prepare FoodSeg154 and checkpoint
+## Cell 2 - Prepare FoodSeg154 and Clean Directory
 
 ```python
+# Cell 2 - Prepare FoodSeg154 and set up fresh environment
 from pathlib import Path
-import shutil
 
 !python scripts/download_hf_foodseg154.py || true
 
@@ -41,51 +42,35 @@ candidates = [
 DATA_DIR = next((path for path in candidates if path.exists()), None)
 assert DATA_DIR is not None, 'Add FoodSeg154 as a Kaggle input or set DATA_DIR manually.'
 
-OUTPUT_DIR = Path('/kaggle/working/pixels-to-macros-foodseg154')
+# Created a new folder name specifically for this SegFormer run
+OUTPUT_DIR = Path('/kaggle/working/pixels-to-macros-segformer-154')
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-checkpoint_candidates = [
-  Path('/kaggle/input/datasets/jormay/my-food-weights/last_checkpoint-4.pth'),
-  Path('/kaggle/input/my-food-weights/last_checkpoint-4.pth'),
-  Path('/kaggle/input/my-food-weights/last_checkpoint.pth'),
-]
-resume_path = OUTPUT_DIR / 'last_checkpoint.pth'
-for checkpoint in checkpoint_candidates:
-  if checkpoint.exists():
-    shutil.copy(checkpoint, resume_path)
-    print('Checkpoint copied:', resume_path)
-    break
-else:
-  print('No previous checkpoint found; training will start fresh.')
 
 print('DATA_DIR =', DATA_DIR)
 print('OUTPUT_DIR =', OUTPUT_DIR)
+print('🚀 Ready to start fresh SegFormer training!')
 ```
 
 ## Cell 3 - Train SegFormer-B2
 
 ```python
+# Cell 3 - Train SegFormer-B2 on FoodSeg154 (Fresh Start)
 from pathlib import Path
 
 MODEL       = 'nvidia/segformer-b2-finetuned-ade-512-512'
 EPOCHS      = 80
-BATCH_SIZE  = 8   # use 4 if Kaggle runs out of memory
+BATCH_SIZE  = 8   # If Kaggle throws a CUDA OutOfMemory error, drop this to 4
 IMG_SIZE    = 512
 LR          = 6e-5
 NUM_WORKERS = 2
 MULTIPLIER  = 3
 VAL_EVERY   = 3
 
-resume_arg = ''
-resume_path = Path('/kaggle/working/pixels-to-macros-foodseg154/last_checkpoint.pth')
-if resume_path.exists():
-  resume_arg = f'--resume {resume_path}'
-
 !python training/train.py \
   --data_dir       {DATA_DIR} \
   --output_dir     {OUTPUT_DIR} \
   --model_name     {MODEL} \
-  --num-labels     155 \
+  --num_classes    155 \
   --epochs         {EPOCHS} \
   --batch_size     {BATCH_SIZE} \
   --img_size       {IMG_SIZE} \
@@ -93,14 +78,14 @@ if resume_path.exists():
   --num_workers    {NUM_WORKERS} \
   --val_every      {VAL_EVERY} \
   --virtual_train_multiplier {MULTIPLIER} \
-  --save_every_secs 300 \
-  {resume_arg}
+  --save_every_secs 300
 ```
 
 ## Cell 4 - Inspect and zip outputs
 
 ```python
-!ls -lh /kaggle/working/pixels-to-macros-foodseg154
-!tail -n 80 /kaggle/working/pixels-to-macros-foodseg154/metrics.json
-!cd /kaggle/working && zip -r pixels-to-macros-foodseg154.zip pixels-to-macros-foodseg154
+# Cell 4 - Inspect and zip outputs
+!ls -lh /kaggle/working/pixels-to-macros-segformer-154
+!tail -n 20 /kaggle/working/pixels-to-macros-segformer-154/metrics.json || true
+!cd /kaggle/working && zip -r pixels-to-macros-segformer-154.zip pixels-to-macros-segformer-154
 ```

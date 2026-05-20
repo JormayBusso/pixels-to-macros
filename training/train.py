@@ -453,7 +453,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--data-dir", "--data_dir", dest="data_dir", required=True, help="FoodSeg154 root directory")
     parser.add_argument("--output-dir", "--output_dir", dest="output_dir", default="training/output", help="Checkpoint output directory")
     parser.add_argument("--model-name", "--model", dest="model_name", default="nvidia/segformer-b2-finetuned-ade-512-512")
-    parser.add_argument("--num-labels", type=int, default=155)
+    parser.add_argument("--num-labels", "--num_labels", "--num-classes", "--num_classes", dest="num_labels", type=int, default=155)
     parser.add_argument("--img-size", "--img_size", dest="img_size", type=int, default=512)
     parser.add_argument("--epochs", type=int, default=80)
     parser.add_argument("--batch-size", "--batch_size", dest="batch_size", type=int, default=8)
