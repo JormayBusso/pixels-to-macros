@@ -1,4 +1,4 @@
-# Kaggle Cells: FoodSeg154 SegFormer-B2 Training
+# Kaggle Cells: FoodSeg103 SegFormer-B2 Training
 
 Set Kaggle accelerator to **GPU T4 x2**. Start this SegFormer run fresh; do not resume from the old ResNet checkpoint.
 
@@ -24,26 +24,26 @@ for i in range(torch.cuda.device_count()):
   print(i, torch.cuda.get_device_name(i))
 ```
 
-## Cell 2 - Prepare FoodSeg154 and Clean Directory
+## Cell 2 - Prepare FoodSeg103 and Clean Directory
 
 ```python
-# Cell 2 - Prepare FoodSeg154 and set up fresh environment
+# Cell 2 - Prepare FoodSeg103 and set up fresh environment
 from pathlib import Path
 
-!python scripts/download_hf_foodseg154.py || true
+!python scripts/download_hf_foodseg103.py || true
 
 candidates = [
-  Path('./data/FoodSeg154'),
-  Path('/kaggle/input/foodseg154/FoodSeg154'),
-  Path('/kaggle/input/foodseg154'),
-  Path('/kaggle/input/foodseg-154/FoodSeg154'),
-  Path('/kaggle/input/foodseg-154'),
+  Path('./data/FoodSeg103'),
+  Path('/kaggle/input/foodseg103/FoodSeg103'),
+  Path('/kaggle/input/foodseg103'),
+  Path('/kaggle/input/foodseg-103/FoodSeg103'),
+  Path('/kaggle/input/foodseg-103'),
 ]
 DATA_DIR = next((path for path in candidates if path.exists()), None)
-assert DATA_DIR is not None, 'Add FoodSeg154 as a Kaggle input or set DATA_DIR manually.'
+assert DATA_DIR is not None, 'Add FoodSeg103 as a Kaggle input or set DATA_DIR manually.'
 
 # Created a new folder name specifically for this SegFormer run
-OUTPUT_DIR = Path('/kaggle/working/pixels-to-macros-segformer-154')
+OUTPUT_DIR = Path('/kaggle/working/pixels-to-macros-segformer-103')
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 print('DATA_DIR =', DATA_DIR)
@@ -54,7 +54,7 @@ print('🚀 Ready to start fresh SegFormer training!')
 ## Cell 3 - Train SegFormer-B2
 
 ```python
-# Cell 3 - Train SegFormer-B2 on FoodSeg154 (Fresh Start)
+# Cell 3 - Train SegFormer-B2 on FoodSeg103 (Fresh Start)
 from pathlib import Path
 
 MODEL       = 'nvidia/segformer-b2-finetuned-ade-512-512'
@@ -70,7 +70,7 @@ VAL_EVERY   = 3
   --data_dir       {DATA_DIR} \
   --output_dir     {OUTPUT_DIR} \
   --model_name     {MODEL} \
-  --num_classes    155 \
+  --num_classes    103 \
   --epochs         {EPOCHS} \
   --batch_size     {BATCH_SIZE} \
   --img_size       {IMG_SIZE} \
@@ -85,7 +85,7 @@ VAL_EVERY   = 3
 
 ```python
 # Cell 4 - Inspect and zip outputs
-!ls -lh /kaggle/working/pixels-to-macros-segformer-154
-!tail -n 20 /kaggle/working/pixels-to-macros-segformer-154/metrics.json || true
-!cd /kaggle/working && zip -r pixels-to-macros-segformer-154.zip pixels-to-macros-segformer-154
+!ls -lh /kaggle/working/pixels-to-macros-segformer-103
+!tail -n 20 /kaggle/working/pixels-to-macros-segformer-103/metrics.json || true
+!cd /kaggle/working && zip -r pixels-to-macros-segformer-103.zip pixels-to-macros-segformer-103
 ```
