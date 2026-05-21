@@ -730,7 +730,8 @@ def infer_meal_type(title: str, url: str, ingredients: list[str]) -> str:
 MEAT_SEAFOOD_TERMS = (
     "beef", "steak", "chicken", "pork", "bacon", "ham", "turkey", "lamb", "veal", "duck", "fish", "salmon",
     "tuna", "shrimp", "prawn", "anchovy", "gelatin", "gelatine", "salami", "sausage", "prosciutto", "chorizo", "pancetta",
-    "kip", "rund", "varken", "spek",
+    "crab", "lobster", "mussel", "oyster", "clam", "squid", "octopus", "scallop", "cod", "haddock", "mackerel", "sardine",
+    "kip", "rund", "varken", "spek", "garnalen", "zalm", "makreel", "mosselen",
     "hähnchen", "haehnchen", "huhn", "rind", "schwein", "speck", "schinken", "wurst",
     "kurczak", "wołow", "wolow", "wieprz",
     "pollo", "ternera", "cerdo", "jamón", "jamon",
@@ -814,10 +815,10 @@ def classify_goals(
         "breakfast": 450,
         "lunch": 550,
         "dinner": 650,
-        "snack": 250,
+        "snack": 300,
         "dessert": 350,
     }.get(meal_type, 450)
-    if calories >= muscle_min_calories and protein >= 30:
+    if calories >= muscle_min_calories and protein >= 25:
         goals.add("muscle")
     if is_probably_vegan(title, ingredients):
         goals.add("vegan")

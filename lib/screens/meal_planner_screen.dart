@@ -12,6 +12,7 @@ import '../models/nutrition_goal.dart';
 import '../models/recipe.dart';
 import '../providers/meal_planner_provider.dart';
 import '../providers/grocery_provider.dart';
+import '../providers/locale_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/database_service.dart';
 import '../services/recipe_repository.dart';
@@ -86,6 +87,8 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final goal = ref.read(userPrefsProvider).nutritionGoal;
+      ref.read(mealPlanProvider.notifier).languageCode =
+          ref.read(localeProvider).code;
       ref.read(mealPlanProvider.notifier).load(goal);
     });
   }
@@ -743,6 +746,7 @@ class _MealSlotRow extends ConsumerWidget {
       goal: goal,
       mealType: mealType,
       limit: 1000,
+      language: ref.read(localeProvider).code,
     );
     // Also include custom meals that match this meal type
     final allCustom = await DatabaseService.instance.getCustomMeals();

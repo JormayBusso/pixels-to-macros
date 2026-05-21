@@ -70,6 +70,9 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
   MealPlanNotifier(int weekNumber, int year)
       : super(MealPlanState(weekNumber: weekNumber, year: year));
 
+  /// The user's selected language code (en, de, nl). Set by the UI.
+  String? languageCode;
+
   /// Load saved plan from DB.
   Future<void> load(NutritionGoalType goal) async {
     state = state.copyWith(loading: true);
@@ -212,6 +215,7 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
       goal: goal,
       mealType: mealType,
       limit: 1000,
+      language: languageCode,
     );
 
     if (candidates.isEmpty) return;

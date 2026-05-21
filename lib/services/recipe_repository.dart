@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_locale.dart';
 import '../models/nutrition_goal.dart';
 import '../models/recipe.dart';
+import '../providers/locale_provider.dart';
 
 /// Loads real scraped recipes from the bundled offline JSON asset.
 class RecipeRepository {
@@ -53,12 +55,14 @@ class RecipeRepository {
     int limit = 0,
     bool strictGoalRules = true,
     bool includeGenerated = false,
+    String? language,
   }) async {
     final q = (search ?? '').trim().toLowerCase();
     final list = await all();
     final filtered = <Recipe>[];
     for (final r in list) {
       if (!includeGenerated && r.source.toLowerCase() == 'generated') continue;
+      if (language != null && r.language != language) continue;
       if (goal != null && !r.goals.contains(goal)) continue;
       if (goal != null &&
           strictGoalRules &&
@@ -185,10 +189,26 @@ class RecipeRepository {
     'prosciutto',
     'chorizo',
     'pancetta',
+    'crab',
+    'lobster',
+    'mussel',
+    'oyster',
+    'clam',
+    'squid',
+    'octopus',
+    'scallop',
+    'cod',
+    'haddock',
+    'mackerel',
+    'sardine',
     'kip',
     'rund',
     'varken',
     'spek',
+    'garnalen',
+    'zalm',
+    'makreel',
+    'mosselen',
     'hähnchen',
     'haehnchen',
     'huhn',
@@ -298,10 +318,12 @@ final recipeQueryProvider =
 
 final recipeResultsProvider = FutureProvider<List<Recipe>>((ref) async {
   final q = ref.watch(recipeQueryProvider);
+  final lang = ref.watch(localeProvider);
   return RecipeRepository.instance.query(
     goal: q.goal,
     mealType: q.mealType,
     search: q.search,
     maxMinutes: q.maxMinutes,
+    language: lang.code,
   );
 });

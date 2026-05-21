@@ -128,6 +128,7 @@ class Recipe {
     this.glycemicIndex = 0,
     this.glycemicLoad = 0,
     this.insulinUnits = 0,
+    this.language = 'en',
   });
 
   final String id;
@@ -164,6 +165,9 @@ class Recipe {
   final double potassiumMg;
   final double zincMg;
   final double sodiumMg;
+
+  /// Two-letter language code (en, de, nl, etc.).
+  final String language;
 
   // Glycemic & insulin
   final int glycemicIndex;
@@ -291,6 +295,7 @@ class Recipe {
       glycemicIndex: (j['glycemic_index'] as num?)?.toInt() ?? 0,
       glycemicLoad: (j['glycemic_load'] as num?)?.toDouble() ?? 0,
       insulinUnits: (j['insulin_units'] as num?)?.toDouble() ?? 0,
+      language: (language != null && language.isNotEmpty) ? language : 'en',
       tags: [
         ...((j['tags'] as List?) ?? const [])
             .cast<dynamic>()
