@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
 import '../models/nutrient_data.dart';
 import '../models/scan_result.dart';
 import '../models/user_preferences.dart';
@@ -545,10 +546,11 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
   }
 
   void _showInfo() {
+    final l10n = AppLocalizations.of(context);
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('How the Body Map works'),
+        title: Text(l10n.howBodyMapWorks),
         content: const Text(
           'Each organ lights up based on how well today\'s food covers the '
           'nutrients that organ depends on, compared to your daily '
@@ -563,7 +565,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Got it'),
+            child: Text(AppLocalizations.of(context).gotIt),
           ),
         ],
       ),

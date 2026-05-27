@@ -217,11 +217,11 @@ class _ImageMascot extends StatelessWidget {
 
   int get _stage {
     int s;
-    if (progress >= 0.75) {
+    if (progress >= 1.0) {
       s = 3;
-    } else if (progress >= 0.50) {
+    } else if (progress >= 0.65) {
       s = 2;
-    } else if (progress >= 0.25) {
+    } else if (progress >= 0.30) {
       s = 1;
     } else {
       s = 0;

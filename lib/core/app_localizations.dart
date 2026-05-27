@@ -111,18 +111,18 @@ class AppLocalizations {
 
   String get home => _t({
         'en': 'Home',
-        'pl': 'Strona główna',
+        'pl': 'Główna',
         'nl': 'Home',
         'es': 'Inicio',
-        'de': 'Startseite',
+        'de': 'Home',
       });
 
   String get settings => _t({
         'en': 'Settings',
         'pl': 'Ustawienia',
-        'nl': 'Instellingen',
+        'nl': 'Instelling',
         'es': 'Ajustes',
-        'de': 'Einstellungen',
+        'de': 'Einstell.',
       });
 
   String get aboutSection => _t({
@@ -1038,6 +1038,628 @@ class AppLocalizations {
         'nl': 'Wekelijks overzicht',
         'es': 'Revisión semanal',
         'de': 'Wöchentliche Übersicht',
+      });
+
+  // ── Camera / Scan UI ──
+
+  String get cameraRequired => _t({
+        'en': 'Camera Required',
+        'pl': 'Wymagana kamera',
+        'nl': 'Camera vereist',
+        'es': 'Cámara requerida',
+        'de': 'Kamera erforderlich',
+      });
+
+  String get openSettings => _t({
+        'en': 'Open Settings',
+        'pl': 'Otwórz ustawienia',
+        'nl': 'Open instellingen',
+        'es': 'Abrir ajustes',
+        'de': 'Einstellungen öffnen',
+      });
+
+  String get flashlightUnavailable => _t({
+        'en': 'Flashlight unavailable on this device.',
+        'pl': 'Latarka niedostępna na tym urządzeniu.',
+        'nl': 'Zaklamp niet beschikbaar op dit apparaat.',
+        'es': 'Linterna no disponible en este dispositivo.',
+        'de': 'Taschenlampe auf diesem Gerät nicht verfügbar.',
+      });
+
+  String get scanAgain => _t({
+        'en': 'Scan Again',
+        'pl': 'Skanuj ponownie',
+        'nl': 'Opnieuw scannen',
+        'es': 'Escanear de nuevo',
+        'de': 'Erneut scannen',
+      });
+
+  String get retry => _t({
+        'en': 'Retry',
+        'pl': 'Ponów',
+        'nl': 'Opnieuw proberen',
+        'es': 'Reintentar',
+        'de': 'Wiederholen',
+      });
+
+  String get errorCopied => _t({
+        'en': 'Error copied to clipboard',
+        'pl': 'Błąd skopiowany do schowka',
+        'nl': 'Fout gekopieerd naar klembord',
+        'es': 'Error copiado al portapapeles',
+        'de': 'Fehler in Zwischenablage kopiert',
+      });
+
+  // ── Scan Detail ──
+
+  String get scanDetails => _t({
+        'en': 'Scan Details',
+        'pl': 'Szczegóły skanu',
+        'nl': 'Scandetails',
+        'es': 'Detalles del escaneo',
+        'de': 'Scan-Details',
+      });
+
+  String get removeThisItem => _t({
+        'en': 'Remove this item?',
+        'pl': 'Usunąć ten element?',
+        'nl': 'Dit item verwijderen?',
+        'es': '¿Eliminar este elemento?',
+        'de': 'Dieses Element entfernen?',
+      });
+
+  String get remove => _t({
+        'en': 'Remove',
+        'pl': 'Usuń',
+        'nl': 'Verwijderen',
+        'es': 'Eliminar',
+        'de': 'Entfernen',
+      });
+
+  String get deleteScan => _t({
+        'en': 'Delete scan?',
+        'pl': 'Usunąć skan?',
+        'nl': 'Scan verwijderen?',
+        'es': '¿Eliminar escaneo?',
+        'de': 'Scan löschen?',
+      });
+
+  String get deleteScanDesc => _t({
+        'en': 'This will permanently remove this scan entry.',
+        'pl': 'To trwale usunie ten wpis skanu.',
+        'nl': 'Dit zal deze scaninvoer permanent verwijderen.',
+        'es': 'Esto eliminará permanentemente esta entrada de escaneo.',
+        'de': 'Dies wird diesen Scan-Eintrag dauerhaft entfernen.',
+      });
+
+  String get cool => _t({
+        'en': 'Cool',
+        'pl': 'Zimny',
+        'nl': 'Koel',
+        'es': 'Frío',
+        'de': 'Kühl',
+      });
+
+  String get hot => _t({
+        'en': 'Hot',
+        'pl': 'Gorący',
+        'nl': 'Heet',
+        'es': 'Caliente',
+        'de': 'Heiß',
+      });
+
+  String get noDepthData => _t({
+        'en': 'No depth data available for point cloud',
+        'pl': 'Brak danych głębi dla chmury punktów',
+        'nl': 'Geen dieptedata beschikbaar voor puntenwolk',
+        'es': 'No hay datos de profundidad disponibles',
+        'de': 'Keine Tiefendaten für Punktwolke verfügbar',
+      });
+
+  String get plySaved => _t({
+        'en': 'PLY saved',
+        'pl': 'PLY zapisany',
+        'nl': 'PLY opgeslagen',
+        'es': 'PLY guardado',
+        'de': 'PLY gespeichert',
+      });
+
+  // ── Settings extras ──
+
+  String get csvCopied => _t({
+        'en': 'CSV copied to clipboard',
+        'pl': 'CSV skopiowany do schowka',
+        'nl': 'CSV gekopieerd naar klembord',
+        'es': 'CSV copiado al portapapeles',
+        'de': 'CSV in Zwischenablage kopiert',
+      });
+
+  String get saveWaterGoal => _t({
+        'en': 'Save Water Goal',
+        'pl': 'Zapisz cel wody',
+        'nl': 'Waterdoel opslaan',
+        'es': 'Guardar objetivo de agua',
+        'de': 'Wasserziel speichern',
+      });
+
+  String get exportDailySummary => _t({
+        'en': 'Export Daily Summary (CSV)',
+        'pl': 'Eksportuj dzienny raport (CSV)',
+        'nl': 'Dagelijkse samenvatting exporteren (CSV)',
+        'es': 'Exportar resumen diario (CSV)',
+        'de': 'Tageszusammenfassung exportieren (CSV)',
+      });
+
+  String get exportDetailedData => _t({
+        'en': 'Export Detailed Data (CSV)',
+        'pl': 'Eksportuj szczegółowe dane (CSV)',
+        'nl': 'Gedetailleerde data exporteren (CSV)',
+        'es': 'Exportar datos detallados (CSV)',
+        'de': 'Detaillierte Daten exportieren (CSV)',
+      });
+
+  String get clearScanHistory => _t({
+        'en': 'Clear Scan History?',
+        'pl': 'Wyczyścić historię skanów?',
+        'nl': 'Scangeschiedenis wissen?',
+        'es': '¿Borrar historial de escaneos?',
+        'de': 'Scan-Verlauf löschen?',
+      });
+
+  String get scanHistoryCleared => _t({
+        'en': 'Scan history cleared',
+        'pl': 'Historia skanów wyczyszczona',
+        'nl': 'Scangeschiedenis gewist',
+        'es': 'Historial de escaneos borrado',
+        'de': 'Scan-Verlauf gelöscht',
+      });
+
+  String get evaluationDashboard => _t({
+        'en': 'Evaluation Dashboard',
+        'pl': 'Panel ewaluacji',
+        'nl': 'Evaluatiedashboard',
+        'es': 'Panel de evaluación',
+        'de': 'Auswertungs-Dashboard',
+      });
+
+  String get resetEntireApp => _t({
+        'en': 'Reset Entire App?',
+        'pl': 'Zresetować całą aplikację?',
+        'nl': 'Hele app resetten?',
+        'es': '¿Restablecer toda la app?',
+        'de': 'Gesamte App zurücksetzen?',
+      });
+
+  String get resetEverything => _t({
+        'en': 'Reset Everything',
+        'pl': 'Resetuj wszystko',
+        'nl': 'Alles resetten',
+        'es': 'Restablecer todo',
+        'de': 'Alles zurücksetzen',
+      });
+
+  String get signIn => _t({
+        'en': 'Sign In / Create Account',
+        'pl': 'Zaloguj się / Utwórz konto',
+        'nl': 'Inloggen / Account aanmaken',
+        'es': 'Iniciar sesión / Crear cuenta',
+        'de': 'Anmelden / Konto erstellen',
+      });
+
+  String get signOut => _t({
+        'en': 'Sign Out',
+        'pl': 'Wyloguj',
+        'nl': 'Uitloggen',
+        'es': 'Cerrar sesión',
+        'de': 'Abmelden',
+      });
+
+  String get deleteAccount => _t({
+        'en': 'Delete Account',
+        'pl': 'Usuń konto',
+        'nl': 'Account verwijderen',
+        'es': 'Eliminar cuenta',
+        'de': 'Konto löschen',
+      });
+
+  String get mealReminder => _t({
+        'en': 'Meal reminder',
+        'pl': 'Przypomnienie o posiłku',
+        'nl': 'Maaltijdherinnering',
+        'es': 'Recordatorio de comida',
+        'de': 'Mahlzeiterinnerung',
+      });
+
+  String get mealReminderDesc => _t({
+        'en': 'Remind me to log meals at 13:00',
+        'pl': 'Przypomnij mi o logowaniu posiłków o 13:00',
+        'nl': 'Herinner me om maaltijden te loggen om 13:00',
+        'es': 'Recordarme registrar comidas a las 13:00',
+        'de': 'Erinnere mich um 13:00 Mahlzeiten zu loggen',
+      });
+
+  String get waterReminder => _t({
+        'en': 'Water reminder',
+        'pl': 'Przypomnienie o wodzie',
+        'nl': 'Waterherinnering',
+        'es': 'Recordatorio de agua',
+        'de': 'Wassererinnerung',
+      });
+
+  String get waterReminderDesc => _t({
+        'en': 'Remind me to drink water every 2 hours',
+        'pl': 'Przypomnij mi o piciu wody co 2 godziny',
+        'nl': 'Herinner me elke 2 uur water te drinken',
+        'es': 'Recordarme beber agua cada 2 horas',
+        'de': 'Erinnere mich alle 2 Stunden Wasser zu trinken',
+      });
+
+  // ── Auth ──
+
+  String get continueWithApple => _t({
+        'en': 'Continue with Apple',
+        'pl': 'Kontynuuj z Apple',
+        'nl': 'Doorgaan met Apple',
+        'es': 'Continuar con Apple',
+        'de': 'Mit Apple fortfahren',
+      });
+
+  String get or => _t({
+        'en': 'or',
+        'pl': 'lub',
+        'nl': 'of',
+        'es': 'o',
+        'de': 'oder',
+      });
+
+  String get passwordResetSent => _t({
+        'en': 'Password reset email sent',
+        'pl': 'E-mail do resetowania hasła wysłany',
+        'nl': 'Wachtwoord reset e-mail verzonden',
+        'es': 'Correo de restablecimiento enviado',
+        'de': 'Passwort-Reset-E-Mail gesendet',
+      });
+
+  String get enterEmailFirst => _t({
+        'en': 'Enter your email first',
+        'pl': 'Najpierw wpisz swój e-mail',
+        'nl': 'Voer eerst je e-mail in',
+        'es': 'Ingresa tu correo primero',
+        'de': 'Gib zuerst deine E-Mail ein',
+      });
+
+  String get forgotPassword => _t({
+        'en': 'Forgot password?',
+        'pl': 'Zapomniałeś hasła?',
+        'nl': 'Wachtwoord vergeten?',
+        'es': '¿Olvidaste tu contraseña?',
+        'de': 'Passwort vergessen?',
+      });
+
+  // ── Voice entry extras ──
+
+  String get enterMealName => _t({
+        'en': 'Please enter a name for the meal.',
+        'pl': 'Proszę podać nazwę posiłku.',
+        'nl': 'Voer een naam in voor de maaltijd.',
+        'es': 'Por favor ingresa un nombre para la comida.',
+        'de': 'Bitte gib einen Namen für die Mahlzeit ein.',
+      });
+
+  // ── Meal planner extras ──
+
+  String get clearWeekPlan => _t({
+        'en': 'Clear Week Plan?',
+        'pl': 'Wyczyścić plan tygodnia?',
+        'nl': 'Weekplan wissen?',
+        'es': '¿Borrar plan semanal?',
+        'de': 'Wochenplan löschen?',
+      });
+
+  String get ingredientsFromPlan => _t({
+        'en': 'ingredients from your meal plan',
+        'pl': 'składniki z Twojego planu posiłków',
+        'nl': 'ingrediënten uit je maaltijdplan',
+        'es': 'ingredientes de tu plan de comidas',
+        'de': 'Zutaten aus deinem Mahlzeitenplan',
+      });
+
+  String pickRecipe(String meal) => _t({
+        'en': 'Pick a $meal Recipe',
+        'pl': 'Wybierz przepis na $meal',
+        'nl': 'Kies een $meal recept',
+        'es': 'Elige una receta de $meal',
+        'de': 'Wähle ein $meal-Rezept',
+      });
+
+  // ── Manual entry ──
+
+  String get noIngredients => _t({
+        'en': 'This meal has no ingredients.',
+        'pl': 'Ten posiłek nie ma składników.',
+        'nl': 'Deze maaltijd heeft geen ingrediënten.',
+        'es': 'Esta comida no tiene ingredientes.',
+        'de': 'Diese Mahlzeit hat keine Zutaten.',
+      });
+
+  String get logMeal => _t({
+        'en': 'Log Meal',
+        'pl': 'Zaloguj posiłek',
+        'nl': 'Maaltijd loggen',
+        'es': 'Registrar comida',
+        'de': 'Mahlzeit loggen',
+      });
+
+  String get unhealthy => _t({
+        'en': 'Unhealthy',
+        'pl': 'Niezdrowy',
+        'nl': 'Ongezond',
+        'es': 'No saludable',
+        'de': 'Ungesund',
+      });
+
+  String get healthy => _t({
+        'en': 'Healthy',
+        'pl': 'Zdrowy',
+        'nl': 'Gezond',
+        'es': 'Saludable',
+        'de': 'Gesund',
+      });
+
+  String get addToLog => _t({
+        'en': 'Add to Log',
+        'pl': 'Dodaj do dziennika',
+        'nl': 'Toevoegen aan logboek',
+        'es': 'Agregar al registro',
+        'de': 'Zum Tagebuch hinzufügen',
+      });
+
+  String get logFoodManually => _t({
+        'en': 'Log Food Manually',
+        'pl': 'Loguj jedzenie ręcznie',
+        'nl': 'Handmatig voedsel loggen',
+        'es': 'Registrar comida manualmente',
+        'de': 'Essen manuell loggen',
+      });
+
+  String get noSavedMeals => _t({
+        'en': 'No saved meals yet',
+        'pl': 'Brak zapisanych posiłków',
+        'nl': 'Nog geen opgeslagen maaltijden',
+        'es': 'Aún no hay comidas guardadas',
+        'de': 'Noch keine gespeicherten Mahlzeiten',
+      });
+
+  String get createMealDesc => _t({
+        'en': 'Create a meal to quickly log it next time.',
+        'pl': 'Utwórz posiłek, aby szybko go zalogować następnym razem.',
+        'nl': 'Maak een maaltijd om die de volgende keer snel te loggen.',
+        'es': 'Crea una comida para registrarla rápidamente la próxima vez.',
+        'de': 'Erstelle eine Mahlzeit, um sie nächstes Mal schnell zu loggen.',
+      });
+
+  String get createMeal => _t({
+        'en': 'Create Meal',
+        'pl': 'Utwórz posiłek',
+        'nl': 'Maaltijd maken',
+        'es': 'Crear comida',
+        'de': 'Mahlzeit erstellen',
+      });
+
+  String get deleteMeal => _t({
+        'en': 'Delete meal?',
+        'pl': 'Usunąć posiłek?',
+        'nl': 'Maaltijd verwijderen?',
+        'es': '¿Eliminar comida?',
+        'de': 'Mahlzeit löschen?',
+      });
+
+  String get createNewMeal => _t({
+        'en': 'Create New Meal',
+        'pl': 'Utwórz nowy posiłek',
+        'nl': 'Nieuwe maaltijd maken',
+        'es': 'Crear nueva comida',
+        'de': 'Neue Mahlzeit erstellen',
+      });
+
+  // ── Body Map extras ──
+
+  String get howBodyMapWorks => _t({
+        'en': 'How the Body Map works',
+        'pl': 'Jak działa mapa ciała',
+        'nl': 'Hoe de lichaamskaart werkt',
+        'es': 'Cómo funciona el mapa corporal',
+        'de': 'Wie die Körperkarte funktioniert',
+      });
+
+  String get gotIt => _t({
+        'en': 'Got it',
+        'pl': 'Rozumiem',
+        'nl': 'Begrepen',
+        'es': 'Entendido',
+        'de': 'Verstanden',
+      });
+
+  // ── Edit Food ──
+
+  String get foodUpdated => _t({
+        'en': 'Food updated',
+        'pl': 'Żywność zaktualizowana',
+        'nl': 'Voedsel bijgewerkt',
+        'es': 'Alimento actualizado',
+        'de': 'Lebensmittel aktualisiert',
+      });
+
+  String get editFood => _t({
+        'en': 'Edit Food',
+        'pl': 'Edytuj żywność',
+        'nl': 'Voedsel bewerken',
+        'es': 'Editar alimento',
+        'de': 'Lebensmittel bearbeiten',
+      });
+
+  String get kcalPer100g => _t({
+        'en': 'kcal/100g',
+        'pl': 'kcal/100g',
+        'nl': 'kcal/100g',
+        'es': 'kcal/100g',
+        'de': 'kcal/100g',
+      });
+
+  // ── Home extras ──
+
+  String get removeFood => _t({
+        'en': 'Remove Food',
+        'pl': 'Usuń jedzenie',
+        'nl': 'Voedsel verwijderen',
+        'es': 'Eliminar alimento',
+        'de': 'Lebensmittel entfernen',
+      });
+
+  String get dailyWaterGoal => _t({
+        'en': 'Daily Water Goal',
+        'pl': 'Dzienny cel wody',
+        'nl': 'Dagelijks waterdoel',
+        'es': 'Objetivo de agua diario',
+        'de': 'Tägliches Wasserziel',
+      });
+
+  // ── Food Database ──
+
+  String get foodDatabase => _t({
+        'en': 'Food Database',
+        'pl': 'Baza żywności',
+        'nl': 'Voedingsdatabase',
+        'es': 'Base de alimentos',
+        'de': 'Lebensmittel-Datenbank',
+      });
+
+  String get fillAllFields => _t({
+        'en': 'Please fill all fields',
+        'pl': 'Wypełnij wszystkie pola',
+        'nl': 'Vul alle velden in',
+        'es': 'Por favor completa todos los campos',
+        'de': 'Bitte alle Felder ausfüllen',
+      });
+
+  String get addedToDatabase => _t({
+        'en': 'added to database',
+        'pl': 'dodano do bazy danych',
+        'nl': 'toegevoegd aan database',
+        'es': 'agregado a la base de datos',
+        'de': 'zur Datenbank hinzugefügt',
+      });
+
+  String get addCustomFood => _t({
+        'en': 'Add Custom Food',
+        'pl': 'Dodaj własne jedzenie',
+        'nl': 'Aangepast voedsel toevoegen',
+        'es': 'Agregar alimento personalizado',
+        'de': 'Eigenes Lebensmittel hinzufügen',
+      });
+
+  String get addFood => _t({
+        'en': 'Add Food',
+        'pl': 'Dodaj jedzenie',
+        'nl': 'Voedsel toevoegen',
+        'es': 'Agregar alimento',
+        'de': 'Lebensmittel hinzufügen',
+      });
+
+  // ── Ground Truth ──
+
+  String get groundTruth => _t({
+        'en': 'Ground Truth',
+        'pl': 'Dane referencyjne',
+        'nl': 'Ground Truth',
+        'es': 'Datos de referencia',
+        'de': 'Referenzdaten',
+      });
+
+  String get enterValidWeight => _t({
+        'en': 'Please enter a valid weight in grams',
+        'pl': 'Proszę podać prawidłową wagę w gramach',
+        'nl': 'Voer een geldig gewicht in grammen in',
+        'es': 'Por favor ingresa un peso válido en gramos',
+        'de': 'Bitte gib ein gültiges Gewicht in Gramm ein',
+      });
+
+  // ── Create Meal ──
+
+  String get takePhoto => _t({
+        'en': 'Take a photo',
+        'pl': 'Zrób zdjęcie',
+        'nl': 'Maak een foto',
+        'es': 'Tomar una foto',
+        'de': 'Foto machen',
+      });
+
+  String get chooseFromGallery => _t({
+        'en': 'Choose from gallery',
+        'pl': 'Wybierz z galerii',
+        'nl': 'Kies uit galerij',
+        'es': 'Elegir de la galería',
+        'de': 'Aus Galerie wählen',
+      });
+
+  String get removePhoto => _t({
+        'en': 'Remove photo',
+        'pl': 'Usuń zdjęcie',
+        'nl': 'Foto verwijderen',
+        'es': 'Eliminar foto',
+        'de': 'Foto entfernen',
+      });
+
+  String get addIngredient => _t({
+        'en': 'Add at least one ingredient.',
+        'pl': 'Dodaj przynajmniej jeden składnik.',
+        'nl': 'Voeg minstens één ingrediënt toe.',
+        'es': 'Agrega al menos un ingrediente.',
+        'de': 'Füge mindestens eine Zutat hinzu.',
+      });
+
+  String get noIngredientsYet => _t({
+        'en': 'No ingredients yet',
+        'pl': 'Brak składników',
+        'nl': 'Nog geen ingrediënten',
+        'es': 'Aún no hay ingredientes',
+        'de': 'Noch keine Zutaten',
+      });
+
+  // ── Nutrition Dashboard ──
+
+  String get todaysNutrition => _t({
+        'en': "Today's Nutrition",
+        'pl': 'Dzisiejsze odżywianie',
+        'nl': "Voeding van vandaag",
+        'es': 'Nutrición de hoy',
+        'de': 'Heutige Ernährung',
+      });
+
+  // ── Common UI ──
+
+  String get continueBtn => _t({
+        'en': 'Continue',
+        'pl': 'Kontynuuj',
+        'nl': 'Doorgaan',
+        'es': 'Continuar',
+        'de': 'Weiter',
+      });
+
+  String get skip => _t({
+        'en': 'Skip',
+        'pl': 'Pomiń',
+        'nl': 'Overslaan',
+        'es': 'Omitir',
+        'de': 'Überspringen',
+      });
+
+  String get log => _t({
+        'en': 'Log',
+        'pl': 'Zaloguj',
+        'nl': 'Loggen',
+        'es': 'Registrar',
+        'de': 'Loggen',
       });
 
   String nMeals(int n) {

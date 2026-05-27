@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
@@ -79,7 +80,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         ? null
                         : () => ref.read(authProvider.notifier).signInWithApple(),
                     icon: const Icon(Icons.apple, size: 22),
-                    label: const Text('Continue with Apple'),
+                    label: Text(AppLocalizations.of(context).continueWithApple),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.black,
                       side: const BorderSide(color: AppTheme.gray200),
@@ -95,7 +96,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     const Expanded(child: Divider()),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('or',
+                      child: Text(AppLocalizations.of(context).or,
                           style: TextStyle(color: AppTheme.gray400)),
                     ),
                     const Expanded(child: Divider()),
@@ -144,15 +145,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         if (email.contains('@')) {
                           ref.read(authProvider.notifier).resetPassword(email);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Password reset email sent')),
+                            SnackBar(content: Text(AppLocalizations.of(context).passwordResetSent)),
                           );
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Enter your email first')),
+                            SnackBar(content: Text(AppLocalizations.of(context).enterEmailFirst)),
                           );
                         }
                       },
-                      child: const Text('Forgot password?'),
+                      child: Text(AppLocalizations.of(context).forgotPassword),
                     ),
                   ),
 

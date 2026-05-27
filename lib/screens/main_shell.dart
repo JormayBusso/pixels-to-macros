@@ -189,7 +189,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             data: NavigationBarThemeData(
               labelTextStyle: WidgetStateProperty.all(
                 const TextStyle(
-                  fontSize: 10,
+                  fontSize: 9.5,
                   fontWeight: FontWeight.w600,
                   overflow: TextOverflow.ellipsis,
                 ),

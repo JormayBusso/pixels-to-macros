@@ -71,3 +71,4 @@ logs/
 training/output/last_checkpoint.pth
 *.pth
 *.mlpackage
+data/FoodSeg103.zip

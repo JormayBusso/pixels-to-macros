@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
 import '../models/custom_meal.dart';
 import '../models/food_data.dart';
 import '../models/nutrition_goal.dart';
@@ -203,7 +204,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   Future<void> _logMeal(CustomMeal meal) async {
     if (meal.ingredients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('This meal has no ingredients.')));
+          SnackBar(content: Text(AppLocalizations.of(context).noIngredients)));
       return;
     }
 
@@ -370,7 +371,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                 Expanded(
                   child: FilledButton(
                     onPressed: () => Navigator.of(ctx).pop(true),
-                    child: const Text('Log Meal'),
+                    child: Text(AppLocalizations.of(ctx).logMeal),
                   ),
                 ),
               ],
@@ -655,7 +656,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                         });
                       }
                     },
-                    child: const Text('Add to Log'),
+                    child: Text(AppLocalizations.of(context).addToLog),
                   ),
                 ),
               ],
@@ -682,7 +683,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Log Food Manually'),
+        title: Text(AppLocalizations.of(context).logFoodManually),
         actions: [
           IconButton(
             icon: const Icon(Icons.keyboard_hide),
@@ -1236,18 +1237,18 @@ class _MealsTab extends ConsumerWidget {
             Icon(Icons.restaurant_menu_outlined,
                 size: 56, color: AppTheme.gray300),
             const SizedBox(height: 12),
-            const Text('No saved meals yet',
-                style: TextStyle(
+            Text(AppLocalizations.of(context).noSavedMeals,
+                style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.gray400)),
             const SizedBox(height: 6),
-            const Text('Create a meal to quickly log it next time.',
-                style: TextStyle(color: AppTheme.gray400)),
+            Text(AppLocalizations.of(context).createMealDesc,
+                style: const TextStyle(color: AppTheme.gray400)),
             const SizedBox(height: 20),
             FilledButton.icon(
               icon: const Icon(Icons.add),
-              label: const Text('Create Meal'),
+              label: Text(AppLocalizations.of(context).createMeal),
               onPressed: onCreate,
             ),
           ],
@@ -1353,7 +1354,7 @@ class _MealsTab extends ConsumerWidget {
             width: double.infinity,
             child: OutlinedButton.icon(
               icon: const Icon(Icons.add),
-              label: const Text('Create New Meal'),
+              label: Text(AppLocalizations.of(context).createNewMeal),
               onPressed: onCreate,
             ),
           ),
@@ -1363,19 +1364,20 @@ class _MealsTab extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, CustomMeal meal) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete meal?'),
-        content: Text('Delete "${meal.name}"? This cannot be undone.'),
+        title: Text(l10n.deleteMeal),
+        content: Text('${l10n.delete} "${meal.name}"?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+              child: Text(l10n.cancel)),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete',
-                  style: TextStyle(color: AppTheme.red500))),
+              child: Text(l10n.delete,
+                  style: const TextStyle(color: AppTheme.red500))),
         ],
       ),
     );

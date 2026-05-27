@@ -844,8 +844,8 @@ final class InferencePipeline {
     }
 
     /// Adds a lightweight pseudo-3D point rendering over the real food pixels.
-    /// The real camera crop remains visible, so the preview resembles the scanned food,
-    /// while the raised colored dots make the result feel like a generated 3-D scan.
+    /// Dots sample actual colors from the camera image so the preview resembles
+    /// the scanned food, with a subtle depth-modulated lift for the 3-D aesthetic.
     private func renderPointCloudPreview(
         baseImage: UIImage,
         segments: [SegmentationService.SegmentedObject],
@@ -855,72 +855,115 @@ final class InferencePipeline {
     ) -> UIImage {
         let size = baseImage.size
         let renderer = UIGraphicsImageRenderer(size: size)
+
+        // Pre-render the base into a CGImage so we can sample pixel colours.
+        guard let baseCG = baseImage.cgImage else { return baseImage }
+        let bitmapW = baseCG.width
+        let bitmapH = baseCG.height
+        let bytesPerPixel = 4
+        let bytesPerRow = bitmapW * bytesPerPixel
+        var bitmapData = [UInt8](repeating: 0, count: bitmapH * bytesPerRow)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let bitmapCtx = CGContext(
+            data: &bitmapData,
+            width: bitmapW,
+            height: bitmapH,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return baseImage }
+        bitmapCtx.draw(baseCG, in: CGRect(x: 0, y: 0, width: bitmapW, height: bitmapH))
+
+        func sampleColor(maskRow: Int, maskCol: Int) -> (UInt8, UInt8, UInt8) {
+            let px = min(bitmapW - 1, max(0, maskCol * bitmapW / max(1, maskWidth)))
+            let py = min(bitmapH - 1, max(0, maskRow * bitmapH / max(1, maskHeight)))
+            let offset = py * bytesPerRow + px * bytesPerPixel
+            return (bitmapData[offset], bitmapData[offset + 1], bitmapData[offset + 2])
+        }
+
         return renderer.image { context in
             let rect = CGRect(origin: .zero, size: size)
-            UIColor(white: 0.05, alpha: 1.0).setFill()
+            // Dark background behind the food cutout
+            UIColor(white: 0.06, alpha: 1.0).setFill()
             context.cgContext.fill(rect)
+            // Draw the real food image — this is the primary visual
             baseImage.draw(in: rect)
 
             let cg = context.cgContext
             cg.setBlendMode(.normal)
-            cg.setLineWidth(max(1.0, min(size.width, size.height) / 220.0))
 
             for segment in segments {
-                let (r, g, b) = rgbForLabel(segment.label)
-                let color = UIColor(
-                    red: CGFloat(r) / 255.0,
-                    green: CGFloat(g) / 255.0,
-                    blue: CGFloat(b) / 255.0,
-                    alpha: 0.72
-                )
-                let edgeColor = color.withAlphaComponent(0.95)
-                let stride = max(5, Int(sqrt(Double(max(segment.pixelCount, 1))) / 18.0))
-                let dotSize = max(2.0, min(size.width, size.height) / 170.0)
+                let stride = max(4, Int(sqrt(Double(max(segment.pixelCount, 1))) / 22.0))
+                let dotSize = max(1.8, min(size.width, size.height) / 200.0)
 
-                var minRow = maskHeight
-                var maxRow = 0
-                var minCol = maskWidth
-                var maxCol = 0
+                // Pass 1: subtle shadow under food region
+                var minRow = maskHeight, maxRow = 0, minCol = maskWidth, maxCol = 0
                 for row in 0..<min(maskHeight, segment.mask.count) {
                     let maskRow = segment.mask[row]
                     for col in 0..<min(maskWidth, maskRow.count) where maskRow[col] == 1 {
-                        minRow = min(minRow, row)
-                        maxRow = max(maxRow, row)
-                        minCol = min(minCol, col)
-                        maxCol = max(maxCol, col)
+                        minRow = min(minRow, row); maxRow = max(maxRow, row)
+                        minCol = min(minCol, col); maxCol = max(maxCol, col)
                     }
                 }
-
                 if minRow <= maxRow && minCol <= maxCol {
                     let shadowRect = CGRect(
-                        x: CGFloat(minCol) / CGFloat(maskWidth) * size.width,
-                        y: CGFloat(minRow) / CGFloat(maskHeight) * size.height + dotSize * 2.0,
+                        x: CGFloat(minCol) / CGFloat(maskWidth) * size.width + dotSize,
+                        y: CGFloat(minRow) / CGFloat(maskHeight) * size.height + dotSize * 1.5,
                         width: CGFloat(maxCol - minCol + 1) / CGFloat(maskWidth) * size.width,
                         height: CGFloat(maxRow - minRow + 1) / CGFloat(maskHeight) * size.height
                     )
-                    UIColor.black.withAlphaComponent(0.20).setFill()
-                    cg.fillEllipse(in: shadowRect.insetBy(dx: -dotSize * 2.5, dy: -dotSize * 1.5))
+                    UIColor.black.withAlphaComponent(0.12).setFill()
+                    cg.fillEllipse(in: shadowRect.insetBy(dx: -dotSize, dy: -dotSize * 0.5))
                 }
 
+                // Pass 2: color-sampled dots with depth-based lift
+                let maxLift: CGFloat = hasDepth ? 12.0 : 6.0
                 for row in Swift.stride(from: 0, to: min(maskHeight, segment.mask.count), by: stride) {
                     let maskRow = segment.mask[row]
                     for col in Swift.stride(from: 0, to: min(maskWidth, maskRow.count), by: stride) where maskRow[col] == 1 {
                         let x = CGFloat(col) / CGFloat(maskWidth) * size.width
                         let y = CGFloat(row) / CGFloat(maskHeight) * size.height
-                        let dy = abs(CGFloat(row - segment.centroid.row)) / max(1.0, CGFloat(maskHeight) * 0.5)
-                        let lift = max(0.0, 1.0 - dy) * (hasDepth ? 22.0 : 14.0)
+
+                        // Depth-modulated lift: highest near centroid, tapers at edges
+                        let dRow = abs(CGFloat(row - segment.centroid.row)) / max(1.0, CGFloat(maxRow - minRow) * 0.5)
+                        let dCol = abs(CGFloat(col - segment.centroid.col)) / max(1.0, CGFloat(maxCol - minCol) * 0.5)
+                        let dist = min(1.0, sqrt(dRow * dRow + dCol * dCol))
+                        let lift = max(0.0, (1.0 - dist)) * maxLift
+
+                        // Sample the actual food color from the camera image
+                        let (sr, sg, sb) = sampleColor(maskRow: row, maskCol: col)
+
+                        // Brighten sampled color slightly for the dot
+                        let brighten: CGFloat = 1.12
+                        let dotColor = UIColor(
+                            red: min(1.0, CGFloat(sr) / 255.0 * brighten),
+                            green: min(1.0, CGFloat(sg) / 255.0 * brighten),
+                            blue: min(1.0, CGFloat(sb) / 255.0 * brighten),
+                            alpha: 0.82
+                        )
+
                         let pointRect = CGRect(
                             x: x - dotSize * 0.5,
                             y: y - lift - dotSize * 0.5,
                             width: dotSize,
                             height: dotSize
                         )
-                        color.setFill()
+                        dotColor.setFill()
                         cg.fillEllipse(in: pointRect)
                     }
                 }
 
+                // Pass 3: crisp edge highlight using category color
+                let (er, eg, eb) = rgbForLabel(segment.label)
+                let edgeColor = UIColor(
+                    red: CGFloat(er) / 255.0,
+                    green: CGFloat(eg) / 255.0,
+                    blue: CGFloat(eb) / 255.0,
+                    alpha: 0.55
+                )
                 edgeColor.setStroke()
+                cg.setLineWidth(max(0.8, min(size.width, size.height) / 280.0))
                 for row in Swift.stride(from: 1, to: min(maskHeight - 1, segment.mask.count - 1), by: max(3, stride / 2)) {
                     let maskRow = segment.mask[row]
                     for col in Swift.stride(from: 1, to: min(maskWidth - 1, maskRow.count - 1), by: max(3, stride / 2)) where maskRow[col] == 1 {
@@ -931,7 +974,7 @@ final class InferencePipeline {
                         guard edge else { continue }
                         let x = CGFloat(col) / CGFloat(maskWidth) * size.width
                         let y = CGFloat(row) / CGFloat(maskHeight) * size.height
-                        cg.strokeEllipse(in: CGRect(x: x - dotSize, y: y - dotSize, width: dotSize * 2, height: dotSize * 2))
+                        cg.strokeEllipse(in: CGRect(x: x - dotSize * 0.7, y: y - dotSize * 0.7, width: dotSize * 1.4, height: dotSize * 1.4))
                     }
                 }
             }

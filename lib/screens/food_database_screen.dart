@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
 import '../models/food_data.dart';
 import '../models/nutrient_data.dart';
 import '../services/database_service.dart';
@@ -73,7 +74,7 @@ class _FoodDatabaseScreenState extends ConsumerState<FoodDatabaseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Food Database'),
+        title: Text(AppLocalizations.of(context).foodDatabase),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -450,7 +451,7 @@ class _AddFoodScreenState extends State<_AddFoodScreen> {
 
     if (label.isEmpty || kcal == null || dMin == null || dMax == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all fields')),
+        SnackBar(content: Text(AppLocalizations.of(context).fillAllFields)),
       );
       return;
     }
@@ -467,7 +468,7 @@ class _AddFoodScreenState extends State<_AddFoodScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$label added to database')),
+        SnackBar(content: Text('$label ${AppLocalizations.of(context).addedToDatabase}')),
       );
       Navigator.of(context).pop();
     }
@@ -485,7 +486,7 @@ class _AddFoodScreenState extends State<_AddFoodScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Custom Food')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context).addCustomFood)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -560,7 +561,7 @@ class _AddFoodScreenState extends State<_AddFoodScreen> {
             width: double.infinity,
             child: ElevatedButton.icon(
               icon: const Icon(Icons.add),
-              label: const Text('Add Food'),
+              label: Text(AppLocalizations.of(context).addFood),
               onPressed: _save,
             ),
           ),

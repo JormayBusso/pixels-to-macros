@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
 import '../models/food_data.dart';
 import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
@@ -88,7 +89,7 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Food updated')),
+        SnackBar(content: Text(AppLocalizations.of(context).foodUpdated)),
       );
       Navigator.of(context).pop(true); // true = edited
     }
@@ -112,7 +113,7 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
     final volume = _currentVolumeCm3();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Food')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context).editFood)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
 import '../models/nutrition_goal.dart';
 import '../models/food_data.dart';
 import '../models/scan_result.dart';
@@ -120,8 +121,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     },
                     icon: const Icon(Icons.delete_outline,
                         color: Colors.red, size: 18),
-                    label: const Text('Remove',
-                        style: TextStyle(color: Colors.red)),
+                    label: Text(AppLocalizations.of(context).remove,
+                        style: const TextStyle(color: Colors.red)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -148,7 +149,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       }
                       if (ctx.mounted) Navigator.pop(ctx);
                     },
-                    child: const Text('Save'),
+                    child: Text(AppLocalizations.of(context).save),
                   ),
                 ),
               ],
@@ -207,9 +208,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final greeting = prefs.name.isNotEmpty ? 'Hi, ${prefs.name}!' : 'Hi there!';
 
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pixels to Macros'),
+        title: Text(l10n.appName),
         actions: [
           Padding(
             padding: const EdgeInsets.all(8.0),

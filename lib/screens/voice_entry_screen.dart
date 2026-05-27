@@ -646,7 +646,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       final mealName = _mealNameCtrl.text.trim();
       if (mealName.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a name for the meal.')),
+          SnackBar(content: Text(AppLocalizations.of(context).enterMealName)),
         );
         return;
       }
@@ -1069,9 +1069,9 @@ class _ErrorBox extends StatelessWidget {
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: error));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Error copied to clipboard'),
-                        duration: Duration(seconds: 2),
+                      SnackBar(
+                        content: Text(AppLocalizations.of(context).errorCopied),
+                        duration: const Duration(seconds: 2),
                       ),
                     );
                   },

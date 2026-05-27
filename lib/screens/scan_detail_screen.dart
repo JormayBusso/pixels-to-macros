@@ -14,6 +14,7 @@ import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
 import '../services/native_bridge.dart';
+import '../core/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
 import '../widgets/generated_food_preview.dart';
@@ -99,8 +100,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
     if (ply == null || ply.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('No depth data available for point cloud')),
+          SnackBar(
+              content: Text(AppLocalizations.of(context).noDepthData)),
         );
       }
       return;
@@ -111,7 +112,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
     );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PLY saved to $path')),
+        SnackBar(content: Text('${AppLocalizations.of(context).plySaved}: $path')),
       );
     }
   }
@@ -140,7 +141,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan Details'),
+        title: Text(AppLocalizations.of(context).scanDetails),
         actions: [
           IconButton(
             icon: const Icon(Icons.view_in_ar),
@@ -460,17 +461,17 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                 return await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Remove this item?'),
-                    content: Text('Remove "${f.label}" from this scan?'),
+                    title: Text(AppLocalizations.of(ctx).removeThisItem),
+                    content: Text('${AppLocalizations.of(ctx).remove} "${f.label}"?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Cancel'),
+                        child: Text(AppLocalizations.of(ctx).cancel),
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Remove',
-                            style: TextStyle(color: AppTheme.red500)),
+                        child: Text(AppLocalizations.of(ctx).remove,
+                            style: const TextStyle(color: AppTheme.red500)),
                       ),
                     ],
                   ),
@@ -614,20 +615,21 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete scan?'),
-        content: const Text('This will permanently remove this scan entry.'),
+        title: Text(l10n.deleteScan),
+        content: Text(l10n.deleteScanDesc),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child:
-                const Text('Delete', style: TextStyle(color: AppTheme.red500)),
+                Text(l10n.delete, style: const TextStyle(color: AppTheme.red500)),
           ),
         ],
       ),

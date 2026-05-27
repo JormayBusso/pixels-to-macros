@@ -233,15 +233,15 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
   }
 
   void _confirmClear(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Clear Week Plan?'),
-        content: const Text(
-            'All meal assignments for this week will be removed. This cannot be undone.'),
+        title: Text(l10n.clearWeekPlan),
+        content: Text(l10n.deleteScanDesc),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
@@ -861,10 +861,10 @@ class _GroceryPreviewSheet extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Weekly Grocery List',
-                          style: TextStyle(
+                      Text(AppLocalizations.of(context).weeklyGroceryList,
+                          style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w700)),
-                      Text('${sorted.length} ingredients from your meal plan',
+                      Text('${sorted.length} ${AppLocalizations.of(context).ingredientsFromPlan}',
                           style: const TextStyle(
                               fontSize: 12, color: AppTheme.gray500)),
                     ],
@@ -1010,7 +1010,7 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                   Text(widget.mealType.emoji,
                       style: const TextStyle(fontSize: 22)),
                   const SizedBox(width: 8),
-                  Text('Pick a ${widget.mealType.label} Recipe',
+                  Text(AppLocalizations.of(context).pickRecipe(widget.mealType.label),
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.w700)),
                 ],

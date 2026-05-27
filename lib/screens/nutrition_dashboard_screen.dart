@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
 import '../models/nutrient_data.dart';
 import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
@@ -28,7 +29,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Today\'s Nutrition'),
+        title: Text(AppLocalizations.of(context).todaysNutrition),
         backgroundColor: Theme.of(context).colorScheme.surface,
         surfaceTintColor: Colors.transparent,
       ),

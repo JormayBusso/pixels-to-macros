@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import '../core/app_localizations.dart';
 
 import '../models/custom_meal.dart';
 import '../models/food_data.dart';
@@ -87,19 +88,19 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Take a photo'),
+              title: Text(AppLocalizations.of(ctx).takePhoto),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
+              title: Text(AppLocalizations.of(ctx).chooseFromGallery),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
             if (_imageFile != null || _existingImagePath != null)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text('Remove photo',
-                    style: TextStyle(color: Colors.red)),
+                title: Text(AppLocalizations.of(ctx).removePhoto,
+                    style: const TextStyle(color: Colors.red)),
                 onTap: () {
                   setState(() {
                     _imageFile = null;
@@ -146,12 +147,12 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Please enter a meal name.')));
+          .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).enterMealName)));
       return;
     }
     if (_ingredients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Add at least one ingredient.')));
+          SnackBar(content: Text(AppLocalizations.of(context).addIngredient)));
       return;
     }
 
@@ -316,7 +317,7 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
                               Icon(Icons.add_shopping_cart_outlined,
                                   size: 48, color: AppTheme.gray300),
                               const SizedBox(height: 8),
-                              Text('No ingredients yet',
+                              Text(AppLocalizations.of(context).noIngredientsYet,
                                   style: TextStyle(
                                       color: AppTheme.gray400,
                                       fontSize: 15)),

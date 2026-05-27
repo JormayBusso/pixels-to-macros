@@ -87,7 +87,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Settings saved')),
+        SnackBar(content: Text(AppLocalizations.of(context).settingsSaved)),
       );
     }
   }
@@ -101,7 +101,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings saved')),
+          SnackBar(content: Text(AppLocalizations.of(context).settingsSaved)),
         );
       }
     });
@@ -132,7 +132,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await export.copyToClipboard(csv);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('CSV copied to clipboard')),
+        SnackBar(content: Text(AppLocalizations.of(context).csvCopied)),
       );
     }
   }
@@ -795,22 +795,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       side: const BorderSide(color: Colors.red),
                     ),
                     onPressed: () async {
+                      final l10n = AppLocalizations.of(context);
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: const Text('Clear Scan History?'),
-                          content: const Text(
-                              'This will permanently delete all your scan records. This cannot be undone.'),
+                          title: Text(l10n.clearScanHistory),
+                          content: Text(l10n.deleteScanDesc),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Cancel'),
+                              child: Text(l10n.cancel),
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, true),
                               style: TextButton.styleFrom(
                                   foregroundColor: Colors.red),
-                              child: const Text('Delete'),
+                              child: Text(l10n.delete),
                             ),
                           ],
                         ),
@@ -820,8 +820,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         await db.delete('scan_results');
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Scan history cleared')),
+                            SnackBar(
+                                content: Text(AppLocalizations.of(context).scanHistoryCleared)),
                           );
                         }
                       }
@@ -929,25 +929,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       side: const BorderSide(color: Colors.red),
                     ),
                     onPressed: () async {
+                      final l10n = AppLocalizations.of(context);
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: const Text('Reset Entire App?'),
-                          content: const Text(
-                            'This will delete ALL data (scans, meals, preferences, '
-                            'recipes, grocery list) and return to the onboarding '
-                            'screen. This cannot be undone.',
-                          ),
+                          title: Text(l10n.resetEntireApp),
+                          content: Text(l10n.deleteScanDesc),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Cancel'),
+                              child: Text(l10n.cancel),
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, true),
                               style: TextButton.styleFrom(
                                   foregroundColor: Colors.red),
-                              child: const Text('Reset Everything'),
+                              child: Text(l10n.resetEverything),
                             ),
                           ],
                         ),

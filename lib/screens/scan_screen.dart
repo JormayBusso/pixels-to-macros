@@ -18,6 +18,7 @@ import '../services/database_service.dart';
 import '../services/debug_log.dart';
 import '../services/native_bridge.dart';
 import '../services/perf_monitor.dart';
+import '../core/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
 import '../widgets/generated_food_preview.dart';
@@ -196,14 +197,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   void _showCameraPermissionDialog() {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Camera Required'),
-        content: const Text(
-          'Pixels to Macros needs camera access to scan your food. '
-          'Please enable it in Settings.',
+        title: Text(l10n.cameraRequired),
+        content: Text(
+          '${l10n.appName} ${l10n.openSettings.toLowerCase()}.',
         ),
         actions: [
           TextButton(
@@ -211,14 +212,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop();
             },
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
               openAppSettings();
             },
-            child: const Text('Open Settings'),
+            child: Text(l10n.openSettings),
           ),
         ],
       ),
@@ -653,9 +654,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                     setState(() => _torchOn = next);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Flashlight unavailable on this device.'),
-                        duration: Duration(seconds: 2),
+                      SnackBar(
+                        content: Text(AppLocalizations.of(context).flashlightUnavailable),
+                        duration: const Duration(seconds: 2),
                       ),
                     );
                   }
@@ -736,7 +737,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                             ref.read(scanStateProvider.notifier).reset();
                             ref.read(scanResultProvider.notifier).reset();
                           },
-                          child: const Text('Scan Again Now'),
+                          child: Text(AppLocalizations.of(context).scanAgain),
                         ),
                       ],
                     ),
@@ -917,7 +918,7 @@ class _BottomPanel extends StatelessWidget {
                       foregroundColor: Colors.white70,
                       side: const BorderSide(color: Colors.white24),
                     ),
-                    child: const Text('Scan Again'),
+                    child: Text(AppLocalizations.of(context).scanAgain),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -925,7 +926,7 @@ class _BottomPanel extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: onViewDetails ?? onClose,
                     child:
-                        Text(onViewDetails != null ? 'View Details' : 'Done'),
+                        Text(onViewDetails != null ? AppLocalizations.of(context).scanDetails : AppLocalizations.of(context).done),
                   ),
                 ),
               ],
@@ -960,14 +961,14 @@ class _BottomPanel extends StatelessWidget {
                       foregroundColor: Colors.white70,
                       side: const BorderSide(color: Colors.white24),
                     ),
-                    child: const Text('Back'),
+                    child: Text(AppLocalizations.of(context).back),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: onRetry,
-                    child: const Text('Retry'),
+                    child: Text(AppLocalizations.of(context).retry),
                   ),
                 ),
               ],
@@ -1327,9 +1328,9 @@ class _ScanErrorBox extends StatelessWidget {
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: error));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Error copied'),
-                        duration: Duration(seconds: 2),
+                      SnackBar(
+                        content: Text(AppLocalizations.of(context).errorCopied),
+                        duration: const Duration(seconds: 2),
                       ),
                     );
                   },
