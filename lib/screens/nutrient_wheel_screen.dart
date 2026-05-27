@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/nutrient_data.dart';
-import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/user_prefs_provider.dart';
@@ -143,6 +142,7 @@ class NutrientWheelWidget extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      useSafeArea: true,
       isScrollControlled: true,
       builder: (_) => _WheelDetailSheet(
         nutrients: nutrients,
@@ -160,6 +160,7 @@ class NutrientWheelWidget extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      useSafeArea: true,
       isScrollControlled: true,
       builder: (_) => _SingleNutrientSheet(nutrient: nutrient),
     );
@@ -820,6 +821,11 @@ class _WheelDetailSheet extends StatelessWidget {
                 ),
               ),
               _ScorePill(score: score),
+              IconButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.close),
+                color: AppTheme.gray500,
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -1036,6 +1042,11 @@ class _SingleNutrientSheet extends StatelessWidget {
                 ),
               ),
               _ScorePill(score: nutrient.percent.clamp(0, 100)),
+              IconButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.close),
+                color: AppTheme.gray500,
+              ),
             ],
           ),
           const SizedBox(height: 16),

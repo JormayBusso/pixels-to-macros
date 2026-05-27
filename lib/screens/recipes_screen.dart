@@ -30,6 +30,7 @@ class RecipesScreen extends ConsumerStatefulWidget {
 
 class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   final _searchController = TextEditingController();
+  bool _showMyMealsTab = false;
   List<CustomMeal> _customMeals = [];
 
   @override
@@ -47,6 +48,69 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  List<CustomMeal> _filteredCustomMeals(RecipeQueryState query) {
+    final searchLower = query.search.toLowerCase();
+    return _customMeals.where((meal) {
+      if (searchLower.isNotEmpty &&
+          !meal.name.toLowerCase().contains(searchLower)) {
+        return false;
+      }
+      if (query.mealType != null) {
+        final mealType = switch (meal.mealType) {
+          MealType.breakfast => RecipeMealType.breakfast,
+          MealType.lunch => RecipeMealType.lunch,
+          MealType.dinner => RecipeMealType.dinner,
+        };
+        if (mealType != query.mealType) return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  Future<void> _openCreateMeal(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CreateMealScreen()),
+    );
+    _loadCustomMeals();
+  }
+
+  Widget _buildMyMealsTab(
+    BuildContext context,
+    AppLocalizations l10n,
+    RecipeQueryState query,
+  ) {
+    final meals = _filteredCustomMeals(query);
+    if (meals.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Text(
+            l10n.noSavedMeals,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppTheme.gray400),
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+      itemCount: meals.length + 1,
+      itemBuilder: (_, index) {
+        if (index == 0) {
+          return _SectionHeader(
+            title: l10n.myMeals,
+            onAdd: () => _openCreateMeal(context),
+          );
+        }
+        return _CustomMealCard(
+          meal: meals[index - 1],
+          onChanged: _loadCustomMeals,
+        );
+      },
+    );
   }
 
   @override
@@ -113,17 +177,29 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
               children: [
                 _FilterChip(
                   label: l10n.allGoals,
-                  selected: query.goal == null,
-                  onTap: () =>
-                      ref.read(recipeQueryProvider.notifier).setGoal(null),
+                  selected: !_showMyMealsTab && query.goal == null,
+                  onTap: () {
+                    setState(() => _showMyMealsTab = false);
+                    ref.read(recipeQueryProvider.notifier).setGoal(null);
+                  },
+                ),
+                _FilterChip(
+                  label: l10n.myMeals,
+                  selected: _showMyMealsTab,
+                  onTap: () {
+                    setState(() => _showMyMealsTab = true);
+                    ref.read(recipeQueryProvider.notifier).setGoal(null);
+                  },
                 ),
                 for (final g in NutritionGoalType.values)
                   _FilterChip(
                     label: g.label,
                     emoji: g.emoji,
-                    selected: query.goal == g,
-                    onTap: () =>
-                        ref.read(recipeQueryProvider.notifier).setGoal(g),
+                    selected: !_showMyMealsTab && query.goal == g,
+                    onTap: () {
+                      setState(() => _showMyMealsTab = false);
+                      ref.read(recipeQueryProvider.notifier).setGoal(g);
+                    },
                   ),
               ],
             ),
@@ -156,82 +232,33 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           const SizedBox(height: 4),
           // ── Results ──
           Expanded(
-            child: resultsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e')),
-              data: (recipes) {
-                // Filter custom meals by search + meal type
-                final q = ref.watch(recipeQueryProvider);
-                final searchLower = q.search.toLowerCase();
-                final filteredCustom = _customMeals.where((m) {
-                  if (searchLower.isNotEmpty &&
-                      !m.name.toLowerCase().contains(searchLower)) {
-                    return false;
-                  }
-                  if (q.mealType != null) {
-                    // Map CustomMeal.MealType → RecipeMealType for filtering
-                    final mt = switch (m.mealType) {
-                      MealType.breakfast => RecipeMealType.breakfast,
-                      MealType.lunch => RecipeMealType.lunch,
-                      MealType.dinner => RecipeMealType.dinner,
-                    };
-                    if (mt != q.mealType) return false;
-                  }
-                  return true;
-                }).toList();
-
-                if (recipes.isEmpty && filteredCustom.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Text(
-                        l10n.noRecipesMatch,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppTheme.gray400),
-                      ),
-                    ),
-                  );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                  itemCount: filteredCustom.isEmpty
-                      ? recipes.length
-                      : filteredCustom.length + 2 + recipes.length,
-                  // [0..filteredCustom.length-1] = custom meal cards
-                  // [filteredCustom.length] = "My Meals" header
-                  // [filteredCustom.length+1] = "Recipes" header
-                  // [filteredCustom.length+2 .. end] = recipe cards
-                  itemBuilder: (_, i) {
-                    if (filteredCustom.isEmpty) {
-                      return _RecipeCard(recipe: recipes[i]);
-                    }
-                    if (i == 0) {
-                      // "My Meals" section header
-                      return _SectionHeader(
-                        title: l10n.myMeals,
-                        onAdd: () async {
-                          await Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => const CreateMealScreen()));
-                          _loadCustomMeals();
-                        },
+            child: _showMyMealsTab
+                ? _buildMyMealsTab(context, l10n, query)
+                : resultsAsync.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text('Error: $e')),
+                    data: (recipes) {
+                      if (recipes.isEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Text(
+                              l10n.noRecipesMatch,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: AppTheme.gray400),
+                            ),
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                        itemCount: recipes.length,
+                        itemBuilder: (_, index) =>
+                            _RecipeCard(recipe: recipes[index]),
                       );
-                    }
-                    if (i <= filteredCustom.length) {
-                      return _CustomMealCard(
-                        meal: filteredCustom[i - 1],
-                        onChanged: _loadCustomMeals,
-                      );
-                    }
-                    if (i == filteredCustom.length + 1) {
-                      // "Recipes" section header
-                      return _SectionHeader(title: l10n.recipes);
-                    }
-                    return _RecipeCard(
-                        recipe: recipes[i - filteredCustom.length - 2]);
-                  },
-                );
-              },
-            ),
+                    },
+                  ),
           ),
         ],
       ),

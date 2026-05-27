@@ -653,7 +653,7 @@ final class InferencePipeline {
 
     // MARK: – Scan Image Rendering
 
-    /// Render the camera frame with colored segmentation mask overlay,
+    /// Render the cropped camera frame with the pseudo-3D point-cloud overlay,
     /// save as JPEG, and store the path in `lastScanImagePath`.
     func renderAndSaveScanOverlay(
         topFrameBuffer: CVPixelBuffer,
@@ -689,143 +689,31 @@ final class InferencePipeline {
             )
         )
 
-        // Determine mask dimensions from first segment
-        guard let firstSeg = segments.first else { return }
-        let maskH = firstSeg.mask.count
-        let maskW = maskH > 0 ? firstSeg.mask[0].count : 0
-        guard maskW > 0 && maskH > 0 else { return }
-
-        // 2. Build a bright food alpha mask and a crisp edge/fill overlay.
-        var maskPixels = [UInt8](repeating: 0, count: maskW * maskH * 4)
-        var overlayPixels = [UInt8](repeating: 0, count: maskW * maskH * 4)
-        var occupied = [Bool](repeating: false, count: maskW * maskH)
-        var red = [UInt8](repeating: 0, count: maskW * maskH)
-        var green = [UInt8](repeating: 0, count: maskW * maskH)
-        var blue = [UInt8](repeating: 0, count: maskW * maskH)
-
-        for segment in segments {
-            let (r, g, b) = rgbForLabel(segment.label)
-            for row in 0..<min(maskH, segment.mask.count) {
-                let maskRow = segment.mask[row]
-                for col in 0..<min(maskW, maskRow.count) where maskRow[col] == 1 {
-                    let pixel = row * maskW + col
-                    occupied[pixel] = true
-                    red[pixel] = r
-                    green[pixel] = g
-                    blue[pixel] = b
-                }
-            }
-        }
-
-        for row in 0..<maskH {
-            for col in 0..<maskW {
-                let pixel = row * maskW + col
-                guard occupied[pixel] else { continue }
-
-                var isEdge = row == 0 || col == 0 || row == maskH - 1 || col == maskW - 1
-                if !isEdge {
-                    for dy in -1...1 where !isEdge {
-                        for dx in -1...1 where !isEdge {
-                            if dx == 0 && dy == 0 { continue }
-                            let n = (row + dy) * maskW + (col + dx)
-                            if !occupied[n] { isEdge = true }
-                        }
-                    }
-                }
-
-                let rgba = pixel * 4
-                maskPixels[rgba] = 255
-                maskPixels[rgba + 1] = 255
-                maskPixels[rgba + 2] = 255
-                maskPixels[rgba + 3] = 255
-
-                let alpha: UInt8 = isEdge ? 230 : 42
-                overlayPixels[rgba]     = UInt8(min(255, Int(red[pixel]) * Int(alpha) / 255))
-                overlayPixels[rgba + 1] = UInt8(min(255, Int(green[pixel]) * Int(alpha) / 255))
-                overlayPixels[rgba + 2] = UInt8(min(255, Int(blue[pixel]) * Int(alpha) / 255))
-                overlayPixels[rgba + 3] = alpha
-            }
-        }
-
-        // 3. Create CIImages from mask and overlay pixels.
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let maskData = Data(maskPixels)
-        guard let maskProvider = CGDataProvider(data: maskData as CFData),
-              let maskCG = CGImage(
-                  width: maskW,
-                  height: maskH,
-                  bitsPerComponent: 8,
-                  bitsPerPixel: 32,
-                  bytesPerRow: maskW * 4,
-                  space: colorSpace,
-                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-                  provider: maskProvider,
-                  decode: nil,
-                  shouldInterpolate: true,
-                  intent: .defaultIntent
-              ) else { return }
-
-        let overlayData = Data(overlayPixels)
-        guard let provider = CGDataProvider(data: overlayData as CFData),
-              let overlayCG = CGImage(
-                  width: maskW,
-                  height: maskH,
-                  bitsPerComponent: 8,
-                  bitsPerPixel: 32,
-                  bytesPerRow: maskW * 4,
-                  space: colorSpace,
-                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-                  provider: provider,
-                  decode: nil,
-                  shouldInterpolate: true,
-                  intent: .defaultIntent
-              ) else { return }
-
-        // Scale mask/overlay to match cropped base image size.
-        let ciMask = CIImage(cgImage: maskCG)
-        let ciOverlay = CIImage(cgImage: overlayCG)
-        let scaleX = baseCropped.extent.width / CGFloat(maskW)
-        let scaleY = baseCropped.extent.height / CGFloat(maskH)
-        let scaledMask = ciMask.transformed(
-            by: CGAffineTransform(scaleX: scaleX, y: scaleY)
-        )
-        let scaledOverlay = ciOverlay.transformed(
-            by: CGAffineTransform(scaleX: scaleX, y: scaleY)
-        )
-
-        // 4. Composite: dim the non-food region, keep the real food pixels
-        // bright and sharp, then draw a colored silhouette/edge overlay.
-        let dimmedBase = baseCropped.applyingFilter("CIColorControls", parameters: [
-            kCIInputSaturationKey: 0.72,
-            kCIInputBrightnessKey: -0.10,
-            kCIInputContrastKey: 0.92,
-        ])
-        let enhancedFood = baseCropped.applyingFilter("CIColorControls", parameters: [
-            kCIInputSaturationKey: 1.12,
-            kCIInputBrightnessKey: 0.03,
-            kCIInputContrastKey: 1.08,
-        ])
-        let cutout = enhancedFood.applyingFilter("CIBlendWithAlphaMask", parameters: [
-            kCIInputBackgroundImageKey: dimmedBase,
-            kCIInputMaskImageKey: scaledMask,
-        ])
-        let composite = scaledOverlay.composited(over: cutout)
-
-        // 5. Render to JPEG and save
         let ciContext = CIContext(options: [.useSoftwareRenderer: false])
-        guard let cgResult = ciContext.createCGImage(
-            composite,
-            from: baseCropped.extent
-        ) else { return }
+        guard let cgResult = ciContext.createCGImage(baseCropped, from: baseCropped.extent) else {
+            return
+        }
 
-        let uiImage = UIImage(cgImage: cgResult)
-        let previewImage = renderPointCloudPreview(
-            baseImage: uiImage,
-            segments: segments,
-            maskWidth: maskW,
-            maskHeight: maskH,
-            hasDepth: topDepthBuffer != nil
-        )
+        let croppedImage = UIImage(cgImage: cgResult)
+        let previewImage: UIImage
+        if let firstSeg = segments.first {
+            let maskH = firstSeg.mask.count
+            let maskW = maskH > 0 ? firstSeg.mask[0].count : 0
+            if maskW > 0 && maskH > 0 {
+                previewImage = renderPointCloudPreview(
+                    baseImage: croppedImage,
+                    segments: segments,
+                    maskWidth: maskW,
+                    maskHeight: maskH,
+                    hasDepth: topDepthBuffer != nil
+                )
+            } else {
+                previewImage = croppedImage
+            }
+        } else {
+            previewImage = croppedImage
+        }
+
         guard let jpegData = previewImage.jpegData(compressionQuality: 0.85) else { return }
 
         let docs = FileManager.default.urls(
