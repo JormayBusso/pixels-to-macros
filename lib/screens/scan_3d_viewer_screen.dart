@@ -33,6 +33,7 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
   bool _wireframe = false;
   bool _labels = false;
   bool _debugPanelOpen = false;
+  Map<String, dynamic>? _viewerError;
 
   @override
   Widget build(BuildContext context) {
@@ -79,8 +80,16 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
                         if (!mounted) return;
                         setState(() => _selectedId = id);
                       },
+                      onError: (error) {
+                        if (!mounted) return;
+                        setState(() => _viewerError = error);
+                      },
                     ),
                   ),
+                  if (_viewerError != null)
+                    const Positioned.fill(
+                      child: _ViewerErrorOverlay(),
+                    ),
                   if (hasModel)
                     Positioned(
                       left: 12,
@@ -136,6 +145,38 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
                 },
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ViewerErrorOverlay extends StatelessWidget {
+  const _ViewerErrorOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Colors.black87,
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, color: Colors.redAccent, size: 44),
+              SizedBox(height: 12),
+              Text(
+                '3D scan failed. Please rescan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

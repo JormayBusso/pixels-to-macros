@@ -246,11 +246,13 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
 
     private func loadModel(at path: String?) {
         guard let path, !path.isEmpty else {
+            sendInvalidModel(reason: "missing_model_path", details: nil)
             showPlaceholder("No 3D model available for this scan.")
             return
         }
         let url = URL(fileURLWithPath: path)
         guard FileManager.default.fileExists(atPath: url.path) else {
+            sendInvalidModel(reason: "model_file_missing", details: url.path)
             showPlaceholder("3D model file missing:\n\(url.lastPathComponent)")
             return
         }
@@ -286,8 +288,17 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
             ])
         } catch {
             print("[Scan3DViewer] Failed to load \(url.lastPathComponent): \(error)")
+            sendInvalidModel(reason: "scenekit_load_failed", details: error.localizedDescription)
             showPlaceholder("Couldn't load 3D model:\n\(error.localizedDescription)")
         }
+    }
+
+    private func sendInvalidModel(reason: String, details: Any?) {
+        channel.invokeMethod("onError", arguments: [
+            "error": "invalid_model",
+            "reason": reason,
+            "details": details ?? NSNull(),
+        ])
     }
 
     /// CONTRACT: this method must NEVER flatten the imported node graph.

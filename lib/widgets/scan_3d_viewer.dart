@@ -100,6 +100,7 @@ class Scan3DViewer extends StatefulWidget {
     this.onControllerReady,
     this.onSelectionChanged,
     this.onObjectsReady,
+    this.onError,
   });
 
   final String? modelPath;
@@ -118,6 +119,10 @@ class Scan3DViewer extends StatefulWidget {
   /// list of cluster ids that were successfully bound. Lets callers
   /// reconcile their UI list with the actual scene graph.
   final ValueChanged<List<String>>? onObjectsReady;
+
+  /// Fired when native SceneKit reports a hard viewer error such as
+  /// `invalid_model` or scene/metadata desync.
+  final ValueChanged<Map<String, dynamic>>? onError;
 
   static const String _viewType = 'com.pixelstomacros/scan_3d_viewer';
 
@@ -170,7 +175,12 @@ class _Scan3DViewerState extends State<Scan3DViewer> {
           widget.onObjectsReady?.call(ids);
           break;
         case 'onError':
-          debugPrint('[Scan3DViewer] native error: ${call.arguments}');
+          final raw = call.arguments as Map?;
+          final error = raw == null
+              ? <String, dynamic>{'error': 'unknown'}
+              : raw.map((k, v) => MapEntry(k.toString(), v));
+          debugPrint('[Scan3DViewer] native error: $error');
+          widget.onError?.call(error);
           break;
       }
       return null;

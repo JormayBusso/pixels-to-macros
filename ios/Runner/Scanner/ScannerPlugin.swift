@@ -85,40 +85,6 @@ final class ScannerPlugin {
         case "captureFrame":
             handleCaptureFrame(call, result: result)
 
-        case "runInference":
-            DispatchQueue.global(qos: .userInitiated).async {
-                var swiftError: Error? = nil
-                var jsonResult: String? = nil
-                var objcException: NSException? = nil
-                let ok = tryCatchObjC({
-                    do {
-                        jsonResult = try pipeline.run(captureService: captureService)
-                    } catch {
-                        swiftError = error
-                    }
-                }, &objcException)
-                DispatchQueue.main.async {
-                    if let json = jsonResult {
-                        result(json)
-                    } else if !ok, let ex = objcException {
-                        let reason = ex.reason ?? "unknown"
-                        result(FlutterError(
-                            code: "INFERENCE_FAILED",
-                            message: "\(ex.name.rawValue): \(reason)",
-                            details: nil
-                        ))
-                    } else if let err = swiftError {
-                        result(FlutterError(
-                            code: "INFERENCE_FAILED",
-                            message: err.localizedDescription,
-                            details: nil
-                        ))
-                    } else {
-                        result(FlutterError(code: "INFERENCE_FAILED", message: "Unknown error", details: nil))
-                    }
-                }
-            }
-
         case "startRecording":
             // Must run on main thread — Timer requires a RunLoop.
             DispatchQueue.main.async {
@@ -241,9 +207,6 @@ final class ScannerPlugin {
             } else {
                 result(-1.0)
             }
-
-        case "getScanImage":
-            result(pipeline.lastScanImagePath)
 
         case "getModel3DPath":
             let model3dPath = pipeline.lastModel3DPath

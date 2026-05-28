@@ -72,18 +72,6 @@ class NativeBridge {
     return jsonDecode(raw) as Map<String, dynamic>;
   }
 
-  /// Run full pipeline: segmentation → depth → volume → calories.
-  /// Returns JSON list of detected foods with volumes.
-  /// Times out after 30 s to prevent UI freezes.
-  Future<List<Map<String, dynamic>>> runInference() async {
-    final raw = await _channel
-        .invokeMethod<String>('runInference')
-        .timeout(const Duration(seconds: 30));
-    if (raw == null) return [];
-    final list = jsonDecode(raw) as List;
-    return list.cast<Map<String, dynamic>>();
-  }
-
   // ── Video recording ──────────────────────────────────────────────────────
 
   /// Start sampling ARKit frames (~10 fps) for a video-sweep scan.
@@ -100,7 +88,7 @@ class NativeBridge {
   }
 
   /// Run multi-frame 3-D reconstruction + segmentation on the recorded sweep.
-  /// Returns the same JSON list format as [runInference].
+  /// Returns JSON metadata only after a 3-D model file exists on disk.
   /// Times out after 30 s to prevent UI freezes.
   Future<List<Map<String, dynamic>>> runVideoInference() async {
     final raw = await _channel
@@ -130,16 +118,6 @@ class NativeBridge {
   Future<String?> exportPointCloud() async {
     try {
       return await _channel.invokeMethod<String>('exportPointCloud');
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Get the file path of the most recently rendered scan overlay image.
-  /// Returns null if no image was generated (e.g. no food detected).
-  Future<String?> getScanImage() async {
-    try {
-      return await _channel.invokeMethod<String>('getScanImage');
     } catch (_) {
       return null;
     }

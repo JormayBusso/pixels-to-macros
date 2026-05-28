@@ -26,7 +26,7 @@ import '../widgets/generated_food_preview.dart';
 import '../widgets/scan_guidance_overlay.dart';
 import '../widgets/scan_tutorial_overlay.dart';
 import 'scan_3d_viewer_screen.dart';
-import '../widgets/scan_3d_viewer.dart' show Scan3DObject, Scan3DViewer;
+import '../widgets/scan_3d_viewer.dart' show Scan3DObject;
 import 'scan_detail_screen.dart';
 
 /// Full-screen scan flow with camera guidance, haptic feedback,
@@ -47,9 +47,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   /// True while runVideoInference is in-flight — prevents re-entry.
   bool _isInferenceRunning = false;
 
-  /// Non-null while showing the "no food detected" overlay.
-  String? _noFoodMessage;
-  Timer? _noFoodResetTimer;
   double _recordProgress = 0.0; // 0.0 – 1.0 over the recording window
   Timer? _recordTimer;
   DateTime? _recordStartedAt;
@@ -57,10 +54,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   double _currentPitch = 0.0; // radians: -π/2 = top, 0 = horizontal
   String _detectedDepthMode = 'unknown';
   ScanResult? _savedScanResult;
-  String? _latestScanImagePath;
-  String? _latestModel3DPath;
-  List<Scan3DObject> _latestModel3DObjects = const [];
   List<DetectedFood> _buildPreviewFoods = const [];
+  bool _launched3DViewer = false;
   int? _sessionGeneration; // generation counter for safe stop()
 
   /// Flashlight (torch) state and ambient light (lux) for low-light warning.
@@ -236,7 +231,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   void dispose() {
     _recordTimer?.cancel();
     _pitchTimer?.cancel();
-    _noFoodResetTimer?.cancel();
     _isRecording = false;
     _isInferenceRunning = false;
     // Make sure we never leave the torch on after the user leaves the screen.
@@ -339,7 +333,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     }
 
     // Recording stops automatically when the phone reaches vertical (side-view).
-    // The max-duration timer is a safety fallback only.
+    // The max-duration timer is a safety limit only.
     final totalTicks =
         _maxRecordDuration.inMilliseconds ~/ _timerInterval.inMilliseconds;
     var tick = 0;
@@ -421,15 +415,16 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     if (!mounted) return;
     PerfMonitor.instance.end();
 
-    if (result == null ||
-        result.noFood ||
-        (result.foods.isEmpty && result.error == null)) {
-      // No food recognised — stay on scan screen with a friendly retry message.
+    if (result == null || (result.foods.isEmpty && result.error == null)) {
+      // Strict 3-D contract: empty video output is a failed reconstruction,
+      // not a successful scan.
       _hapticError();
-      _showNoFoodOverlay();
+      setState(() => _sessionErrorDetail = '3D scan failed. Please rescan.');
+      ref.read(scanStateProvider.notifier).modelFailed();
     } else if (result.error != null) {
       DebugLog.instance.log('Scan', 'Inference error: ${result.error}');
       _hapticError();
+      setState(() => _sessionErrorDetail = '3D scan failed. Please rescan.');
       ref.read(scanStateProvider.notifier).modelFailed();
     } else {
       final successfulResult = result;
@@ -438,66 +433,51 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           _buildPreviewFoods = List<DetectedFood>.from(successfulResult.foods);
         });
       }
-      if (successfulResult.foods.isNotEmpty) {
-        await Future<void>.delayed(const Duration(milliseconds: 900));
-      }
       if (!mounted) return;
       DebugLog.instance.log(
           'Scan',
           'Inference done: ${successfulResult.foods.length} items, '
               '${successfulResult.totalCaloriesMin.round()}-${successfulResult.totalCaloriesMax.round()} kcal');
+      DebugLog.instance.log('Perf', PerfMonitor.instance.report());
+      try {
+        await _saveScanResult(successfulResult);
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _sessionErrorDetail = '3D scan failed. Please rescan.');
+        _hapticError();
+        ref.read(scanStateProvider.notifier).modelFailed();
+        return;
+      }
+      if (!mounted) return;
       _hapticSuccess();
       ref.read(scanStateProvider.notifier).calculationDone();
-      DebugLog.instance.log('Perf', PerfMonitor.instance.report());
-      if (mounted) await _saveScanResult(successfulResult);
     }
-  }
-
-  /// Show a friendly "no food" banner and auto-reset to the aim state after 3 s.
-  void _showNoFoodOverlay() {
-    if (!mounted) return;
-    _noFoodResetTimer?.cancel();
-    setState(() {
-      _noFoodMessage =
-          'No food detected.\nMake sure the food fills the frame,\nthen scan again.';
-    });
-    _noFoodResetTimer = Timer(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      setState(() => _noFoodMessage = null);
-      ref.read(scanStateProvider.notifier).reset();
-      ref.read(scanResultProvider.notifier).reset();
-    });
   }
 
   Future<void> _saveScanResult(ScanResultState resultState) async {
     try {
-      // Get the scan overlay image path + Stage-1 3D model path from native side.
-      final scanImagePath = await _bridge.getScanImage();
+      // Hard contract: a successful scan must have a real 3-D model file.
       final model3dPath = await _bridge.getModel3DPath();
       final model3dRaw = await _bridge.getModel3DObjects();
       final model3dObjects = model3dRaw
           .map(Scan3DObject.fromMap)
           .where((o) => o.id.isNotEmpty)
           .toList(growable: false);
-      if (mounted) {
-        setState(() {
-          _latestScanImagePath = scanImagePath;
-          _latestModel3DPath = model3dPath;
-          _latestModel3DObjects = model3dObjects;
-        });
-      }
       final modelExists = model3dPath != null &&
           model3dPath.isNotEmpty &&
           File(model3dPath).existsSync();
-      debugPrint(
-        '[ScanScreen] model3dPath=$model3dPath exists=$modelExists '
-        'objects=${model3dObjects.length}',
-      );
+
+      debugPrint('[SCAN] model3dPath received: $model3dPath');
       DebugLog.instance.log(
         'Scan3D',
         'model3dPath=$model3dPath exists=$modelExists '
             'objects=${model3dObjects.length}',
       );
+
+      if (!modelExists) {
+        debugPrint('[SCAN] ERROR: missing 3D model');
+        throw StateError('3D scan failed. Please rescan.');
+      }
 
       final scanResult = ScanResult(
         timestamp: DateTime.now(),
@@ -507,7 +487,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         topCameraTransform: null,
         sideCameraPosition: null,
         sideCameraTransform: null,
-        imagePath: scanImagePath,
+        imagePath: null,
       );
       await ref.read(historyProvider.notifier).addScan(scanResult);
       if (!mounted) return;
@@ -540,20 +520,23 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         }
       }
       DebugLog.instance.log('Scan', 'Result saved to history');
+      _launch3DViewer(model3dPath, model3dObjects);
     } catch (e) {
       DebugLog.instance.log('Scan', 'Save result error: $e');
+      rethrow;
     }
   }
 
-  void _open3DViewer() {
-    final path = _latestModel3DPath;
-    if (path == null || path.isEmpty) return;
-    _hapticLight();
-    Navigator.of(context).push(
+  void _launch3DViewer(String path, List<Scan3DObject> objects) {
+    if (_launched3DViewer || !mounted) return;
+    _launched3DViewer = true;
+    debugPrint('[SCAN] launching Scan3DViewer');
+    DebugLog.instance.log('Scan3D', 'launching Scan3DViewer: $path');
+    Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => Scan3DViewerScreen(
           modelPath: path,
-          objects: _latestModel3DObjects,
+          objects: objects,
         ),
       ),
     );
@@ -566,17 +549,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _recordStartedAt = null;
     _pitchTimer?.cancel();
     _pitchTimer = null;
-    _noFoodResetTimer?.cancel();
-    _noFoodResetTimer = null;
     _isRecording = false;
     _isInferenceRunning = false;
     _recordProgress = 0.0;
     _sessionStarted = false;
     _sessionErrorDetail = null;
-    _latestScanImagePath = null;
-    _latestModel3DPath = null;
-    _latestModel3DObjects = const [];
-    _noFoodMessage = null;
+    _launched3DViewer = false;
     _buildPreviewFoods = const [];
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();
@@ -591,11 +569,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     final scanResult = ref.watch(scanResultProvider);
     final isProcessing =
         scanState == ScanState.calculating || scanState == ScanState.done;
-    final hasInteractive3D = _latestModel3DPath != null &&
-      _latestModel3DPath!.isNotEmpty &&
-      File(_latestModel3DPath!).existsSync();
-    final hasFallbackImage = _latestScanImagePath != null &&
-      File(_latestScanImagePath!).existsSync();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -628,27 +601,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 title: _buildPreviewFoods.isEmpty
                     ? 'Building 3D scan preview'
                     : 'Refining generated 3D food model',
-              ),
-            ),
-
-          if (scanState == ScanState.done && hasInteractive3D)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 104,
-              left: 16,
-              right: 16,
-              child: _Inline3DResultCard(
-                modelPath: _latestModel3DPath!,
-                objects: _latestModel3DObjects,
-                onOpenFullScreen: _open3DViewer,
-              ),
-            )
-          else if (scanState == ScanState.done && hasFallbackImage)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 104,
-              left: 16,
-              right: 16,
-              child: _ScanImageFallbackCard(
-                imagePath: _latestScanImagePath!,
               ),
             ),
 
@@ -772,59 +724,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           // ── Tutorial overlay (first scan) ───────────────────────────
           if (_showTutorial) ScanTutorialOverlay(onDismiss: _dismissTutorial),
 
-          // ── No-food overlay ──────────────────────────────────────────
-          if (_noFoodMessage != null)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black54,
-                child: Center(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 32),
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1A2E),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppTheme.amber500, width: 1.5),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.no_food_outlined,
-                            size: 48, color: AppTheme.amber500),
-                        const SizedBox(height: 12),
-                        Text(
-                          _noFoodMessage!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 15, height: 1.5),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Returning to scan in 3s…',
-                          style: TextStyle(color: Colors.white54, fontSize: 12),
-                        ),
-                        const SizedBox(height: 12),
-                        FilledButton(
-                          onPressed: () {
-                            _noFoodResetTimer?.cancel();
-                            setState(() => _noFoodMessage = null);
-                            ref.read(scanStateProvider.notifier).reset();
-                            ref.read(scanResultProvider.notifier).reset();
-                          },
-                          child: Text(AppLocalizations.of(context).scanAgain),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
   }
 }
-
 // ── Bottom action panel ───────────────────────────────────────────────────
 
 class _BottomPanel extends StatelessWidget {
@@ -887,7 +791,7 @@ class _BottomPanel extends StatelessWidget {
               sessionStarted: sessionStarted,
             ),
 
-          // ── Ready to record (manual fallback) ─────────────────────
+          // ── Ready to record (manual start) ─────────────────────
           if (scanState == ScanState.readyToRecord)
             _RecordButton(
               enabled: sessionStarted,
@@ -1053,7 +957,6 @@ class _BottomPanel extends StatelessWidget {
     );
   }
 }
-
 // ── State progress row ──────────────────────────────────────────────────────
 
 class _StateProgressRow extends StatelessWidget {
@@ -1425,158 +1328,6 @@ class _ScanErrorBox extends StatelessWidget {
                   fontFamily: 'monospace',
                   height: 1.4,
                 ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Inline3DResultCard extends StatelessWidget {
-  const _Inline3DResultCard({
-    required this.modelPath,
-    required this.objects,
-    required this.onOpenFullScreen,
-  });
-
-  final String modelPath;
-  final List<Scan3DObject> objects;
-  final VoidCallback onOpenFullScreen;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: SizedBox(
-        height: 300,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Scan3DViewer(
-                modelPath: modelPath,
-                objects: objects,
-              ),
-            ),
-            Positioned(
-              left: 14,
-              top: 12,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.view_in_ar,
-                      size: 16,
-                      color: Color(0xFF86EFAC),
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      'Interactive 3D model',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              right: 14,
-              bottom: 14,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onOpenFullScreen,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF86EFAC),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.open_in_full, size: 16, color: Colors.black),
-                        SizedBox(width: 6),
-                        Text(
-                          'Full screen',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ScanImageFallbackCard extends StatelessWidget {
-  const _ScanImageFallbackCard({
-    required this.imagePath,
-  });
-
-  final String imagePath;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: Stack(
-        children: [
-          Image.file(
-            File(imagePath),
-            height: 250,
-            width: double.infinity,
-            fit: BoxFit.cover,
-          ),
-          Positioned(
-            left: 14,
-            top: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.view_in_ar,
-                    size: 16,
-                    color: Color(0xFF86EFAC),
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    '2D fallback preview',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
               ),
             ),
           ),

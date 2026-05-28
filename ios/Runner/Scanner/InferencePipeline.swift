@@ -3,12 +3,12 @@ import CoreImage
 import Foundation
 import UIKit
 
-/// Orchestrates the full scan pipeline:
+/// Orchestrates the full 3-D scan pipeline:
 ///
 ///   captured frames → plate detection → preprocessing → segmentation
-///   → depth mapping → volume calculation → JSON result
+///   → voxel fusion → 3-D export → JSON result
 ///
-/// This is the single entry point called by `ScannerPlugin.runInference`.
+/// This is the single entry point called by `ScannerPlugin.runVideoInference`.
 /// All steps run sequentially to stay within memory limits (Part 3).
 final class InferencePipeline {
 
@@ -17,7 +17,6 @@ final class InferencePipeline {
     private let plateDetector       = PlateDetector()
     private let preprocessor        = FramePreprocessor()
     private let segmentationService = SegmentationService()
-    private let volumeCalculator    = VolumeCalculator()
     /// Generic Google ML Kit Image Labeler used as (1) a hard food-presence
     /// gate before we trust segmentation, and (2) a label-override hint that
     /// fixes mislabelled foods that the bundled 10-class mini segmentation
@@ -27,9 +26,6 @@ final class InferencePipeline {
     /// Stage 1 3-D exporter: turns the fused voxel grid into a USDZ (or OBJ)
     /// scene of textured per-food meshes.
     private let exporter           = Food3DExporter()
-
-    /// File path of the most recently rendered scan overlay image.
-    private(set) var lastScanImagePath: String?
 
     /// File path of the most recently exported 3-D model (USDZ / USDC / OBJ).
     /// `nil` when the last scan produced no exportable food clusters.
@@ -50,6 +46,7 @@ final class InferencePipeline {
         case preprocessingFailed
         case segmentationFailed(Error)
         case volumeFailed
+        case model3DExportFailed(String)
 
         var errorDescription: String? {
             switch self {
@@ -57,212 +54,10 @@ final class InferencePipeline {
             case .preprocessingFailed:   return "Frame preprocessing failed"
             case .segmentationFailed(let e): return "Segmentation failed: \(e.localizedDescription)"
             case .volumeFailed:          return "Volume calculation failed"
+            case .model3DExportFailed(let reason):
+                return "3D scan failed. Please rescan. (\(reason))"
             }
         }
-    }
-
-    // MARK: – Run
-
-    /// Execute the full pipeline using frames stored in `captureService`.
-    /// Returns a JSON string: `[{"label":"rice","volume_cm3":200}, …]`
-    func run(captureService: FrameCaptureService) throws -> String {
-        // ── 1. Validate frames ──────────────────────────────────────────
-        guard let topFrame = captureService.topFrame else {
-            throw PipelineError.noTopFrame
-        }
-
-        let sideFrame = captureService.sideFrame // optional
-
-        // ── 2. Plate detection (on top frame) ───────────────────────────
-        let plate = plateDetector.detect(in: topFrame.pixelBuffer)
-
-        // ── 3. Preprocess RGB for CoreML ────────────────────────────────
-        guard let preprocessedRGB = autoreleasepool(invoking: {
-            preprocessor.preprocess(
-                pixelBuffer: topFrame.pixelBuffer,
-                plateRect: plate.rect
-            )
-        }) else {
-            throw PipelineError.preprocessingFailed
-        }
-
-        // ── 4. Preprocess depth (if available) ──────────────────────────
-        let depthSource = sideFrame?.depthBuffer ?? topFrame.depthBuffer
-        let preprocessedDepth: CVPixelBuffer? = autoreleasepool {
-            guard let depth = depthSource else { return nil }
-            return preprocessor.preprocessDepth(
-                depthBuffer: depth,
-                plateRect: plate.rect,
-                outputWidth: preprocessor.modelInputWidth,
-                outputHeight: preprocessor.modelInputHeight
-            )
-        }
-
-        // ── 4b. ML Kit food-presence gate ───────────────────────────────
-        // Run on the ORIGINAL high-res top frame so ML Kit gets the best
-        // possible pixels (it has its own internal resizing).
-        let mlKitResult = mlKitValidator.validate(pixelBuffer: topFrame.pixelBuffer)
-        guard mlKitResult.hasFood else {
-            print("[InferencePipeline] ML Kit gate rejected scan — no food labels above threshold")
-            return "[]"
-        }
-
-        // ── 5. Segmentation ─────────────────────────────────────────────
-        var segments: [SegmentationService.SegmentedObject]
-        do {
-            segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
-        } catch {
-            throw PipelineError.segmentationFailed(error)
-        }
-
-        // ── 5b. ML Kit fallback when segmentation returns empty ─────────
-        // The bundled mini model has only 10 classes. For out-of-vocabulary
-        // foods (banana, tomato, broccoli, …) the per-pixel confidence is
-        // very low and buildObjects may filter everything out. When ML Kit
-        // already validated food presence AND has a specific food label, we
-        // synthesise a segment covering the non-background area so the scan
-        // still returns a useful result with ML Kit's label.
-        if segments.isEmpty, let bestFood = mlKitResult.bestSpecificFood {
-            segments = [synthesiseFallbackSegment(
-                preprocessedRGB: preprocessedRGB,
-                label: bestFood.normalised,
-                confidence: bestFood.confidence
-            )]
-            print("[InferencePipeline] Fallback: segmentation empty, using ML Kit label '\(bestFood.normalised)' (conf \(bestFood.confidence))")
-        } else if segments.isEmpty, mlKitResult.hasFood,
-                  let topLabel = mlKitResult.labels.first(where: { $0.isSpecificFood }) {
-            // ML Kit has a specific food label but below override threshold —
-            // still better than returning nothing.
-            segments = [synthesiseFallbackSegment(
-                preprocessedRGB: preprocessedRGB,
-                label: topLabel.normalised,
-                confidence: topLabel.confidence
-            )]
-            print("[InferencePipeline] Fallback: using lower-conf ML Kit label '\(topLabel.normalised)' (conf \(topLabel.confidence))")
-        }
-
-        guard !segments.isEmpty else {
-            // No food detected — return empty list
-            return "[]"
-        }
-
-        // Optionally override the label of the largest segment with ML Kit's
-        // specific food guess. This fixes the common "mini model called my
-        // tomato 'chicken'" failure mode while keeping the segmentation mask
-        // and depth-derived volume unchanged.
-        segments = applyMlKitLabelOverride(segments: segments, mlKit: mlKitResult)
-
-        // ── 6. Depth statistics (Part 14 — debug logging) ───────────────
-        var depthMin: Float = Float.greatestFiniteMagnitude
-        var depthMax: Float = 0
-        var depthSum: Float = 0
-        var depthCount: Int = 0
-        if let db = preprocessedDepth {
-            CVPixelBufferLockBaseAddress(db, .readOnly)
-            let dW = CVPixelBufferGetWidth(db)
-            let dH = CVPixelBufferGetHeight(db)
-            let dRowBytes = CVPixelBufferGetBytesPerRow(db)
-            if let dBase = CVPixelBufferGetBaseAddress(db) {
-                let dPtr = dBase.assumingMemoryBound(to: Float32.self)
-                let dFloatsPerRow = dRowBytes / MemoryLayout<Float32>.stride
-                for r in stride(from: 0, to: dH, by: 4) {
-                    for c in stride(from: 0, to: dW, by: 4) {
-                        let v = dPtr[r * dFloatsPerRow + c]
-                        if v > 0.01 && v < 5.0 {
-                            depthMin = min(depthMin, v)
-                            depthMax = max(depthMax, v)
-                            depthSum += v
-                            depthCount += 1
-                        }
-                    }
-                }
-            }
-            CVPixelBufferUnlockBaseAddress(db, .readOnly)
-        }
-        let depthAvg = depthCount > 0 ? depthSum / Float(depthCount) : 0
-
-        // ── 7. Volume calculation ───────────────────────────────────────
-        let maskPixelsPerCm = CGFloat(preprocessor.modelInputWidth) /
-            PlateDetector.defaultDiameterCm
-        let volumes = volumeCalculator.calculate(
-            objects: segments,
-            depthBuffer: preprocessedDepth,
-            pixelsPerCm: maskPixelsPerCm,
-            maskWidth: preprocessor.modelInputWidth,
-            maskHeight: preprocessor.modelInputHeight
-        )
-
-        // ── 8. Serialise to JSON ────────────────────────────────────────
-        var payload = [[String: Any]]()
-        for i in 0..<segments.count {
-            let entry = makeSegmentDict(
-                seg: segments[i], vol: volumes[i],
-                depthMin: depthMin, depthMax: depthMax, depthAvg: depthAvg
-            )
-            payload.append(entry)
-        }
-
-        guard let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
-              let json = String(data: data, encoding: .utf8)
-        else {
-            return "[]"
-        }
-
-        // ── 9. Log for debug (Part 14) ──────────────────────────────────
-        logResults(
-            plate: plate,
-            segments: segments,
-            volumes: volumes,
-            hasDepth: preprocessedDepth != nil
-        )
-
-        // ── 10. Render and save scan thumbnail (plain cropped frame) ───
-        renderAndSaveScanOverlay(
-            topFrameBuffer: topFrame.pixelBuffer,
-            plateRect: plate.rect
-        )
-
-        return json
-    }
-
-    // MARK: – Debug logging
-
-    /// Extracted to help the Swift type-checker with a complex dictionary literal.
-    private func makeSegmentDict(
-        seg: SegmentationService.SegmentedObject,
-        vol: VolumeCalculator.FoodVolume,
-        depthMin: Float,
-        depthMax: Float,
-        depthAvg: Float
-    ) -> [String: Any] {
-        var d = [String: Any]()
-        d["label"]       = vol.label
-        d["volume_cm3"]  = round(vol.volumeCm3 * 10) / 10
-        d["pixel_count"] = vol.pixelCount
-        d["confidence"]  = round(Double(seg.confidence) * 1000) / 1000
-        d["depth_min_m"] = round(Double(depthMin) * 1000) / 1000
-        d["depth_max_m"] = round(Double(depthMax) * 1000) / 1000
-        d["depth_avg_m"] = round(Double(depthAvg) * 1000) / 1000
-        return d
-    }
-
-    // MARK: – Debug logging
-
-    private func logResults(
-        plate: PlateDetector.PlateResult,
-        segments: [SegmentationService.SegmentedObject],
-        volumes: [VolumeCalculator.FoodVolume],
-        hasDepth: Bool
-    ) {
-        print("──────────── Inference Result ────────────")
-        print("Plate detected: \(plate.detected), diameter: \(Int(plate.diameterPx)) px")
-        print("Depth available: \(hasDepth)")
-        for (seg, vol) in zip(segments, volumes) {
-            let conf = String(format: "%.2f", seg.confidence)
-            let v = String(format: "%.1f", vol.volumeCm3)
-            print("  \(seg.label): \(seg.pixelCount) px, conf \(conf), vol \(v) cm³")
-        }
-        print("──────────────────────────────────────────")
     }
 
     // MARK: – Video scan (multi-frame 3-D reconstruction)
@@ -275,15 +70,20 @@ final class InferencePipeline {
     ///      world-space voxel grid.
     ///   3. Label each occupied voxel using the top-frame segmentation masks.
     ///   4. Compute per-food volume = occupied labelled voxel count × voxel volume.
-    ///   5. Fallback to single-frame plate-heuristic when no depth was available.
+    ///   5. Export the labelled voxel clusters as a real 3-D model file.
     ///
-    /// Returns the same JSON format as `run(captureService:)`.
+    /// Returns JSON metadata only after the exported model exists on disk.
     func runVideoScan(recorder: MultiFrameRecorder) throws -> String {
+        lastModel3DPath = nil
+        lastModel3DObjects = []
+
         // If no top frame was captured (e.g. recording stopped immediately),
-        // return empty rather than throwing — Dart will show "no food" UX.
+        // fail hard. Successful video scans must produce a valid 3-D model.
         guard let topFrame = recorder.topFrame else {
-            print("[InferencePipeline] runVideoScan: no top frame captured")
-            return "[]"
+            print("[PIPELINE] export success: false")
+            print("[PIPELINE] model3dPath: nil")
+            print("[PIPELINE] file exists: false")
+            throw PipelineError.model3DExportFailed("no_top_frame")
         }
 
         // ── 1. Plate detection ──────────────────────────────────────────
@@ -297,15 +97,19 @@ final class InferencePipeline {
                 plateRect: cropRect
             )
         }) else {
-            print("[InferencePipeline] runVideoScan: preprocessing failed")
-            return "[]"
+            print("[PIPELINE] export success: false")
+            print("[PIPELINE] model3dPath: nil")
+            print("[PIPELINE] file exists: false")
+            throw PipelineError.model3DExportFailed("preprocessing_failed")
         }
 
         // ── 2b. ML Kit food-presence gate ───────────────────────────────
         let mlKitResult = mlKitValidator.validate(pixelBuffer: topFrame.pixelBuffer)
         guard mlKitResult.hasFood else {
-            print("[InferencePipeline] runVideoScan: ML Kit gate rejected — labels: \(mlKitResult.labels.map { $0.text })")
-            return "[]"
+            print("[PIPELINE] export success: false")
+            print("[PIPELINE] model3dPath: nil")
+            print("[PIPELINE] file exists: false")
+            throw PipelineError.model3DExportFailed("mlkit_food_gate_rejected")
         }
 
         // ── 3. Segmentation ─────────────────────────────────────────────
@@ -313,30 +117,14 @@ final class InferencePipeline {
         do {
             segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
         } catch {
-            print("[InferencePipeline] runVideoScan: segmentation failed: \(error)")
-            return "[]"
-        }
-
-        // ── 3b. ML Kit fallback for out-of-vocabulary foods ─────────────
-        if segments.isEmpty, let bestFood = mlKitResult.bestSpecificFood {
-            segments = [synthesiseFallbackSegment(
-                preprocessedRGB: preprocessedRGB,
-                label: bestFood.normalised,
-                confidence: bestFood.confidence
-            )]
-            print("[InferencePipeline] runVideoScan fallback: ML Kit label '\(bestFood.normalised)'")
-        } else if segments.isEmpty, mlKitResult.hasFood,
-                  let topLabel = mlKitResult.labels.first(where: { $0.isSpecificFood }) {
-            segments = [synthesiseFallbackSegment(
-                preprocessedRGB: preprocessedRGB,
-                label: topLabel.normalised,
-                confidence: topLabel.confidence
-            )]
-            print("[InferencePipeline] runVideoScan fallback: lower-conf ML Kit '\(topLabel.normalised)'")
+            throw PipelineError.segmentationFailed(error)
         }
 
         guard !segments.isEmpty else {
-            return "[]"
+            print("[PIPELINE] export success: false")
+            print("[PIPELINE] model3dPath: nil")
+            print("[PIPELINE] file exists: false")
+            throw PipelineError.model3DExportFailed("segmentation_empty")
         }
 
         // Override the largest segment's label with ML Kit's best specific
@@ -350,8 +138,10 @@ final class InferencePipeline {
             maskWidth: preprocessor.modelInputWidth,
             maskHeight: preprocessor.modelInputHeight
         ) else {
-            print("[InferencePipeline] runVideoScan: rejected as no-food / implausible food scene")
-            return "[]"
+            print("[PIPELINE] export success: false")
+            print("[PIPELINE] model3dPath: nil")
+            print("[PIPELINE] file exists: false")
+            throw PipelineError.model3DExportFailed("food_presence_gate_failed")
         }
 
         // ── 4. Multi-frame depth fusion ─────────────────────────────────
@@ -405,99 +195,87 @@ final class InferencePipeline {
             imageHeight: CVPixelBufferGetHeight(topFrame.pixelBuffer)
         )
 
-        // ── 6. Volumes ──────────────────────────────────────────────────
-        // SINGLE SOURCE OF TRUTH: `clusterVolumes()` returns per-label
-        // volume after plate subtraction + connected-components gating —
-        // the same voxels used to build the 3-D mesh. The fallback
-        // (`fallbackVolumes`) is ONLY applied to labels that produced no
-        // surviving cluster, so voxel-derived numbers always win when they
-        // exist. This guarantees the macro panel and the USDZ mesh never
-        // disagree about how much food is on the plate.
-        let fusedVolumes = fusion.totalOccupiedVoxels > 10
-            ? fusion.clusterVolumes()
-            : [:]
-        let volumes: [String: Double]
-        if !fusedVolumes.isEmpty {
-            var mergedVolumes = fallbackVolumes(
-                segments: segments,
-                topFrame: topFrame,
-                cropRect: cropRect
-            )
-            // Voxel-derived volume ALWAYS overrides the 2-D fallback when
-            // a cluster survived plate subtraction + the min-voxel gate.
-            for (label, volume) in fusedVolumes where volume > 0 {
-                mergedVolumes[label] = volume
-            }
-            volumes = mergedVolumes
-        } else {
-            volumes = fallbackVolumes(
-                segments: segments,
-                topFrame: topFrame,
-                cropRect: cropRect
-            )
+        // ── 6. Voxel clusters + 3-D export (hard contract) ─────────────
+        // A successful scan exists ONLY if these voxels produce a real file
+        // on disk. No 2-D volume substitute, no thumbnail success path.
+        print("[PIPELINE] depth clusters: occupied_voxels=\(fusion.totalOccupiedVoxels), " +
+              "top_frames=\(recorder.topViewFrames.count), side_frames=\(recorder.lightFrames.count)")
+        guard fusion.totalOccupiedVoxels > 10 else {
+            print("[PIPELINE] voxel clusters: 0")
+            print("[PIPELINE] export success: false")
+            print("[PIPELINE] model3dPath: nil")
+            print("[PIPELINE] file exists: false")
+            throw PipelineError.model3DExportFailed("no_voxel_grid")
         }
 
-        // ── 6b. Export fused voxels as a 3-D model (Stage 1+) ───────────
-        // Reads the SAME clusters produced in step 6, so geometry and
-        // volume can never drift. Surface Nets runs at most once per
-        // cluster per scan (no redundant mesh passes).
-        lastModel3DPath = nil
-        lastModel3DObjects = []
-        if fusion.totalOccupiedVoxels > 10 {
-            let foodObjects = fusion.exportFoodObjects(
-                topPixelBuffer: topFrame.pixelBuffer,
-                topTransform:   topFrame.cameraTransform,
-                topIntrinsics:  topFrame.cameraIntrinsics,
-                imageWidth:     CVPixelBufferGetWidth(topFrame.pixelBuffer),
-                imageHeight:    CVPixelBufferGetHeight(topFrame.pixelBuffer)
-            )
-                        print("[InferencePipeline] 3D export candidates: " +
-                                    "voxels=\(fusion.totalOccupiedVoxels), objects=\(foodObjects.count)")
-            if foodObjects.isEmpty {
-                // Validation gate (Stage 1+ rule #7): no cluster passed the
-                // plate-subtraction + min-voxel-count check. Flutter side
-                // will see `model3dPath == null` and fall back to the 2-D
-                // thumbnail. Reason logged for debugging.
-                print("[InferencePipeline] 3D export skipped: insufficient_voxel_density")
-            } else {
-                let baseName = "scan3d_\(Int(Date().timeIntervalSince1970 * 1000))"
-                if let url = exporter.export(objects: foodObjects, baseName: baseName) {
-                    let exists = FileManager.default.fileExists(atPath: url.path)
-                    lastModel3DPath = url.path
-                    // Per-object metadata mirrors the MDLMesh order written
-                    // by Food3DExporter. Each entry is bridge-ready: only
-                    // JSON-safe primitives (String / Double / Int).
-                    let segConfidence = Dictionary(
-                        uniqueKeysWithValues: segments.map { ($0.label, Double($0.confidence)) }
-                    )
-                    lastModel3DObjects = foodObjects.map { obj -> [String: Any] in
-                        return [
-                            "id":           obj.id,
-                            "label":        obj.label,
-                            "volume_cm3":   round(obj.volumeCm3 * 10) / 10,
-                            "voxel_count":  obj.voxelCount,
-                            "confidence":   round((segConfidence[obj.label] ?? 1.0) * 1000) / 1000,
-                        ]
-                    }
-                    print("[InferencePipeline] model3dPath = \(url.path), " +
-                          "exists=\(exists), objects=\(foodObjects.count)")
-                }
-            }
-        } else {
-            print("[InferencePipeline] 3D export skipped: no_voxel_grid " +
-                  "voxels=\(fusion.totalOccupiedVoxels)")
+        let voxelClusters = fusion.voxelClusters()
+        print("[PIPELINE] voxel clusters: \(voxelClusters.count) " +
+              voxelClusters.map { "\($0.id)=\($0.voxelKeys.count)" }.joined(separator: ", "))
+        guard !voxelClusters.isEmpty else {
+            print("[PIPELINE] export success: false")
+            print("[PIPELINE] model3dPath: nil")
+            print("[PIPELINE] file exists: false")
+            throw PipelineError.model3DExportFailed("insufficient_voxel_density")
         }
 
-        // ── 7. Serialise to JSON ────────────────────────────────────────
+        let foodObjects = fusion.exportFoodObjects(
+            topPixelBuffer: topFrame.pixelBuffer,
+            topTransform:   topFrame.cameraTransform,
+            topIntrinsics:  topFrame.cameraIntrinsics,
+            imageWidth:     CVPixelBufferGetWidth(topFrame.pixelBuffer),
+            imageHeight:    CVPixelBufferGetHeight(topFrame.pixelBuffer)
+        )
+        guard !foodObjects.isEmpty else {
+            print("[PIPELINE] export success: false")
+            print("[PIPELINE] model3dPath: nil")
+            print("[PIPELINE] file exists: false")
+            throw PipelineError.model3DExportFailed("mesh_reconstruction_empty")
+        }
+
+        let baseName = "scan3d_\(Int(Date().timeIntervalSince1970 * 1000))"
+        guard let url = exporter.export(objects: foodObjects, baseName: baseName) else {
+            print("[PIPELINE] export success: false")
+            print("[PIPELINE] model3dPath: nil")
+            print("[PIPELINE] file exists: false")
+            throw PipelineError.model3DExportFailed("exporter_failed")
+        }
+
+        let modelExists = FileManager.default.fileExists(atPath: url.path)
+        print("[PIPELINE] export success: \(modelExists)")
+        print("[PIPELINE] model3dPath: \(url.path)")
+        print("[PIPELINE] file exists: \(modelExists)")
+        guard modelExists else {
+            throw PipelineError.model3DExportFailed("exported_file_missing")
+        }
+
+        lastModel3DPath = url.path
+        var segByLabel: [String: SegmentationService.SegmentedObject] = [:]
+        for seg in segments where segByLabel[seg.label] == nil {
+            segByLabel[seg.label] = seg
+        }
+        lastModel3DObjects = foodObjects.map { obj -> [String: Any] in
+            let confidence = Double(segByLabel[obj.label]?.confidence ?? 1.0)
+            return [
+                "id":           obj.id,
+                "label":        obj.label,
+                "volume_cm3":   round(obj.volumeCm3 * 10) / 10,
+                "voxel_count":  obj.voxelCount,
+                "confidence":   round(confidence * 1000) / 1000,
+            ]
+        }
+
+        // ── 7. Serialise ONLY exported 3-D objects to JSON ──────────────
         var payload = [[String: Any]]()
-        for seg in segments {
-            let volume = volumes[seg.label] ?? 0
-            guard volume >= 3.0 else { continue }
+        for obj in foodObjects {
+            let seg = segByLabel[obj.label]
+            let confidence = Double(seg?.confidence ?? 1.0)
             var d = [String: Any]()
-            d["label"]       = seg.label
-            d["volume_cm3"]  = round(volume * 10) / 10
-            d["pixel_count"] = seg.pixelCount
-            d["confidence"]  = round(Double(seg.confidence) * 1000) / 1000
+            d["id"]          = obj.id
+            d["label"]       = obj.label
+            d["volume_cm3"]  = round(obj.volumeCm3 * 10) / 10
+            d["voxel_count"] = obj.voxelCount
+            d["pixel_count"] = seg?.pixelCount ?? obj.voxelCount
+            d["confidence"]  = round(confidence * 1000) / 1000
             d["frames_used"] = recorder.lightFrames.count
             d["depth_min_m"] = 0.0
             d["depth_max_m"] = 0.0
@@ -505,25 +283,20 @@ final class InferencePipeline {
             payload.append(d)
         }
 
-        guard !payload.isEmpty else { return "[]" }
-
-        guard let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
+        guard !payload.isEmpty,
+              let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
               let json = String(data: data, encoding: .utf8)
-        else { return "[]" }
+        else {
+            throw PipelineError.model3DExportFailed("json_serialisation_failed")
+        }
 
-        print("──────────── Video Scan Result ──────────")
+        print("──────────── Video 3D Scan Result ────────")
         print("Frames: \(recorder.frameCount), Voxels: \(fusion.totalOccupiedVoxels)")
-        for seg in segments {
-            let v = String(format: "%.1f", volumes[seg.label] ?? 0)
-            print("  \(seg.label): \(v) cm³, conf \(String(format: "%.2f", seg.confidence))")
+        for obj in foodObjects {
+            print("  \(obj.id): \(String(format: "%.1f", obj.volumeCm3)) cm³, " +
+                  "voxels \(obj.voxelCount)")
         }
         print("─────────────────────────────────────────")
-
-        // Render and save scan thumbnail (plain cropped frame)
-        renderAndSaveScanOverlay(
-            topFrameBuffer: topFrame.pixelBuffer,
-            plateRect: plate.rect
-        )
 
         return json
     }
@@ -600,80 +373,6 @@ final class InferencePipeline {
         return out
     }
 
-    /// Synthesise a fallback segment when ML Kit identifies food but the
-    /// bundled segmentation model returns nothing (out-of-vocabulary food).
-    /// Creates a segment that covers the central 60% of the frame — a
-    /// reasonable proxy when we know there IS food but the model doesn't
-    /// have the right class.
-    private func synthesiseFallbackSegment(
-        preprocessedRGB: CVPixelBuffer,
-        label: String,
-        confidence: Float
-    ) -> SegmentationService.SegmentedObject {
-        let w = preprocessor.modelInputWidth
-        let h = preprocessor.modelInputHeight
-
-        // Create a mask covering the central 60% of the frame
-        let marginX = Int(Double(w) * 0.2)
-        let marginY = Int(Double(h) * 0.2)
-        var mask = [[UInt8]](repeating: [UInt8](repeating: 0, count: w), count: h)
-        var pixelCount = 0
-        for r in marginY..<(h - marginY) {
-            for c in marginX..<(w - marginX) {
-                mask[r][c] = 1
-                pixelCount += 1
-            }
-        }
-
-        return SegmentationService.SegmentedObject(
-            label: label,
-            classIndex: -1,
-            mask: mask,
-            pixelCount: pixelCount,
-            centroid: (row: h / 2, col: w / 2),
-            confidence: confidence
-        )
-    }
-
-    /// Fallback when voxel labelling cannot produce usable volumes. This still
-    /// uses the top-frame segmentation mask plus depth/plate geometry, so the
-    /// scan returns a useful editable estimate instead of a hard error.
-    private func fallbackVolumes(
-        segments: [SegmentationService.SegmentedObject],
-        topFrame: FrameCaptureService.CapturedFrame,
-        cropRect: CGRect?
-    ) -> [String: Double] {
-        let preprocessedDepth: CVPixelBuffer? = topFrame.depthBuffer.flatMap { depth in
-            autoreleasepool {
-                preprocessor.preprocessDepth(
-                    depthBuffer:  depth,
-                    plateRect:    cropRect,
-                    outputWidth:  preprocessor.modelInputWidth,
-                    outputHeight: preprocessor.modelInputHeight
-                )
-            }
-        }
-
-        let pixelsPerCm = CGFloat(preprocessor.modelInputWidth) /
-            PlateDetector.defaultDiameterCm
-        let fallback = volumeCalculator.calculate(
-            objects:     segments,
-            depthBuffer: preprocessedDepth,
-            pixelsPerCm: pixelsPerCm,
-            maskWidth:   preprocessor.modelInputWidth,
-            maskHeight:  preprocessor.modelInputHeight
-        )
-
-        let pixelAreaCm2 = pow(1.0 / Double(pixelsPerCm), 2)
-        var volumes: [String: Double] = [:]
-        for volume in fallback {
-            // Ensure tiny/flat depth maps still produce an editable portion.
-            let minimumVolume = Double(volume.pixelCount) * pixelAreaCm2 * 1.0
-            volumes[volume.label, default: 0] += max(volume.volumeCm3, minimumVolume)
-        }
-        return volumes
-    }
-
     private func estimateFoodHeightCmIfAvailable(
         topFrame: FrameCaptureService.CapturedFrame,
         recorder: MultiFrameRecorder
@@ -723,65 +422,6 @@ final class InferencePipeline {
         let heightCm = Double(max(0, far - near) * 100.0)
         guard heightCm >= 0.5 else { return nil }
         return min(8.0, max(0.8, heightCm))
-    }
-
-    // MARK: – Scan Image Rendering
-
-    /// Crop the top camera frame to the plate region and save it as a JPEG
-    /// thumbnail for the scan-history UI. The pseudo-3D dot overlay was
-    /// removed in Stage 1 — the real 3D output lives in `lastModel3DPath`.
-    func renderAndSaveScanOverlay(
-        topFrameBuffer: CVPixelBuffer,
-        plateRect: CGRect?
-    ) {
-        lastScanImagePath = nil
-
-        let ciBase = CIImage(cvPixelBuffer: topFrameBuffer)
-        let imgWidth = CGFloat(CVPixelBufferGetWidth(topFrameBuffer))
-        let imgHeight = CGFloat(CVPixelBufferGetHeight(topFrameBuffer))
-
-        let cropRect: CGRect
-        if let plate = plateRect {
-            cropRect = CGRect(
-                x: plate.origin.x * imgWidth,
-                y: (1.0 - plate.origin.y - plate.height) * imgHeight,
-                width: plate.width * imgWidth,
-                height: plate.height * imgHeight
-            )
-        } else {
-            cropRect = CGRect(x: 0, y: 0, width: imgWidth, height: imgHeight)
-        }
-
-        var baseCropped = ciBase.cropped(to: cropRect)
-        baseCropped = baseCropped.transformed(
-            by: CGAffineTransform(
-                translationX: -cropRect.origin.x,
-                y: -cropRect.origin.y
-            )
-        )
-
-        let ciContext = CIContext(options: [.useSoftwareRenderer: false])
-        guard let cgResult = ciContext.createCGImage(baseCropped, from: baseCropped.extent) else {
-            return
-        }
-
-        guard let jpegData = UIImage(cgImage: cgResult).jpegData(compressionQuality: 0.85) else {
-            return
-        }
-
-        let docs = FileManager.default.urls(
-            for: .documentDirectory, in: .userDomainMask
-        ).first!
-        let filename = "scan_\(Int(Date().timeIntervalSince1970 * 1000)).jpg"
-        let url = docs.appendingPathComponent(filename)
-
-        do {
-            try jpegData.write(to: url)
-            lastScanImagePath = url.path
-            print("[InferencePipeline] Scan overlay saved: \(url.path)")
-        } catch {
-            print("[InferencePipeline] Failed to save scan overlay: \(error)")
-        }
     }
 
 }
