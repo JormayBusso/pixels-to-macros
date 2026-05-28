@@ -16,13 +16,16 @@
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		3D6F446E71D9A26DB407808E /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D713E30A5540B7F350AC47C2 /* AVFoundation.framework */; };
 		5921BBABFEF377DE4411E45D /* VolumeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C973C24EACDEDA0CA84F5A25 /* VolumeCalculator.swift */; };
+		5CAF5253687665D15E7C256E /* Food3DExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1683C3A3958B6FE8DA56E51 /* Food3DExporter.swift */; };
 		6F06832C86A68E1812C45917 /* ScannerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF95F7274EDE7D628FF00B57 /* ScannerPlugin.swift */; };
 		716DF690045748758CCFCC22 /* PointCloudExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4147F5FBF2C3FF8FB550B03 /* PointCloudExporter.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A232C2CA52BEB0C154F86E /* ARCameraPreviewPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A430111209B9F1B66F2EB7D /* ARCameraPreviewPlugin.swift */; };
 		85261BCEEAF8890AB5AD6966 /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EB40F0EA6B69F7366A4C0A6D /* Vision.framework */; };
+		8799FEB7EE3524C3187E1815 /* ModelIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 45253471A282FCFFF61F56CE /* ModelIO.framework */; };
 		9067585C0B3681D95E7B0E7B /* MLKitFoodValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140240A56278DC831D8F29B5 /* MLKitFoodValidator.swift */; };
+		95DB82C4E0F591668815CCC5 /* Scan3DViewerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97D9CB2E74FBD4A952254CFF /* Scan3DViewerPlugin.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
@@ -77,6 +80,7 @@
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		37F48EF5C5BB2FDE9E14640F /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		45253471A282FCFFF61F56CE /* ModelIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ModelIO.framework; path = System/Library/Frameworks/ModelIO.framework; sourceTree = SDKROOT; };
 		5E044877C9BA5C5BD6249387 /* DepthFusion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DepthFusion.swift; sourceTree = "<group>"; };
 		6CAAE6E0DFEB32AB337D33B7 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -95,6 +99,7 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		97D9CB2E74FBD4A952254CFF /* Scan3DViewerPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Scan3DViewerPlugin.swift; sourceTree = "<group>"; };
 		9A430111209B9F1B66F2EB7D /* ARCameraPreviewPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ARCameraPreviewPlugin.swift; sourceTree = "<group>"; };
 		AA000001000000000000001A /* ObjCExceptionCatcher.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ObjCExceptionCatcher.m; sourceTree = "<group>"; };
 		BC46B42D77B588FF7A5F69A7 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
@@ -102,6 +107,7 @@
 		BDB83C97BEECE046CF9B14D3 /* MultiFrameRecorder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MultiFrameRecorder.swift; sourceTree = "<group>"; };
 		BE729DB996BF7648B1074CAC /* FrameCaptureService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FrameCaptureService.swift; sourceTree = "<group>"; };
 		BF95F7274EDE7D628FF00B57 /* ScannerPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScannerPlugin.swift; sourceTree = "<group>"; };
+		C1683C3A3958B6FE8DA56E51 /* Food3DExporter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Food3DExporter.swift; sourceTree = "<group>"; };
 		C3DBAEB08B6A6E88C4984849 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		C973C24EACDEDA0CA84F5A25 /* VolumeCalculator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VolumeCalculator.swift; sourceTree = "<group>"; };
 		D4147F5FBF2C3FF8FB550B03 /* PointCloudExporter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PointCloudExporter.swift; sourceTree = "<group>"; };
@@ -124,6 +130,7 @@
 				85261BCEEAF8890AB5AD6966 /* Vision.framework in Frameworks */,
 				24CBC83F2DA4A19876130207 /* CoreVideo.framework in Frameworks */,
 				3D6F446E71D9A26DB407808E /* AVFoundation.framework in Frameworks */,
+				8799FEB7EE3524C3187E1815 /* ModelIO.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -164,6 +171,8 @@
 				753DB09FA42E27044AE313AF /* SegmentationService.swift */,
 				C973C24EACDEDA0CA84F5A25 /* VolumeCalculator.swift */,
 				140240A56278DC831D8F29B5 /* MLKitFoodValidator.swift */,
+				C1683C3A3958B6FE8DA56E51 /* Food3DExporter.swift */,
+				97D9CB2E74FBD4A952254CFF /* Scan3DViewerPlugin.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -178,6 +187,7 @@
 				EB40F0EA6B69F7366A4C0A6D /* Vision.framework */,
 				6CAAE6E0DFEB32AB337D33B7 /* CoreVideo.framework */,
 				D713E30A5540B7F350AC47C2 /* AVFoundation.framework */,
+				45253471A282FCFFF61F56CE /* ModelIO.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -496,6 +506,8 @@
 				3325C11CF380F60DC2317633 /* SegmentationService.swift in Sources */,
 				5921BBABFEF377DE4411E45D /* VolumeCalculator.swift in Sources */,
 				9067585C0B3681D95E7B0E7B /* MLKitFoodValidator.swift in Sources */,
+				5CAF5253687665D15E7C256E /* Food3DExporter.swift in Sources */,
+				95DB82C4E0F591668815CCC5 /* Scan3DViewerPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -245,6 +245,15 @@ final class ScannerPlugin {
         case "getScanImage":
             result(pipeline.lastScanImagePath)
 
+        case "getModel3DPath":
+            result(pipeline.lastModel3DPath)
+
+        case "getModel3DObjects":
+            // Per-object metadata for the most-recent 3-D model. Mirrors the
+            // MDLMesh order in the USDZ exactly so Flutter UI can address
+            // the same objects the SceneKit viewer hit-tests by `id`.
+            result(pipeline.lastModel3DObjects)
+
         default:
             result(FlutterMethodNotImplemented)
         }

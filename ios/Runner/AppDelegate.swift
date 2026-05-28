@@ -30,6 +30,14 @@ import Flutter
             cameraReg.register(cameraFactory, withId: ARCameraPreviewFactory.viewType)
         }
 
+        // ── Register the post-scan 3D viewer platform view (Stage 2) ───────
+        if let viewerReg = registrar(forPlugin: "Scan3DViewerPlugin") {
+            viewerReg.register(
+                Scan3DViewerFactory(messenger: viewerReg.messenger()),
+                withId: Scan3DViewerFactory.viewType
+            )
+        }
+
         // ── Eliminate the white flash between LaunchScreen and Flutter ────
         // The OS LaunchScreen.storyboard is black with the app icon. As soon
         // as Flutter takes over, the underlying UIWindow defaults to white,

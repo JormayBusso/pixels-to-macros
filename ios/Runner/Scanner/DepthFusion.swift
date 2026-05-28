@@ -1,4 +1,5 @@
 import ARKit
+import CoreVideo
 import Foundation
 import simd
 
@@ -21,7 +22,7 @@ final class DepthFusion {
 
     // MARK: – Internal types
 
-    private struct VoxelKey: Hashable {
+    struct VoxelKey: Hashable {
         let x: Int32
         let y: Int32
         let z: Int32
@@ -231,7 +232,23 @@ final class DepthFusion {
 
     // MARK: – Volume queries
 
-    /// Volume in cm³ for a named food label.
+    /// Volume in cm³ for a named food label, summed over every connected
+    /// instance of that label that passes the plate-subtraction + minimum-
+    /// voxel-count gate. This is the canonical number — it MUST be used in
+    /// preference to `allVolumes()` in any code path that also consumes the
+    /// 3-D export, otherwise mesh and macro numbers will diverge.
+    func clusterVolumes(minVoxelCount: Int = DepthFusion.defaultMinVoxelsPerCluster) -> [String: Double] {
+        var result: [String: Double] = [:]
+        for cluster in voxelClusters(minVoxelCount: minVoxelCount) {
+            result[cluster.label, default: 0] += cluster.volumeCm3
+        }
+        return result
+    }
+
+    /// Volume in cm³ for a named food label, derived from the RAW labelled
+    /// voxel count (no plate subtraction, no instance gating). Kept for
+    /// legacy callers and debug instrumentation only — production volume
+    /// math should use `clusterVolumes()`.
     func volume(for label: String) -> Double {
         guard let lIdx = labelMap[label] else { return 0 }
         let count = grid.values.filter { $0 == lIdx }.count
@@ -239,7 +256,7 @@ final class DepthFusion {
         return Double(count) * s * s * s
     }
 
-    /// All (label → volume cm³) pairs. Only labels with at least one voxel.
+    /// Raw per-label volumes (no plate subtraction). See `clusterVolumes()`.
     func allVolumes() -> [String: Double] {
         let s = Double(voxelSizeM * 100)
         let voxVol = s * s * s
@@ -271,5 +288,466 @@ final class DepthFusion {
         grid.removeAll()
         labelMap.removeAll()
         nextLabel = 1
+    }
+
+    // MARK: – 3-D export (Stage 1+ hardened)
+    //
+    // Contract — these invariants are enforced in code and MUST hold:
+    //   1. The SAME voxel set is the source of truth for both volume math
+    //      (`clusterVolumes()`) and mesh export (`exportFoodObjects()`).
+    //   2. Per-food separation is decided at the VOXEL level (connected
+    //      components per label), not at the mesh / SceneKit level.
+    //      Clusters are never merged downstream.
+    //   3. Plate / table leakage is removed by `voxelClusters()` BEFORE
+    //      either volume or mesh is derived from a cluster.
+    //   4. Vertex colours are sampled only from the top-view pixel buffer.
+    //   5. Each cluster passes through Surface Nets exactly once per scan.
+
+    /// Minimum number of voxels a cluster must contain to be exported as a
+    /// 3-D object. With `voxelSizeM = 0.01 m`, 200 voxels ≈ 200 cm³ ≈ a
+    /// small fruit. Smaller clusters are usually noise / mis-segmentation.
+    static let defaultMinVoxelsPerCluster = 200
+
+    /// Stable, post-plate-subtraction voxel cluster — one per food instance.
+    /// A label like `"rice"` that appears as two physically separated piles
+    /// produces two clusters: `rice_0` and `rice_1`.
+    struct FoodVoxelCluster {
+        /// Stable identifier of the form `"<label>_<instanceIndex>"`.
+        let id: String
+        let label: String
+        let instanceIndex: Int
+        /// Voxel keys in ARKit world-space integer grid (post plate-subtraction).
+        let voxelKeys: [VoxelKey]
+        /// Volume in cm³, derived ONLY from `voxelKeys.count × voxelSize³`.
+        let volumeCm3: Double
+    }
+
+    /// One reconstructed food object: per-instance voxel cluster turned into
+    /// a triangle mesh with per-vertex RGB colours sampled from the top
+    /// frame. `volumeCm3` mirrors the source cluster's volume exactly.
+    struct Food3DObject {
+        /// Same stable id as the source `FoodVoxelCluster`.
+        let id: String
+        let label: String
+        let instanceIndex: Int
+        /// Vertex positions in ARKit world space (metres, +Y up).
+        let vertices: [SIMD3<Float>]
+        /// Triangle indices into `vertices` (length is multiple of 3).
+        let faces: [Int]
+        /// Per-vertex RGB, length == vertices.count * 3.
+        let colors: [UInt8]
+        /// Number of occupied voxels backing this object (post plate
+        /// subtraction). Mirrors the source `FoodVoxelCluster.voxelKeys.count`
+        /// so debug overlays can show voxel density alongside volume.
+        let voxelCount: Int
+        let volumeCm3: Double
+    }
+
+    /// Canonical clustering step. Performs (in order):
+    ///   1. Bucket occupied voxels by class label.
+    ///   2. Subtract plate / table leakage: estimate a plate plane Y from
+    ///      the 5th percentile of food-voxel Y values (ARKit +Y is up, so
+    ///      the LOWEST Y values are the plate). Any voxel whose centre lies
+    ///      more than ε below this plane is discarded as noise.
+    ///   3. Per label, split voxels into 6-connected components — every
+    ///      component is a separate food instance.
+    ///   4. Drop clusters smaller than `minVoxelCount` (validation gate).
+    ///
+    /// The returned clusters are the ONLY input to mesh export and
+    /// canonical volume math.
+    func voxelClusters(minVoxelCount: Int = defaultMinVoxelsPerCluster) -> [FoodVoxelCluster] {
+        // 1. Bucket by class label.
+        var keysByLabel: [Int32: [VoxelKey]] = [:]
+        for (key, label) in grid where label > 0 {
+            keysByLabel[label, default: []].append(key)
+        }
+        guard !keysByLabel.isEmpty else { return [] }
+
+        // 2. Plate-plane subtraction.
+        // Find the lowest stable Y across ALL labelled voxels (the plate
+        // top) and drop anything more than `plateEpsilonVoxels` below it.
+        let allKeys = keysByLabel.values.flatMap { $0 }
+        let platePlaneVoxelY: Int32 = robustMinY(of: allKeys, percentile: 0.05)
+        // ε = 1 voxel below the estimated plate plane. Voxels strictly
+        // below this line are reflections / table noise.
+        let plateCutoffY: Int32 = platePlaneVoxelY - 1
+
+        let indexToName = Dictionary(uniqueKeysWithValues: labelMap.map { ($1, $0) })
+        let voxVolCm3 = pow(Double(voxelSizeM * 100), 3)
+
+        var clusters: [FoodVoxelCluster] = []
+        // Deterministic ordering so cluster IDs are stable across runs with
+        // identical input — Dictionary iteration order is not deterministic.
+        let sortedLabelIdxs = keysByLabel.keys.sorted()
+        for labelIdx in sortedLabelIdxs {
+            guard let label = indexToName[labelIdx] else { continue }
+            let rawKeys = keysByLabel[labelIdx] ?? []
+            let pruned = rawKeys.filter { $0.y >= plateCutoffY }
+            guard pruned.count >= minVoxelCount else { continue }
+
+            // 3. Connected components → per-instance clusters.
+            let components = connectedComponents(of: pruned)
+            // Largest-first so `instanceIndex = 0` is the dominant instance.
+            let sorted = components.sorted { $0.count > $1.count }
+            var instanceIndex = 0
+            for comp in sorted {
+                guard comp.count >= minVoxelCount else { continue }
+                let id = "\(label)_\(instanceIndex)"
+                clusters.append(FoodVoxelCluster(
+                    id: id,
+                    label: label,
+                    instanceIndex: instanceIndex,
+                    voxelKeys: comp,
+                    volumeCm3: Double(comp.count) * voxVolCm3
+                ))
+                instanceIndex += 1
+            }
+        }
+        return clusters
+    }
+
+    /// Group occupied voxels into instance-level clusters (after plate
+    /// subtraction), turn each into a Surface-Nets mesh, and sample per-
+    /// vertex colours from the top frame.
+    ///
+    /// - Important: this method must NEVER re-derive voxel data — it is
+    ///   strictly a consumer of `voxelClusters()`. See the contract above.
+    ///
+    /// - Parameters:
+    ///   - topPixelBuffer: Top-frame BGRA buffer used for per-vertex color
+    ///     sampling. Pass `nil` to skip coloring (vertices fall back to grey).
+    ///     Colour sampling is LOCKED to this buffer — never blend across
+    ///     frames, never re-sample in a later pass.
+    ///   - topTransform/topIntrinsics/imageWidth/imageHeight: Same projection
+    ///     parameters used by `assignLabels` — they MUST be the top frame's
+    ///     full-resolution values so reprojection lines up with the camera.
+    ///   - minVoxelCount: forwarded to `voxelClusters()`.
+    func exportFoodObjects(
+        topPixelBuffer: CVPixelBuffer?,
+        topTransform: simd_float4x4,
+        topIntrinsics: simd_float3x3,
+        imageWidth: Int,
+        imageHeight: Int,
+        minVoxelCount: Int = defaultMinVoxelsPerCluster
+    ) -> [Food3DObject] {
+        // Single source of truth: clusters drive both volume + mesh output.
+        let clusters = voxelClusters(minVoxelCount: minVoxelCount)
+        guard !clusters.isEmpty else { return [] }
+
+        // Lock the top frame's BGRA buffer once for colour sampling.
+        // Sampling source is locked to topFrame — see contract rule #4.
+        var bgraBase: UnsafePointer<UInt8>?
+        var bgraWidth = 0
+        var bgraHeight = 0
+        var bgraRowBytes = 0
+        if let buffer = topPixelBuffer {
+            CVPixelBufferLockBaseAddress(buffer, .readOnly)
+            bgraWidth = CVPixelBufferGetWidth(buffer)
+            bgraHeight = CVPixelBufferGetHeight(buffer)
+            bgraRowBytes = CVPixelBufferGetBytesPerRow(buffer)
+            if let base = CVPixelBufferGetBaseAddress(buffer) {
+                bgraBase = UnsafePointer(base.assumingMemoryBound(to: UInt8.self))
+            }
+        }
+        defer {
+            if let buffer = topPixelBuffer {
+                CVPixelBufferUnlockBaseAddress(buffer, .readOnly)
+            }
+        }
+
+        let camInv = topTransform.inverse
+        let fx = topIntrinsics.columns.0.x
+        let fy = topIntrinsics.columns.1.y
+        let cx = topIntrinsics.columns.2.x
+        let cy = topIntrinsics.columns.2.y
+        let canProject = bgraBase != nil && bgraWidth > 0 && bgraHeight > 0
+            && abs(fx) > 0.0001 && abs(fy) > 0.0001
+
+        var objects: [Food3DObject] = []
+        objects.reserveCapacity(clusters.count)
+
+        for cluster in clusters {
+            // Exactly ONE Surface Nets pass per cluster per scan.
+            let mesh = SurfaceNets.build(voxels: cluster.voxelKeys, voxelSizeM: voxelSizeM)
+            guard !mesh.vertices.isEmpty, mesh.faces.count >= 3 else { continue }
+
+            var colors = [UInt8](repeating: 200, count: mesh.vertices.count * 3)
+            if canProject, let ptr = bgraBase {
+                for i in 0..<mesh.vertices.count {
+                    let v = mesh.vertices[i]
+                    let cam = camInv * simd_float4(v.x, v.y, v.z, 1)
+                    guard cam.z > 0.001 else { continue }
+                    let u = Int((fx * cam.x / cam.z + cx).rounded())
+                    let vpx = Int((fy * cam.y / cam.z + cy).rounded())
+                    guard u >= 0, u < bgraWidth, vpx >= 0, vpx < bgraHeight else { continue }
+                    let off = vpx * bgraRowBytes + u * 4
+                    // ARKit `capturedImage` is BGRA8.
+                    colors[i * 3 + 0] = ptr[off + 2]
+                    colors[i * 3 + 1] = ptr[off + 1]
+                    colors[i * 3 + 2] = ptr[off + 0]
+                }
+            }
+
+            objects.append(Food3DObject(
+                id: cluster.id,
+                label: cluster.label,
+                instanceIndex: cluster.instanceIndex,
+                vertices: mesh.vertices,
+                faces: mesh.faces,
+                colors: colors,
+                voxelCount: cluster.voxelKeys.count,
+                volumeCm3: cluster.volumeCm3
+            ))
+        }
+        return objects
+    }
+
+    // MARK: – Cluster helpers (plate plane + connected components)
+
+    /// Robust lower-bound estimator on the Y coordinate of a voxel set. Sorts
+    /// the Y values and returns the value at `percentile` (0…1). With
+    /// `percentile = 0.05` and clean data this approximates the plate top.
+    private func robustMinY(of keys: [VoxelKey], percentile: Double) -> Int32 {
+        guard !keys.isEmpty else { return 0 }
+        let ys = keys.map { $0.y }.sorted()
+        let idx = min(ys.count - 1, max(0, Int(Double(ys.count - 1) * percentile)))
+        return ys[idx]
+    }
+
+    /// 6-connected (face-adjacent) connected-components labelling on a
+    /// sparse voxel set. Returns the components in input-order (largest is
+    /// re-sorted by the caller).
+    private func connectedComponents(of keys: [VoxelKey]) -> [[VoxelKey]] {
+        if keys.isEmpty { return [] }
+        let set = Set(keys)
+        var visited = Set<VoxelKey>()
+        visited.reserveCapacity(keys.count)
+        var components: [[VoxelKey]] = []
+
+        let neighbours: [(Int32, Int32, Int32)] = [
+            ( 1, 0, 0), (-1, 0, 0),
+            ( 0, 1, 0), ( 0,-1, 0),
+            ( 0, 0, 1), ( 0, 0,-1),
+        ]
+
+        for seed in keys where !visited.contains(seed) {
+            var stack: [VoxelKey] = [seed]
+            var component: [VoxelKey] = []
+            visited.insert(seed)
+            while let cur = stack.popLast() {
+                component.append(cur)
+                for (dx, dy, dz) in neighbours {
+                    let n = VoxelKey(x: cur.x + dx, y: cur.y + dy, z: cur.z + dz)
+                    if set.contains(n) && !visited.contains(n) {
+                        visited.insert(n)
+                        stack.append(n)
+                    }
+                }
+            }
+            components.append(component)
+        }
+        return components
+    }
+}
+
+// MARK: – Surface Nets (naive)
+
+/// Naive Surface Nets implementation. Given a sparse set of occupied voxel
+/// keys, produces a watertight-ish triangle mesh in ARKit world coordinates.
+///
+/// Algorithm summary:
+///   1. Convert sparse voxels to a dense bool grid with 1-voxel padding.
+///   2. For every cube cell whose 8 corners straddle the inside/outside
+///      boundary, place ONE vertex at the average of the edge-crossing
+///      midpoints (gives a smoother surface than marching cubes).
+///   3. For every grid edge that crosses the boundary, emit a quad
+///      (two triangles) joining the 4 cells that share that edge.
+fileprivate enum SurfaceNets {
+
+    struct Mesh {
+        var vertices: [SIMD3<Float>]
+        var faces: [Int]
+    }
+
+    /// Voxel-corner offsets for the 8 cube corners.
+    private static let cornerOffsets: [(Int, Int, Int)] = [
+        (0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0),
+        (0, 0, 1), (1, 0, 1), (0, 1, 1), (1, 1, 1)
+    ]
+
+    /// 12 cube edges as pairs of corner indices.
+    private static let edgeCorners: [(Int, Int)] = [
+        (0, 1), (2, 3), (4, 5), (6, 7),  // x-direction
+        (0, 2), (1, 3), (4, 6), (5, 7),  // y-direction
+        (0, 4), (1, 5), (2, 6), (3, 7)   // z-direction
+    ]
+
+    static func build(voxels: [DepthFusion.VoxelKey], voxelSizeM: Float) -> Mesh {
+        guard !voxels.isEmpty else { return Mesh(vertices: [], faces: []) }
+
+        // 1. Bounding box (in voxel-index space) with 1-voxel padding.
+        var minX = Int32.max, minY = Int32.max, minZ = Int32.max
+        var maxX = Int32.min, maxY = Int32.min, maxZ = Int32.min
+        for k in voxels {
+            if k.x < minX { minX = k.x }; if k.x > maxX { maxX = k.x }
+            if k.y < minY { minY = k.y }; if k.y > maxY { maxY = k.y }
+            if k.z < minZ { minZ = k.z }; if k.z > maxZ { maxZ = k.z }
+        }
+        minX -= 1; minY -= 1; minZ -= 1
+        maxX += 1; maxY += 1; maxZ += 1
+
+        let nx = Int(maxX - minX + 1)
+        let ny = Int(maxY - minY + 1)
+        let nz = Int(maxZ - minZ + 1)
+        guard nx > 1, ny > 1, nz > 1 else { return Mesh(vertices: [], faces: []) }
+
+        // Hard upper bound on cluster size to avoid pathological allocations
+        // when depth fusion happens to capture an entire room. 256³ corners
+        // is ~16 M bools = 16 MB which is the most we'll spend per food.
+        let maxDim = 256
+        guard nx <= maxDim, ny <= maxDim, nz <= maxDim else {
+            print("[SurfaceNets] cluster too large (\(nx)x\(ny)x\(nz)) — skipping")
+            return Mesh(vertices: [], faces: [])
+        }
+
+        var inside = [Bool](repeating: false, count: nx * ny * nz)
+        let nxy = nx * ny
+        @inline(__always) func cornerIdx(_ x: Int, _ y: Int, _ z: Int) -> Int {
+            return x + y * nx + z * nxy
+        }
+        for k in voxels {
+            let ix = Int(k.x - minX)
+            let iy = Int(k.y - minY)
+            let iz = Int(k.z - minZ)
+            inside[cornerIdx(ix, iy, iz)] = true
+        }
+
+        // 2. Build cell-vertex grid. Cells indexed by (cx, cy, cz) in
+        // 0..<(nx-1) etc.
+        let cx = nx - 1
+        let cy = ny - 1
+        let cz = nz - 1
+        let cxy = cx * cy
+        @inline(__always) func cellIdx(_ x: Int, _ y: Int, _ z: Int) -> Int {
+            return x + y * cx + z * cxy
+        }
+
+        var cellVertex = [Int32](repeating: -1, count: cx * cy * cz)
+        var vertices: [SIMD3<Float>] = []
+        vertices.reserveCapacity(min(cx * cy * cz / 4, 65_536))
+
+        for z in 0..<cz {
+            for y in 0..<cy {
+                for x in 0..<cx {
+                    var cornerMask: UInt8 = 0
+                    var cornerIn = [Bool](repeating: false, count: 8)
+                    for i in 0..<8 {
+                        let off = cornerOffsets[i]
+                        let v = inside[cornerIdx(x + off.0, y + off.1, z + off.2)]
+                        cornerIn[i] = v
+                        if v { cornerMask |= UInt8(1 << i) }
+                    }
+                    // All-inside (0xFF) or all-outside (0x00) → no surface.
+                    if cornerMask == 0 || cornerMask == 0xFF { continue }
+
+                    // Average of midpoints of edges where corner signs differ.
+                    var sum = SIMD3<Float>(0, 0, 0)
+                    var count: Float = 0
+                    for (a, b) in edgeCorners where cornerIn[a] != cornerIn[b] {
+                        let oa = cornerOffsets[a]
+                        let ob = cornerOffsets[b]
+                        sum += SIMD3<Float>(
+                            Float(2 * x + oa.0 + ob.0) * 0.5,
+                            Float(2 * y + oa.1 + ob.1) * 0.5,
+                            Float(2 * z + oa.2 + ob.2) * 0.5
+                        )
+                        count += 1
+                    }
+                    guard count > 0 else { continue }
+                    let centerVox = sum / count
+
+                    // Convert local-voxel coordinates → ARKit world (metres).
+                    let wx = (centerVox.x + Float(minX)) * voxelSizeM
+                    let wy = (centerVox.y + Float(minY)) * voxelSizeM
+                    let wz = (centerVox.z + Float(minZ)) * voxelSizeM
+
+                    cellVertex[cellIdx(x, y, z)] = Int32(vertices.count)
+                    vertices.append(SIMD3<Float>(wx, wy, wz))
+                }
+            }
+        }
+
+        // 3. Emit quads (as two triangles) for every boundary-crossing edge.
+        var faces: [Int] = []
+        faces.reserveCapacity(vertices.count * 3)
+
+        @inline(__always) func quad(_ a: Int32, _ b: Int32, _ c: Int32, _ d: Int32, flip: Bool) {
+            if a < 0 || b < 0 || c < 0 || d < 0 { return }
+            let ai = Int(a), bi = Int(b), ci = Int(c), di = Int(d)
+            if flip {
+                faces.append(ai); faces.append(ci); faces.append(bi)
+                faces.append(ai); faces.append(di); faces.append(ci)
+            } else {
+                faces.append(ai); faces.append(bi); faces.append(ci)
+                faces.append(ai); faces.append(ci); faces.append(di)
+            }
+        }
+
+        // x-direction edges between corners (x,y,z)-(x+1,y,z).
+        // Shared cells: (x, y-1, z-1), (x, y, z-1), (x, y, z), (x, y-1, z).
+        for z in 1..<cz {
+            for y in 1..<cy {
+                for x in 0..<cx {
+                    let aIn = inside[cornerIdx(x, y, z)]
+                    let bIn = inside[cornerIdx(x + 1, y, z)]
+                    if aIn == bIn { continue }
+                    quad(
+                        cellVertex[cellIdx(x, y - 1, z - 1)],
+                        cellVertex[cellIdx(x, y,     z - 1)],
+                        cellVertex[cellIdx(x, y,     z)],
+                        cellVertex[cellIdx(x, y - 1, z)],
+                        flip: !aIn
+                    )
+                }
+            }
+        }
+
+        // y-direction edges between corners (x,y,z)-(x,y+1,z).
+        for z in 1..<cz {
+            for y in 0..<cy {
+                for x in 1..<cx {
+                    let aIn = inside[cornerIdx(x, y, z)]
+                    let bIn = inside[cornerIdx(x, y + 1, z)]
+                    if aIn == bIn { continue }
+                    quad(
+                        cellVertex[cellIdx(x - 1, y, z - 1)],
+                        cellVertex[cellIdx(x,     y, z - 1)],
+                        cellVertex[cellIdx(x,     y, z)],
+                        cellVertex[cellIdx(x - 1, y, z)],
+                        flip: aIn
+                    )
+                }
+            }
+        }
+
+        // z-direction edges between corners (x,y,z)-(x,y,z+1).
+        for z in 0..<cz {
+            for y in 1..<cy {
+                for x in 1..<cx {
+                    let aIn = inside[cornerIdx(x, y, z)]
+                    let bIn = inside[cornerIdx(x, y, z + 1)]
+                    if aIn == bIn { continue }
+                    quad(
+                        cellVertex[cellIdx(x - 1, y - 1, z)],
+                        cellVertex[cellIdx(x,     y - 1, z)],
+                        cellVertex[cellIdx(x,     y,     z)],
+                        cellVertex[cellIdx(x - 1, y,     z)],
+                        flip: !aIn
+                    )
+                }
+            }
+        }
+
+        return Mesh(vertices: vertices, faces: faces)
     }
 }

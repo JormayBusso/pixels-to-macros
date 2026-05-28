@@ -165,6 +165,57 @@ void main() {
         ]),
       );
     });
+
+    test('All-recipe browsing falls back when locale has no bundled recipes',
+        () async {
+      final recipes = await RecipeRepository.instance.query(
+        language: 'es',
+        limit: 2000,
+      );
+
+      expect(recipes, isNotEmpty, reason: 'Expected fallback recipes for es');
+      expect(
+        recipes.any((recipe) => recipe.language != 'es'),
+        isTrue,
+        reason: 'Expected fallback languages when es has no bundled recipes',
+      );
+    });
+
+    test('Focus breakfast and lunch buckets top up for empty locales',
+        () async {
+      const focusGoals = <NutritionGoalType>[
+        NutritionGoalType.muscleGrowth,
+        NutritionGoalType.vegan,
+        NutritionGoalType.diabetes,
+        NutritionGoalType.keto,
+      ];
+      const focusMeals = <RecipeMealType>[
+        RecipeMealType.breakfast,
+        RecipeMealType.lunch,
+      ];
+
+      for (final goal in focusGoals) {
+        for (final meal in focusMeals) {
+          final recipes = await RecipeRepository.instance.query(
+            goal: goal,
+            mealType: meal,
+            language: 'es',
+            limit: 2000,
+          );
+
+          expect(
+            recipes.length,
+            greaterThanOrEqualTo(8),
+            reason:
+                'Expected at least 8 fallback recipes for ${goal.name} ${meal.name}',
+          );
+          for (final recipe in recipes) {
+            expect(recipe.goals.contains(goal), isTrue);
+            expect(recipe.mealType, meal);
+          }
+        }
+      }
+    });
   });
 }
 

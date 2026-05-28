@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,6 +25,8 @@ import '../widgets/confidence_badge.dart';
 import '../widgets/generated_food_preview.dart';
 import '../widgets/scan_guidance_overlay.dart';
 import '../widgets/scan_tutorial_overlay.dart';
+import 'scan_3d_viewer_screen.dart';
+import '../widgets/scan_3d_viewer.dart' show Scan3DObject;
 import 'scan_detail_screen.dart';
 
 /// Full-screen scan flow with camera guidance, haptic feedback,
@@ -54,6 +57,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   double _currentPitch = 0.0; // radians: -π/2 = top, 0 = horizontal
   String _detectedDepthMode = 'unknown';
   ScanResult? _savedScanResult;
+  String? _latestScanImagePath;
+  String? _latestModel3DPath;
+  List<Scan3DObject> _latestModel3DObjects = const [];
   List<DetectedFood> _buildPreviewFoods = const [];
   int? _sessionGeneration; // generation counter for safe stop()
 
@@ -465,8 +471,21 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   Future<void> _saveScanResult(ScanResultState resultState) async {
     try {
-      // Get the scan overlay image path from native side
+      // Get the scan overlay image path + Stage-1 3D model path from native side.
       final scanImagePath = await _bridge.getScanImage();
+      final model3dPath = await _bridge.getModel3DPath();
+      final model3dRaw = await _bridge.getModel3DObjects();
+      final model3dObjects = model3dRaw
+          .map(Scan3DObject.fromMap)
+          .where((o) => o.id.isNotEmpty)
+          .toList(growable: false);
+      if (mounted) {
+        setState(() {
+          _latestScanImagePath = scanImagePath;
+          _latestModel3DPath = model3dPath;
+          _latestModel3DObjects = model3dObjects;
+        });
+      }
 
       final scanResult = ScanResult(
         timestamp: DateTime.now(),
@@ -514,6 +533,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     }
   }
 
+  void _open3DViewer() {
+    final path = _latestModel3DPath;
+    if (path == null || path.isEmpty) return;
+    _hapticLight();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scan3DViewerScreen(
+          modelPath: path,
+          objects: _latestModel3DObjects,
+        ),
+      ),
+    );
+  }
+
   void _retry() {
     _hapticLight();
     _recordTimer?.cancel();
@@ -528,6 +561,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _recordProgress = 0.0;
     _sessionStarted = false;
     _sessionErrorDetail = null;
+    _latestScanImagePath = null;
+    _latestModel3DPath = null;
+    _latestModel3DObjects = const [];
     _noFoodMessage = null;
     _buildPreviewFoods = const [];
     ref.read(scanStateProvider.notifier).reset();
@@ -575,6 +611,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 title: _buildPreviewFoods.isEmpty
                     ? 'Building 3D scan preview'
                     : 'Refining generated 3D food model',
+              ),
+            ),
+
+          if (scanState == ScanState.done &&
+              _latestScanImagePath != null &&
+              File(_latestScanImagePath!).existsSync())
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 104,
+              left: 16,
+              right: 16,
+              child: _ScanPreviewCard(
+                imagePath: _latestScanImagePath!,
+                model3dPath: _latestModel3DPath,
+                onOpen3D: _open3DViewer,
               ),
             ),
 
@@ -1355,6 +1405,105 @@ class _ScanErrorBox extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ScanPreviewCard extends StatelessWidget {
+  const _ScanPreviewCard({
+    required this.imagePath,
+    required this.model3dPath,
+    required this.onOpen3D,
+  });
+
+  final String imagePath;
+  final String? model3dPath;
+  final VoidCallback onOpen3D;
+
+  @override
+  Widget build(BuildContext context) {
+    final has3D = model3dPath != null && model3dPath!.isNotEmpty;
+    final badgeText = has3D ? 'Tap to view 3D model' : '3D Scan Preview';
+
+    final card = ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        children: [
+          Image.file(
+            File(imagePath),
+            height: 250,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          ),
+          Positioned(
+            left: 14,
+            top: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.view_in_ar,
+                    size: 16,
+                    color: Color(0xFF86EFAC),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    badgeText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (has3D)
+            Positioned(
+              right: 14,
+              bottom: 14,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF86EFAC),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.threed_rotation, size: 16, color: Colors.black),
+                    SizedBox(width: 6),
+                    Text(
+                      'Open 3D',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+
+    if (!has3D) return card;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onOpen3D,
+        borderRadius: BorderRadius.circular(20),
+        child: card,
       ),
     );
   }

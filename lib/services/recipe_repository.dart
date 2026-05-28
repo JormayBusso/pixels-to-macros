@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/app_locale.dart';
 import '../models/nutrition_goal.dart';
 import '../models/recipe.dart';
 import '../providers/locale_provider.dart';
@@ -62,7 +61,6 @@ class RecipeRepository {
     final filtered = <Recipe>[];
     for (final r in list) {
       if (!includeGenerated && r.source.toLowerCase() == 'generated') continue;
-      if (language != null && r.language != language) continue;
       if (goal != null && !r.goals.contains(goal)) continue;
       if (goal != null &&
           strictGoalRules &&
@@ -86,9 +84,127 @@ class RecipeRepository {
     // Sort alphabetically by name.
     filtered
         .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    if (limit > 0 && filtered.length > limit) return filtered.sublist(0, limit);
-    return filtered;
+    final localized = _applyLanguagePreference(
+      filtered,
+      requestedLanguage: language,
+      goal: goal,
+      mealType: mealType,
+    );
+    // If strict rules removed too many focus-bucket recipes, try a relaxed
+    // second pass: include recipes that have the goal tag but failed the
+    // strict eligibility check. This helps top-up empty locales for
+    // muscle/vegan/diabetes/keto breakfast and lunch.
+    if (strictGoalRules &&
+        _isFocusMealBucket(goal, mealType) &&
+        localized.length < _focusBucketFallbackLimit) {
+      final relaxed = <Recipe>[];
+      for (final r in list) {
+        if (!includeGenerated && r.source.toLowerCase() == 'generated') continue;
+        if (goal != null && !r.goals.contains(goal)) continue;
+        if (mealType != null && r.mealType != mealType) continue;
+        if (maxMinutes > 0 && r.minutes > maxMinutes) continue;
+        if (q.isNotEmpty) {
+          final ingredientMatch = r.ingredients
+              .any((i) => i.name.toLowerCase().contains(q));
+          final nameMatch = r.name.toLowerCase().contains(q);
+          if (!ingredientMatch && !nameMatch) continue;
+        }
+        // Only include recipes that were excluded by the strict goal check.
+        if (goal != null && !_isRecipeEligibleForGoal(r, goal)) {
+          relaxed.add(r);
+        }
+      }
+      final relaxedLocalized = _applyLanguagePreference(
+        relaxed,
+        requestedLanguage: language,
+        goal: goal,
+        mealType: mealType,
+      );
+      final seen = {for (final r in localized) r.id};
+      for (final r in relaxedLocalized) {
+        if (seen.add(r.id)) localized.add(r);
+        if (localized.length >= _focusBucketFallbackLimit) break;
+      }
+    }
+    if (limit > 0 && localized.length > limit) return localized.sublist(0, limit);
+    return localized;
   }
+
+  List<Recipe> _applyLanguagePreference(
+    List<Recipe> recipes, {
+    required String? requestedLanguage,
+    required NutritionGoalType? goal,
+    required RecipeMealType? mealType,
+  }) {
+    final language = requestedLanguage?.trim().toLowerCase();
+    if (language == null || language.isEmpty) return recipes;
+
+    final primary = recipes.where((recipe) => recipe.language == language).toList();
+    if (!_needsLanguageTopUp(primary, goal: goal, mealType: mealType)) {
+      return primary;
+    }
+
+    final fallbackLanguages = {
+      for (final recipe in recipes)
+        if (recipe.language != language && recipe.language != 'en') recipe.language,
+    }.toList()
+      ..sort();
+
+    final fallbackOrder = <String>[
+      language,
+      if (language != 'en') 'en',
+      ...fallbackLanguages,
+    ];
+
+    final merged = <Recipe>[];
+    final seenIds = <String>{};
+    for (final code in fallbackOrder) {
+      for (final recipe in recipes) {
+        if (recipe.language != code) continue;
+        if (seenIds.add(recipe.id)) {
+          merged.add(recipe);
+        }
+      }
+      if (_isFocusMealBucket(goal, mealType) &&
+          merged.length >= _focusBucketFallbackLimit) {
+        break;
+      }
+    }
+
+    return merged.isEmpty ? recipes : merged;
+  }
+
+  bool _needsLanguageTopUp(
+    List<Recipe> primary, {
+    required NutritionGoalType? goal,
+    required RecipeMealType? mealType,
+  }) {
+    if (primary.isEmpty) return true;
+    if (goal == null) return true;
+    if (_isFocusMealBucket(goal, mealType)) {
+      return primary.length < _focusBucketFallbackLimit;
+    }
+    return false;
+  }
+
+  bool _isFocusMealBucket(
+    NutritionGoalType? goal,
+    RecipeMealType? mealType,
+  ) {
+    if (goal == null || mealType == null) return false;
+    final isFocusGoal = switch (goal) {
+      NutritionGoalType.muscleGrowth => true,
+      NutritionGoalType.vegan => true,
+      NutritionGoalType.diabetes => true,
+      NutritionGoalType.keto => true,
+      _ => false,
+    };
+    return isFocusGoal &&
+        (mealType == RecipeMealType.breakfast ||
+            mealType == RecipeMealType.lunch);
+  }
+
+  static const int _focusBucketFallbackLimit = 8;
 
   bool _isRecipeEligibleForGoal(Recipe recipe, NutritionGoalType goal) {
     final carbsPerServing = recipe.carbsPerServing(recipe.servings);

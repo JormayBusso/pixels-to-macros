@@ -144,6 +144,34 @@ class NativeBridge {
     }
   }
 
+  /// Get the file path of the most recently exported 3-D model (USDZ / OBJ).
+  /// Returns null if the last scan did not produce an exportable mesh.
+  Future<String?> getModel3DPath() async {
+    try {
+      return await _channel.invokeMethod<String>('getModel3DPath');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Per-object metadata for the most recently exported 3-D model. Each entry
+  /// carries `id` (stable cluster id like `rice_0`), `label`, `volume_cm3`,
+  /// `voxel_count`, and `confidence`. Mirrors the `MDLMesh` order in the
+  /// USDZ scene graph 1:1 so the Flutter UI and the SceneKit viewer can
+  /// address the same objects by `id`.
+  Future<List<Map<String, dynamic>>> getModel3DObjects() async {
+    try {
+      final raw = await _channel.invokeMethod<List<dynamic>>('getModel3DObjects');
+      if (raw == null) return const [];
+      return raw
+          .whereType<Map>()
+          .map((m) => m.map((k, v) => MapEntry(k.toString(), v)))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
   // ── Memory usage (Part 17) ───────────────────────────────────────────────
 
   /// Get current resident memory usage in bytes from the native side.

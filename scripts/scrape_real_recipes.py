@@ -19,6 +19,7 @@ Examples:
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import hashlib
 import io
 import json
@@ -701,10 +702,12 @@ def normalize_ingredients(raw_ingredients: list[str]) -> list[dict[str, object]]
 
 
 def infer_meal_type(title: str, url: str, ingredients: list[str]) -> str:
-    blob = " ".join([title, url, *ingredients[:8]]).lower()
+    blob = " ".join([title, url]).lower()
     keyword_groups = {
         "breakfast": (
             "breakfast", "brunch", "pancake", "waffle", "porridge", "granola", "overnight oats",
+            "smoothie", "shake", "yogurt", "yoghurt", "muesli", "omelet", "omelette", "frittata",
+            "scrambled egg", "scrambled eggs", "baked eggs",
             "ontbijt", "havermout", "frühstück", "fruehstueck", "śniadanie", "sniadanie", "desayuno",
         ),
         "dessert": (
@@ -731,18 +734,25 @@ MEAT_SEAFOOD_TERMS = (
     "beef", "steak", "chicken", "pork", "bacon", "ham", "turkey", "lamb", "veal", "duck", "fish", "salmon",
     "tuna", "shrimp", "prawn", "anchovy", "gelatin", "gelatine", "salami", "sausage", "prosciutto", "chorizo", "pancetta",
     "crab", "lobster", "mussel", "oyster", "clam", "squid", "octopus", "scallop", "cod", "haddock", "mackerel", "sardine",
-    "kip", "rund", "varken", "spek", "garnalen", "zalm", "makreel", "mosselen",
-    "hähnchen", "haehnchen", "huhn", "rind", "schwein", "speck", "schinken", "wurst",
+    "kip", "kipfilet", "kippen", "kippenpoten", "rund", "rundvlees", "varken", "varkenshaas", "varkensfilet",
+    "varkensfiletlapjes", "vlees", "gehakt", "gehaktbal", "biefstuk", "bief", "spek", "spekjes", "garnalen",
+    "zalm", "tonijn", "makreel", "mosselen", "vis", "vissticks", "kibbeling", "forel", "kabeljauw", "dorade",
+    "zeebaars", "schol", "ree", "reebout", "wild", "haring", "vongole",
+    "hähnchen", "haehnchen", "huhn", "pute", "rind", "rinder", "schwein", "fleisch", "fisch", "lachs",
+    "thunfisch", "forelle", "kabeljau", "dorade", "hackfleisch", "speck", "schinken", "wurst",
     "kurczak", "wołow", "wolow", "wieprz",
     "pollo", "ternera", "cerdo", "jamón", "jamon",
 )
 
 
 DAIRY_EGG_HONEY_TERMS = (
-    "egg", "milk", "cream", "butter", "cheese", "cheddar", "feta", "mozzarella", "parmesan",
-    "ricotta", "goat cheese", "cream cheese", "yogurt", "yoghurt", "honey", "mayonnaise", "whey", "ghee",
-    "ei", "melk", "kaas", "boter", "milch", "käse", "kaese", "jaj", "mleko", "ser", "masło", "maslo",
-    "huevo", "leche", "queso", "mantequilla", "miel",
+    "egg", "eggs", "milk", "cream", "butter", "cheese", "cheddar", "feta", "mozzarella", "parmesan",
+    "ricotta", "goat cheese", "cream cheese", "yogurt", "yoghurt", "halloumi", "paneer", "camembert", "brie",
+    "mascarpone", "custard", "kefir", "honey", "mayonnaise", "whey", "ghee",
+    "ei", "eieren", "eier", "eiern", "melk", "kaas", "geitenkaas", "roomkaas", "kwark", "boter", "milch",
+    "käse", "kaese", "hüttenkäse", "huettenkaese", "schafskäse", "schafskaese", "quark",
+    "jaj", "jajo", "jaja", "mleko", "ser", "masło", "maslo",
+    "huevo", "huevos", "leche", "queso", "mantequilla", "miel",
 )
 
 
@@ -770,7 +780,7 @@ def is_probably_vegan(title: str, ingredients: list[str]) -> bool:
     blob = " ".join([title, *ingredients]).lower()
     if contains_any_term(blob, MEAT_SEAFOOD_TERMS) or contains_any_term(blob, DAIRY_EGG_HONEY_TERMS):
         return False
-    return contains_any_term(blob, VEGAN_POSITIVE_TERMS)
+    return True
 
 
 def is_probably_vegetarian(title: str, ingredients: list[str]) -> bool:
@@ -1267,6 +1277,158 @@ def extract_recipes(max_recipes: int, delay_min: float, delay_max: float) -> lis
     return recipes
 
 
+FOCUS_GOALS = ("muscle", "vegan", "diabetes", "keto")
+FOCUS_MEALS = ("breakfast", "lunch")
+FOCUS_URL_TERMS = {
+    "breakfast": (
+        "breakfast", "brunch", "pancake", "waffle", "porridge", "granola", "overnight-oats",
+        "overnight_oats", "ontbijt", "havermout", "fruhstuck", "fruehstueck", "frühstück",
+        "sniadanie", "śniadanie", "desayuno",
+    ),
+    "lunch": (
+        "lunch", "sandwich", "wrap", "salad", "bowl", "toastie", "broodje", "mittag", "almuerzo",
+    ),
+    "vegan": (
+        "vegan", "vegano", "vegana", "plant-based", "plant_based", "plantbased", "dairy-free", "dairy_free",
+        "tofu", "tempeh", "lentil", "chickpea",
+    ),
+    "keto": (
+        "keto", "low-carb", "low_carb", "lowcarb", "ketogenic",
+    ),
+    "diabetes": (
+        "diabetes", "diabetic", "low-sugar", "low_sugar", "blood-sugar", "glycemic",
+    ),
+    "muscle": (
+        "protein", "high-protein", "high_protein", "muscle", "fitness", "gym",
+    ),
+}
+
+
+def focus_bucket_counts(recipes: list[dict]) -> Counter[tuple[str, str, str]]:
+    counts: Counter[tuple[str, str, str]] = Counter()
+    for recipe in recipes:
+        language = str(recipe.get("language") or "").upper()
+        meal_type = str(recipe.get("meal_type") or "").lower()
+        if meal_type not in FOCUS_MEALS:
+            continue
+        goals = {str(goal).lower() for goal in recipe.get("goals") or []}
+        for goal in FOCUS_GOALS:
+            if goal in goals:
+                counts[(language, goal, meal_type)] += 1
+    return counts
+
+
+def summarize_focus_counts(counts: Counter[tuple[str, str, str]], languages: list[str]) -> None:
+    for language in languages:
+        print(f"[focus] {language}")
+        for goal in FOCUS_GOALS:
+            breakfast = counts[(language, goal, "breakfast")]
+            lunch = counts[(language, goal, "lunch")]
+            print(f"  - {goal:9} breakfast={breakfast:2} lunch={lunch:2}")
+
+
+def focus_target_reached(
+    counts: Counter[tuple[str, str, str]],
+    languages: list[str],
+    target_per_bucket: int,
+) -> bool:
+    for language in languages:
+        for goal in FOCUS_GOALS:
+            for meal_type in FOCUS_MEALS:
+                if counts[(language, goal, meal_type)] < target_per_bucket:
+                    return False
+    return True
+
+
+def url_focus_score(url: str) -> int:
+    lower = url.lower()
+    score = 0
+    if any(term in lower for term in FOCUS_URL_TERMS["breakfast"]):
+        score += 12
+    if any(term in lower for term in FOCUS_URL_TERMS["lunch"]):
+        score += 10
+    if any(term in lower for term in FOCUS_URL_TERMS["vegan"]):
+        score += 8
+    if any(term in lower for term in FOCUS_URL_TERMS["keto"]):
+        score += 7
+    if any(term in lower for term in FOCUS_URL_TERMS["diabetes"]):
+        score += 5
+    if any(term in lower for term in FOCUS_URL_TERMS["muscle"]):
+        score += 4
+    return score
+
+
+def extract_focus_recipes(
+    max_recipes: int,
+    delay_min: float,
+    delay_max: float,
+    target_per_bucket: int,
+) -> list[dict]:
+    rows = sorted(read_urls(), key=lambda row: (-url_focus_score(row[1]), row[0], row[1]))
+    languages = sorted({language for language, _ in rows})
+    session = build_session()
+
+    recipes = load_existing_recipes()
+    seen_ids = {r.get("id") for r in recipes}
+    seen_urls = {str(r.get("source_url") or "") for r in recipes if r.get("source_url")}
+    counts = focus_bucket_counts(recipes)
+    success_since_save = 0
+
+    print(f"[focus-start] existing={len(recipes)} target={max_recipes} bucket_target={target_per_bucket}")
+    summarize_focus_counts(counts, languages)
+
+    for idx, (language, url) in enumerate(rows, 1):
+        if len(recipes) >= max_recipes:
+            break
+        if focus_target_reached(counts, languages, target_per_bucket):
+            break
+        if url in seen_urls:
+            continue
+
+        delay = random.uniform(delay_min, delay_max)
+        score = url_focus_score(url)
+        print(f"\n[focus {idx}/{len(rows)}] {language} score={score} {url} (sleep {delay:.1f}s)")
+        time.sleep(delay)
+
+        recipe = scrape_recipe(session, language, url)
+        if recipe is None:
+            continue
+        if recipe["id"] in seen_ids:
+            print(f"[duplicate] {recipe['id']}")
+            continue
+        if recipe.get("meal_type") not in FOCUS_MEALS:
+            print(f"[skip] non-focus meal {recipe.get('meal_type')}: {recipe['title']}")
+            continue
+
+        goals = {str(goal).lower() for goal in recipe.get("goals") or []}
+        matched_goals = sorted(goals.intersection(FOCUS_GOALS))
+        if not matched_goals:
+            print(f"[skip] no focus goals: {recipe['title']}")
+            continue
+
+        recipes.append(recipe)
+        seen_ids.add(recipe["id"])
+        seen_urls.add(url)
+        for goal in matched_goals:
+            counts[(language, goal, recipe["meal_type"])] += 1
+        success_since_save += 1
+        print(
+            f"[focus-ok] {len(recipes)}/{max_recipes}: {recipe['title']}"
+            f" goals={matched_goals} meal={recipe['meal_type']}"
+        )
+
+        if success_since_save >= SAVE_EVERY:
+            save_recipes(recipes)
+            success_since_save = 0
+            summarize_focus_counts(counts, languages)
+            print(f"[saved] {OUTPUT_JSON}")
+
+    save_recipes(recipes)
+    summarize_focus_counts(counts, languages)
+    print(f"[focus-complete] {len(recipes)} recipes saved to {OUTPUT_JSON}")
+    return recipes
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build bundled real recipe database")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1289,6 +1451,15 @@ def main() -> int:
     all_parser.add_argument("--delay-max", type=float, default=3.0)
     all_parser.add_argument("--use-playwright-on-block", action="store_true")
 
+    focus_parser = sub.add_parser(
+        "extract-focus",
+        help="Append only breakfast/lunch recipes for muscle, vegan, diabetes, and keto buckets",
+    )
+    focus_parser.add_argument("--max-recipes", type=int, default=2200)
+    focus_parser.add_argument("--delay-min", type=float, default=0.2)
+    focus_parser.add_argument("--delay-max", type=float, default=0.5)
+    focus_parser.add_argument("--target-per-bucket", type=int, default=8)
+
     sub.add_parser("validate", help="Audit assets/bundled_recipes.json")
     sub.add_parser("reclassify", help="Recompute meal and nutrition-goal labels for bundled recipes")
 
@@ -1309,6 +1480,15 @@ def main() -> int:
             max_sitemaps_per_site=args.max_sitemaps_per_site,
         )
         extract_recipes(args.max_recipes, args.delay_min, args.delay_max)
+        if not validate_bundled_recipes():
+            return 1
+    elif args.command == "extract-focus":
+        extract_focus_recipes(
+            args.max_recipes,
+            args.delay_min,
+            args.delay_max,
+            args.target_per_bucket,
+        )
         if not validate_bundled_recipes():
             return 1
     elif args.command == "validate":

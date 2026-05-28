@@ -24,8 +24,24 @@ final class InferencePipeline {
     /// model cannot recognise (tomato, banana, broccoli, …).
     private let mlKitValidator     = MLKitFoodValidator()
 
+    /// Stage 1 3-D exporter: turns the fused voxel grid into a USDZ (or OBJ)
+    /// scene of textured per-food meshes.
+    private let exporter           = Food3DExporter()
+
     /// File path of the most recently rendered scan overlay image.
     private(set) var lastScanImagePath: String?
+
+    /// File path of the most recently exported 3-D model (USDZ / USDC / OBJ).
+    /// `nil` when the last scan produced no exportable food clusters.
+    private(set) var lastModel3DPath: String?
+
+    /// Per-object metadata for the most recently exported 3-D model. Order
+    /// matches the `MDLMesh` nodes in `lastModel3DPath` 1:1 so Flutter UI
+    /// (the ingredient list) and the SceneKit viewer (selection / focus)
+    /// can address the same objects by `id`. Empty when no 3-D export was
+    /// produced. Each entry contains: `id`, `label`, `volume_cm3`,
+    /// `voxel_count`, `confidence`.
+    private(set) var lastModel3DObjects: [[String: Any]] = []
 
     // MARK: – Types
 
@@ -200,12 +216,10 @@ final class InferencePipeline {
             hasDepth: preprocessedDepth != nil
         )
 
-        // ── 10. Render and save scan overlay image ─────────────────────
+        // ── 10. Render and save scan thumbnail (plain cropped frame) ───
         renderAndSaveScanOverlay(
             topFrameBuffer: topFrame.pixelBuffer,
-            segments: segments,
-            plateRect: plate.rect,
-            topDepthBuffer: topFrame.depthBuffer
+            plateRect: plate.rect
         )
 
         return json
@@ -392,15 +406,26 @@ final class InferencePipeline {
         )
 
         // ── 6. Volumes ──────────────────────────────────────────────────
-        let fusedVolumes = fusion.totalOccupiedVoxels > 10 ? fusion.allVolumes() : [:]
+        // SINGLE SOURCE OF TRUTH: `clusterVolumes()` returns per-label
+        // volume after plate subtraction + connected-components gating —
+        // the same voxels used to build the 3-D mesh. The fallback
+        // (`fallbackVolumes`) is ONLY applied to labels that produced no
+        // surviving cluster, so voxel-derived numbers always win when they
+        // exist. This guarantees the macro panel and the USDZ mesh never
+        // disagree about how much food is on the plate.
+        let fusedVolumes = fusion.totalOccupiedVoxels > 10
+            ? fusion.clusterVolumes()
+            : [:]
         let volumes: [String: Double]
-        if fusedVolumes.values.contains(where: { $0 > 1.0 }) {
+        if !fusedVolumes.isEmpty {
             var mergedVolumes = fallbackVolumes(
                 segments: segments,
                 topFrame: topFrame,
                 cropRect: cropRect
             )
-            for (label, volume) in fusedVolumes where volume > 1.0 {
+            // Voxel-derived volume ALWAYS overrides the 2-D fallback when
+            // a cluster survived plate subtraction + the min-voxel gate.
+            for (label, volume) in fusedVolumes where volume > 0 {
                 mergedVolumes[label] = volume
             }
             volumes = mergedVolumes
@@ -410,6 +435,51 @@ final class InferencePipeline {
                 topFrame: topFrame,
                 cropRect: cropRect
             )
+        }
+
+        // ── 6b. Export fused voxels as a 3-D model (Stage 1+) ───────────
+        // Reads the SAME clusters produced in step 6, so geometry and
+        // volume can never drift. Surface Nets runs at most once per
+        // cluster per scan (no redundant mesh passes).
+        lastModel3DPath = nil
+        lastModel3DObjects = []
+        if fusion.totalOccupiedVoxels > 10 {
+            let foodObjects = fusion.exportFoodObjects(
+                topPixelBuffer: topFrame.pixelBuffer,
+                topTransform:   topFrame.cameraTransform,
+                topIntrinsics:  topFrame.cameraIntrinsics,
+                imageWidth:     CVPixelBufferGetWidth(topFrame.pixelBuffer),
+                imageHeight:    CVPixelBufferGetHeight(topFrame.pixelBuffer)
+            )
+            if foodObjects.isEmpty {
+                // Validation gate (Stage 1+ rule #7): no cluster passed the
+                // plate-subtraction + min-voxel-count check. Flutter side
+                // will see `model3dPath == null` and fall back to the 2-D
+                // thumbnail. Reason logged for debugging.
+                print("[InferencePipeline] 3D export skipped: insufficient_voxel_density")
+            } else {
+                let baseName = "scan3d_\(Int(Date().timeIntervalSince1970 * 1000))"
+                if let url = exporter.export(objects: foodObjects, baseName: baseName) {
+                    lastModel3DPath = url.path
+                    // Per-object metadata mirrors the MDLMesh order written
+                    // by Food3DExporter. Each entry is bridge-ready: only
+                    // JSON-safe primitives (String / Double / Int).
+                    let segConfidence = Dictionary(
+                        uniqueKeysWithValues: segments.map { ($0.label, Double($0.confidence)) }
+                    )
+                    lastModel3DObjects = foodObjects.map { obj -> [String: Any] in
+                        return [
+                            "id":           obj.id,
+                            "label":        obj.label,
+                            "volume_cm3":   round(obj.volumeCm3 * 10) / 10,
+                            "voxel_count":  obj.voxelCount,
+                            "confidence":   round((segConfidence[obj.label] ?? 1.0) * 1000) / 1000,
+                        ]
+                    }
+                    print("[InferencePipeline] 3D model saved: \(url.path) " +
+                          "(\(foodObjects.count) object\(foodObjects.count == 1 ? "" : "s"))")
+                }
+            }
         }
 
         // ── 7. Serialise to JSON ────────────────────────────────────────
@@ -443,12 +513,10 @@ final class InferencePipeline {
         }
         print("─────────────────────────────────────────")
 
-        // Render and save scan overlay image
+        // Render and save scan thumbnail (plain cropped frame)
         renderAndSaveScanOverlay(
             topFrameBuffer: topFrame.pixelBuffer,
-            segments: segments,
-            plateRect: plate.rect,
-            topDepthBuffer: topFrame.depthBuffer
+            plateRect: plate.rect
         )
 
         return json
@@ -653,22 +721,19 @@ final class InferencePipeline {
 
     // MARK: – Scan Image Rendering
 
-    /// Render the cropped camera frame with the pseudo-3D point-cloud overlay,
-    /// save as JPEG, and store the path in `lastScanImagePath`.
+    /// Crop the top camera frame to the plate region and save it as a JPEG
+    /// thumbnail for the scan-history UI. The pseudo-3D dot overlay was
+    /// removed in Stage 1 — the real 3D output lives in `lastModel3DPath`.
     func renderAndSaveScanOverlay(
         topFrameBuffer: CVPixelBuffer,
-        segments: [SegmentationService.SegmentedObject],
-        plateRect: CGRect?,
-        topDepthBuffer: CVPixelBuffer? = nil
+        plateRect: CGRect?
     ) {
         lastScanImagePath = nil
 
-        // 1. Create base image from the original camera frame
         let ciBase = CIImage(cvPixelBuffer: topFrameBuffer)
         let imgWidth = CGFloat(CVPixelBufferGetWidth(topFrameBuffer))
         let imgHeight = CGFloat(CVPixelBufferGetHeight(topFrameBuffer))
 
-        // Crop to the plate region for a clean food-only view
         let cropRect: CGRect
         if let plate = plateRect {
             cropRect = CGRect(
@@ -694,27 +759,9 @@ final class InferencePipeline {
             return
         }
 
-        let croppedImage = UIImage(cgImage: cgResult)
-        let previewImage: UIImage
-        if let firstSeg = segments.first {
-            let maskH = firstSeg.mask.count
-            let maskW = maskH > 0 ? firstSeg.mask[0].count : 0
-            if maskW > 0 && maskH > 0 {
-                previewImage = renderPointCloudPreview(
-                    baseImage: croppedImage,
-                    segments: segments,
-                    maskWidth: maskW,
-                    maskHeight: maskH,
-                    hasDepth: topDepthBuffer != nil
-                )
-            } else {
-                previewImage = croppedImage
-            }
-        } else {
-            previewImage = croppedImage
+        guard let jpegData = UIImage(cgImage: cgResult).jpegData(compressionQuality: 0.85) else {
+            return
         }
-
-        guard let jpegData = previewImage.jpegData(compressionQuality: 0.85) else { return }
 
         let docs = FileManager.default.urls(
             for: .documentDirectory, in: .userDomainMask
@@ -731,161 +778,4 @@ final class InferencePipeline {
         }
     }
 
-    /// Adds a lightweight pseudo-3D point rendering over the real food pixels.
-    /// Dots sample actual colors from the camera image so the preview resembles
-    /// the scanned food, with a subtle depth-modulated lift for the 3-D aesthetic.
-    private func renderPointCloudPreview(
-        baseImage: UIImage,
-        segments: [SegmentationService.SegmentedObject],
-        maskWidth: Int,
-        maskHeight: Int,
-        hasDepth: Bool
-    ) -> UIImage {
-        let size = baseImage.size
-        let renderer = UIGraphicsImageRenderer(size: size)
-
-        // Pre-render the base into a CGImage so we can sample pixel colours.
-        guard let baseCG = baseImage.cgImage else { return baseImage }
-        let bitmapW = baseCG.width
-        let bitmapH = baseCG.height
-        let bytesPerPixel = 4
-        let bytesPerRow = bitmapW * bytesPerPixel
-        var bitmapData = [UInt8](repeating: 0, count: bitmapH * bytesPerRow)
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let bitmapCtx = CGContext(
-            data: &bitmapData,
-            width: bitmapW,
-            height: bitmapH,
-            bitsPerComponent: 8,
-            bytesPerRow: bytesPerRow,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return baseImage }
-        bitmapCtx.draw(baseCG, in: CGRect(x: 0, y: 0, width: bitmapW, height: bitmapH))
-
-        func sampleColor(maskRow: Int, maskCol: Int) -> (UInt8, UInt8, UInt8) {
-            let px = min(bitmapW - 1, max(0, maskCol * bitmapW / max(1, maskWidth)))
-            let py = min(bitmapH - 1, max(0, maskRow * bitmapH / max(1, maskHeight)))
-            let offset = py * bytesPerRow + px * bytesPerPixel
-            return (bitmapData[offset], bitmapData[offset + 1], bitmapData[offset + 2])
-        }
-
-        return renderer.image { context in
-            let rect = CGRect(origin: .zero, size: size)
-            // Dark background behind the food cutout
-            UIColor(white: 0.06, alpha: 1.0).setFill()
-            context.cgContext.fill(rect)
-            // Draw the real food image — this is the primary visual
-            baseImage.draw(in: rect)
-
-            let cg = context.cgContext
-            cg.setBlendMode(.normal)
-
-            for segment in segments {
-                let stride = max(4, Int(sqrt(Double(max(segment.pixelCount, 1))) / 22.0))
-                let dotSize = max(1.8, min(size.width, size.height) / 200.0)
-
-                // Pass 1: subtle shadow under food region
-                var minRow = maskHeight, maxRow = 0, minCol = maskWidth, maxCol = 0
-                for row in 0..<min(maskHeight, segment.mask.count) {
-                    let maskRow = segment.mask[row]
-                    for col in 0..<min(maskWidth, maskRow.count) where maskRow[col] == 1 {
-                        minRow = min(minRow, row); maxRow = max(maxRow, row)
-                        minCol = min(minCol, col); maxCol = max(maxCol, col)
-                    }
-                }
-                if minRow <= maxRow && minCol <= maxCol {
-                    let shadowRect = CGRect(
-                        x: CGFloat(minCol) / CGFloat(maskWidth) * size.width + dotSize,
-                        y: CGFloat(minRow) / CGFloat(maskHeight) * size.height + dotSize * 1.5,
-                        width: CGFloat(maxCol - minCol + 1) / CGFloat(maskWidth) * size.width,
-                        height: CGFloat(maxRow - minRow + 1) / CGFloat(maskHeight) * size.height
-                    )
-                    UIColor.black.withAlphaComponent(0.12).setFill()
-                    cg.fillEllipse(in: shadowRect.insetBy(dx: -dotSize, dy: -dotSize * 0.5))
-                }
-
-                // Pass 2: color-sampled dots with depth-based lift
-                let maxLift: CGFloat = hasDepth ? 12.0 : 6.0
-                for row in Swift.stride(from: 0, to: min(maskHeight, segment.mask.count), by: stride) {
-                    let maskRow = segment.mask[row]
-                    for col in Swift.stride(from: 0, to: min(maskWidth, maskRow.count), by: stride) where maskRow[col] == 1 {
-                        let x = CGFloat(col) / CGFloat(maskWidth) * size.width
-                        let y = CGFloat(row) / CGFloat(maskHeight) * size.height
-
-                        // Depth-modulated lift: highest near centroid, tapers at edges
-                        let dRow = abs(CGFloat(row - segment.centroid.row)) / max(1.0, CGFloat(maxRow - minRow) * 0.5)
-                        let dCol = abs(CGFloat(col - segment.centroid.col)) / max(1.0, CGFloat(maxCol - minCol) * 0.5)
-                        let dist = min(1.0, sqrt(dRow * dRow + dCol * dCol))
-                        let lift = max(0.0, (1.0 - dist)) * maxLift
-
-                        // Sample the actual food color from the camera image
-                        let (sr, sg, sb) = sampleColor(maskRow: row, maskCol: col)
-
-                        // Brighten sampled color slightly for the dot
-                        let brighten: CGFloat = 1.12
-                        let dotColor = UIColor(
-                            red: min(1.0, CGFloat(sr) / 255.0 * brighten),
-                            green: min(1.0, CGFloat(sg) / 255.0 * brighten),
-                            blue: min(1.0, CGFloat(sb) / 255.0 * brighten),
-                            alpha: 0.82
-                        )
-
-                        let pointRect = CGRect(
-                            x: x - dotSize * 0.5,
-                            y: y - lift - dotSize * 0.5,
-                            width: dotSize,
-                            height: dotSize
-                        )
-                        dotColor.setFill()
-                        cg.fillEllipse(in: pointRect)
-                    }
-                }
-
-                // Pass 3: crisp edge highlight using category color
-                let (er, eg, eb) = rgbForLabel(segment.label)
-                let edgeColor = UIColor(
-                    red: CGFloat(er) / 255.0,
-                    green: CGFloat(eg) / 255.0,
-                    blue: CGFloat(eb) / 255.0,
-                    alpha: 0.55
-                )
-                edgeColor.setStroke()
-                cg.setLineWidth(max(0.8, min(size.width, size.height) / 280.0))
-                for row in Swift.stride(from: 1, to: min(maskHeight - 1, segment.mask.count - 1), by: max(3, stride / 2)) {
-                    let maskRow = segment.mask[row]
-                    for col in Swift.stride(from: 1, to: min(maskWidth - 1, maskRow.count - 1), by: max(3, stride / 2)) where maskRow[col] == 1 {
-                        let edge = segment.mask[row - 1][col] == 0 ||
-                            segment.mask[row + 1][col] == 0 ||
-                            maskRow[col - 1] == 0 ||
-                            maskRow[col + 1] == 0
-                        guard edge else { continue }
-                        let x = CGFloat(col) / CGFloat(maskWidth) * size.width
-                        let y = CGFloat(row) / CGFloat(maskHeight) * size.height
-                        cg.strokeEllipse(in: CGRect(x: x - dotSize * 0.7, y: y - dotSize * 0.7, width: dotSize * 1.4, height: dotSize * 1.4))
-                    }
-                }
-            }
-        }
-    }
-
-    /// Map food labels to RGB colors for mask overlay rendering.
-    private func rgbForLabel(_ label: String) -> (UInt8, UInt8, UInt8) {
-        let lower = label.lowercased()
-        if lower.contains("rice") || lower.contains("egg") { return (253, 230, 138) }
-        if lower.contains("bread") || lower.contains("pasta") || lower.contains("potato") { return (217, 119, 6) }
-        if lower.contains("chicken") || lower.contains("fish") || lower.contains("steak") || lower.contains("beef") { return (252, 165, 165) }
-        if lower.contains("salad") || lower.contains("broccoli") || lower.contains("cucumber") { return (34, 197, 94) }
-        if lower.contains("tomato") || lower.contains("apple") || lower.contains("berry") || lower.contains("strawberry") { return (239, 68, 68) }
-        if lower.contains("banana") || lower.contains("corn") { return (250, 204, 21) }
-        let hash = abs(label.hashValue)
-        let palette: [(UInt8, UInt8, UInt8)] = [
-            (56, 189, 248),
-            (249, 115, 22),
-            (167, 139, 250),
-            (20, 184, 166),
-            (251, 113, 133),
-        ]
-        return palette[hash % palette.count]
-    }
 }
