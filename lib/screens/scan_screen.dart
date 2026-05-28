@@ -26,7 +26,7 @@ import '../widgets/generated_food_preview.dart';
 import '../widgets/scan_guidance_overlay.dart';
 import '../widgets/scan_tutorial_overlay.dart';
 import 'scan_3d_viewer_screen.dart';
-import '../widgets/scan_3d_viewer.dart' show Scan3DObject;
+import '../widgets/scan_3d_viewer.dart' show Scan3DObject, Scan3DViewer;
 import 'scan_detail_screen.dart';
 
 /// Full-screen scan flow with camera guidance, haptic feedback,
@@ -486,6 +486,18 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           _latestModel3DObjects = model3dObjects;
         });
       }
+      final modelExists = model3dPath != null &&
+          model3dPath.isNotEmpty &&
+          File(model3dPath).existsSync();
+      debugPrint(
+        '[ScanScreen] model3dPath=$model3dPath exists=$modelExists '
+        'objects=${model3dObjects.length}',
+      );
+      DebugLog.instance.log(
+        'Scan3D',
+        'model3dPath=$model3dPath exists=$modelExists '
+            'objects=${model3dObjects.length}',
+      );
 
       final scanResult = ScanResult(
         timestamp: DateTime.now(),
@@ -579,6 +591,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     final scanResult = ref.watch(scanResultProvider);
     final isProcessing =
         scanState == ScanState.calculating || scanState == ScanState.done;
+    final hasInteractive3D = _latestModel3DPath != null &&
+      _latestModel3DPath!.isNotEmpty &&
+      File(_latestModel3DPath!).existsSync();
+    final hasFallbackImage = _latestScanImagePath != null &&
+      File(_latestScanImagePath!).existsSync();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -614,17 +631,24 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               ),
             ),
 
-          if (scanState == ScanState.done &&
-              _latestScanImagePath != null &&
-              File(_latestScanImagePath!).existsSync())
+          if (scanState == ScanState.done && hasInteractive3D)
             Positioned(
               top: MediaQuery.of(context).padding.top + 104,
               left: 16,
               right: 16,
-              child: _ScanPreviewCard(
+              child: _Inline3DResultCard(
+                modelPath: _latestModel3DPath!,
+                objects: _latestModel3DObjects,
+                onOpenFullScreen: _open3DViewer,
+              ),
+            )
+          else if (scanState == ScanState.done && hasFallbackImage)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 104,
+              left: 16,
+              right: 16,
+              child: _ScanImageFallbackCard(
                 imagePath: _latestScanImagePath!,
-                model3dPath: _latestModel3DPath,
-                onOpen3D: _open3DViewer,
               ),
             ),
 
@@ -1410,23 +1434,113 @@ class _ScanErrorBox extends StatelessWidget {
   }
 }
 
-class _ScanPreviewCard extends StatelessWidget {
-  const _ScanPreviewCard({
-    required this.imagePath,
-    required this.model3dPath,
-    required this.onOpen3D,
+class _Inline3DResultCard extends StatelessWidget {
+  const _Inline3DResultCard({
+    required this.modelPath,
+    required this.objects,
+    required this.onOpenFullScreen,
   });
 
-  final String imagePath;
-  final String? model3dPath;
-  final VoidCallback onOpen3D;
+  final String modelPath;
+  final List<Scan3DObject> objects;
+  final VoidCallback onOpenFullScreen;
 
   @override
   Widget build(BuildContext context) {
-    final has3D = model3dPath != null && model3dPath!.isNotEmpty;
-    final badgeText = has3D ? 'Tap to view 3D model' : '3D Scan Preview';
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: SizedBox(
+        height: 300,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Scan3DViewer(
+                modelPath: modelPath,
+                objects: objects,
+              ),
+            ),
+            Positioned(
+              left: 14,
+              top: 12,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.view_in_ar,
+                      size: 16,
+                      color: Color(0xFF86EFAC),
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Interactive 3D model',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              right: 14,
+              bottom: 14,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onOpenFullScreen,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF86EFAC),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.open_in_full, size: 16, color: Colors.black),
+                        SizedBox(width: 6),
+                        Text(
+                          'Full screen',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-    final card = ClipRRect(
+class _ScanImageFallbackCard extends StatelessWidget {
+  const _ScanImageFallbackCard({
+    required this.imagePath,
+  });
+
+  final String imagePath;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Stack(
         children: [
@@ -1445,18 +1559,18 @@ class _ScanPreviewCard extends StatelessWidget {
                 color: Colors.black.withValues(alpha: 0.55),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Row(
+              child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.view_in_ar,
                     size: 16,
                     color: Color(0xFF86EFAC),
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   Text(
-                    badgeText,
-                    style: const TextStyle(
+                    '2D fallback preview',
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -1466,44 +1580,7 @@ class _ScanPreviewCard extends StatelessWidget {
               ),
             ),
           ),
-          if (has3D)
-            Positioned(
-              right: 14,
-              bottom: 14,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF86EFAC),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.threed_rotation, size: 16, color: Colors.black),
-                    SizedBox(width: 6),
-                    Text(
-                      'Open 3D',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
         ],
-      ),
-    );
-
-    if (!has3D) return card;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onOpen3D,
-        borderRadius: BorderRadius.circular(20),
-        child: card,
       ),
     );
   }

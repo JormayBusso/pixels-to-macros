@@ -131,6 +131,7 @@ class _Scan3DViewerState extends State<Scan3DViewer> {
   @override
   Widget build(BuildContext context) {
     final path = widget.modelPath;
+    debugPrint('3D MODEL PATH: $path');
     if (path == null || path.isEmpty || !File(path).existsSync()) {
       return const _Placeholder(
         message: 'No 3D model available for this scan.',
@@ -167,6 +168,9 @@ class _Scan3DViewerState extends State<Scan3DViewer> {
           final raw = (call.arguments as Map?)?['ids'] as List?;
           final ids = raw?.cast<String>() ?? const <String>[];
           widget.onObjectsReady?.call(ids);
+          break;
+        case 'onError':
+          debugPrint('[Scan3DViewer] native error: ${call.arguments}');
           break;
       }
       return null;

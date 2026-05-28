@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../core/constants.dart';
@@ -148,8 +149,11 @@ class NativeBridge {
   /// Returns null if the last scan did not produce an exportable mesh.
   Future<String?> getModel3DPath() async {
     try {
-      return await _channel.invokeMethod<String>('getModel3DPath');
+      final path = await _channel.invokeMethod<String>('getModel3DPath');
+      debugPrint('[NativeBridge] model3dPath = ${path ?? 'nil'}');
+      return path;
     } catch (_) {
+      debugPrint('[NativeBridge] model3dPath = nil (bridge error)');
       return null;
     }
   }

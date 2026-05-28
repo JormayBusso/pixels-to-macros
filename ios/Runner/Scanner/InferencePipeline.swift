@@ -451,6 +451,8 @@ final class InferencePipeline {
                 imageWidth:     CVPixelBufferGetWidth(topFrame.pixelBuffer),
                 imageHeight:    CVPixelBufferGetHeight(topFrame.pixelBuffer)
             )
+                        print("[InferencePipeline] 3D export candidates: " +
+                                    "voxels=\(fusion.totalOccupiedVoxels), objects=\(foodObjects.count)")
             if foodObjects.isEmpty {
                 // Validation gate (Stage 1+ rule #7): no cluster passed the
                 // plate-subtraction + min-voxel-count check. Flutter side
@@ -460,6 +462,7 @@ final class InferencePipeline {
             } else {
                 let baseName = "scan3d_\(Int(Date().timeIntervalSince1970 * 1000))"
                 if let url = exporter.export(objects: foodObjects, baseName: baseName) {
+                    let exists = FileManager.default.fileExists(atPath: url.path)
                     lastModel3DPath = url.path
                     // Per-object metadata mirrors the MDLMesh order written
                     // by Food3DExporter. Each entry is bridge-ready: only
@@ -476,10 +479,13 @@ final class InferencePipeline {
                             "confidence":   round((segConfidence[obj.label] ?? 1.0) * 1000) / 1000,
                         ]
                     }
-                    print("[InferencePipeline] 3D model saved: \(url.path) " +
-                          "(\(foodObjects.count) object\(foodObjects.count == 1 ? "" : "s"))")
+                    print("[InferencePipeline] model3dPath = \(url.path), " +
+                          "exists=\(exists), objects=\(foodObjects.count)")
                 }
             }
+        } else {
+            print("[InferencePipeline] 3D export skipped: no_voxel_grid " +
+                  "voxels=\(fusion.totalOccupiedVoxels)")
         }
 
         // ── 7. Serialise to JSON ────────────────────────────────────────

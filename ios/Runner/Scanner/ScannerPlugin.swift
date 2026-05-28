@@ -246,7 +246,9 @@ final class ScannerPlugin {
             result(pipeline.lastScanImagePath)
 
         case "getModel3DPath":
-            result(pipeline.lastModel3DPath)
+            let model3dPath = pipeline.lastModel3DPath
+            print("[ScannerPlugin] model3dPath = \(model3dPath ?? "nil")")
+            result(model3dPath)
 
         case "getModel3DObjects":
             // Per-object metadata for the most-recent 3-D model. Mirrors the

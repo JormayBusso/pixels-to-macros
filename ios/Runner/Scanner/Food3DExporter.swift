@@ -34,6 +34,10 @@ final class Food3DExporter {
         ).first!
 
         // Build the asset once and try multiple file types.
+        print("[Food3DExporter] Export request: objects=\(objects.count), " +
+              "usdz=\(MDLAsset.canExportFileExtension("usdz")), " +
+              "usdc=\(MDLAsset.canExportFileExtension("usdc")), " +
+              "obj=\(MDLAsset.canExportFileExtension("obj"))")
         for ext in ["usdz", "usdc", "obj"] where MDLAsset.canExportFileExtension(ext) {
             let url = docs.appendingPathComponent("\(baseName).\(ext)")
             if writeAsset(objects: objects, to: url) {
@@ -67,7 +71,9 @@ final class Food3DExporter {
 
         do {
             try asset.export(to: url)
-            print("[Food3DExporter] Wrote \(added) mesh(es) to \(url.lastPathComponent)")
+            let exists = FileManager.default.fileExists(atPath: url.path)
+            print("[Food3DExporter] Wrote \(added) mesh(es) to " +
+                  "\(url.lastPathComponent), exists=\(exists)")
             return true
         } catch {
             print("[Food3DExporter] export(to: \(url.lastPathComponent)) failed: \(error)")
