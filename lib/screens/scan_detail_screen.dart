@@ -3,12 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/scan_result.dart';
+import '../models/nutrition_goal.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
+import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/native_bridge.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
+import '../widgets/diabetes_insulin_card.dart';
+import '../widgets/food_3d_view.dart';
 import 'edit_food_screen.dart';
 import 'ground_truth_screen.dart';
 
@@ -155,6 +159,53 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Diabetes insulin advisory (only when goal = diabetes) ──────
+          if (ref.watch(userPrefsProvider).nutritionGoal ==
+                  NutritionGoalType.diabetes &&
+              _scan.foods.isNotEmpty) ...[
+            DiabetesInsulinCard(foods: _scan.foods),
+            const SizedBox(height: 16),
+          ],
+
+          // ── Live 3-D food model ──────────────────────────────────────
+          // Built from the same height-field data used to compute volume.
+          // Drag to rotate, pinch to zoom.
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.view_in_ar,
+                          size: 18, color: context.primary500),
+                      const SizedBox(width: 8),
+                      const Text(
+                        '3-D Model',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Spacer(),
+                      const Text(
+                        'drag to rotate',
+                        style: TextStyle(fontSize: 11, color: AppTheme.gray400),
+                      ),
+                    ],
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: Food3DView(),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -461,11 +512,45 @@ class _FoodDetailRow extends StatelessWidget {
   }
 }
 
+/// Renders 1–3 filled dots representing a confidence level (0…1).
+class _ConfidenceDots extends StatelessWidget {
+  const _ConfidenceDots({required this.confidence});
+  final double confidence;
+
+  @override
+  Widget build(BuildContext context) {
+    final level = confidence >= 0.75
+        ? 3
+        : confidence >= 0.5
+            ? 2
+            : 1;
+    final color = level == 3
+        ? context.primary500
+        : level == 2
+            ? AppTheme.amber500
+            : AppTheme.red500;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (i) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 1),
+          child: Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i < level ? color : AppTheme.gray200,
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
 class _FoodDetailCard extends StatelessWidget {
   const _FoodDetailCard({required this.food});
   final DetectedFood food;
-
-  /// Returns a color indicating uncertainty: green=low, amber=med, red=high.
   Color _uncertaintyColor(double margin, double avg, BuildContext context) {
     if (avg == 0) return AppTheme.gray200;
     final pct = margin / avg; // relative uncertainty
@@ -513,12 +598,37 @@ class _FoodDetailCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${food.volumeCm3.toStringAsFixed(1)} cm³',
+                          '${food.volumeCm3.toStringAsFixed(1)} cm³'
+                          '${food.heightCm != null ? ' · ${food.heightCm!.toStringAsFixed(1)} cm tall' : ''}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppTheme.gray400,
                           ),
                         ),
+                        if (food.confidence != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                food.isLiDAR
+                                    ? Icons.straighten
+                                    : Icons.camera_alt,
+                                size: 11,
+                                color: AppTheme.gray400,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                food.isLiDAR ? 'LiDAR' : 'Camera',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppTheme.gray400,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              _ConfidenceDots(confidence: food.confidence!),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),

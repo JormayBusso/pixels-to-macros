@@ -1,12 +1,12 @@
 import CoreVideo
 import Foundation
 
-/// Orchestrates the full scan pipeline:
+/// Orchestrates the scan pipeline:
 ///
-///   captured frames → plate detection → preprocessing → segmentation
-///   → depth mapping → volume calculation → JSON result
+///   recorded sweep → plate detection → preprocessing → segmentation
+///   → table plane → tier-aware volume → JSON result
 ///
-/// This is the single entry point called by `ScannerPlugin.runInference`.
+/// This is the single entry point called by `ScannerPlugin.runVideoInference`.
 /// All steps run sequentially to stay within memory limits (Part 3).
 final class InferencePipeline {
 
@@ -15,7 +15,8 @@ final class InferencePipeline {
     private let plateDetector       = PlateDetector()
     private let preprocessor        = FramePreprocessor()
     private let segmentationService = SegmentationService()
-    private let volumeCalculator    = VolumeCalculator()
+    private let volumeEngine        = FoodVolumeEngine()
+    private let referenceEstimator  = ReferenceScaleEstimator()
 
     // MARK: – Types
 
@@ -35,185 +36,32 @@ final class InferencePipeline {
         }
     }
 
-    // MARK: – Run
+    // MARK: – Video scan (tier-aware 3-D volume)
 
-    /// Execute the full pipeline using frames stored in `captureService`.
-    /// Returns a JSON string: `[{"label":"rice","volume_cm3":200}, …]`
-    func run(captureService: FrameCaptureService) throws -> String {
-        // ── 1. Validate frames ──────────────────────────────────────────
-        guard let topFrame = captureService.topFrame else {
-            throw PipelineError.noTopFrame
-        }
-
-        let sideFrame = captureService.sideFrame // optional
-
-        // ── 2. Plate detection (on top frame) ───────────────────────────
-        let plate = plateDetector.detect(in: topFrame.pixelBuffer)
-        let pxPerCm = plateDetector.pixelsPerCm(
-            plate: plate,
-            frameWidth: CVPixelBufferGetWidth(topFrame.pixelBuffer)
-        )
-
-        // ── 3. Preprocess RGB for CoreML ────────────────────────────────
-        guard let preprocessedRGB = autoreleasepool(invoking: {
-            preprocessor.preprocess(
-                pixelBuffer: topFrame.pixelBuffer,
-                plateRect: plate.rect
-            )
-        }) else {
-            throw PipelineError.preprocessingFailed
-        }
-
-        // ── 4. Preprocess depth (if available) ──────────────────────────
-        let depthSource = sideFrame?.depthBuffer ?? topFrame.depthBuffer
-        let preprocessedDepth: CVPixelBuffer? = autoreleasepool {
-            guard let depth = depthSource else { return nil }
-            return preprocessor.preprocessDepth(
-                depthBuffer: depth,
-                plateRect: plate.rect,
-                outputWidth: preprocessor.modelInputWidth,
-                outputHeight: preprocessor.modelInputHeight
-            )
-        }
-
-        // ── 5. Segmentation ─────────────────────────────────────────────
-        let segments: [SegmentationService.SegmentedObject]
-        do {
-            segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
-        } catch {
-            throw PipelineError.segmentationFailed(error)
-        }
-
-        guard !segments.isEmpty else {
-            // No food detected — return empty list
-            return "[]"
-        }
-
-        // ── 6. Depth statistics (Part 14 — debug logging) ───────────────
-        var depthMin: Float = Float.greatestFiniteMagnitude
-        var depthMax: Float = 0
-        var depthSum: Float = 0
-        var depthCount: Int = 0
-        if let db = preprocessedDepth {
-            CVPixelBufferLockBaseAddress(db, .readOnly)
-            let dW = CVPixelBufferGetWidth(db)
-            let dH = CVPixelBufferGetHeight(db)
-            let dRowBytes = CVPixelBufferGetBytesPerRow(db)
-            if let dBase = CVPixelBufferGetBaseAddress(db) {
-                let dPtr = dBase.assumingMemoryBound(to: Float32.self)
-                let dFloatsPerRow = dRowBytes / MemoryLayout<Float32>.stride
-                for r in stride(from: 0, to: dH, by: 4) {
-                    for c in stride(from: 0, to: dW, by: 4) {
-                        let v = dPtr[r * dFloatsPerRow + c]
-                        if v > 0.01 && v < 5.0 {
-                            depthMin = min(depthMin, v)
-                            depthMax = max(depthMax, v)
-                            depthSum += v
-                            depthCount += 1
-                        }
-                    }
-                }
-            }
-            CVPixelBufferUnlockBaseAddress(db, .readOnly)
-        }
-        let depthAvg = depthCount > 0 ? depthSum / Float(depthCount) : 0
-
-        // ── 7. Volume calculation ───────────────────────────────────────
-        let volumes = volumeCalculator.calculate(
-            objects: segments,
-            depthBuffer: preprocessedDepth,
-            pixelsPerCm: pxPerCm,
-            maskWidth: preprocessor.modelInputWidth,
-            maskHeight: preprocessor.modelInputHeight
-        )
-
-        // ── 8. Serialise to JSON ────────────────────────────────────────
-        var payload = [[String: Any]]()
-        for i in 0..<segments.count {
-            let entry = makeSegmentDict(
-                seg: segments[i], vol: volumes[i],
-                depthMin: depthMin, depthMax: depthMax, depthAvg: depthAvg
-            )
-            payload.append(entry)
-        }
-
-        guard let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
-              let json = String(data: data, encoding: .utf8)
-        else {
-            return "[]"
-        }
-
-        // ── 9. Log for debug (Part 14) ──────────────────────────────────
-        logResults(
-            plate: plate,
-            segments: segments,
-            volumes: volumes,
-            hasDepth: preprocessedDepth != nil
-        )
-
-        return json
-    }
-
-    // MARK: – Debug logging
-
-    /// Extracted to help the Swift type-checker with a complex dictionary literal.
-    private func makeSegmentDict(
-        seg: SegmentationService.SegmentedObject,
-        vol: VolumeCalculator.FoodVolume,
-        depthMin: Float,
-        depthMax: Float,
-        depthAvg: Float
-    ) -> [String: Any] {
-        var d = [String: Any]()
-        d["label"]       = vol.label
-        d["volume_cm3"]  = round(vol.volumeCm3 * 10) / 10
-        d["pixel_count"] = vol.pixelCount
-        d["confidence"]  = round(Double(seg.confidence) * 1000) / 1000
-        d["depth_min_m"] = round(Double(depthMin) * 1000) / 1000
-        d["depth_max_m"] = round(Double(depthMax) * 1000) / 1000
-        d["depth_avg_m"] = round(Double(depthAvg) * 1000) / 1000
-        return d
-    }
-
-    // MARK: – Debug logging
-
-    private func logResults(
-        plate: PlateDetector.PlateResult,
-        segments: [SegmentationService.SegmentedObject],
-        volumes: [VolumeCalculator.FoodVolume],
-        hasDepth: Bool
-    ) {
-        print("──────────── Inference Result ────────────")
-        print("Plate detected: \(plate.detected), diameter: \(Int(plate.diameterPx)) px")
-        print("Depth available: \(hasDepth)")
-        for (seg, vol) in zip(segments, volumes) {
-            let conf = String(format: "%.2f", seg.confidence)
-            let v = String(format: "%.1f", vol.volumeCm3)
-            print("  \(seg.label): \(seg.pixelCount) px, conf \(conf), vol \(v) cm³")
-        }
-        print("──────────────────────────────────────────")
-    }
-
-    // MARK: – Video scan (multi-frame 3-D reconstruction)
-
-    /// Run the multi-frame pipeline from a recorded video sweep.
+    /// Run the tier-aware pipeline from a recorded video sweep.
     ///
-    /// Pipeline:
+    /// Pipeline (identical for both tiers — only the geometry source differs):
     ///   1. Plate detection + segmentation on the top (first) frame.
-    ///   2. Depth fusion: project every recorded depth map into a shared
-    ///      world-space voxel grid.
-    ///   3. Label each occupied voxel using the top-frame segmentation masks.
-    ///   4. Compute per-food volume = occupied labelled voxel count × voxel volume.
-    ///   5. Fallback to single-frame plate-heuristic when no depth was available.
+    ///   2. Reference table plane captured live during recording.
+    ///   3. `FoodVolumeEngine` integrates height-above-plane:
+    ///        • LiDAR  → measured `sceneDepth`,
+    ///        • camera → intrinsics-at-hold-distance + per-class height prior,
+    ///          with the distance refined from a detected plate.
+    ///   4. Serialise volumes + confidence to JSON.
     ///
-    /// Returns the same JSON format as `run(captureService:)`.
-    func runVideoScan(recorder: MultiFrameRecorder) throws -> String {
+    /// Returns the same JSON shape as `run(captureService:)`, plus tier fields.
+    func runVideoScan(recorder: MultiFrameRecorder, strategy: ScanStrategy) throws -> String {
         guard let topFrame = recorder.topFrame else {
             throw PipelineError.noTopFrame
         }
 
+        let imageW = CVPixelBufferGetWidth(topFrame.pixelBuffer)
+        let imageH = CVPixelBufferGetHeight(topFrame.pixelBuffer)
+
         // ── 1. Plate detection ──────────────────────────────────────────
-        let plate    = plateDetector.detect(in: topFrame.pixelBuffer)
+        let plate = plateDetector.detect(in: topFrame.pixelBuffer)
+        let plateRect = plate.detected ? plate.rect
+                                       : CGRect(x: 0, y: 0, width: 1, height: 1)
         let cropRect: CGRect? = plate.detected ? plate.rect : nil
 
         // ── 2. Preprocess top frame for CoreML ─────────────────────────
@@ -235,91 +83,56 @@ final class InferencePipeline {
         }
         guard !segments.isEmpty else { return "[]" }
 
-        // ── 4. Multi-frame depth fusion ─────────────────────────────────
-        let fusion = DepthFusion()
-
-        // Include top-frame depth first (if available).
-        if let topDepth = topFrame.depthBuffer {
-            fusion.integrate(
-                depthBuffer:      topDepth,
-                cameraTransform:  topFrame.cameraTransform,
-                cameraIntrinsics: topFrame.cameraIntrinsics,
-                imageWidth:  CVPixelBufferGetWidth(topFrame.pixelBuffer),
-                imageHeight: CVPixelBufferGetHeight(topFrame.pixelBuffer)
-            )
-        }
-
-        // Fuse all recorded light frames.
-        for frame in recorder.lightFrames {
-            fusion.integrate(
-                depthBuffer:      frame.depthBuffer,
-                cameraTransform:  frame.cameraTransform,
-                cameraIntrinsics: frame.cameraIntrinsics,
-                imageWidth:  frame.imageWidth,
-                imageHeight: frame.imageHeight
-            )
-        }
-
-        // ── 5. Label voxels from top-frame segmentation ─────────────────
-        let plateNormRect = plate.detected
-            ? plate.rect
-            : CGRect(x: 0, y: 0, width: 1, height: 1)
-
-        fusion.assignLabels(
-            segments:           segments,
-            plateRect:          plateNormRect,
-            topFrameTransform:  topFrame.cameraTransform,
-            topFrameIntrinsics: topFrame.cameraIntrinsics,
-            maskWidth:          preprocessor.modelInputWidth,
-            maskHeight:         preprocessor.modelInputHeight,
-            imageWidth:  CVPixelBufferGetWidth(topFrame.pixelBuffer),
-            imageHeight: CVPixelBufferGetHeight(topFrame.pixelBuffer)
+        // ── 4. Reference table plane (captured live; virtual fallback) ──
+        let plane = recorder.tablePlane ?? TablePlane.virtual(
+            cameraTransform: topFrame.cameraTransform,
+            distanceM: strategy.assumedDistanceM,
+            source: .assumedDistance,
+            confidence: 0.4
         )
 
-        // ── 6. Volumes ──────────────────────────────────────────────────
-        let volumes: [String: Double]
-        if fusion.totalOccupiedVoxels > 10 {
-            volumes = fusion.allVolumes()
-        } else {
-            // No real depth data: fall back to single-frame plate heuristic.
-            let pxPerCm = plateDetector.pixelsPerCm(
+        // ── 5. Camera tier: refine hold distance from the plate ─────────
+        var refinedDistanceM: Float? = nil
+        if !strategy.providesMeasuredDepth {
+            let est = referenceEstimator.refineFromPlate(
                 plate: plate,
-                frameWidth: CVPixelBufferGetWidth(topFrame.pixelBuffer)
+                intrinsics: topFrame.cameraIntrinsics,
+                defaultDistanceM: strategy.assumedDistanceM
             )
-            let preprocessedDepth: CVPixelBuffer? = topFrame.depthBuffer.flatMap { depth in
-                autoreleasepool {
-                    preprocessor.preprocessDepth(
-                        depthBuffer:  depth,
-                        plateRect:    cropRect,
-                        outputWidth:  preprocessor.modelInputWidth,
-                        outputHeight: preprocessor.modelInputHeight
-                    )
-                }
-            }
-            let fallback = volumeCalculator.calculate(
-                objects:    segments,
-                depthBuffer: preprocessedDepth,
-                pixelsPerCm: pxPerCm,
-                maskWidth:  preprocessor.modelInputWidth,
-                maskHeight: preprocessor.modelInputHeight
-            )
-            var vols: [String: Double] = [:]
-            for v in fallback { vols[v.label, default: 0] += v.volumeCm3 }
-            volumes = vols
+            refinedDistanceM = est.distanceM
         }
+
+        // ── 6. Volume integration (tier-agnostic) ──────────────────────
+        let estimates = volumeEngine.compute(
+            objects:     segments,
+            strategy:    strategy,
+            plane:       plane,
+            depthBuffer: topFrame.depthBuffer,
+            intrinsics:  topFrame.cameraIntrinsics,
+            transform:   topFrame.cameraTransform,
+            plateRect:   plateRect,
+            imageWidth:  imageW,
+            imageHeight: imageH,
+            maskWidth:   preprocessor.modelInputWidth,
+            maskHeight:  preprocessor.modelInputHeight,
+            refinedDistanceM: refinedDistanceM
+        )
+
+        // Publish surfaces so the 3-D model view can render this scan's food.
+        FoodMeshStore.shared.update(estimates)
 
         // ── 7. Serialise to JSON ────────────────────────────────────────
         var payload = [[String: Any]]()
-        for seg in segments {
+        for (seg, est) in zip(segments, estimates) {
             var d = [String: Any]()
-            d["label"]       = seg.label
-            d["volume_cm3"]  = round((volumes[seg.label] ?? 0) * 10) / 10
-            d["pixel_count"] = seg.pixelCount
-            d["confidence"]  = round(Double(seg.confidence) * 1000) / 1000
-            d["frames_used"] = recorder.lightFrames.count
-            d["depth_min_m"] = 0.0
-            d["depth_max_m"] = 0.0
-            d["depth_avg_m"] = 0.0
+            d["label"]        = est.label
+            d["volume_cm3"]   = round(est.volumeCm3 * 10) / 10
+            d["pixel_count"]  = seg.pixelCount
+            d["confidence"]   = round(Double(est.confidence) * 1000) / 1000
+            d["height_cm"]    = round(est.heightCm * 10) / 10
+            d["scan_tier"]    = strategy.tier.rawValue
+            d["plane_source"] = est.source.rawValue
+            d["frames_used"]  = recorder.lightFrames.count
             payload.append(d)
         }
 
@@ -328,10 +141,12 @@ final class InferencePipeline {
         else { return "[]" }
 
         print("──────────── Video Scan Result ──────────")
-        print("Frames: \(recorder.lightFrames.count), Voxels: \(fusion.totalOccupiedVoxels)")
-        for seg in segments {
-            let v = String(format: "%.1f", volumes[seg.label] ?? 0)
-            print("  \(seg.label): \(v) cm³, conf \(String(format: "%.2f", seg.confidence))")
+        print("Tier: \(strategy.tier.rawValue), plane: \(plane.source.rawValue), "
+            + "frames: \(recorder.lightFrames.count)")
+        for est in estimates {
+            print("  \(est.label): \(String(format: "%.1f", est.volumeCm3)) cm³, "
+                + "h \(String(format: "%.1f", est.heightCm)) cm, "
+                + "conf \(String(format: "%.2f", est.confidence))")
         }
         print("─────────────────────────────────────────")
 

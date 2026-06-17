@@ -64,6 +64,16 @@ class DetectedFood {
   final double caloriesMin;
   final double caloriesMax;
 
+  /// Volume confidence (0…1) from the native engine. Transient (live scan
+  /// only) — not persisted, so `null` for foods loaded from history.
+  final double? confidence;
+
+  /// Mean food height above the table plane (cm). Transient.
+  final double? heightCm;
+
+  /// Scan tier that produced this estimate: "lidar" or "camera". Transient.
+  final String? scanTier;
+
   const DetectedFood({
     this.id,
     this.scanId,
@@ -71,6 +81,9 @@ class DetectedFood {
     required this.volumeCm3,
     required this.caloriesMin,
     required this.caloriesMax,
+    this.confidence,
+    this.heightCm,
+    this.scanTier,
   });
 
   Map<String, dynamic> toMap() {
@@ -101,4 +114,7 @@ class DetectedFood {
     final margin = (caloriesMax - caloriesMin) / 2;
     return '$label: ${avg.round()} kcal ± ${margin.round()} kcal';
   }
+
+  /// True when this estimate came from a LiDAR (measured-depth) scan.
+  bool get isLiDAR => scanTier == 'lidar';
 }

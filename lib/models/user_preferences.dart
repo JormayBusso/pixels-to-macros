@@ -1,3 +1,4 @@
+import 'glucose_unit.dart';
 import 'mascot_type.dart';
 import 'nutrition_goal.dart';
 
@@ -15,6 +16,22 @@ class UserPreferences {
   final MascotType mascotType;
   final AppColorSeed themeColorSeed;
 
+  /// Insulin-to-Carbohydrate Ratio (ICR): grams of carbohydrate covered by
+  /// 1 unit of rapid-acting insulin. 0 means "not set" (used only for the
+  /// diabetes nutrition goal). A meal bolus = meal carbs ÷ this value.
+  final double insulinCarbRatio;
+
+  /// Insulin Sensitivity Factor (ISF) / correction factor: how much 1 unit of
+  /// rapid-acting insulin lowers blood glucose, stored canonically in mg/dL
+  /// per unit. 0 means "not set". Correction dose = (current BG − target) ÷ ISF.
+  final double insulinSensitivityFactor;
+
+  /// Target blood glucose used for correction dosing, stored in mg/dL.
+  final double targetBloodGlucoseMgdl;
+
+  /// Preferred blood-glucose unit for display and input.
+  final GlucoseUnit glucoseUnit;
+
   const UserPreferences({
     this.id,
     this.name = '',
@@ -27,6 +44,10 @@ class UserPreferences {
     this.dailyFatTargetG = 65,
     this.mascotType = MascotType.auto,
     this.themeColorSeed = AppColorSeed.green,
+    this.insulinCarbRatio = 0,
+    this.insulinSensitivityFactor = 0,
+    this.targetBloodGlucoseMgdl = 120,
+    this.glucoseUnit = GlucoseUnit.mgdl,
   });
 
   Map<String, dynamic> toMap() {
@@ -42,6 +63,10 @@ class UserPreferences {
       'daily_fat_target_g': dailyFatTargetG,
       'mascot_type': mascotType.dbValue,
       'theme_color_seed': themeColorSeed.dbValue,
+      'insulin_carb_ratio': insulinCarbRatio,
+      'insulin_sensitivity_factor': insulinSensitivityFactor,
+      'target_blood_glucose_mgdl': targetBloodGlucoseMgdl,
+      'glucose_unit': glucoseUnit.dbValue,
     };
   }
 
@@ -59,6 +84,12 @@ class UserPreferences {
       dailyFatTargetG: (map['daily_fat_target_g'] as int?) ?? 65,
       mascotType: MascotTypeX.fromDbValue(map['mascot_type'] as String?),
       themeColorSeed: AppColorSeedX.fromDbValue(map['theme_color_seed'] as String?),
+      insulinCarbRatio: (map['insulin_carb_ratio'] as num?)?.toDouble() ?? 0,
+      insulinSensitivityFactor:
+          (map['insulin_sensitivity_factor'] as num?)?.toDouble() ?? 0,
+      targetBloodGlucoseMgdl:
+          (map['target_blood_glucose_mgdl'] as num?)?.toDouble() ?? 120,
+      glucoseUnit: GlucoseUnitX.fromDbValue(map['glucose_unit'] as String?),
     );
   }
 
@@ -73,6 +104,10 @@ class UserPreferences {
     int? dailyFatTargetG,
     MascotType? mascotType,
     AppColorSeed? themeColorSeed,
+    double? insulinCarbRatio,
+    double? insulinSensitivityFactor,
+    double? targetBloodGlucoseMgdl,
+    GlucoseUnit? glucoseUnit,
   }) {
     return UserPreferences(
       id: id,
@@ -86,6 +121,12 @@ class UserPreferences {
       dailyFatTargetG: dailyFatTargetG ?? this.dailyFatTargetG,
       mascotType: mascotType ?? this.mascotType,
       themeColorSeed: themeColorSeed ?? this.themeColorSeed,
+      insulinCarbRatio: insulinCarbRatio ?? this.insulinCarbRatio,
+      insulinSensitivityFactor:
+          insulinSensitivityFactor ?? this.insulinSensitivityFactor,
+      targetBloodGlucoseMgdl:
+          targetBloodGlucoseMgdl ?? this.targetBloodGlucoseMgdl,
+      glucoseUnit: glucoseUnit ?? this.glucoseUnit,
     );
   }
 }

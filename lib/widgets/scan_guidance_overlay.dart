@@ -14,11 +14,17 @@ class ScanGuidanceOverlay extends StatefulWidget {
     super.key,
     required this.scanState,
     this.currentPitch = 0.0,
+    this.hasLiDAR = false,
   });
   final ScanState scanState;
 
   /// Current device pitch in radians: -pi/2 = pointing straight down, 0 = horizontal.
   final double currentPitch;
+
+  /// Whether the device has a LiDAR sensor. On LiDAR the exact hold distance
+  /// is measured, so the 30 cm prompt is informational; on the camera tier it
+  /// is critical for scale accuracy and is emphasised.
+  final bool hasLiDAR;
 
   @override
   State<ScanGuidanceOverlay> createState() => _ScanGuidanceOverlayState();
@@ -90,14 +96,49 @@ class _ScanGuidanceOverlayState extends State<ScanGuidanceOverlay>
               right: 0,
               child: FadeTransition(
                 opacity: _pulse,
-                child: const Text(
-                  'Hold 30-40 cm above the plate',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white70,
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          widget.hasLiDAR ? Icons.straighten : Icons.straighten,
+                          size: 15,
+                          color: widget.hasLiDAR
+                              ? AppTheme.green500
+                              : Colors.amber,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          widget.hasLiDAR
+                              ? 'Hold ~30 cm above the plate'
+                              : 'Hold exactly 30 cm above the plate',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: widget.hasLiDAR
+                                ? FontWeight.w500
+                                : FontWeight.w700,
+                            color: widget.hasLiDAR
+                                ? Colors.white70
+                                : Colors.amber,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.hasLiDAR
+                          ? 'LiDAR depth • precise 3-D measurement'
+                          : 'Keep a plate or cutlery in view for scale',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white54,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

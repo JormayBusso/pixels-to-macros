@@ -39,7 +39,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 13,
+      version: 15,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -104,7 +104,11 @@ class DatabaseService {
         daily_protein_target_g   INTEGER NOT NULL DEFAULT 80,
         daily_fat_target_g       INTEGER NOT NULL DEFAULT 65,
         mascot_type              TEXT    NOT NULL DEFAULT 'auto',
-        theme_color_seed         TEXT    NOT NULL DEFAULT 'green'
+        theme_color_seed         TEXT    NOT NULL DEFAULT 'green',
+        insulin_carb_ratio       REAL    NOT NULL DEFAULT 0,
+        insulin_sensitivity_factor REAL  NOT NULL DEFAULT 0,
+        target_blood_glucose_mgdl  REAL  NOT NULL DEFAULT 120,
+        glucose_unit             TEXT    NOT NULL DEFAULT 'mgdl'
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
@@ -340,6 +344,26 @@ class DatabaseService {
 
       // Re-seed to add any new items.
       await _seed(db);
+    }
+    if (oldVersion < 14) {
+      // Insulin-to-Carb Ratio (ICR) for the diabetes nutrition goal.
+      try {
+        await db.execute(
+          'ALTER TABLE user_preferences ADD COLUMN insulin_carb_ratio REAL NOT NULL DEFAULT 0',
+        );
+      } catch (_) {}
+    }
+    if (oldVersion < 15) {
+      // Correction-dose (ISF / "1800 rule") and blood-glucose unit support.
+      for (final col in [
+        'insulin_sensitivity_factor REAL NOT NULL DEFAULT 0',
+        'target_blood_glucose_mgdl REAL NOT NULL DEFAULT 120',
+        "glucose_unit TEXT NOT NULL DEFAULT 'mgdl'",
+      ]) {
+        try {
+          await db.execute('ALTER TABLE user_preferences ADD COLUMN $col');
+        } catch (_) {}
+      }
     }
   }
 

@@ -33,6 +33,13 @@ final class MultiFrameRecorder {
     /// All sampled frames that had depth data available.
     private(set) var lightFrames: [LightFrame] = []
 
+    /// Reference table plane captured live at the first (top) frame, when
+    /// ARKit anchors are still available. Volume is integrated relative to it.
+    private(set) var tablePlane: TablePlane?
+
+    /// Strategy in force for this recording (decides depth vs estimation).
+    private(set) var strategy: ScanStrategy?
+
     var frameCount: Int { lightFrames.count }
     var hasDepthData: Bool { !lightFrames.isEmpty }
 
@@ -44,6 +51,7 @@ final class MultiFrameRecorder {
 
     private var timer:    Timer?
     private var isActive: Bool = false
+    private let planeDetector = PlaneDetector()
 
     /// 10 fps sample rate — enough for reconstruction without excessive memory use.
     private let sampleInterval: TimeInterval = 0.1
@@ -54,10 +62,12 @@ final class MultiFrameRecorder {
 
     /// Start sampling from the running ARKit session.
     /// Must be called on the main thread (Timer requires a RunLoop).
-    func startRecording(sessionManager: ARSessionManager) {
+    func startRecording(sessionManager: ARSessionManager, strategy: ScanStrategy) {
         guard !isActive else { return }
         topFrame    = nil
         lightFrames = []
+        tablePlane  = nil
+        self.strategy = strategy
         isActive    = true
 
         timer = Timer.scheduledTimer(
@@ -80,6 +90,7 @@ final class MultiFrameRecorder {
         stopRecording()
         topFrame    = nil
         lightFrames = []
+        tablePlane  = nil
     }
 
     // MARK: – Orientation query
@@ -117,6 +128,16 @@ final class MultiFrameRecorder {
                     cameraIntrinsics: intrinsics,
                     timestamp:       arFrame.timestamp
                 )
+
+                // Capture the reference table plane now, while ARKit anchors
+                // are live (they are not available at inference time).
+                if let strategy {
+                    tablePlane = planeDetector.detectTablePlane(
+                        in: arFrame,
+                        tier: strategy.tier,
+                        assumedDistanceM: strategy.assumedDistanceM
+                    )
+                }
             }
 
             // All frames with depth → lightweight record (deep-copy depth).

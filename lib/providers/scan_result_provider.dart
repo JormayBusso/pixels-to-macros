@@ -57,78 +57,6 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     return _labelAliases[lower] ?? raw;
   }
 
-  /// Run inference and compute calories.
-  Future<void> runScan() async {
-    state = const ScanResultState(loading: true);
-
-    try {
-      // 1. Call native pipeline (plate detect → segment → volume)
-      final rawVolumes = await NativeBridge.instance.runInference();
-
-      if (rawVolumes.isEmpty) {
-        state = const ScanResultState(
-          error: 'No food detected — try again with a clearer view.',
-        );
-        return;
-      }
-
-      // 2. Look up each food in the local DB and compute calorie range
-      final db = DatabaseService.instance;
-      final foods = <DetectedFood>[];
-
-      for (final vol in rawVolumes) {
-        final rawLabel = vol['label'] as String? ?? 'unknown';
-        final label = _normaliseLabel(rawLabel);
-        final volumeCm3 = (vol['volume_cm3'] as num?)?.toDouble() ?? 0;
-        final pixelCount = (vol['pixel_count'] as num?)?.toInt() ?? 0;
-        final confidence = (vol['confidence'] as num?)?.toDouble();
-        final depthMinM = (vol['depth_min_m'] as num?)?.toDouble();
-        final depthMaxM = (vol['depth_max_m'] as num?)?.toDouble();
-        final depthAvgM = (vol['depth_avg_m'] as num?)?.toDouble();
-
-        final foodData = await db.getFoodByLabel(label);
-        final double calMin;
-        final double calMax;
-
-        if (foodData != null) {
-          final range = foodData.calorieRange(volumeCm3);
-          calMin = range.min;
-          calMax = range.max;
-        } else {
-          // Unknown food — use rough average density 0.8 g/cm³, 100 kcal/100g
-          calMin = volumeCm3 * 0.7 / 100 * 80;
-          calMax = volumeCm3 * 1.0 / 100 * 120;
-        }
-
-        foods.add(DetectedFood(
-          label: label,
-          volumeCm3: volumeCm3,
-          caloriesMin: calMin,
-          caloriesMax: calMax,
-        ));
-
-        // Part 14 — detailed per-food debug log
-        DebugLog.instance.log('Detection',
-          '$label: ${volumeCm3.toStringAsFixed(1)} cm³, '
-          '${pixelCount} px, '
-          '${calMin.round()}-${calMax.round()} kcal'
-          '${confidence != null ? ", conf ${confidence.toStringAsFixed(2)}" : ""}');
-
-        // Log depth statistics (once, from first food item)
-        if (depthMinM != null && foods.length == 1) {
-          DebugLog.instance.log('Depth',
-            'min=${depthMinM.toStringAsFixed(3)}m, '
-            'max=${depthMaxM?.toStringAsFixed(3)}m, '
-            'avg=${depthAvgM?.toStringAsFixed(3)}m');
-        }
-      }
-
-      state = ScanResultState(foods: foods);
-    } catch (e) {
-      state = ScanResultState(error: e.toString());
-    }
-  }
-
   /// Run the multi-frame video inference pipeline.
   /// Same processing as [runScan] but uses [NativeBridge.runVideoInference].
   Future<void> runVideoScan() async {
@@ -155,6 +83,8 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
         final pixelCount  = (vol['pixel_count'] as num?)?.toInt() ?? 0;
         final confidence  = (vol['confidence']  as num?)?.toDouble();
         final framesUsed  = (vol['frames_used'] as num?)?.toInt() ?? 0;
+        final heightCm    = (vol['height_cm']   as num?)?.toDouble();
+        final scanTier    = vol['scan_tier']    as String?;
 
         final foodData = await db.getFoodByLabel(label);
         final double calMin;
@@ -174,6 +104,9 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
           volumeCm3:   volumeCm3,
           caloriesMin: calMin,
           caloriesMax: calMax,
+          confidence:  confidence,
+          heightCm:    heightCm,
+          scanTier:    scanTier,
         ));
 
         DebugLog.instance.log('VideoScan',
@@ -181,6 +114,7 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
           '(${framesUsed} frames), '
           '${pixelCount} px, '
           '${calMin.round()}-${calMax.round()} kcal'
+          '${scanTier != null ? ", tier $scanTier" : ""}'
           '${confidence != null ? ", conf ${confidence.toStringAsFixed(2)}" : ""}');
       }
 

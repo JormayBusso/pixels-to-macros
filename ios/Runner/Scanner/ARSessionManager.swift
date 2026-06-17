@@ -107,22 +107,34 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
 
     /// After the base session is running, call this to add depth/mesh
     /// features without tearing down the camera.  Safe to call repeatedly.
-    func upgradeToDepthConfig() {
+    ///
+    /// `configure` applies the tier-specific settings (the selected
+    /// `ScanStrategy.configure`), so depth/mesh/plane detection stay in a
+    /// single source of truth.
+    func upgradeConfig(applying configure: (ARWorldTrackingConfiguration) -> Void) {
         guard let session else { return }
 
         let config = ARWorldTrackingConfiguration()
-
-        if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
-            config.sceneReconstruction = .mesh
-        }
-        if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
-            config.frameSemantics.insert(.sceneDepth)
-        }
+        configure(config)
 
         // `run(_:)` on an already-running session reconfigures without
         // restarting the camera pipeline.
         session.run(config)
-        print("[ARSession] Upgraded to depth config")
+        print("[ARSession] Reconfigured via strategy")
+    }
+
+    /// Legacy entry point — enables depth + mesh + horizontal planes directly.
+    /// Retained for callers that don't pass a strategy.
+    func upgradeToDepthConfig() {
+        upgradeConfig { config in
+            if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
+                config.sceneReconstruction = .mesh
+            }
+            if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
+                config.frameSemantics.insert(.sceneDepth)
+            }
+            config.planeDetection = [.horizontal]
+        }
     }
 
     // MARK: – Private: session lifecycle

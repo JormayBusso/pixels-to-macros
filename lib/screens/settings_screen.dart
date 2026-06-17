@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/glucose_unit.dart';
 import '../models/mascot_type.dart';
 import '../models/nutrition_goal.dart';
 import '../providers/user_prefs_provider.dart';
@@ -178,6 +179,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SizedBox(height: 12),
         _NutritionGoalPickerCard(),
         const SizedBox(height: 24),
+
+        // ── Diabetes management (only when the goal is Diabetes) ────────
+        if (ref.watch(userPrefsProvider).nutritionGoal ==
+            NutritionGoalType.diabetes) ...[
+          _SectionHeader('Diabetes Management'),
+          const SizedBox(height: 12),
+          _DiabetesSettingsCard(),
+          const SizedBox(height: 24),
+        ],
 
         _SectionHeader('Database'),
         const SizedBox(height: 12),
@@ -461,6 +471,335 @@ class _NutritionGoalPickerCard extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Diabetes settings (Insulin-to-Carb Ratio) ────────────────────────────────
+
+class _DiabetesSettingsCard extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_DiabetesSettingsCard> createState() =>
+      _DiabetesSettingsCardState();
+}
+
+class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
+  late TextEditingController _icrCtrl;
+  late TextEditingController _isfCtrl;
+  late TextEditingController _targetCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final prefs = ref.read(userPrefsProvider);
+    final unit = prefs.glucoseUnit;
+    _icrCtrl = TextEditingController(
+        text: prefs.insulinCarbRatio > 0 ? _fmt(prefs.insulinCarbRatio) : '');
+    _isfCtrl = TextEditingController(
+        text: prefs.insulinSensitivityFactor > 0
+            ? unit.formatValue(prefs.insulinSensitivityFactor)
+            : '');
+    _targetCtrl = TextEditingController(
+        text: unit.formatValue(prefs.targetBloodGlucoseMgdl));
+  }
+
+  @override
+  void dispose() {
+    _icrCtrl.dispose();
+    _isfCtrl.dispose();
+    _targetCtrl.dispose();
+    super.dispose();
+  }
+
+  String _fmt(double v) =>
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+
+  double? _parse(TextEditingController c) =>
+      double.tryParse(c.text.trim().replaceAll(',', '.'));
+
+  /// Switch glucose unit and re-format the ISF / target fields to the new unit.
+  Future<void> _setUnit(GlucoseUnit unit) async {
+    final prefs = ref.read(userPrefsProvider);
+    if (prefs.glucoseUnit == unit) return;
+    await ref
+        .read(userPrefsProvider.notifier)
+        .update(prefs.copyWith(glucoseUnit: unit));
+    // Re-display stored canonical (mg/dL) values in the freshly-selected unit.
+    setState(() {
+      if (prefs.insulinSensitivityFactor > 0) {
+        _isfCtrl.text = unit.formatValue(prefs.insulinSensitivityFactor);
+      }
+      _targetCtrl.text = unit.formatValue(prefs.targetBloodGlucoseMgdl);
+    });
+  }
+
+  Future<void> _saveAll() async {
+    final prefs = ref.read(userPrefsProvider);
+    final unit = prefs.glucoseUnit;
+
+    // ICR — grams of carb per unit.
+    final icrRaw = _parse(_icrCtrl) ?? 0;
+    final icr = icrRaw <= 0 ? 0.0 : icrRaw.clamp(1.0, 50.0);
+
+    // ISF — entered in the user's glucose unit, stored canonically as mg/dL.
+    final isfRaw = _parse(_isfCtrl);
+    final double isfMgdl = (isfRaw == null || isfRaw <= 0)
+        ? 0.0
+        : unit.toMgdl(isfRaw).clamp(5.0, 200.0);
+
+    // Target blood glucose — entered in unit, stored as mg/dL (clamp 70–200).
+    final targetRaw = _parse(_targetCtrl);
+    final double targetMgdl = (targetRaw == null || targetRaw <= 0)
+        ? 120.0
+        : unit.toMgdl(targetRaw).clamp(70.0, 200.0);
+
+    await ref.read(userPrefsProvider.notifier).update(prefs.copyWith(
+          insulinCarbRatio: icr,
+          insulinSensitivityFactor: isfMgdl,
+          targetBloodGlucoseMgdl: targetMgdl,
+        ));
+
+    if (mounted) {
+      FocusScope.of(context).unfocus();
+      // Reflect any clamping back into the fields.
+      _targetCtrl.text = unit.formatValue(targetMgdl);
+      if (isfMgdl > 0) _isfCtrl.text = unit.formatValue(isfMgdl);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Diabetes settings saved')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prefs = ref.watch(userPrefsProvider);
+    final unit = prefs.glucoseUnit;
+    final icrNotSet = prefs.insulinCarbRatio <= 0;
+    final isfNotSet = prefs.insulinSensitivityFactor <= 0;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Warning banners ──────────────────────────────────────────
+            if (icrNotSet)
+              _warningBanner(
+                'Your Insulin-to-Carb Ratio (ICR) is not set. Set it below to '
+                'unlock accurate meal insulin dosing and injection-timing '
+                'guidance.',
+              ),
+            if (isfNotSet)
+              _warningBanner(
+                'Your Insulin Sensitivity Factor (ISF) is not set. Add it to '
+                'enable correction doses based on your current blood glucose.',
+              ),
+
+            // ── Blood-glucose unit toggle ────────────────────────────────
+            const Text(
+              'Blood glucose unit',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<GlucoseUnit>(
+              segments: const [
+                ButtonSegment(
+                    value: GlucoseUnit.mgdl, label: Text('mg/dL')),
+                ButtonSegment(
+                    value: GlucoseUnit.mmoll, label: Text('mmol/L')),
+              ],
+              selected: {unit},
+              onSelectionChanged: (s) => _setUnit(s.first),
+            ),
+            const SizedBox(height: 20),
+
+            // ── ICR ──────────────────────────────────────────────────────
+            const Text(
+              'Insulin-to-Carbohydrate Ratio (ICR)',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Grams of carbohydrate covered by 1 unit of rapid-acting insulin. '
+              'From your management plan — e.g. "1 unit per 10 g".',
+              style: TextStyle(fontSize: 12, color: AppTheme.gray600),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Text('1 unit  /  ',
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: _icrCtrl,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      hintText: '10',
+                      isDense: true,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text('g carbs',
+                    style: TextStyle(fontSize: 15, color: AppTheme.gray700)),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // ── ISF ──────────────────────────────────────────────────────
+            const Text(
+              'Insulin Sensitivity Factor (ISF)',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'How much your blood glucose (${unit.label}) drops per 1 unit of '
+              'insulin. Often estimated as 1800 ÷ total daily dose for mg/dL '
+              '(100 ÷ TDD for mmol/L) — confirm yours with your doctor.',
+              style: const TextStyle(fontSize: 12, color: AppTheme.gray600),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Text('1 unit  ↓  ',
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: _isfCtrl,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    textInputAction: TextInputAction.next,
+                    decoration: InputDecoration(
+                      hintText: unit == GlucoseUnit.mmoll ? '3' : '50',
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(unit.label,
+                    style: const TextStyle(
+                        fontSize: 15, color: AppTheme.gray700)),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // ── Target blood glucose ─────────────────────────────────────
+            const Text(
+              'Target blood glucose',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'The blood-glucose level corrections aim for. A common default '
+              'is 120 mg/dL (6.7 mmol/L) — use the value your doctor set.',
+              style: TextStyle(fontSize: 12, color: AppTheme.gray600),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: _targetCtrl,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(
+                      hintText: unit == GlucoseUnit.mmoll ? '6.7' : '120',
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(unit.label,
+                    style: const TextStyle(
+                        fontSize: 15, color: AppTheme.gray700)),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.save_outlined, size: 18),
+                label: const Text('Save Diabetes Settings'),
+                onPressed: _saveAll,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── Persistent safety reminder ───────────────────────────────
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.amber100,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.amber500),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Icon(Icons.health_and_safety_outlined,
+                      color: AppTheme.amber700, size: 20),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Review your ICR and ISF with your doctor regularly — they '
+                      'change with weight, activity, illness and time. Always '
+                      'measure your blood glucose correctly and double-check '
+                      'every dose. This app gives educational estimates only and '
+                      'does not replace medical advice.',
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          color: AppTheme.gray700,
+                          height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _warningBanner(String text) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.amber100,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.amber500),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_amber_rounded,
+              color: AppTheme.amber700, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 13, color: AppTheme.gray700),
+            ),
+          ),
+        ],
       ),
     );
   }

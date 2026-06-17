@@ -115,14 +115,21 @@ class RecommendationsNotifier
           ));
         }
         recs.add(Recommendation(
-          message: 'Pair carbs with protein or fat to slow glucose absorption.',
+          message: 'Eat vegetables and protein first, carbs last — this can cut your post-meal glucose spike by up to ~30%.',
+          suggestion: 'Order: salad/greens → protein → starch (rice, bread, pasta).',
+          icon: Icons.eco_outlined,
+          color: Colors.green.shade700,
+        ));
+        recs.add(Recommendation(
+          message: 'Pair carbs with protein or fat to slow glucose absorption and flatten the spike.',
           icon: Icons.lightbulb_outline,
           color: Colors.blue.shade600,
         ));
         recs.add(Recommendation(
-          message: 'Fibre helps control blood sugar. Eat broccoli, spinach, or legumes.',
-          icon: Icons.eco_outlined,
-          color: Colors.green.shade700,
+          message: 'Scan a meal to see a meal insulin dose and the best injection time before eating. 🩺',
+          suggestion: 'Set your Insulin-to-Carb Ratio in Settings to enable this.',
+          icon: Icons.medical_services_outlined,
+          color: const Color(0xFF1976D2),
         ));
 
       // ── Vegan ──────────────────────────────────────────────────────────────

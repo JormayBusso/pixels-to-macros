@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
 import 'nutrition_dashboard_screen.dart';
 import 'scan_detail_screen.dart';
+import 'settings_screen.dart';
 
 /// Dashboard showing today's calorie intake, progress ring,
 /// recent scans, and food breakdown.
@@ -112,6 +113,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+
+              // ── Diabetes ICR warning (only when goal=diabetes & ICR unset) ─
+              if (prefs.nutritionGoal == NutritionGoalType.diabetes &&
+                  prefs.insulinCarbRatio <= 0) ...[
+                const _DiabetesIcrBanner(),
+                const SizedBox(height: 16),
+              ],
 
               // ── Calorie progress ring ────────────────────────────────
               _CalorieRingCard(
@@ -578,6 +586,61 @@ class _StreakCard extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Diabetes ICR warning banner ───────────────────────────────────────────────
+
+class _DiabetesIcrBanner extends StatelessWidget {
+  const _DiabetesIcrBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const SettingsScreen()),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.amber100,
+            border: Border.all(color: AppTheme.amber500),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded,
+                  color: AppTheme.amber700, size: 26),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Set your Insulin-to-Carb Ratio',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppTheme.amber700,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Required for accurate meal insulin dosing and injection '
+                      'timing. Tap to open Settings.',
+                      style: TextStyle(fontSize: 12, color: AppTheme.gray700),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppTheme.amber700),
+            ],
+          ),
         ),
       ),
     );

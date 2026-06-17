@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../core/scan_state.dart';
+import '../core/constants.dart';
 import '../models/scan_benchmark.dart';
 import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
@@ -44,6 +45,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   Timer? _pitchTimer;            // polls phone orientation at ~15 fps
   double _currentPitch   = 0.0;  // radians: -π/2 = top, 0 = horizontal
   String _detectedDepthMode = 'unknown';
+  DeviceCapabilities _caps = DeviceCapabilities.unknown();
   ScanResult? _savedScanResult;
   int? _sessionGeneration;       // generation counter for safe stop()
 
@@ -118,9 +120,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       // ── 3. Detect depth mode ──────────────────────────────────────────
       try {
         _detectedDepthMode = await _bridge.getDepthMode();
-        DebugLog.instance.log('Scan', 'Depth mode: $_detectedDepthMode');
+        _caps = await _bridge.getDeviceCapabilities();
+        DebugLog.instance.log('Scan',
+            'Depth mode: $_detectedDepthMode, tier: ${_caps.tier.name}, '
+            'LiDAR: ${_caps.hasLiDAR}');
       } catch (_) {
         _detectedDepthMode = 'plate_fallback';
+        _caps = DeviceCapabilities.unknown();
       }
 
       // ── 4. Upgrade to depth config in the background ──────────────────
@@ -395,7 +401,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           ),
 
           // ── Guidance overlay ─────────────────────────────────────────
-          ScanGuidanceOverlay(scanState: scanState, currentPitch: _currentPitch),
+          ScanGuidanceOverlay(
+            scanState: scanState,
+            currentPitch: _currentPitch,
+            hasLiDAR: _caps.hasLiDAR,
+          ),
 
           // ── Bottom action panel ─────────────────────────────────────
           Positioned(
@@ -542,8 +552,12 @@ class _BottomPanel extends StatelessWidget {
               alignment: WrapAlignment.center,
               children: [
                 _InfoChipDark(
-                  icon: Icons.visibility,
-                  label: depthMode.replaceAll('_', ' '),
+                  icon: scanResult.foods.any((f) => f.isLiDAR)
+                      ? Icons.straighten
+                      : Icons.camera_alt,
+                  label: scanResult.foods.any((f) => f.isLiDAR)
+                      ? 'LiDAR precise'
+                      : 'Camera estimate',
                 ),
                 if (timings.isNotEmpty)
                   _InfoChipDark(

@@ -35,6 +35,12 @@ import Flutter
             cameraReg.register(cameraFactory, withId: ARCameraPreviewFactory.viewType)
         }
 
+        // ── Register the rotatable 3-D food-model platform view ────────────
+        let foodModelFactory = FoodModelViewFactory()
+        if let modelReg = registrar(forPlugin: "FoodModelViewPlugin") {
+            modelReg.register(foodModelFactory, withId: FoodModelViewFactory.viewType)
+        }
+
         return result
     }
 }

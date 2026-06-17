@@ -15,6 +15,10 @@ final class ScannerPlugin {
     // MARK: - Services
 
     private static let depthDetector = DepthModeDetector()
+    /// Selected scan strategy (LiDAR vs camera). Deterministic per device, so
+    /// it is resolved once from the detected capabilities.
+    private static let scanStrategy: ScanStrategy =
+        ScanStrategyFactory.make(for: depthDetector.detectCapabilities())
     /// Exposed (internal) so AppDelegate can pass it to ARCameraPreviewFactory.
     static let sessionManager = ARSessionManager()
     private static let captureService = FrameCaptureService()
@@ -46,7 +50,21 @@ final class ScannerPlugin {
 
         case "getDepthMode":
             let mode = depthDetector.detect()
-            result(mode.rawValue)
+            result(mode)
+
+        case "getDeviceCapabilities":
+            // Full capability snapshot: tier (lidar | camera) + feature flags.
+            let caps = depthDetector.detectCapabilities()
+            if let data = try? JSONSerialization.data(withJSONObject: caps.json),
+               let json = String(data: data, encoding: .utf8) {
+                result(json)
+            } else {
+                result(FlutterError(
+                    code: "CAPS_ENCODE_FAILED",
+                    message: "Could not encode device capabilities",
+                    details: nil
+                ))
+            }
 
         case "startSession":
             sessionManager.start { error in
@@ -80,26 +98,11 @@ final class ScannerPlugin {
         case "captureFrame":
             handleCaptureFrame(call, result: result)
 
-        case "runInference":
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    let json = try pipeline.run(captureService: captureService)
-                    DispatchQueue.main.async { result(json) }
-                } catch {
-                    DispatchQueue.main.async {
-                        result(FlutterError(
-                            code: "INFERENCE_FAILED",
-                            message: error.localizedDescription,
-                            details: nil
-                        ))
-                    }
-                }
-            }
-
         case "startRecording":
             // Must run on main thread — Timer requires a RunLoop.
             DispatchQueue.main.async {
-                recorder.startRecording(sessionManager: sessionManager)
+                recorder.startRecording(sessionManager: sessionManager,
+                                        strategy: scanStrategy)
                 result(nil)
             }
 
@@ -110,7 +113,8 @@ final class ScannerPlugin {
         case "runVideoInference":
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
-                    let json = try pipeline.runVideoScan(recorder: recorder)
+                    let json = try pipeline.runVideoScan(recorder: recorder,
+                                                         strategy: scanStrategy)
                     recorder.releaseAll()
                     DispatchQueue.main.async { result(json) }
                 } catch {
@@ -160,7 +164,8 @@ final class ScannerPlugin {
             }
 
         case "upgradeDepthConfig":
-            sessionManager.upgradeToDepthConfig()
+            // Apply the selected tier's ARKit configuration (depth/mesh/plane).
+            sessionManager.upgradeConfig(applying: scanStrategy.configure)
             result(nil)
 
         case "scanBarcode":

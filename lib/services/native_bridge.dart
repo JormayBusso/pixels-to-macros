@@ -23,6 +23,24 @@ class NativeBridge {
     return result ?? 'plate_fallback';
   }
 
+  /// Ask the native side for the full scanning-capability snapshot
+  /// (tier + LiDAR/mesh/sceneDepth flags + assumed hold distance).
+  ///
+  /// Falls back to a non-Pro camera-tier default if the call fails, so the
+  /// UI always has a usable value.
+  Future<DeviceCapabilities> getDeviceCapabilities() async {
+    try {
+      final raw =
+          await _channel.invokeMethod<String>('getDeviceCapabilities');
+      if (raw == null) return DeviceCapabilities.unknown();
+      return DeviceCapabilities.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      return DeviceCapabilities.unknown();
+    }
+  }
+
   // ── Scanning lifecycle ───────────────────────────────────────────────────
 
   /// Start the ARKit session on the native side.
@@ -72,12 +90,9 @@ class NativeBridge {
 
   /// Run full pipeline: segmentation → depth → volume → calories.
   /// Returns JSON list of detected foods with volumes.
-  Future<List<Map<String, dynamic>>> runInference() async {
-    final raw = await _channel.invokeMethod<String>('runInference');
-    if (raw == null) return [];
-    final list = jsonDecode(raw) as List;
-    return list.cast<Map<String, dynamic>>();
-  }
+  ///
+  /// Deprecated single-frame path removed — use [runVideoInference], which the
+  /// scan flow drives via the tier-aware pipeline.
 
   // ── Video recording ──────────────────────────────────────────────────────
 
