@@ -166,9 +166,9 @@ jobs:
           python -m pip install "torch==2.7.0" "torchvision==0.22.0" coremltools numpy --quiet
           python training/export_coreml.py \
             --checkpoint training/output/best.pth \
-            --num_classes 104 \
-            --img_size 513 \
+            --img_size 512 \
             --output_dir training/output
+          cp training/output/FoodSegmentationLabels.json ios/Runner/FoodSegmentationLabels.json
           xcrun coremlcompiler compile \
             training/output/FoodSegmentation.mlpackage \
             ios/Runner/

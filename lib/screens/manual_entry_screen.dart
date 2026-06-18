@@ -1262,4 +1262,3 @@ class _MealsTab extends ConsumerWidget {
         MealType.dinner => Icons.nights_stay_outlined,
       };
 }
-

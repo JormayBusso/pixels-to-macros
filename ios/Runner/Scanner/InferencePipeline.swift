@@ -27,6 +27,9 @@ final class InferencePipeline {
     /// scene of textured per-food meshes.
     private let exporter           = Food3DExporter()
 
+    /// Non-LiDAR fallback: camera-only scale estimation + generated 3-D mesh.
+    private let monocularEstimator = MonocularVolumeEstimator()
+
     /// File path of the most recently exported 3-D model (USDZ / USDC / OBJ).
     /// `nil` when the last scan produced no exportable food clusters.
     private(set) var lastModel3DPath: String?
@@ -142,6 +145,25 @@ final class InferencePipeline {
             print("[PIPELINE] model3dPath: nil")
             print("[PIPELINE] file exists: false")
             throw PipelineError.model3DExportFailed("food_presence_gate_failed")
+        }
+
+        // ── 3b. Non-LiDAR camera fallback ──────────────────────────────
+        // If ARKit did not provide scene depth, do NOT force the device
+        // through DepthFusion. Generate an estimated 3-D object from the
+        // segmentation mask, plate/intrinsics scale, and food shape priors.
+        if !recorder.hasDepthData {
+            let estimate = try monocularEstimator.estimate(
+                segments: segments,
+                topFrame: topFrame,
+                sideFrame: recorder.sideFrame,
+                maskWidth: preprocessor.modelInputWidth,
+                maskHeight: preprocessor.modelInputHeight
+            )
+            lastModel3DPath = estimate.modelPath
+            lastModel3DObjects = estimate.objects
+            print("[PIPELINE] camera estimate success: true")
+            print("[PIPELINE] model3dPath: \(estimate.modelPath)")
+            return estimate.json
         }
 
         // ── 4. Multi-frame depth fusion ─────────────────────────────────
@@ -261,6 +283,8 @@ final class InferencePipeline {
                 "volume_cm3":   round(obj.volumeCm3 * 10) / 10,
                 "voxel_count":  obj.voxelCount,
                 "confidence":   round(confidence * 1000) / 1000,
+                "scan_mode":    "lidar_mesh",
+                "estimated":    false,
             ]
         }
 
@@ -277,6 +301,8 @@ final class InferencePipeline {
             d["pixel_count"] = seg?.pixelCount ?? obj.voxelCount
             d["confidence"]  = round(confidence * 1000) / 1000
             d["frames_used"] = recorder.lightFrames.count
+            d["scan_mode"] = "lidar_mesh"
+            d["estimated"] = false
             d["depth_min_m"] = 0.0
             d["depth_max_m"] = 0.0
             d["depth_avg_m"] = 0.0

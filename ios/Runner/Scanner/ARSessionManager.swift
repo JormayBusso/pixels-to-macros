@@ -115,6 +115,9 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
         if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
             config.sceneReconstruction = .mesh
         }
+        if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) {
+            config.frameSemantics.insert(.smoothedSceneDepth)
+        }
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
             config.frameSemantics.insert(.sceneDepth)
         }
@@ -122,7 +125,7 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
         // `run(_:)` on an already-running session reconfigures without
         // restarting the camera pipeline.
         session.run(config)
-        print("[ARSession] Upgraded to depth config")
+        print("[ARSession] Upgraded config: mesh=\(config.sceneReconstruction), semantics=\(config.frameSemantics)")
     }
 
     // MARK: – Private: session lifecycle

@@ -30,6 +30,10 @@ final class MultiFrameRecorder {
     /// Full first frame (RGB + optional depth) used for segmentation.
     private(set) var topFrame: FrameCaptureService.CapturedFrame?
 
+    /// RGB side/reference frame captured after the top frame. Used by the
+    /// non-LiDAR monocular estimator as an optional height/quality cue.
+    private(set) var sideFrame: FrameCaptureService.CapturedFrame?
+
     /// All sampled frames that had depth data available.
     private(set) var lightFrames: [LightFrame] = []
 
@@ -62,6 +66,7 @@ final class MultiFrameRecorder {
     func startRecording(sessionManager: ARSessionManager) {
         guard !isActive else { return }
         topFrame    = nil
+        sideFrame   = nil
         topViewFrames = []
         lightFrames = []
         isActive    = true
@@ -85,6 +90,7 @@ final class MultiFrameRecorder {
     func releaseAll() {
         stopRecording()
         topFrame    = nil
+        sideFrame   = nil
         topViewFrames = []
         lightFrames = []
     }
@@ -108,7 +114,7 @@ final class MultiFrameRecorder {
 
         autoreleasepool {
             let pixBuf    = arFrame.capturedImage
-            let depthBuf  = arFrame.sceneDepth?.depthMap
+            let depthBuf  = FrameCaptureService.preferredDepthMap(from: arFrame)
             let transform = arFrame.camera.transform
             let intrinsics = arFrame.camera.intrinsics
             let w = CVPixelBufferGetWidth(pixBuf)
@@ -119,6 +125,19 @@ final class MultiFrameRecorder {
             // Deep-copy pixel buffers so ARKit can reuse its internal pool.
             if topFrame == nil && isTopView {
                 topFrame = FrameCaptureService.CapturedFrame(
+                    pixelBuffer:     MultiFrameRecorder.copyPixelBuffer(pixBuf),
+                    depthBuffer:     depthBuf.flatMap { MultiFrameRecorder.copyPixelBuffer($0) },
+                    cameraTransform: transform,
+                    cameraIntrinsics: intrinsics,
+                    timestamp:       arFrame.timestamp
+                )
+            }
+
+            // Keep one RGB side/reference frame for non-LiDAR volume fallback.
+            // We do not need every RGB frame; one frame is enough for future
+            // side-height refinement while keeping memory bounded.
+            if topFrame != nil && sideFrame == nil && !isTopView {
+                sideFrame = FrameCaptureService.CapturedFrame(
                     pixelBuffer:     MultiFrameRecorder.copyPixelBuffer(pixBuf),
                     depthBuffer:     depthBuf.flatMap { MultiFrameRecorder.copyPixelBuffer($0) },
                     cameraTransform: transform,

@@ -191,6 +191,39 @@ final class SegmentationService {
         }())
 
         model = try VNCoreMLModel(for: mlModel)
+
+        if let bundledLabels = loadBundledLabelMap() {
+            labelMap = bundledLabels
+            print("[SegmentationService] Loaded \(bundledLabels.count) labels from FoodSegmentationLabels.json")
+        } else {
+            print("[SegmentationService] Using built-in fallback label map (\(labelMap.count) labels)")
+        }
+    }
+
+    /// Load the checkpoint-specific class labels exported by
+    /// training/export_coreml.py. This is essential when switching from the
+    /// old FoodSeg103 model to a FoodSeg154/SegFormer checkpoint: class ids
+    /// must match the model that produced the logits.
+    private func loadBundledLabelMap() -> [Int: String]? {
+        guard let url = Bundle.main.url(
+            forResource: "FoodSegmentationLabels",
+            withExtension: "json"
+        ) else { return nil }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let raw = try JSONSerialization.jsonObject(with: data, options: [])
+            guard let dict = raw as? [String: Any] else { return nil }
+            var labels: [Int: String] = [:]
+            for (key, value) in dict {
+                guard let idx = Int(key) else { continue }
+                labels[idx] = String(describing: value)
+            }
+            return labels.isEmpty ? nil : labels
+        } catch {
+            print("[SegmentationService] Failed to load FoodSegmentationLabels.json: \(error)")
+            return nil
+        }
     }
 
     // MARK: – Inference
@@ -286,9 +319,9 @@ final class SegmentationService {
             return []
         }
 
-        // Build class-index grid + confidence grid
-        var classGrid = [[Int]](repeating: [Int](repeating: 0, count: width), count: height)
-        var confGrid  = [[Float]](repeating: [Float](repeating: 0, count: width), count: height)
+        // Build class-index grid + confidence grid (flat row-major: idx = r*width + c).
+        var classGrid = [Int](repeating: 0, count: width * height)
+        var confGrid  = [Float](repeating: 0, count: width * height)
 
         // Compute the actual addressable element count from the underlying buffer.
         // output.count is the *logical* element count, but stride-based indexing
@@ -335,17 +368,21 @@ final class SegmentationService {
 
         if let classOffset, numClasses > 0 {
             // Softmax output — argmax per pixel, resolve overlaps by confidence.
-            // We also compute a true softmax probability and the top-1 vs top-2
-            // margin so downstream gates can reject low-margin ("could be
-            // anything") pixels rather than trusting raw logits.
+            // Single pass per pixel: cache the C logits into a reusable buffer
+            // while finding the top-1/top-2, then derive the softmax probability
+            // from that same buffer. This removes the previous second strided
+            // pass over every class (≈14M fewer indexed loads on a 512²×104 grid).
+            var logits = [Float](repeating: 0, count: numClasses)
             for r in 0..<height {
+                let rowBase = r * width
                 for c in 0..<width {
                     var bestClass = 0
                     var bestVal: Float = -Float.infinity
                     var secondVal: Float = -Float.infinity
-                    // Pass 1: argmax + second-best logit.
+                    // Pass 1: argmax + second-best logit, caching every logit.
                     for cls in 0..<numClasses {
                         let val = valueAt(classOffset(cls, r, c))
+                        logits[cls] = val
                         if val > bestVal {
                             secondVal = bestVal
                             bestVal = val
@@ -354,14 +391,15 @@ final class SegmentationService {
                             secondVal = val
                         }
                     }
-                    // Pass 2: numerically-stable softmax probability of the
-                    // winning class. Using true probabilities (rather than the
-                    // raw logit value the previous code stored) makes the
-                    // confidence threshold meaningful across models and stops
-                    // the labeler over-trusting confident-but-wrong outputs.
+                    // Numerically-stable softmax probability of the winning
+                    // class, read from the cached logits (no second strided
+                    // pass). Using true probabilities (rather than the raw
+                    // logit value) makes the confidence threshold meaningful
+                    // across models and stops the labeler over-trusting
+                    // confident-but-wrong outputs.
                     var sumExp: Float = 0
                     for cls in 0..<numClasses {
-                        sumExp += expf(valueAt(classOffset(cls, r, c)) - bestVal)
+                        sumExp += expf(logits[cls] - bestVal)
                     }
                     let prob: Float = sumExp > 0 ? 1.0 / sumExp : 1.0
                     // Margin between top-1 and top-2 logits — small margins
@@ -370,22 +408,22 @@ final class SegmentationService {
                     // 10-class mini model where every non-food pixel gets
                     // forced into one of the food classes.
                     let margin = bestVal - secondVal
-                    classGrid[r][c] = bestClass
-                    // Encode margin into the stored confidence by attenuating
-                    // probability when the margin is tiny (< 0.5 in logit
-                    // space). This pushes ambiguous pixels below the gate.
+                    // Attenuate probability when the margin is tiny (< 1.5 in
+                    // logit space) so ambiguous pixels fall below the gate.
                     let marginScale: Float = margin >= 1.5 ? 1.0
                         : margin <= 0.0 ? 0.4
                         : 0.4 + (margin / 1.5) * 0.6
-                    confGrid[r][c]  = prob * marginScale
+                    classGrid[rowBase + c] = bestClass
+                    confGrid[rowBase + c]  = prob * marginScale
                 }
             }
         } else if let argmaxOffset {
             // Argmax indices directly
             for r in 0..<height {
+                let rowBase = r * width
                 for c in 0..<width {
-                    classGrid[r][c] = max(0, Int(valueAt(argmaxOffset(r, c))))
-                    confGrid[r][c]  = 1.0
+                    classGrid[rowBase + c] = max(0, Int(valueAt(argmaxOffset(r, c))))
+                    confGrid[rowBase + c]  = 1.0
                 }
             }
         }
@@ -402,14 +440,16 @@ final class SegmentationService {
     ) -> [SegmentedObject] {
         let strides = output.strides.map { $0.intValue }
 
-        var classGrid = [[Int]](repeating: [Int](repeating: 0, count: width), count: height)
-        var confGrid  = [[Float]](repeating: [Float](repeating: 0, count: width), count: height)
+        // Flat row-major grids (idx = r*width + c).
+        var classGrid = [Int](repeating: 0, count: width * height)
+        var confGrid  = [Float](repeating: 0, count: width * height)
 
         if numClasses > 0 {
             let sC   = strides.count == 4 ? strides[1] : strides[0]
             let sR   = strides.count == 4 ? strides[2] : strides[1]
             let sCol = strides.count == 4 ? strides[3] : strides[2]
             for r in 0..<height {
+                let rowBase = r * width
                 for c in 0..<width {
                     var bestClass = 0
                     var bestConf: Float = -Float.infinity
@@ -417,17 +457,18 @@ final class SegmentationService {
                         let val = output[cls * sC + r * sR + c * sCol].floatValue
                         if val > bestConf { bestConf = val; bestClass = cls }
                     }
-                    classGrid[r][c] = bestClass
-                    confGrid[r][c]  = bestConf
+                    classGrid[rowBase + c] = bestClass
+                    confGrid[rowBase + c]  = bestConf
                 }
             }
         } else {
             let sR   = strides.count == 3 ? strides[1] : strides[0]
             let sCol = strides.count == 3 ? strides[2] : strides[1]
             for r in 0..<height {
+                let rowBase = r * width
                 for c in 0..<width {
-                    classGrid[r][c] = output[r * sR + c * sCol].intValue
-                    confGrid[r][c]  = 1.0
+                    classGrid[rowBase + c] = output[r * sR + c * sCol].intValue
+                    confGrid[rowBase + c]  = 1.0
                 }
             }
         }
@@ -445,18 +486,20 @@ final class SegmentationService {
     }
 
     /// Convert per-pixel class/confidence grids into `SegmentedObject` list.
+    /// `classGrid`/`confGrid` are flat row-major arrays (idx = row*width + col).
     private func buildObjects(
-        classGrid: [[Int]], confGrid: [[Float]],
+        classGrid: [Int], confGrid: [Float],
         height: Int, width: Int,
         totalClasses: Int
     ) -> [SegmentedObject] {
         // Group pixels by class
         var classPixels: [Int: [(row: Int, col: Int, conf: Float)]] = [:]
         for r in 0..<height {
+            let rowBase = r * width
             for c in 0..<width {
-                let cls = classGrid[r][c]
+                let cls = classGrid[rowBase + c]
                 guard cls != 0 else { continue } // skip background
-                classPixels[cls, default: []].append((r, c, confGrid[r][c]))
+                classPixels[cls, default: []].append((r, c, confGrid[rowBase + c]))
             }
         }
 

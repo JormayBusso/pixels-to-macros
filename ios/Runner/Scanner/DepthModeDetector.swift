@@ -1,37 +1,48 @@
 import ARKit
 import Foundation
 
-/// Detects the best available depth mode at runtime (Part 2).
+/// Detects the best available scan mode at runtime (Part 2).
+///
+/// This is deliberately capability-based, not model-name-based. It works for
+/// iPhone 15/16/17 and future devices because ARKit is the source of truth.
 ///
 /// Priority:
-///   1. LiDAR  (ARWorldTrackingConfiguration.supportsSceneReconstruction)
-///   2. Camera depth  (ARWorldTrackingConfiguration.supportsFrameSemantics)
-///   3. Plate-based 2D fallback
+///   1. LiDAR mesh reconstruction  (highest accuracy)
+///   2. LiDAR depth only           (metric depth, no mesh reconstruction)
+///   3. Monocular scale estimate   (plate/utensil/30 cm camera fallback)
 final class DepthModeDetector {
 
-    /// The three depth tiers — raw values match the Dart `DepthMode` enum.
+    /// Scan tiers. Raw values are persisted in Dart scan history, so keep them
+    /// stable and descriptive.
     enum Mode: String {
-        case lidar          = "lidar"
-        case cameraDepth    = "camera_depth"
-        case plateFallback  = "plate_fallback"
+        case lidarMesh      = "lidar_mesh"
+        case lidarDepth     = "lidar_depth"
+        case monocularScale = "monocular_scale"
+        case unsupported    = "unsupported"
     }
 
     /// Run detection once (result is deterministic per device).
     func detect() -> Mode {
         guard ARWorldTrackingConfiguration.isSupported else {
-            return .plateFallback
+            return .unsupported
         }
 
-        // LiDAR — available on Pro models (iPhone 12 Pro+, iPad Pro 2020+)
+        // Highest tier: LiDAR-backed scene reconstruction mesh. This is the
+        // correct check for "Pro-like" scanner hardware; never check the
+        // marketing model name.
         if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
-            return .lidar
+            return .lidarMesh
         }
 
-        // Camera-based depth (sceneDepth via neural engine, iOS 14+)
+        // Depth tier: future hardware may expose depth without mesh support.
+        if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) {
+            return .lidarDepth
+        }
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
-            return .cameraDepth
+            return .lidarDepth
         }
 
-        return .plateFallback
+        // Non-LiDAR devices still scan with segmentation + scale references.
+        return .monocularScale
     }
 }

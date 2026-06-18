@@ -17,6 +17,7 @@
 		3D6F446E71D9A26DB407808E /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D713E30A5540B7F350AC47C2 /* AVFoundation.framework */; };
 		5921BBABFEF377DE4411E45D /* VolumeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C973C24EACDEDA0CA84F5A25 /* VolumeCalculator.swift */; };
 		5CAF5253687665D15E7C256E /* Food3DExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1683C3A3958B6FE8DA56E51 /* Food3DExporter.swift */; };
+		5D01C0FF0017F00000000001 /* MonocularVolumeEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D01C0FF0017F00000000000 /* MonocularVolumeEstimator.swift */; };
 		6F06832C86A68E1812C45917 /* ScannerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF95F7274EDE7D628FF00B57 /* ScannerPlugin.swift */; };
 		716DF690045748758CCFCC22 /* PointCloudExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4147F5FBF2C3FF8FB550B03 /* PointCloudExporter.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
@@ -37,6 +38,7 @@
 		B9F1794EDC74D4B66629E742 /* InferencePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FC2652E2325A3BB61C0433C /* InferencePipeline.swift */; };
 		C22D5836EB3C91CD06874FAA /* DepthFusion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E044877C9BA5C5BD6249387 /* DepthFusion.swift */; };
 		DA7869F3377AA0498695AD5C /* FoodSegmentation.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 10DECEA94831997726B8E2B6 /* FoodSegmentation.mlmodelc */; };
+		DA7869F3377AA0498695AD5D /* FoodSegmentationLabels.json in Resources */ = {isa = PBXBuildFile; fileRef = 10DECEA94831997726B8E2B7 /* FoodSegmentationLabels.json */; };
 		DBCC33BCCF16F1E7F8C2EAC1 /* FramePreprocessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECDA3130CA35D9F91C47196F /* FramePreprocessor.swift */; };
 		DEB562316E9CEBA6EB8F2BF3 /* ARSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E243E09ACB6B5BAB44E8B6 /* ARSessionManager.swift */; };
 		DF0456C669A0C8CB1CA92275 /* PlateDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BB9B00B7CD4C732A187E257 /* PlateDetector.swift */; };
@@ -72,6 +74,7 @@
 		0BB9B00B7CD4C732A187E257 /* PlateDetector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlateDetector.swift; sourceTree = "<group>"; };
 		106E69CAAEAFA6A5B66AD4AC /* CoreML.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreML.framework; path = System/Library/Frameworks/CoreML.framework; sourceTree = SDKROOT; };
 		10DECEA94831997726B8E2B6 /* FoodSegmentation.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper; path = FoodSegmentation.mlmodelc; sourceTree = "<group>"; };
+		10DECEA94831997726B8E2B7 /* FoodSegmentationLabels.json */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json; path = FoodSegmentationLabels.json; sourceTree = "<group>"; };
 		140240A56278DC831D8F29B5 /* MLKitFoodValidator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MLKitFoodValidator.swift; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
@@ -82,6 +85,7 @@
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		45253471A282FCFFF61F56CE /* ModelIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ModelIO.framework; path = System/Library/Frameworks/ModelIO.framework; sourceTree = SDKROOT; };
 		5E044877C9BA5C5BD6249387 /* DepthFusion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DepthFusion.swift; sourceTree = "<group>"; };
+		5D01C0FF0017F00000000000 /* MonocularVolumeEstimator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonocularVolumeEstimator.swift; sourceTree = "<group>"; };
 		6CAAE6E0DFEB32AB337D33B7 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -164,6 +168,7 @@
 				BE729DB996BF7648B1074CAC /* FrameCaptureService.swift */,
 				ECDA3130CA35D9F91C47196F /* FramePreprocessor.swift */,
 				7FC2652E2325A3BB61C0433C /* InferencePipeline.swift */,
+				5D01C0FF0017F00000000000 /* MonocularVolumeEstimator.swift */,
 				BDB83C97BEECE046CF9B14D3 /* MultiFrameRecorder.swift */,
 				0BB9B00B7CD4C732A187E257 /* PlateDetector.swift */,
 				D4147F5FBF2C3FF8FB550B03 /* PointCloudExporter.swift */,
@@ -239,6 +244,7 @@
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				555B619B130ED1D2AE4E1B14 /* Scanner */,
 				10DECEA94831997726B8E2B6 /* FoodSegmentation.mlmodelc */,
+				10DECEA94831997726B8E2B7 /* FoodSegmentationLabels.json */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -357,6 +363,7 @@
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 				DA7869F3377AA0498695AD5C /* FoodSegmentation.mlmodelc in Resources */,
+				DA7869F3377AA0498695AD5D /* FoodSegmentationLabels.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -499,6 +506,7 @@
 				E6F3CDF1DB17086AB61A91B6 /* FrameCaptureService.swift in Sources */,
 				DBCC33BCCF16F1E7F8C2EAC1 /* FramePreprocessor.swift in Sources */,
 				B9F1794EDC74D4B66629E742 /* InferencePipeline.swift in Sources */,
+				5D01C0FF0017F00000000001 /* MonocularVolumeEstimator.swift in Sources */,
 				A82398675BD851836A4AA653 /* MultiFrameRecorder.swift in Sources */,
 				DF0456C669A0C8CB1CA92275 /* PlateDetector.swift in Sources */,
 				716DF690045748758CCFCC22 /* PointCloudExporter.swift in Sources */,

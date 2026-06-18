@@ -18,10 +18,10 @@ class NativeBridge {
   // ── Device capabilities (Part 2) ─────────────────────────────────────────
 
   /// Ask native side which depth mode is available.
-  /// Returns one of: "lidar", "camera_depth", "plate_fallback".
+  /// Returns one of: "lidar_mesh", "lidar_depth", "monocular_scale", "unsupported".
   Future<String> getDepthMode() async {
     final result = await _channel.invokeMethod<String>('getDepthMode');
-    return result ?? 'plate_fallback';
+    return result ?? 'monocular_scale';
   }
 
   // ── Scanning lifecycle ───────────────────────────────────────────────────

@@ -26,14 +26,17 @@ class AppConstants {
   static const String databaseName = 'pixels_to_macros.db';
 }
 
-/// Depth mode detected at runtime (Part 2 of the architecture).
+/// Scan capability mode detected at runtime (Part 2 of the architecture).
 enum DepthMode {
-  /// ARKit LiDAR sceneDepth (best accuracy).
-  lidar,
+  /// ARKit LiDAR mesh reconstruction (best accuracy).
+  lidarMesh,
 
-  /// Camera-based depth estimation (mid accuracy).
-  cameraDepth,
+  /// ARKit metric depth is available, but mesh reconstruction is not.
+  lidarDepth,
 
-  /// 2D plate-scale fallback (lowest accuracy).
-  plateFallback,
+  /// Camera-only scale estimate using plate/utensils/30 cm guidance.
+  monocularScale,
+
+  /// ARKit world tracking is unavailable.
+  unsupported,
 }

@@ -14,8 +14,12 @@ class ScanGuidanceOverlay extends StatefulWidget {
     super.key,
     required this.scanState,
     this.currentPitch = 0.0,
+    this.scanMode = 'unknown',
   });
   final ScanState scanState;
+
+  /// Native capability mode: lidar_mesh, lidar_depth, monocular_scale, unsupported.
+  final String scanMode;
 
   /// Current device pitch in radians: -pi/2 = pointing straight down, 0 = horizontal.
   final double currentPitch;
@@ -76,6 +80,7 @@ class _ScanGuidanceOverlayState extends State<ScanGuidanceOverlay>
               child: _InstructionBanner(
                 key: ValueKey(state),
                 state: state,
+                scanMode: widget.scanMode,
               ),
             ),
           ),
@@ -90,10 +95,12 @@ class _ScanGuidanceOverlayState extends State<ScanGuidanceOverlay>
               right: 0,
               child: FadeTransition(
                 opacity: _pulse,
-                child: const Text(
-                  'Hold 30-40 cm above the plate',
+                child: Text(
+                  widget.scanMode == 'monocular_scale'
+                      ? 'Hold about 30 cm above the plate; keep plate or utensils visible'
+                      : 'Hold about 30 cm above the plate for best LiDAR detail',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: Colors.white70,
@@ -327,14 +334,17 @@ class _TiltArcPainter extends CustomPainter {
 // Instruction banner
 
 class _InstructionBanner extends StatelessWidget {
-  const _InstructionBanner({super.key, required this.state});
+  const _InstructionBanner({super.key, required this.state, required this.scanMode});
   final ScanState state;
+  final String scanMode;
 
   @override
   Widget build(BuildContext context) {
     final (String text, IconData icon, Color bg) = switch (state) {
       ScanState.waitingForTopView => (
-          'Lock the plate from the top view',
+          scanMode == 'monocular_scale'
+              ? 'Camera estimate: keep plate or utensils visible'
+              : 'LiDAR precision: lock the plate from top view',
           Icons.phone_android,
           context.primary600,
         ),
@@ -344,7 +354,9 @@ class _InstructionBanner extends StatelessWidget {
           context.primary600,
         ),
       ScanState.recording => (
-          'Tilt slowly; background is ignored',
+          scanMode == 'monocular_scale'
+            ? 'Move in one straight line: top view to side view'
+            : 'Move in one straight line; LiDAR measures the 3-D food shape',
           Icons.videocam,
           AppTheme.amber600,
         ),
@@ -369,7 +381,9 @@ class _InstructionBanner extends StatelessWidget {
           AppTheme.amber500,
         ),
       ScanState.calculating => (
-          'Building 3-D model...',
+          scanMode == 'monocular_scale'
+              ? 'Generating estimated 3-D model...'
+              : 'Building measured 3-D model...',
           Icons.auto_awesome,
           context.primary500,
         ),

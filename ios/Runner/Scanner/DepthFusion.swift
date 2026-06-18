@@ -280,8 +280,10 @@ final class DepthFusion {
     }
 
     /// Total number of occupied voxels (labelled or unlabelled).
+    /// Every entry in `grid` is an occupied voxel (values are 0 or a positive
+    /// label index — never negative), so this is simply the map's size.
     var totalOccupiedVoxels: Int {
-        grid.values.filter { $0 >= 0 }.count
+        grid.count
     }
 
     func reset() {
@@ -303,9 +305,12 @@ final class DepthFusion {
     //   4. Vertex colours are sampled only from the top-view pixel buffer.
     //   5. Each cluster passes through Surface Nets exactly once per scan.
 
-    /// Minimum number of voxels a cluster must contain to be exported as a
-    /// 3-D object. With `voxelSizeM = 0.01 m`, 200 voxels ≈ 200 cm³ ≈ a
-    /// small fruit. Smaller clusters are usually noise / mis-segmentation.
+    /// Minimum number of **measured surface** voxels a cluster must contain
+    /// before it is solidified and exported. This is a noise floor applied to
+    /// the raw depth shell (NOT the final volume): clusters with fewer skin
+    /// voxels than this are almost always mis-segmentation or sensor noise.
+    /// The reported `volumeCm3` is derived AFTER column solidification, so it
+    /// is typically much larger than this count.
     static let defaultMinVoxelsPerCluster = 200
 
     /// Stable, post-plate-subtraction voxel cluster — one per food instance.
@@ -316,9 +321,14 @@ final class DepthFusion {
         let id: String
         let label: String
         let instanceIndex: Int
-        /// Voxel keys in ARKit world-space integer grid (post plate-subtraction).
+        /// Voxel keys in the ARKit world-space integer grid, AFTER plate
+        /// subtraction AND column solidification. These are no longer the raw
+        /// measured depth shell — every (x,z) column has been filled from the
+        /// plate plane up to the measured surface so the set represents the
+        /// solid food body, not just its visible skin.
         let voxelKeys: [VoxelKey]
-        /// Volume in cm³, derived ONLY from `voxelKeys.count × voxelSize³`.
+        /// Volume in cm³, derived ONLY from `voxelKeys.count × voxelSize³`
+        /// (i.e. the solidified column count, a true volume — not surface area).
         let volumeCm3: Double
     }
 
@@ -351,7 +361,11 @@ final class DepthFusion {
     ///      more than ε below this plane is discarded as noise.
     ///   3. Per label, split voxels into 6-connected components — every
     ///      component is a separate food instance.
-    ///   4. Drop clusters smaller than `minVoxelCount` (validation gate).
+    ///   4. Drop components whose measured surface shell is smaller than
+    ///      `minVoxelCount` (noise gate, applied BEFORE solidification).
+    ///   5. Solidify each surviving component: fill every (x,z) column from
+    ///      the plate plane up to the measured surface so the cluster is a
+    ///      true solid volume rather than a hollow depth shell.
     ///
     /// The returned clusters are the ONLY input to mesh export and
     /// canonical volume math.
@@ -391,14 +405,21 @@ final class DepthFusion {
             let sorted = components.sorted { $0.count > $1.count }
             var instanceIndex = 0
             for comp in sorted {
+                // Noise gate on the raw surface shell, BEFORE solidification.
                 guard comp.count >= minVoxelCount else { continue }
+                // 5. Solidify: turn the measured depth shell into a true solid
+                //    by integrating height per (x,z) column from the plate
+                //    plane up to the surface. This is the source of truth for
+                //    BOTH volume and the Surface-Nets mesh (contract rule #1).
+                let solid = solidifyColumns(comp, platePlaneY: platePlaneVoxelY)
+                guard !solid.isEmpty else { continue }
                 let id = "\(label)_\(instanceIndex)"
                 clusters.append(FoodVoxelCluster(
                     id: id,
                     label: label,
                     instanceIndex: instanceIndex,
-                    voxelKeys: comp,
-                    volumeCm3: Double(comp.count) * voxVolCm3
+                    voxelKeys: solid,
+                    volumeCm3: Double(solid.count) * voxVolCm3
                 ))
                 instanceIndex += 1
             }
@@ -502,7 +523,63 @@ final class DepthFusion {
         return objects
     }
 
-    // MARK: – Cluster helpers (plate plane + connected components)
+    // MARK: – Cluster helpers (plate plane + solidify + connected components)
+
+    /// Sparse (x, z) column identifier used by `solidifyColumns`.
+    private struct ColumnKey: Hashable {
+        let x: Int32
+        let z: Int32
+    }
+
+    /// Convert a measured depth **shell** of voxels into a **solid** body by
+    /// filling every (x, z) column from the plate plane up to the highest
+    /// occupied voxel in that column (reference-plane height integration).
+    ///
+    /// Why this is necessary
+    /// ─────────────────────
+    /// A depth sensor only ever measures the *visible skin* of the food — the
+    /// interior and the underside resting on the plate are never seen. Counting
+    /// only those skin voxels makes volume scale with surface AREA, so a flat
+    /// layer and a tall mound with the same footprint score almost identical
+    /// volumes. Filling each column from the plate up to the measured surface
+    /// reconstructs the solid between plate and skin, which is the quantity
+    /// that maps to mass → calories.
+    ///
+    /// - Parameters:
+    ///   - keys: surface voxels of a single connected food instance.
+    ///   - platePlaneY: integer voxel Y of the estimated plate top (the food's
+    ///     resting plane), produced by `robustMinY` in `voxelClusters`.
+    /// - Returns: the filled, solid voxel set (always a superset of `keys`).
+    private func solidifyColumns(_ keys: [VoxelKey], platePlaneY: Int32) -> [VoxelKey] {
+        guard !keys.isEmpty else { return keys }
+
+        // Highest measured voxel per (x, z) column = the food's top surface.
+        var topYByColumn: [ColumnKey: Int32] = [:]
+        topYByColumn.reserveCapacity(keys.count)
+        for k in keys {
+            let col = ColumnKey(x: k.x, z: k.z)
+            if let top = topYByColumn[col] {
+                if k.y > top { topYByColumn[col] = k.y }
+            } else {
+                topYByColumn[col] = k.y
+            }
+        }
+
+        var filled: [VoxelKey] = []
+        filled.reserveCapacity(keys.count * 3)
+        for (col, topY) in topYByColumn {
+            // The food sits on the plate, so each column starts at the plate
+            // plane. Guard against the rare column whose surface dips a voxel
+            // below the robust plate estimate.
+            let bottomY = Swift.min(platePlaneY, topY)
+            var y = bottomY
+            while y <= topY {
+                filled.append(VoxelKey(x: col.x, y: y, z: col.z))
+                y += 1
+            }
+        }
+        return filled
+    }
 
     /// Robust lower-bound estimator on the Y coordinate of a voxel set. Sorts
     /// the Y values and returns the value at `percentile` (0…1). With

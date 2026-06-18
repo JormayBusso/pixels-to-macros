@@ -7,8 +7,7 @@ torch.jit.trace and convert directly from the TorchScript graph.
 Usage:
     python training/export_coreml.py \
         --checkpoint training/output/best.pth \
-        --num_classes 104 \
-        --img_size 513
+        --img_size 512
 
 Outputs:
     training/output/FoodSegmentation.mlpackage
@@ -16,22 +15,27 @@ Outputs:
 Then compile to .mlmodelc with:
     xcrun coremlcompiler compile training/output/FoodSegmentation.mlpackage ios/Runner/
 
-Copy FoodSegmentation.mlmodelc into the Xcode project bundle.
+The exporter also writes FoodSegmentationLabels.json so Swift uses the exact
+class labels from the checkpoint instead of a hard-coded label map.
 """
 
 from __future__ import annotations
 
 import argparse
+import platform
+import shutil
+import subprocess
 from pathlib import Path
 
 import coremltools as ct
 import torch
+import torch.nn.functional as F
 
-from train import get_model
+from train import SegFormerFoodModel
 
 
 class _SegmentationWrapper(torch.nn.Module):
-    """Normalise image input and unwrap DeepLabV3 output for Core ML tracing."""
+    """Normalise image input and upsample logits for Core ML tracing."""
 
     def __init__(self, model: torch.nn.Module) -> None:
         super().__init__()
@@ -48,41 +52,67 @@ class _SegmentationWrapper(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = (x - self.mean) / self.std
         out = self.model(x)
-        # SMP returns tensor directly; torchvision models return dict
-        if isinstance(out, dict):
-            return out["out"]
+        # SegFormer logits are lower-resolution than the input. Upsample here
+        # so iOS receives masks at the same grid size that FramePreprocessor
+        # and DepthFusion use (512×512 by default).
+        if out.shape[-2:] != x.shape[-2:]:
+            out = F.interpolate(out, size=x.shape[-2:], mode="bilinear", align_corners=False)
         return out
 
 
-def load_model(checkpoint: Path, num_classes: int) -> tuple[torch.nn.Module, int]:
-    """Load checkpoint, auto-detect num_classes, return wrapped model."""
-    payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
-    state = payload.get("model_state", payload) if isinstance(payload, dict) else payload
+def _normalise_id2label(raw: dict | None, num_classes: int) -> dict[int, str]:
+    if not raw:
+        return {idx: f"class_{idx}" for idx in range(num_classes)}
+    result: dict[int, str] = {}
+    for key, value in raw.items():
+        try:
+            idx = int(key)
+        except (TypeError, ValueError):
+            continue
+        result[idx] = str(value)
+    for idx in range(num_classes):
+        result.setdefault(idx, f"class_{idx}")
+    return result
 
-    # Auto-detect num_classes from the final conv layer
-    # SMP DeepLabV3Plus uses 'segmentation_head.0.weight'
-    # Torchvision DeepLabV3 uses 'classifier.4.weight'
-    detected = num_classes
-    for key in ["segmentation_head.0.weight", "classifier.4.weight"]:
-        if key in state:
-            detected = state[key].shape[0]
-            break
-    if detected != num_classes:
-        print(
-            f"[export] Checkpoint has {detected} classes; "
-            f"overriding --num_classes {num_classes} -> {detected}"
+
+def load_model(checkpoint: Path, num_classes: int | None = None) -> tuple[torch.nn.Module, int, dict[int, str]]:
+    """Load the current SegFormer training checkpoint and return wrapped model."""
+    payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    if not isinstance(payload, dict) or "model_state_dict" not in payload:
+        raise ValueError(
+            "Expected a checkpoint from training/train.py containing "
+            "'model_state_dict'."
         )
-        num_classes = detected
 
-    model = get_model(num_classes, pretrained=False)
-    missing, unexpected = model.load_state_dict(state, strict=False)
+    args_map = payload.get("args", {}) if isinstance(payload.get("args"), dict) else {}
+    inferred_classes = int(args_map.get("num_labels") or 0)
+    raw_id2label = payload.get("id2label") if isinstance(payload.get("id2label"), dict) else None
+    if raw_id2label:
+        inferred_classes = max(inferred_classes, max(int(k) for k in raw_id2label.keys()) + 1)
+    if num_classes is None or num_classes <= 0:
+        num_classes = inferred_classes or 155
+    if inferred_classes and inferred_classes != num_classes:
+        print(
+            f"[export] Checkpoint has {inferred_classes} labels; "
+            f"overriding requested num_classes {num_classes} -> {inferred_classes}"
+        )
+        num_classes = inferred_classes
+
+    id2label = _normalise_id2label(raw_id2label, num_classes)
+    label2id = {label: idx for idx, label in id2label.items()}
+    model_name = str(args_map.get("model_name") or "nvidia/segformer-b2-finetuned-ade-512-512")
+
+    model = SegFormerFoodModel(model_name, num_classes, id2label, label2id)
+    missing, unexpected = model.load_state_dict(payload["model_state_dict"], strict=False)
+    if missing:
+        print(f"[export] Missing keys while loading checkpoint: {missing[:8]}{'...' if len(missing) > 8 else ''}")
     if unexpected:
-        print(f"[export] Ignored unexpected keys: {unexpected}")
+        print(f"[export] Ignored unexpected keys: {unexpected[:8]}{'...' if len(unexpected) > 8 else ''}")
 
     model.eval()
     wrapper = _SegmentationWrapper(model)
     wrapper.eval()
-    return wrapper, num_classes
+    return wrapper, num_classes, id2label
 
 
 def convert_coreml(
@@ -131,19 +161,85 @@ def convert_coreml(
     return mlpackage_path
 
 
+def write_labels(id2label: dict[int, str], output: Path) -> Path:
+    labels_path = output / "FoodSegmentationLabels.json"
+    import json
+
+    labels_path.write_text(
+        json.dumps({str(k): v for k, v in sorted(id2label.items())}, indent=2),
+        encoding="utf-8",
+    )
+    print(f"Labels exported: {labels_path}")
+    return labels_path
+
+
+def compile_for_ios(mlpackage_path: Path, ios_runner_dir: Path) -> Path:
+    """Compile .mlpackage to .mlmodelc and copy it where iOS loads it."""
+    if platform.system() != "Darwin":
+        raise RuntimeError(
+            "CoreML compilation requires macOS/Xcode. Run this step on the Mac "
+            "that builds the iOS app."
+        )
+    if shutil.which("xcrun") is None:
+        raise RuntimeError("xcrun not found. Install Xcode command line tools.")
+
+    ios_runner_dir.mkdir(parents=True, exist_ok=True)
+    compiled_path = ios_runner_dir / "FoodSegmentation.mlmodelc"
+    if compiled_path.exists():
+        shutil.rmtree(compiled_path)
+
+    subprocess.run(
+        [
+            "xcrun",
+            "coremlcompiler",
+            "compile",
+            str(mlpackage_path),
+            str(ios_runner_dir),
+        ],
+        check=True,
+    )
+
+    if not compiled_path.exists():
+        raise RuntimeError(f"Expected compiled model was not created: {compiled_path}")
+
+    size_mb = sum(
+        f.stat().st_size for f in compiled_path.rglob("*") if f.is_file()
+    ) / 1e6
+    print(f"iOS model ready: {compiled_path} ({size_mb:.1f} MB)")
+    return compiled_path
+
+
+def copy_labels_for_ios(labels_path: Path, ios_runner_dir: Path) -> Path:
+    ios_runner_dir.mkdir(parents=True, exist_ok=True)
+    dst = ios_runner_dir / "FoodSegmentationLabels.json"
+    shutil.copy2(labels_path, dst)
+    print(f"iOS labels ready: {dst}")
+    return dst
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export model to CoreML")
     parser.add_argument("--checkpoint", type=str, required=True)
-    parser.add_argument("--num_classes", type=int, default=104)
+    parser.add_argument("--num_classes", type=int, default=0, help="Optional override; checkpoint labels win when present.")
     parser.add_argument("--img_size", type=int, default=512)
     parser.add_argument("--output_dir", type=str, default="training/output")
+    parser.add_argument(
+        "--compile_ios",
+        action="store_true",
+        help="On macOS, compile and place FoodSegmentation.mlmodelc into ios/Runner.",
+    )
+    parser.add_argument("--ios_runner_dir", type=str, default="ios/Runner")
     args = parser.parse_args()
 
     output = Path(args.output_dir)
     output.mkdir(parents=True, exist_ok=True)
 
-    model, num_classes = load_model(Path(args.checkpoint), args.num_classes)
-    convert_coreml(model, num_classes, args.img_size, output)
+    model, num_classes, id2label = load_model(Path(args.checkpoint), args.num_classes)
+    mlpackage_path = convert_coreml(model, num_classes, args.img_size, output)
+    labels_path = write_labels(id2label, output)
+    if args.compile_ios:
+        compile_for_ios(mlpackage_path, Path(args.ios_runner_dir))
+        copy_labels_for_ios(labels_path, Path(args.ios_runner_dir))
 
     print("\nDone.")
 

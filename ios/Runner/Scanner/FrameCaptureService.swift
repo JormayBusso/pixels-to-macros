@@ -66,7 +66,7 @@ final class FrameCaptureService {
         let captured = autoreleasepool { () -> CapturedFrame in
             CapturedFrame(
                 pixelBuffer: arFrame.capturedImage,
-                depthBuffer: arFrame.sceneDepth?.depthMap,
+                depthBuffer: FrameCaptureService.preferredDepthMap(from: arFrame),
                 cameraTransform: arFrame.camera.transform,
                 cameraIntrinsics: arFrame.camera.intrinsics,
                 timestamp: arFrame.timestamp
@@ -131,5 +131,12 @@ final class FrameCaptureService {
             return "{}"
         }
         return json
+    }
+
+    /// Prefer temporally-smoothed LiDAR depth for food volume; fall back to
+    /// raw scene depth. Non-LiDAR devices return nil and are handled by the
+    /// monocular scale-estimation pipeline.
+    static func preferredDepthMap(from frame: ARFrame) -> CVPixelBuffer? {
+        return frame.smoothedSceneDepth?.depthMap ?? frame.sceneDepth?.depthMap
     }
 }
