@@ -210,7 +210,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
 
     final detectedFoods = <DetectedFood>[];
     int totalCal = 0;
-    double totalCarbs = 0;
 
     for (final ing in meal.ingredients) {
       final food = _allFoods.firstWhere(
@@ -233,20 +232,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
         caloriesMax: range.max,
       ));
       totalCal += ((range.min + range.max) / 2).round();
-      totalCarbs += food.carbsPer100g * ing.grams / 100.0;
-    }
-
-    // Show bolus sheet for diabetic users before logging.
-    final prefs = ref.read(userPrefsProvider);
-    if (prefs.nutritionGoal == NutritionGoalType.diabetes &&
-        totalCarbs > 0 &&
-        mounted) {
-      final proceed = await _showMealBolusSheet(
-        mealName: meal.name,
-        totalCarbs: totalCarbs,
-        icr: prefs.icrGramsPerUnit,
-      );
-      if (proceed != true || !mounted) return;
     }
 
     final result = ScanResult(
@@ -268,119 +253,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     }
   }
 
-  /// Show the bolus calculation bottom sheet.
-  /// Returns true when user taps "Log Meal", false/null on dismiss.
-  Future<bool?> _showMealBolusSheet({
-    required String mealName,
-    required double totalCarbs,
-    required double icr,
-  }) {
-    final bolus = (totalCarbs / icr * 10).round() / 10; // round to 0.1
-    return showModalBottomSheet<bool>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppTheme.gray300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Meal Coverage for: $mealName',
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 16),
-            _BolusRow(
-                icon: Icons.grain,
-                label: 'Carbohydrates',
-                value: '${totalCarbs.toStringAsFixed(1)} g'),
-            const Divider(height: 20),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE3F2FD),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF1976D2)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.vaccines_outlined,
-                      color: Color(0xFF1976D2), size: 22),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Suggested Meal Bolus: $bolus units',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1565C0),
-                          ),
-                        ),
-                        Text(
-                          '${totalCarbs.toStringAsFixed(1)} g ÷ $icr g/unit',
-                          style: const TextStyle(
-                              fontSize: 12, color: Color(0xFF1976D2)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF8E1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                '⚠️  This dose only covers the carbs in this meal. It does '
-                'not include a correction bolus. Always verify with your '
-                'healthcare provider.',
-                style: TextStyle(fontSize: 11, color: AppTheme.gray700),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: Text(AppLocalizations.of(ctx).logMeal),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // ── Barcode scanning ────────────────────────────────────────────────────
 
@@ -1391,36 +1263,3 @@ class _MealsTab extends ConsumerWidget {
       };
 }
 
-// ── Bolus row helper ──────────────────────────────────────────────────────────
-
-class _BolusRow extends StatelessWidget {
-  const _BolusRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppTheme.gray400),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(label,
-              style: const TextStyle(fontSize: 14, color: AppTheme.gray700)),
-        ),
-        Text(value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.gray900,
-            )),
-      ],
-    );
-  }
-}

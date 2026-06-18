@@ -6,6 +6,7 @@ import 'core/app_localizations.dart';
 import 'providers/locale_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/user_prefs_provider.dart';
+import 'providers/diabetes_provider.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/intro_video_screen.dart';
@@ -91,6 +92,9 @@ class _AppGateState extends ConsumerState<_AppGate> {
           .read(userPrefsProvider.notifier)
           .load()
           .timeout(const Duration(seconds: 10));
+      // Load opt-in diabetes/insulin state (safe no-ops when not enabled).
+      await ref.read(insulinSettingsProvider.notifier).load();
+      await ref.read(insulinDoseLogProvider.notifier).load();
     } catch (e) {
       DebugLog.instance.log('App', 'Startup load failed: $e');
       if (mounted)

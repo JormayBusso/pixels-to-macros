@@ -20,6 +20,8 @@ import '../widgets/confidence_badge.dart';
 import '../widgets/generated_food_preview.dart';
 import '../widgets/glucose_spike_card.dart';
 import '../widgets/plate_score_widget.dart';
+import 'diabetes/bolus_calculator_card.dart';
+import 'diabetes/diabetes_review_screen.dart';
 import 'edit_food_screen.dart';
 import 'ground_truth_screen.dart';
 
@@ -392,6 +394,13 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
             ),
             const SizedBox(height: 16),
           ],
+
+          // ── Safety-gated Bolus Calculator Mode (opt-in) ──────────────
+          // Renders nothing unless the user has explicitly enabled and set up
+          // Bolus Calculator Mode. The banner prompts a 90-day review; the
+          // card only shows an estimate when the calculator is available.
+          const DiabetesReviewReminderBanner(),
+          BolusCalculatorCard(initialCarbsG: totalCarbsG > 0 ? totalCarbsG : null),
 
           // ── GL Thermometer (diabetes goal only) ───────────────────────
           if (isDiabetic && _scan.foods.isNotEmpty) ...[

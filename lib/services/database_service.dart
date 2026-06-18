@@ -2,11 +2,16 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'dart:convert';
+
 import '../core/constants.dart';
+import '../models/bolus_audit_record.dart';
 import '../models/custom_meal.dart';
 import '../models/food_data.dart';
 import '../models/grocery_item.dart';
 import '../models/ground_truth.dart';
+import '../models/insulin_dose_log.dart';
+import '../models/insulin_settings.dart';
 import '../models/nutrient_data.dart';
 import '../models/scan_benchmark.dart';
 import '../models/scan_result.dart';
@@ -41,7 +46,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 32,
+      version: 34,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -129,6 +134,9 @@ class DatabaseService {
         gender                   TEXT    NOT NULL DEFAULT 'preferNotToSay',
         font_scale               REAL    NOT NULL DEFAULT 1.0,
         icr_grams_per_unit       REAL    NOT NULL DEFAULT 15.0,
+        insulin_sensitivity_factor REAL  NOT NULL DEFAULT 0.0,
+        target_bg_mgdl           REAL    NOT NULL DEFAULT 100.0,
+        glucose_unit             TEXT    NOT NULL DEFAULT 'mgdl',
         weight_kg                REAL    NOT NULL DEFAULT 70.0,
         vacation_mode            INTEGER NOT NULL DEFAULT 0,
         daily_water_goal_ml      INTEGER NOT NULL DEFAULT 2000,
@@ -221,6 +229,9 @@ class DatabaseService {
         recipe_name TEXT    NOT NULL
       )
     ''');
+
+    // Bolus Calculator Mode tables (insulin settings, dose logs, audit).
+    await _createDiabetesTables(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -619,6 +630,108 @@ class DatabaseService {
             'ALTER TABLE scan_results ADD COLUMN image_path TEXT');
       } catch (_) {}
     }
+    if (oldVersion < 33) {
+      // Diabetes correction-dose support: Insulin Sensitivity Factor (ISF),
+      // a correction target, and the user's preferred blood-glucose unit.
+      try {
+        await db.execute(
+            'ALTER TABLE user_preferences ADD COLUMN insulin_sensitivity_factor REAL NOT NULL DEFAULT 0.0');
+      } catch (_) {}
+      try {
+        await db.execute(
+            'ALTER TABLE user_preferences ADD COLUMN target_bg_mgdl REAL NOT NULL DEFAULT 100.0');
+      } catch (_) {}
+      try {
+        await db.execute(
+            "ALTER TABLE user_preferences ADD COLUMN glucose_unit TEXT NOT NULL DEFAULT 'mgdl'");
+      } catch (_) {}
+    }
+    if (oldVersion < 34) {
+      // Bolus Calculator Mode: insulin settings, dose logs, and calculation
+      // audit log. See _createDiabetesTables for schema + safety notes.
+      await _createDiabetesTables(db);
+    }
+  }
+
+  /// Creates the Bolus Calculator Mode tables. Safe to call on upgrade
+  /// (uses IF NOT EXISTS). Sensitive health data — stored only in the local DB.
+  Future<void> _createDiabetesTables(Database db) async {
+    // Single-row insulin settings. Time-block ICR/ISF are stored as JSON.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS diabetes_insulin_settings (
+        id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+        diabetes_enabled            INTEGER NOT NULL DEFAULT 0,
+        uses_insulin                INTEGER NOT NULL DEFAULT 0,
+        bolus_calculator_enabled    INTEGER NOT NULL DEFAULT 0,
+        diabetes_type               TEXT    NOT NULL DEFAULT 'preferNotToSay',
+        glucose_unit                TEXT    NOT NULL DEFAULT 'mgdl',
+        uses_cgm                    INTEGER NOT NULL DEFAULT 0,
+        uses_pump                   INTEGER NOT NULL DEFAULT 0,
+        insulin_delivery_method     TEXT    NOT NULL DEFAULT 'pen',
+        survey_last_completed_at    TEXT,
+        survey_next_due_at          TEXT,
+        survey_snoozed_until        TEXT,
+        user_confirmed_at           TEXT,
+        settings_version            INTEGER NOT NULL DEFAULT 1,
+        created_at                  TEXT,
+        updated_at                  TEXT,
+        target_glucose_mgdl         REAL,
+        target_glucose_min_mgdl     REAL,
+        target_glucose_max_mgdl     REAL,
+        hypo_threshold_mgdl         REAL,
+        hyper_threshold_mgdl        REAL,
+        icr_blocks_json             TEXT    NOT NULL DEFAULT '[]',
+        isf_blocks_json             TEXT    NOT NULL DEFAULT '[]',
+        insulin_action_duration_hours REAL,
+        insulin_name                TEXT,
+        max_single_bolus_units      REAL,
+        min_bolus_increment         REAL,
+        correction_enabled          INTEGER NOT NULL DEFAULT 0,
+        meal_bolus_enabled          INTEGER NOT NULL DEFAULT 0,
+        iob_enabled                 INTEGER NOT NULL DEFAULT 0,
+        total_daily_insulin_dose_optional REAL
+      )
+    ''');
+
+    // Actual user-confirmed insulin doses (feed IOB).
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS insulin_dose_logs (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        units           REAL    NOT NULL,
+        timestamp       TEXT    NOT NULL,
+        confirmed       INTEGER NOT NULL DEFAULT 0,
+        notes           TEXT,
+        calculation_id  TEXT
+      )
+    ''');
+
+    // Immutable calculation audit log for user review.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS bolus_audit_log (
+        id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+        calculation_id        TEXT    NOT NULL,
+        timestamp             TEXT    NOT NULL,
+        meal_id               INTEGER,
+        carbs_g               REAL    NOT NULL,
+        current_glucose_mgdl  REAL,
+        glucose_unit          TEXT    NOT NULL,
+        target_glucose_mgdl   REAL,
+        icr_used              REAL,
+        isf_used              REAL,
+        meal_bolus_component  REAL    NOT NULL,
+        correction_component  REAL    NOT NULL,
+        iob_component         REAL    NOT NULL,
+        raw_bolus             REAL    NOT NULL,
+        rounded_bolus         REAL    NOT NULL,
+        max_bolus             REAL    NOT NULL,
+        warnings              TEXT    NOT NULL DEFAULT '',
+        settings_version      INTEGER NOT NULL,
+        user_confirmed        INTEGER NOT NULL DEFAULT 0,
+        actual_dose_logged    INTEGER NOT NULL DEFAULT 0,
+        actual_dose_units     REAL,
+        actual_dose_timestamp TEXT
+      )
+    ''');
   }
 
   /// Updates protein/carbs/fat for foods that were seeded before v8.
@@ -3673,6 +3786,177 @@ class DatabaseService {
     );
     if (rows.isEmpty) return null;
     return ScanBenchmark.fromMap(rows.first);
+  }
+
+  // ── Diabetes: Bolus Calculator Mode ───────────────────────────────────────
+  //
+  // Privacy: insulin settings, dose logs and the audit log are sensitive health
+  // data. They are stored only in this local SQLite database and are never
+  // written to logs/console.
+
+  /// Load the single-row insulin settings, or defaults if none saved yet.
+  Future<InsulinSettings> getInsulinSettings() async {
+    final db = await database;
+    final rows = await db.query('diabetes_insulin_settings', limit: 1);
+    if (rows.isEmpty) return const InsulinSettings();
+    return _insulinSettingsFromMap(rows.first);
+  }
+
+  /// Upsert the single-row insulin settings.
+  Future<void> saveInsulinSettings(InsulinSettings s) async {
+    final db = await database;
+    final map = _insulinSettingsToMap(s);
+    final existing = await db.query('diabetes_insulin_settings', limit: 1);
+    if (existing.isEmpty) {
+      await db.insert('diabetes_insulin_settings', map);
+    } else {
+      await db.update(
+        'diabetes_insulin_settings',
+        map,
+        where: 'id = ?',
+        whereArgs: [existing.first['id']],
+      );
+    }
+  }
+
+  Map<String, dynamic> _insulinSettingsToMap(InsulinSettings s) => {
+        'diabetes_enabled': s.diabetesEnabled ? 1 : 0,
+        'uses_insulin': s.usesInsulin ? 1 : 0,
+        'bolus_calculator_enabled': s.bolusCalculatorEnabled ? 1 : 0,
+        'diabetes_type': s.diabetesType.dbValue,
+        'glucose_unit': s.glucoseUnit.dbValue,
+        'uses_cgm': s.usesCgm ? 1 : 0,
+        'uses_pump': s.usesPump ? 1 : 0,
+        'insulin_delivery_method': s.insulinDeliveryMethod.dbValue,
+        'survey_last_completed_at': s.surveyLastCompletedAt?.toIso8601String(),
+        'survey_next_due_at': s.surveyNextDueAt?.toIso8601String(),
+        'survey_snoozed_until': s.surveySnoozedUntil?.toIso8601String(),
+        'user_confirmed_at': s.userConfirmedAt?.toIso8601String(),
+        'settings_version': s.settingsVersion,
+        'created_at': s.createdAt?.toIso8601String(),
+        'updated_at': s.updatedAt?.toIso8601String(),
+        'target_glucose_mgdl': s.targetGlucoseMgdl,
+        'target_glucose_min_mgdl': s.targetGlucoseMinMgdl,
+        'target_glucose_max_mgdl': s.targetGlucoseMaxMgdl,
+        'hypo_threshold_mgdl': s.hypoThresholdMgdl,
+        'hyper_threshold_mgdl': s.hyperThresholdMgdl,
+        'icr_blocks_json':
+            jsonEncode(s.icrBlocks.map((b) => b.toMap()).toList()),
+        'isf_blocks_json':
+            jsonEncode(s.isfBlocks.map((b) => b.toMap()).toList()),
+        'insulin_action_duration_hours': s.insulinActionDurationHours,
+        'insulin_name': s.insulinName,
+        'max_single_bolus_units': s.maxSingleBolusUnits,
+        'min_bolus_increment': s.minBolusIncrement,
+        'correction_enabled': s.correctionEnabled ? 1 : 0,
+        'meal_bolus_enabled': s.mealBolusEnabled ? 1 : 0,
+        'iob_enabled': s.iobEnabled ? 1 : 0,
+        'total_daily_insulin_dose_optional': s.totalDailyInsulinDoseOptional,
+      };
+
+  InsulinSettings _insulinSettingsFromMap(Map<String, dynamic> m) {
+    List<InsulinTimeBlock> blocks(String key) {
+      final raw = m[key] as String?;
+      if (raw == null || raw.isEmpty) return const [];
+      final list = jsonDecode(raw) as List<dynamic>;
+      return list
+          .map((e) => InsulinTimeBlock.fromMap(e as Map<String, dynamic>))
+          .toList();
+    }
+
+    DateTime? dt(String key) {
+      final v = m[key] as String?;
+      return v == null ? null : DateTime.tryParse(v);
+    }
+
+    return InsulinSettings(
+      diabetesEnabled: (m['diabetes_enabled'] as int?) == 1,
+      usesInsulin: (m['uses_insulin'] as int?) == 1,
+      bolusCalculatorEnabled: (m['bolus_calculator_enabled'] as int?) == 1,
+      diabetesType: DiabetesType.fromDbValue(m['diabetes_type'] as String?),
+      glucoseUnit: BgUnit.fromDbValue(m['glucose_unit'] as String?),
+      usesCgm: (m['uses_cgm'] as int?) == 1,
+      usesPump: (m['uses_pump'] as int?) == 1,
+      insulinDeliveryMethod: InsulinDeliveryMethod.fromDbValue(
+          m['insulin_delivery_method'] as String?),
+      surveyLastCompletedAt: dt('survey_last_completed_at'),
+      surveyNextDueAt: dt('survey_next_due_at'),
+      surveySnoozedUntil: dt('survey_snoozed_until'),
+      userConfirmedAt: dt('user_confirmed_at'),
+      settingsVersion: (m['settings_version'] as num?)?.toInt() ?? 1,
+      createdAt: dt('created_at'),
+      updatedAt: dt('updated_at'),
+      targetGlucoseMgdl: (m['target_glucose_mgdl'] as num?)?.toDouble(),
+      targetGlucoseMinMgdl: (m['target_glucose_min_mgdl'] as num?)?.toDouble(),
+      targetGlucoseMaxMgdl: (m['target_glucose_max_mgdl'] as num?)?.toDouble(),
+      hypoThresholdMgdl: (m['hypo_threshold_mgdl'] as num?)?.toDouble(),
+      hyperThresholdMgdl: (m['hyper_threshold_mgdl'] as num?)?.toDouble(),
+      icrBlocks: blocks('icr_blocks_json'),
+      isfBlocks: blocks('isf_blocks_json'),
+      insulinActionDurationHours:
+          (m['insulin_action_duration_hours'] as num?)?.toDouble(),
+      insulinName: m['insulin_name'] as String?,
+      maxSingleBolusUnits: (m['max_single_bolus_units'] as num?)?.toDouble(),
+      minBolusIncrement: (m['min_bolus_increment'] as num?)?.toDouble(),
+      correctionEnabled: (m['correction_enabled'] as int?) == 1,
+      mealBolusEnabled: (m['meal_bolus_enabled'] as int?) == 1,
+      iobEnabled: (m['iob_enabled'] as int?) == 1,
+      totalDailyInsulinDoseOptional:
+          (m['total_daily_insulin_dose_optional'] as num?)?.toDouble(),
+    );
+  }
+
+  /// Insert a user-confirmed insulin dose. Only confirmed doses should be
+  /// passed here; the UI enforces the explicit confirmation checkbox.
+  Future<int> insertInsulinDose(InsulinDoseLog dose) async {
+    final db = await database;
+    return db.insert('insulin_dose_logs', dose.toMap());
+  }
+
+  /// Confirmed doses on/after [since], newest first (used for IOB).
+  Future<List<InsulinDoseLog>> getRecentInsulinDoses(DateTime since) async {
+    final db = await database;
+    final rows = await db.query(
+      'insulin_dose_logs',
+      where: 'confirmed = 1 AND timestamp >= ?',
+      whereArgs: [since.toIso8601String()],
+      orderBy: 'timestamp DESC',
+    );
+    return rows.map(InsulinDoseLog.fromMap).toList();
+  }
+
+  Future<int> insertBolusAudit(BolusAuditRecord record) async {
+    final db = await database;
+    return db.insert('bolus_audit_log', record.toMap());
+  }
+
+  Future<List<BolusAuditRecord>> getBolusAuditLog({int limit = 100}) async {
+    final db = await database;
+    final rows = await db.query(
+      'bolus_audit_log',
+      orderBy: 'timestamp DESC',
+      limit: limit,
+    );
+    return rows.map(BolusAuditRecord.fromMap).toList();
+  }
+
+  /// Attach an actual logged dose to an existing audit record.
+  Future<void> updateBolusAuditActualDose({
+    required String calculationId,
+    required double actualDoseUnits,
+    required DateTime actualDoseTimestamp,
+  }) async {
+    final db = await database;
+    await db.update(
+      'bolus_audit_log',
+      {
+        'actual_dose_logged': 1,
+        'actual_dose_units': actualDoseUnits,
+        'actual_dose_timestamp': actualDoseTimestamp.toIso8601String(),
+      },
+      where: 'calculation_id = ?',
+      whereArgs: [calculationId],
+    );
   }
 
   // ── Grocery list ────────────────────────────────────────────────────────

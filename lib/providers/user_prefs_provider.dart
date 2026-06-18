@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/glucose_unit.dart';
 import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../services/database_service.dart';
@@ -94,6 +95,25 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
 
   Future<void> setIcr(double icrGramsPerUnit) async {
     final prefs = state.copyWith(icrGramsPerUnit: icrGramsPerUnit);
+    await update(prefs);
+  }
+
+  /// Insulin Sensitivity Factor (mg/dL lowered per 1 unit). 0 disables
+  /// correction dosing. Stored canonically in mg/dL.
+  Future<void> setInsulinSensitivityFactor(double isfMgdl) async {
+    final prefs = state.copyWith(insulinSensitivityFactor: isfMgdl);
+    await update(prefs);
+  }
+
+  /// Correction target blood glucose, stored canonically in mg/dL.
+  Future<void> setTargetBloodGlucose(double targetMgdl) async {
+    final prefs = state.copyWith(targetBloodGlucoseMgdl: targetMgdl);
+    await update(prefs);
+  }
+
+  /// Preferred blood-glucose display/input unit (mg/dL or mmol/L).
+  Future<void> setGlucoseUnit(GlucoseUnit unit) async {
+    final prefs = state.copyWith(glucoseUnit: unit);
     await update(prefs);
   }
 

@@ -1,3 +1,4 @@
+import 'glucose_unit.dart';
 import 'mascot_type.dart';
 import 'nutrition_goal.dart';
 
@@ -48,6 +49,18 @@ class UserPreferences {
   /// Used only when [nutritionGoal] == [NutritionGoalType.diabetes].
   final double icrGramsPerUnit;
 
+  /// Insulin Sensitivity Factor (ISF) / correction factor: how much 1 unit of
+  /// rapid-acting insulin lowers blood glucose, stored canonically in mg/dL
+  /// per unit. 0 means "not set". Correction dose = (current BG − target) ÷ ISF.
+  /// Diabetes goal only.
+  final double insulinSensitivityFactor;
+
+  /// Target blood glucose used for correction dosing, stored in mg/dL.
+  final double targetBloodGlucoseMgdl;
+
+  /// Preferred blood-glucose unit for display and input (mg/dL or mmol/L).
+  final GlucoseUnit glucoseUnit;
+
   /// User's current body weight in kg (used for BMR-based calorie targets).
   final double weightKg;
 
@@ -88,6 +101,9 @@ class UserPreferences {
     this.gender = UserGender.preferNotToSay,
     this.fontScale = 1.0,
     this.icrGramsPerUnit = 15.0,
+    this.insulinSensitivityFactor = 0.0,
+    this.targetBloodGlucoseMgdl = 100.0,
+    this.glucoseUnit = GlucoseUnit.mgdl,
     this.weightKg = 70.0,
     this.vacationMode = false,
     this.dailyWaterGoalMl = 2000,
@@ -115,6 +131,9 @@ class UserPreferences {
       'gender': gender.dbValue,
       'font_scale': fontScale,
       'icr_grams_per_unit': icrGramsPerUnit,
+      'insulin_sensitivity_factor': insulinSensitivityFactor,
+      'target_bg_mgdl': targetBloodGlucoseMgdl,
+      'glucose_unit': glucoseUnit.dbValue,
       'weight_kg': weightKg,
       'vacation_mode': vacationMode ? 1 : 0,
       'daily_water_goal_ml': dailyWaterGoalMl,
@@ -145,6 +164,11 @@ class UserPreferences {
       gender: UserGender.fromDbValue(map['gender'] as String?),
       fontScale: (map['font_scale'] as num?)?.toDouble() ?? 1.0,
       icrGramsPerUnit: (map['icr_grams_per_unit'] as num?)?.toDouble() ?? 15.0,
+      insulinSensitivityFactor:
+          (map['insulin_sensitivity_factor'] as num?)?.toDouble() ?? 0.0,
+      targetBloodGlucoseMgdl:
+          (map['target_bg_mgdl'] as num?)?.toDouble() ?? 100.0,
+      glucoseUnit: GlucoseUnit.fromDbValue(map['glucose_unit'] as String?),
       weightKg: (map['weight_kg'] as num?)?.toDouble() ?? 70.0,
       vacationMode: (map['vacation_mode'] as int?) == 1,
       dailyWaterGoalMl: (map['daily_water_goal_ml'] as int?) ?? 2000,
@@ -172,6 +196,9 @@ class UserPreferences {
     UserGender? gender,
     double? fontScale,
     double? icrGramsPerUnit,
+    double? insulinSensitivityFactor,
+    double? targetBloodGlucoseMgdl,
+    GlucoseUnit? glucoseUnit,
     double? weightKg,
     bool? vacationMode,
     int? dailyWaterGoalMl,
@@ -197,6 +224,11 @@ class UserPreferences {
       gender: gender ?? this.gender,
       fontScale: fontScale ?? this.fontScale,
       icrGramsPerUnit: icrGramsPerUnit ?? this.icrGramsPerUnit,
+      insulinSensitivityFactor:
+          insulinSensitivityFactor ?? this.insulinSensitivityFactor,
+      targetBloodGlucoseMgdl:
+          targetBloodGlucoseMgdl ?? this.targetBloodGlucoseMgdl,
+      glucoseUnit: glucoseUnit ?? this.glucoseUnit,
       weightKg: weightKg ?? this.weightKg,
       vacationMode: vacationMode ?? this.vacationMode,
       dailyWaterGoalMl: dailyWaterGoalMl ?? this.dailyWaterGoalMl,

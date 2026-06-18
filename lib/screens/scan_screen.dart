@@ -63,7 +63,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   double _ambientLux = -1.0;
   int _pitchTickCounter = 0;
 
-  static const _maxRecordDuration = Duration(seconds: 5);
+  /// The native recorder keeps 20 frames at ~10 fps, so the user-facing sweep
+  /// must also be a ~2 second top-to-side motion. This keeps the visual UX,
+  /// captured frames, 3-D reconstruction, and volume calculation aligned.
+  static const _maxRecordDuration = Duration(seconds: 2);
   static const _minRecordDuration = Duration(milliseconds: 1600);
   static const _timerInterval = Duration(milliseconds: 80);
 
@@ -157,7 +160,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         _detectedDepthMode = await _bridge.getDepthMode();
         DebugLog.instance.log('Scan', 'Depth mode: $_detectedDepthMode');
       } catch (_) {
-        _detectedDepthMode = 'plate_fallback';
+        _detectedDepthMode = 'monocular_scale';
       }
 
       // ── 4. Upgrade to depth config in the background ──────────────────
@@ -332,8 +335,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       return;
     }
 
-    // Recording stops automatically when the phone reaches vertical (side-view).
-    // The max-duration timer is a safety limit only.
+    // Recording stops automatically when the phone reaches vertical (side-view)
+    // or at the 2-second native frame budget. The user should move in one
+    // smooth line from top view to side view during this window.
     final totalTicks =
         _maxRecordDuration.inMilliseconds ~/ _timerInterval.inMilliseconds;
     var tick = 0;
@@ -587,7 +591,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
           // ── Guidance overlay ─────────────────────────────────────────
           ScanGuidanceOverlay(
-              scanState: scanState, currentPitch: _currentPitch),
+              scanState: scanState,
+              currentPitch: _currentPitch,
+              scanMode: _detectedDepthMode),
 
           if (scanState == ScanState.calculating)
             Positioned(
@@ -811,7 +817,11 @@ class _BottomPanel extends StatelessWidget {
 
           // ── Processing ────────────────────────────────────────────
           if (scanState == ScanState.calculating) ...[
-            const _ProcessingIndicator(text: 'Building 3-D model…'),
+            _ProcessingIndicator(
+              text: depthMode == 'monocular_scale'
+                  ? 'Generating estimated 3-D model…'
+                  : 'Building LiDAR 3-D model…',
+            ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: onClose,
