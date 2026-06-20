@@ -779,9 +779,23 @@ class _BottomPanel extends StatelessWidget {
   final VoidCallback? onViewDetails;
 
   String _scanErrorTitle(AppLocalizations l10n) {
+    if (scanState == ScanState.depthFailed) {
+      return l10n.cameraSessionFailedTitle;
+    }
     return scanResult.failureKind == ScanFailureKind.reconstructionFailed
         ? l10n.scan3dFailed
         : l10n.scanAnalysisFailed;
+  }
+
+  String _scanErrorBody(AppLocalizations l10n) {
+    switch (scanState) {
+      case ScanState.depthFailed:
+        return l10n.cameraSessionFailedBody;
+      case ScanState.modelFailed:
+        return l10n.scanModelErrorBody;
+      default:
+        return scanState.label;
+    }
   }
 
   @override
@@ -961,7 +975,7 @@ class _BottomPanel extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              isNoFood ? l10n.noFoodDetectedBody : scanState.label,
+              isNoFood ? l10n.noFoodDetectedBody : _scanErrorBody(l10n),
               style: const TextStyle(color: Colors.white70, fontSize: 13),
               textAlign: TextAlign.center,
             ),

@@ -2556,6 +2556,38 @@ class AppLocalizations {
         'de': '3D-Scan fehlgeschlagen. Bitte erneut scannen.',
       });
 
+  String get cameraSessionFailedTitle => _t({
+        'en': 'Camera unavailable',
+        'pl': 'Kamera niedostępna',
+        'nl': 'Camera niet beschikbaar',
+        'es': 'Cámara no disponible',
+        'de': 'Kamera nicht verfügbar',
+      });
+
+  String get cameraSessionFailedBody => _t({
+        'en':
+            "We couldn't start the camera. Check app permissions and try again.",
+        'pl':
+            'Nie udało się uruchomić kamery. Sprawdź uprawnienia aplikacji i spróbuj ponownie.',
+        'nl':
+            'We konden de camera niet starten. Controleer de app-machtigingen en probeer het opnieuw.',
+        'es':
+            'No pudimos iniciar la cámara. Revisa los permisos de la app e inténtalo de nuevo.',
+        'de':
+            'Die Kamera konnte nicht gestartet werden. Überprüfe die App-Berechtigungen und versuche es erneut.',
+      });
+
+  String get scanModelErrorBody => _t({
+        'en': 'Analysis error. Tap Scan Again to retry.',
+        'pl':
+            'Błąd analizy. Dotknij „Skanuj ponownie", aby spróbować ponownie.',
+        'nl':
+            'Analysefout. Tik op Opnieuw scannen om het nogmaals te proberen.',
+        'es': 'Error de análisis. Toca Escanear de nuevo para reintentar.',
+        'de':
+            'Analysefehler. Tippe auf „Erneut scannen", um es erneut zu versuchen.',
+      });
+
   String get scanErrorCopyTitle => _t({
         'en': 'Error - tap and hold to copy',
         'pl': 'Błąd - dotknij i przytrzymaj, aby skopiować',
