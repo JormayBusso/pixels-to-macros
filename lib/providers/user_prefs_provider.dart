@@ -34,6 +34,8 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     UserGender gender = UserGender.preferNotToSay,
     double icrGramsPerUnit = 0.0,
     double weightKg = 70.0,
+    double heightCm = 170.0,
+    MuscleMassLevel muscleMassLevel = MuscleMassLevel.average,
   }) async {
     final prefs = state.copyWith(
       name: name,
@@ -46,6 +48,8 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
       gender: gender,
       icrGramsPerUnit: icrGramsPerUnit,
       weightKg: weightKg,
+      heightCm: heightCm,
+      muscleMassLevel: muscleMassLevel,
     );
     await update(prefs);
   }

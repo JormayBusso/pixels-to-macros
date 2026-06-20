@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
 import '../models/custom_meal.dart';
+import '../models/dietary_restriction.dart';
 import '../models/food_data.dart';
-import '../models/nutrition_goal.dart';
 import '../models/scan_result.dart';
 import '../models/serving_config.dart';
 import '../providers/daily_intake_provider.dart';
@@ -14,7 +14,9 @@ import '../providers/history_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/barcode_lookup_service.dart';
 import '../services/database_service.dart';
+import '../services/food_scoring_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/food_score_badge.dart';
 import 'create_meal_screen.dart';
 
 /// Manual food entry — pick from the food DB, scan a barcode, or enter grams.
@@ -253,7 +255,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     }
   }
 
-
   // ── Barcode scanning ────────────────────────────────────────────────────
 
   Future<void> _openBarcodeScanner() async {
@@ -359,45 +360,36 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     }
   }
 
-  /// Compute a 0-100 health score for a barcode food.
-  /// Based on: low sat-fat/sugars/sodium = good; high fiber/protein/vitamins = good.
-  int _healthScore(FoodData food) {
-    double score = 50; // start neutral
-
-    // Good contributors (add points)
-    score += (food.fiberPer100g * 4).clamp(0, 20); // fiber: up to +20
-    score += (food.proteinPer100g * 0.5).clamp(0, 15); // protein: up to +15
-    score += ((food.vitaminCMgPer100g / 90) * 5).clamp(0, 5); // vit C
-    score += ((food.calciumMgPer100g / 1000) * 5).clamp(0, 5); // calcium
-
-    // Bad contributors (subtract points)
-    score -= (food.sugarsPer100g * 0.8).clamp(0, 25); // sugars: up to -25
-    score -=
-        (food.saturatedFatPer100g * 1.5).clamp(0, 20); // sat fat: up to -20
-    score -=
-        ((food.sodiumMgPer100g / 2300) * 15).clamp(0, 15); // sodium: up to -15
-    if (food.kcalPer100g > 400) score -= 10; // dense energy penalty
-
-    return score.round().clamp(0, 100);
+  List<DietaryRestriction> _restrictionMatchesForFood(
+    FoodData food,
+    Set<DietaryRestriction> restrictions,
+  ) {
+    if (restrictions.isEmpty) return const <DietaryRestriction>[];
+    final text = '${food.label} ${food.category}';
+    return restrictions
+        .where((restriction) => restriction.matchesText(text))
+        .toList(growable: false);
   }
 
   Future<void> _showBarcodeHealthSheet({
     required FoodData food,
     double? servingGrams,
   }) {
-    final score = _healthScore(food);
+    final prefs = ref.read(userPrefsProvider);
+    final explanation = FoodScoringService.scoreFood(
+      food,
+      goal: prefs.nutritionGoal,
+    );
+    final score = explanation.score;
     final Color scoreColor;
-    final String label;
     if (score >= 70) {
       scoreColor = const Color(0xFF388E3C);
-      label = 'Healthy';
     } else if (score >= 40) {
       scoreColor = const Color(0xFFF57C00);
-      label = 'Moderate';
     } else {
       scoreColor = const Color(0xFFD32F2F);
-      label = 'Unhealthy';
     }
+    final l10n = AppLocalizations.of(context);
     return showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -433,11 +425,21 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
             // ── Health score bar ──────────────────────────────────────
             Row(
               children: [
-                const Text('Unhealthy',
-                    style: TextStyle(fontSize: 10, color: AppTheme.gray400)),
+                Text(
+                  l10n.foodScoreTitle('needsBalancing'),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.gray400,
+                  ),
+                ),
                 const Spacer(),
-                const Text('Healthy',
-                    style: TextStyle(fontSize: 10, color: AppTheme.gray400)),
+                Text(
+                  l10n.foodScoreTitle('excellentFit'),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.gray400,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 4),
@@ -497,7 +499,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                     color: scoreColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(label,
+                  child: Text(l10n.foodScoreTitle(explanation.titleKey),
                       style: TextStyle(
                           color: scoreColor,
                           fontWeight: FontWeight.w700,
@@ -505,13 +507,15 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            FoodScoreBadge(explanation: explanation),
             const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.of(ctx).pop(),
-                    child: const Text('Cancel'),
+                    child: Text(l10n.cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -550,8 +554,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   Widget build(BuildContext context) {
     final calPreview = _caloriePreview();
     final prefs = ref.watch(userPrefsProvider);
-    final isDiabetic = prefs.nutritionGoal == NutritionGoalType.diabetes;
-    final icr = prefs.icrGramsPerUnit;
+    final restrictions = prefs.dietaryRestrictions;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -666,6 +670,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                             final isSelected =
                                 _selectedLabels.contains(food.label);
                             final isActive = _activeFood?.label == food.label;
+                            final restrictionMatches =
+                                _restrictionMatchesForFood(food, restrictions);
                             return Card(
                               color: isActive
                                   ? context.primary50
@@ -682,15 +688,37 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                                         : FontWeight.w500,
                                   ),
                                 ),
-                                subtitle: Text(
-                                  isDiabetic && food.bolusPer100(icr) != null
-                                      ? '${food.kcalPer100g.round()} kcal / ${food.unitLabel}  •  '
-                                          '${food.bolusPer100(icr)!.toStringAsFixed(1)} u insulin'
-                                      : '${food.kcalPer100g.round()} kcal / ${food.unitLabel}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.gray400,
-                                  ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${food.kcalPer100g.round()} kcal / ${food.unitLabel}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.gray400,
+                                      ),
+                                    ),
+                                    if (restrictionMatches.isNotEmpty)
+                                      Text(
+                                        '${l10n.restrictionAlert}: ${restrictionMatches.map((restriction) => l10n.dietaryRestrictionShortLabel(restriction.name)).join(', ')}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.amber.shade800,
+                                        ),
+                                      ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: FoodScoreBadge(
+                                        explanation:
+                                            FoodScoringService.scoreFood(
+                                          food,
+                                          goal: prefs.nutritionGoal,
+                                        ),
+                                        compact: true,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 trailing: isSelected
                                     ? Icon(Icons.check_circle,
@@ -763,29 +791,31 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                                             color: context.primary700,
                                           ),
                                         ),
-                                      if (isDiabetic &&
-                                          _activeFood != null) ...[
-                                        Builder(builder: (ctx) {
-                                          final grams = double.tryParse(
-                                                  _portionCtrl.text) ??
-                                              0;
-                                          final bolus = _activeFood!
-                                              .bolusForGrams(grams, icr);
-                                          if (bolus == null || bolus <= 0)
-                                            return const SizedBox.shrink();
-                                          return Text(
-                                            '💉 ${bolus.toStringAsFixed(1)} u',
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color(0xFF1976D2),
-                                            ),
-                                          );
-                                        }),
-                                      ],
                                     ],
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: 12),
+                              if (_restrictionMatchesForFood(
+                                      _activeFood!, restrictions)
+                                  .isNotEmpty) ...[
+                                _ManualRestrictionAlert(
+                                  alerts: _restrictionMatchesForFood(
+                                          _activeFood!, restrictions)
+                                      .map((restriction) =>
+                                          l10n.restrictionItemAlert(
+                                            _activeFood!.label,
+                                            restriction.name,
+                                          ))
+                                      .toList(),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              FoodScoreBadge(
+                                explanation: FoodScoringService.scoreFood(
+                                  _activeFood!,
+                                  goal: prefs.nutritionGoal,
+                                ),
                               ),
                               const SizedBox(height: 12),
 
@@ -993,6 +1023,43 @@ class _ServingPicker extends StatelessWidget {
   }
 }
 
+class _ManualRestrictionAlert extends StatelessWidget {
+  const _ManualRestrictionAlert({required this.alerts});
+  final List<String> alerts;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.amber.shade300),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded,
+              size: 18, color: Colors.amber.shade800),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              alerts.join('\n'),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.gray700,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Portion chip ────────────────────────────────────────────────────────────
 
 class _PortionChip extends StatelessWidget {
@@ -1101,6 +1168,7 @@ class _MealsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final restrictions = ref.watch(userPrefsProvider).dietaryRestrictions;
     if (meals.isEmpty) {
       return Center(
         child: Column(
@@ -1164,12 +1232,11 @@ class _MealsTab extends ConsumerWidget {
           final carbsPer100 = carbsMap[ing.foodLabel] ?? 0.0;
           return sum + carbsPer100 * ing.grams / 100.0;
         });
-        final prefs = ref.watch(userPrefsProvider);
-        final isDiabetic = prefs.nutritionGoal == NutritionGoalType.diabetes;
-        final icr = prefs.icrGramsPerUnit;
-        final bolus = (isDiabetic && totalCarbs > 0 && icr > 0)
-            ? (totalCarbs / icr * 10).round() / 10
-            : null;
+        final restrictionMatches = restrictions.where((restriction) {
+          return meal.ingredients.any(
+            (ingredient) => restriction.matchesText(ingredient.foodLabel),
+          );
+        }).toList(growable: false);
         sections.add(
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
@@ -1178,12 +1245,24 @@ class _MealsTab extends ConsumerWidget {
                 contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
                 title: Text(meal.name,
                     style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: Text(
-                  '${meal.ingredients.length} ingredient${meal.ingredients.length == 1 ? '' : 's'}  •  ${totalKcal.round()} kcal' +
-                      (bolus != null
-                          ? '  •  ${totalCarbs.toStringAsFixed(1)} g  •  ${bolus.toStringAsFixed(1)} u'
-                          : ''),
-                  style: const TextStyle(fontSize: 12),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${meal.ingredients.length} ingredient${meal.ingredients.length == 1 ? '' : 's'}  •  ${totalKcal.round()} kcal'
+                      '${totalCarbs > 0 ? '  •  ${totalCarbs.toStringAsFixed(1)} g carbs' : ''}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    if (restrictionMatches.isNotEmpty)
+                      Text(
+                        'Alert: ${restrictionMatches.map((restriction) => restriction.shortLabel).join(', ')}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.amber.shade800,
+                        ),
+                      ),
+                  ],
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,

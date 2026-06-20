@@ -191,6 +191,14 @@ final _kSteps = [
     tab: 3,
     navItemIndex: 3,
   ),
+  // 14 – Planner tab
+  _Step(
+    title: 'Planner 🗓️',
+    body:
+        'Build a weekly meal plan from goal-matched recipes, then shuffle individual meals when you want more variety.',
+    tab: 4,
+    navItemIndex: 4,
+  ),
   // 15 – Settings tab
   _Step(
     title: 'Settings ⚙️',
@@ -380,8 +388,8 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
                 child: TextButton(
                   onPressed: _skip,
                   child: Text(l10n.skip,
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 14)),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 14)),
                 ),
               ),
             ),

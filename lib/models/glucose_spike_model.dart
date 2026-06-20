@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
-/// Two-compartment glucose spike prediction model.
+/// Educational glucose-spike risk estimate.
 ///
-/// Estimates the post-prandial blood glucose curve for a meal based on:
+/// Estimates a plausible post-prandial glucose-rise shape for a meal based on:
 /// - Net carbohydrates (total carbs − fiber)
 /// - Glycemic index (GI) of each food item
 /// - Protein (slows gastric emptying)
@@ -11,15 +11,18 @@ import 'dart:math' as math;
 ///
 /// Returns a list of (minute, mg/dL delta) points from t=0..180 min.
 ///
-/// **DISCLAIMER**: This is an educational estimate, NOT medical advice.
-/// Individual responses vary widely. Always consult your healthcare provider.
+/// This is not a validated clinical prediction model. Individual responses vary
+/// by diabetes type, medication, insulin timing, exercise, illness, stress,
+/// menstrual cycle, gastroparesis, sleep, and many other factors. Treat it as a
+/// meal-quality warning aid only; CGM/fingerstick data and clinician-set insulin
+/// settings remain the source of truth.
 class GlucoseSpikeModel {
   GlucoseSpikeModel._();
 
-  /// Predict the glucose delta curve for a meal.
+  /// Estimate the glucose delta curve for a meal.
   ///
   /// [mealItems] — list of (netCarbsG, gi, proteinG, fatG, fiberG) tuples.
-  /// Returns 181 points (minute 0 to 180), each a predicted mg/dL rise above
+  /// Returns 181 points (minute 0 to 180), each an estimated mg/dL rise above
   /// fasting baseline.
   static List<double> predict(List<MealItemInput> mealItems) {
     if (mealItems.isEmpty) return List.filled(181, 0);
@@ -54,8 +57,8 @@ class GlucoseSpikeModel {
     final peakMin = basePeakMin + fatDelay + proteinDelay + fiberDelay;
 
     // ── Peak magnitude estimation ──
-    // Simple linear model: Δglucose ≈ netCarbs × GI / 100 × sensitivity
-    // Average sensitivity ~3.5 mg/dL per gram of "glycemic carbs".
+    // Simple educational heuristic: Δglucose ≈ netCarbs × GI / 100 × sensitivity.
+    // This is intentionally capped and should not be used for dosing decisions.
     const sensitivity = 3.5;
     final glycemicCarbs = totalNetCarbs * mealGI / 100;
     double rawPeak = glycemicCarbs * sensitivity;
@@ -75,7 +78,8 @@ class GlucoseSpikeModel {
     final curve = List<double>.generate(181, (t) {
       if (t == 0) return 0;
       final ratio = t / peakMin;
-      final value = peakMgDl * math.pow(ratio, alpha) * math.exp(alpha * (1 - ratio));
+      final value =
+          peakMgDl * math.pow(ratio, alpha) * math.exp(alpha * (1 - ratio));
       return value.clamp(0.0, 160.0);
     });
 

@@ -3,9 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
 import '../providers/analytics_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
+import 'progress_story_screen.dart';
 
 /// Analytics tab.
 ///
@@ -51,13 +53,21 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final proteinTarget = prefs.dailyProteinTargetG.toDouble();
     final carbsTarget = prefs.dailyCarbLimitG.toDouble();
     final fatTarget = prefs.dailyFatTargetG.toDouble();
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Analytics'),
+        title: Text(l10n.analytics),
         actions: [
           IconButton(
-            tooltip: 'Refresh',
+            tooltip: l10n.progressStoryTitle,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProgressStoryScreen()),
+            ),
+            icon: const Icon(Icons.auto_stories_outlined),
+          ),
+          IconButton(
+            tooltip: l10n.refresh,
             onPressed: _load,
             icon: const Icon(Icons.refresh),
           ),
@@ -146,8 +156,7 @@ class _RangeSelector extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color:
-                        selected ? context.primary600 : AppTheme.gray500,
+                    color: selected ? context.primary600 : AppTheme.gray500,
                   ),
                 ),
               ),
@@ -183,7 +192,8 @@ class _CalorieTrendCard extends StatelessWidget {
         child: const SizedBox(
           height: 160,
           child: Center(
-            child: Text('No data yet', style: TextStyle(color: AppTheme.gray400)),
+            child:
+                Text('No data yet', style: TextStyle(color: AppTheme.gray400)),
           ),
         ),
       );
@@ -375,8 +385,7 @@ class _CaloriesLinePainter extends CustomPainter {
       final guidePaint = Paint()
         ..color = primary.withValues(alpha: 0.25)
         ..strokeWidth = 1;
-      canvas.drawLine(
-          Offset(p.dx, padT), Offset(p.dx, padT + h), guidePaint);
+      canvas.drawLine(Offset(p.dx, padT), Offset(p.dx, padT + h), guidePaint);
     }
   }
 
@@ -436,9 +445,7 @@ class _StatTilesGrid extends StatelessWidget {
                   ? Icons.trending_up
                   : Icons.trending_down,
           label: 'Recent trend',
-          value: trend == null
-              ? '—'
-              : '${trend.abs().toStringAsFixed(1)}%',
+          value: trend == null ? '—' : '${trend.abs().toStringAsFixed(1)}%',
           unit: trend == null
               ? ''
               : trend > 0
@@ -674,14 +681,13 @@ class _MacroBar extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               ),
             ),
             Text(
               '${grams.round()}g${target > 0 ? ' / ${target.round()}g' : ''}',
-              style: const TextStyle(
-                  fontSize: 11, color: AppTheme.gray500),
+              style: const TextStyle(fontSize: 11, color: AppTheme.gray500),
             ),
           ],
         ),
@@ -798,7 +804,10 @@ class _WeekdayPatternCard extends StatelessWidget {
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
                           colors: overGoal
-                              ? [AppTheme.amber500, AppTheme.amber500.withValues(alpha: 0.5)]
+                              ? [
+                                  AppTheme.amber500,
+                                  AppTheme.amber500.withValues(alpha: 0.5)
+                                ]
                               : [
                                   context.primary500,
                                   context.primary300,
@@ -862,8 +871,7 @@ class _InsightCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome,
-                  size: 16, color: context.primary600),
+              Icon(Icons.auto_awesome, size: 16, color: context.primary600),
               const SizedBox(width: 6),
               Text(
                 'Insights',
@@ -916,17 +924,21 @@ class _InsightCard extends StatelessWidget {
       m.add(
           'You logged only ${(consistency * 100).round()}% of days. Scanning more often makes these analytics much more accurate.');
     } else if (consistency >= 0.85) {
-      m.add('Excellent consistency — you logged ${state.loggedDays} of ${state.days.length} days. Trends here are reliable.');
+      m.add(
+          'Excellent consistency — you logged ${state.loggedDays} of ${state.days.length} days. Trends here are reliable.');
     }
 
     if (goal > 0 && avg > 0) {
       final delta = avg - goal;
       if (delta.abs() < goal * 0.05) {
-        m.add('Your daily average matches your goal almost exactly. Nice work staying on plan.');
+        m.add(
+            'Your daily average matches your goal almost exactly. Nice work staying on plan.');
       } else if (delta > 0) {
-        m.add('You\'re averaging ${delta.round()} kcal/day over your ${goal.round()} kcal goal. If your goal is fat-loss, drop ~${(delta * 0.7).round()} kcal of fast carbs first.');
+        m.add(
+            'You\'re averaging ${delta.round()} kcal/day over your ${goal.round()} kcal goal. If your goal is fat-loss, drop ~${(delta * 0.7).round()} kcal of fast carbs first.');
       } else {
-        m.add('You\'re ${(-delta).round()} kcal/day under your ${goal.round()} kcal goal. If you\'re tired, add a protein-rich snack.');
+        m.add(
+            'You\'re ${(-delta).round()} kcal/day under your ${goal.round()} kcal goal. If you\'re tired, add a protein-rich snack.');
       }
     }
 
@@ -941,7 +953,8 @@ class _InsightCard extends StatelessWidget {
     if (macroCal > 0) {
       final pPct = (macros.protein * 4) / macroCal;
       if (pPct < 0.18) {
-        m.add('Protein is only ${(pPct * 100).round()}% of your average intake. Aim for 20–30% for satiety and muscle support.');
+        m.add(
+            'Protein is only ${(pPct * 100).round()}% of your average intake. Aim for 20–30% for satiety and muscle support.');
       }
     }
     return m;
@@ -988,9 +1001,7 @@ class _DayBreakdownCard extends StatelessWidget {
                           value: pct.clamp(0.0, 1.0),
                           minHeight: 10,
                           backgroundColor: AppTheme.gray100,
-                          color: over
-                              ? AppTheme.amber500
-                              : context.primary500,
+                          color: over ? AppTheme.amber500 : context.primary500,
                         ),
                       ),
                       if (d.scanCount > 0)

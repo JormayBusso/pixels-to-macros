@@ -1,14 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:pixels_to_macros/models/dietary_restriction.dart';
 import 'package:pixels_to_macros/models/nutrition_goal.dart';
 import 'package:pixels_to_macros/models/recipe.dart';
 import 'package:pixels_to_macros/services/recipe_repository.dart';
+import 'package:pixels_to_macros/services/recipe_swap_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Goal-specific recipe filtering', () {
-    test('Every goal returns only goal-tagged recipes', () async {
+    test('Every goal returns recipes eligible for that goal', () async {
       for (final goal in NutritionGoalType.values) {
         final recipes = await RecipeRepository.instance.query(
           goal: goal,
@@ -18,12 +20,128 @@ void main() {
         expect(recipes, isNotEmpty,
             reason: 'No recipes found for ${goal.name}');
         for (final recipe in recipes) {
+          if (goal == NutritionGoalType.pescatarian) {
+            expect(
+              recipe.goals.contains(goal) || _isDerivedPescatarian(recipe),
+              isTrue,
+              reason: '${recipe.id} is not pescatarian eligible',
+            );
+            continue;
+          }
+          if (goal == NutritionGoalType.mediterranean) {
+            expect(
+              recipe.goals.contains(goal) || _isDerivedMediterranean(recipe),
+              isTrue,
+              reason: '${recipe.id} is not Mediterranean eligible',
+            );
+            continue;
+          }
           expect(
             recipe.goals.contains(goal),
             isTrue,
             reason: '${recipe.id} is not tagged for ${goal.name}',
           );
         }
+      }
+    });
+
+    test('Pescatarian derived recipes reject meat terms', () async {
+      final recipes = await RecipeRepository.instance.query(
+        goal: NutritionGoalType.pescatarian,
+        limit: 2000,
+      );
+
+      expect(recipes, isNotEmpty, reason: 'No pescatarian recipes found');
+      for (final recipe in recipes) {
+        expect(
+          _containsAnyTerm(recipe, _meatTerms),
+          isFalse,
+          reason: '${recipe.name} contains meat terms',
+        );
+      }
+    });
+
+    test('Mediterranean derived recipes avoid processed meat and excess sugar',
+        () async {
+      final recipes = await RecipeRepository.instance.query(
+        goal: NutritionGoalType.mediterranean,
+        limit: 2000,
+      );
+
+      expect(recipes, isNotEmpty, reason: 'No Mediterranean recipes found');
+      for (final recipe in recipes) {
+        expect(
+          _containsAnyTerm(recipe, _processedMeatTerms),
+          isFalse,
+          reason: '${recipe.name} contains processed meat terms',
+        );
+        expect(
+          recipe.sugarPerServing(recipe.servings) <= 24,
+          isTrue,
+          reason: '${recipe.name} has too much sugar per serving',
+        );
+      }
+    });
+
+    test('Breakfast and lunch filters avoid dinner-like mismatches', () async {
+      final breakfasts = await RecipeRepository.instance.query(
+        mealType: RecipeMealType.breakfast,
+        limit: 2000,
+      );
+      final lunches = await RecipeRepository.instance.query(
+        mealType: RecipeMealType.lunch,
+        limit: 2000,
+      );
+
+      expect(breakfasts, isNotEmpty, reason: 'No breakfast recipes found');
+      expect(lunches, isNotEmpty, reason: 'No lunch recipes found');
+
+      for (final recipe in breakfasts) {
+        expect(
+          _containsAnyTerm(recipe, _dinnerLikeBreakfastTerms),
+          isFalse,
+          reason: '${recipe.name} looks dinner-like for breakfast',
+        );
+      }
+      for (final recipe in lunches) {
+        expect(recipe.caloriesPerServing(recipe.servings) <= 850, isTrue);
+        if (_containsAnyTerm(recipe, _heavyDinnerTerms)) {
+          expect(
+            _containsAnyTerm(recipe, _lunchAnchorTerms),
+            isTrue,
+            reason:
+                '${recipe.name} is a heavy dinner-like lunch without a lunch anchor',
+          );
+        }
+      }
+    });
+
+    test('Dietary restriction filters remove matching recipes', () async {
+      final dairyFree = await RecipeRepository.instance.query(
+        dietaryRestrictions: {DietaryRestriction.dairyFree},
+        limit: 2000,
+      );
+      final nutFree = await RecipeRepository.instance.query(
+        dietaryRestrictions: {DietaryRestriction.nutFree},
+        limit: 2000,
+      );
+
+      expect(dairyFree, isNotEmpty, reason: 'No dairy-free recipes returned');
+      expect(nutFree, isNotEmpty, reason: 'No nut-free recipes returned');
+
+      for (final recipe in dairyFree) {
+        expect(
+          _containsAnyTerm(recipe, DietaryRestriction.dairyFree.triggerTerms),
+          isFalse,
+          reason: '${recipe.name} contains dairy terms',
+        );
+      }
+      for (final recipe in nutFree) {
+        expect(
+          _containsAnyTerm(recipe, DietaryRestriction.nutFree.triggerTerms),
+          isFalse,
+          reason: '${recipe.name} contains nut terms',
+        );
       }
     });
 
@@ -217,6 +335,100 @@ void main() {
       }
     });
   });
+
+  group('Smart Swap', () {
+    test('pantry-first intent prefers recipes using available ingredients', () {
+      final current = _recipe(id: 'current', name: 'Current Bowl');
+      final pantryRecipe = _recipe(
+        id: 'pantry',
+        name: 'Lentil Pantry Bowl',
+        ingredients: const ['lentils', 'tomato', 'spinach'],
+        healthScore: 70,
+      );
+      final otherRecipe = _recipe(
+        id: 'other',
+        name: 'Good Rice Bowl',
+        ingredients: const ['rice', 'pepper'],
+        healthScore: 82,
+      );
+
+      final picked = RecipeSwapService.pickBestSwap(
+        current: current,
+        candidates: [current, pantryRecipe, otherRecipe],
+        intent: SmartSwapIntent.pantryFirst,
+        goal: NutritionGoalType.maintain,
+        pantryNames: {'lentils'},
+      );
+
+      expect(picked?.id, 'pantry');
+    });
+
+    test('lower-carb intent prefers lower carb candidates', () {
+      final highCarb = _recipe(
+        id: 'high-carb',
+        name: 'Rice Plate',
+        carbsG: 90,
+        fiberG: 2,
+        glycemicLoad: 28,
+      );
+      final lowerCarb = _recipe(
+        id: 'lower-carb',
+        name: 'Egg Salad',
+        carbsG: 14,
+        fiberG: 5,
+        glycemicLoad: 4,
+      );
+
+      final picked = RecipeSwapService.pickBestSwap(
+        current: null,
+        candidates: [highCarb, lowerCarb],
+        intent: SmartSwapIntent.lowerCarb,
+        goal: NutritionGoalType.diabetes,
+        pantryNames: const {},
+      );
+
+      expect(picked?.id, 'lower-carb');
+    });
+  });
+}
+
+Recipe _recipe({
+  required String id,
+  required String name,
+  List<String> ingredients = const ['tomato', 'spinach'],
+  int calories = 500,
+  double proteinG = 30,
+  double carbsG = 45,
+  double fatG = 18,
+  double fiberG = 6,
+  double sugarG = 5,
+  int healthScore = 60,
+  int minutes = 25,
+  double glycemicLoad = 8,
+}) {
+  return Recipe(
+    id: id,
+    name: name,
+    image: null,
+    mealType: RecipeMealType.lunch,
+    goals: const {NutritionGoalType.maintain},
+    minutes: minutes,
+    servings: 1,
+    calories: calories,
+    proteinG: proteinG,
+    carbsG: carbsG,
+    fatG: fatG,
+    fiberG: fiberG,
+    sugarG: sugarG,
+    tags: const [],
+    ingredients: ingredients
+        .map((name) => RecipeIngredient(name: name, amount: name, grams: 100))
+        .toList(),
+    steps: const ['Mix and serve.'],
+    source: 'test',
+    healthScore: healthScore,
+    glycemicLoad: glycemicLoad,
+  );
 }
 
 const _meatSeafoodTerms = <String>[
@@ -250,6 +462,102 @@ const _meatSeafoodTerms = <String>[
   'wurst',
 ];
 
+const _meatTerms = <String>[
+  'beef',
+  'steak',
+  'pork',
+  'bacon',
+  'ham',
+  'chicken',
+  'turkey',
+  'duck',
+  'lamb',
+  'veal',
+  'sausage',
+  'salami',
+  'prosciutto',
+  'chorizo',
+  'pancetta',
+  'gelatin',
+  'gelatine',
+  'schinken',
+  'wurst',
+];
+
+const _processedMeatTerms = <String>[
+  'bacon',
+  'ham',
+  'salami',
+  'sausage',
+  'prosciutto',
+  'chorizo',
+  'pancetta',
+  'schinken',
+  'wurst',
+  'jamón',
+  'jamon',
+];
+
+const _mediterraneanAnchorTerms = <String>[
+  'olive oil',
+  'olives',
+  'tomato',
+  'lentil',
+  'bean',
+  'chickpea',
+  'hummus',
+  'fish',
+  'salmon',
+  'tuna',
+  'sardine',
+  'whole grain',
+  'vegetable',
+  'spinach',
+  'eggplant',
+  'zucchini',
+];
+
+const _dinnerLikeBreakfastTerms = <String>[
+  'curry',
+  'stew',
+  'roast',
+  'steak',
+  'burger',
+  'pasta',
+  'noodle',
+  'risotto',
+  'stir fry',
+  'stir-fry',
+  'casserole',
+  'lasagne',
+  'lasagna',
+  'ragu',
+  'ragout',
+  'chili',
+];
+
+const _heavyDinnerTerms = <String>[
+  'roast',
+  'braised',
+  'casserole',
+  'lasagne',
+  'lasagna',
+  'stew',
+  'ragu',
+  'ragout',
+];
+
+const _lunchAnchorTerms = <String>[
+  'salad',
+  'wrap',
+  'sandwich',
+  'bowl',
+  'soup',
+  'toast',
+  'pita',
+  'flatbread',
+];
+
 const _dairyEggHoneyTerms = <String>[
   'milk',
   'cheese',
@@ -280,4 +588,18 @@ bool _containsAnyTerm(Recipe recipe, List<String> terms) {
     final pattern = RegExp('(^|[^a-z])${RegExp.escape(term)}([^a-z]|\u{0000})');
     return pattern.hasMatch('$text\u{0000}');
   });
+}
+
+bool _isDerivedPescatarian(Recipe recipe) =>
+    !_containsAnyTerm(recipe, _meatTerms);
+
+bool _isDerivedMediterranean(Recipe recipe) {
+  final sugarPerServing = recipe.sugarPerServing(recipe.servings);
+  final fiberPerServing = recipe.fiberPerServing(recipe.servings);
+  final caloriesPerServing = recipe.caloriesPerServing(recipe.servings);
+  return !_containsAnyTerm(recipe, _processedMeatTerms) &&
+      sugarPerServing <= 24 &&
+      caloriesPerServing <= 900 &&
+      (fiberPerServing >= 3 ||
+          _containsAnyTerm(recipe, _mediterraneanAnchorTerms));
 }

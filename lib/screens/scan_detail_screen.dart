@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/dietary_restriction.dart';
 import '../models/food_data.dart';
 import '../models/glucose_spike_model.dart';
 import '../models/nutrition_goal.dart';
@@ -13,10 +14,12 @@ import '../providers/history_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
+import '../services/food_scoring_service.dart';
 import '../services/native_bridge.dart';
 import '../core/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
+import '../widgets/food_score_badge.dart';
 import '../widgets/generated_food_preview.dart';
 import '../widgets/glucose_spike_card.dart';
 import '../widgets/plate_score_widget.dart';
@@ -102,8 +105,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
     if (ply == null || ply.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(AppLocalizations.of(context).noDepthData)),
+          SnackBar(content: Text(AppLocalizations.of(context).noDepthData)),
         );
       }
       return;
@@ -114,7 +116,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
     );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppLocalizations.of(context).plySaved}: $path')),
+        SnackBar(
+            content: Text('${AppLocalizations.of(context).plySaved}: $path')),
       );
     }
   }
@@ -125,21 +128,28 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
     final margin = (_scan.totalCaloriesMax - _scan.totalCaloriesMin) / 2;
 
     final prefs = ref.watch(userPrefsProvider);
+    final l10n = AppLocalizations.of(context);
     final isDiabetic = prefs.nutritionGoal == NutritionGoalType.diabetes;
-    final icr = prefs.icrGramsPerUnit;
+    final restrictionAlerts = <String>{};
 
     // Total carbs across the meal — only computed when needed.
     double totalCarbsG = 0;
-    if (isDiabetic) {
-      for (final f in _scan.foods) {
-        final fd = _foodFor(f.label);
-        if (fd == null) continue;
+    for (final f in _scan.foods) {
+      final fd = _foodFor(f.label);
+      if (isDiabetic && fd != null) {
         totalCarbsG += fd.carbsPer100g * _gramsFor(f) / 100.0;
       }
+      if (prefs.dietaryRestrictions.isNotEmpty) {
+        final text = '${f.label} ${fd?.category ?? ''}';
+        for (final restriction in prefs.dietaryRestrictions) {
+          if (restriction.matchesText(text)) {
+            restrictionAlerts.add(
+              l10n.restrictionItemAlert(f.label, restriction.name),
+            );
+          }
+        }
+      }
     }
-    final totalBolus = (isDiabetic && totalCarbsG > 0 && icr > 0)
-        ? (totalCarbsG / icr * 10).round() / 10
-        : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -292,6 +302,11 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           ),
           const SizedBox(height: 12),
 
+          if (restrictionAlerts.isNotEmpty) ...[
+            _RestrictionAlertCard(alerts: restrictionAlerts.toList()),
+            const SizedBox(height: 12),
+          ],
+
           // ── Plate Score ──────────────────────────────────────────────
           if (_scan.foods.isNotEmpty) ...[
             Builder(builder: (context) {
@@ -317,6 +332,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                 mealSodium += fd.sodiumMgPer100g * g / 100;
               }
               final breakdown = calculatePlateScore(
+                goal: prefs.nutritionGoal,
                 mealCalories: mealCal,
                 dailyGoal: prefs.dailyCalorieGoal,
                 proteinG: mealProtein,
@@ -336,71 +352,13 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
             const SizedBox(height: 16),
           ],
 
-          // ── Meal Bolus card (diabetes goal only) ─────────────────────
-          if (totalBolus != null) ...[
-            Card(
-              color: const Color(0xFFE3F2FD),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: Color(0xFF1976D2)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    const Icon(Icons.vaccines_outlined,
-                        color: Color(0xFF1976D2), size: 26),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Suggested Meal Bolus',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF1976D2),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            '${totalBolus.toStringAsFixed(1)} units',
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0D47A1),
-                            ),
-                          ),
-                          Text(
-                            '${totalCarbsG.toStringAsFixed(1)} g carbs ÷ '
-                            '${icr.toStringAsFixed(0)} g/unit',
-                            style: const TextStyle(
-                                fontSize: 11, color: Color(0xFF1976D2)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                '⚠️ Carbohydrate-cover bolus only. Always confirm with your healthcare provider.',
-                style: TextStyle(fontSize: 11, color: AppTheme.gray400),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-
           // ── Safety-gated Bolus Calculator Mode (opt-in) ──────────────
           // Renders nothing unless the user has explicitly enabled and set up
           // Bolus Calculator Mode. The banner prompts a 90-day review; the
           // card only shows an estimate when the calculator is available.
           const DiabetesReviewReminderBanner(),
-          BolusCalculatorCard(initialCarbsG: totalCarbsG > 0 ? totalCarbsG : null),
+          BolusCalculatorCard(
+              initialCarbsG: totalCarbsG > 0 ? totalCarbsG : null),
 
           // ── GL Thermometer (diabetes goal only) ───────────────────────
           if (isDiabetic && _scan.foods.isNotEmpty) ...[
@@ -443,15 +401,18 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           ),
           const SizedBox(height: 8),
           ..._scan.foods.map((f) {
-            final fd = _foodFor(f.label);
             final grams = _gramsFor(f);
-            final foodBolus = (isDiabetic && fd != null)
-                ? fd.bolusForGrams(grams, icr)
-                : null;
+            final foodData = _foodMap[f.label.toLowerCase()];
             final row = _FoodDetailRow(
               food: f,
               grams: grams,
-              bolusUnits: foodBolus,
+              score: foodData == null
+                  ? null
+                  : FoodScoringService.scoreFood(
+                      foodData,
+                      goal: prefs.nutritionGoal,
+                    ),
+              bolusUnits: null,
               onEdit: () => _editFood(f),
               onGroundTruth: () => _recordGroundTruth(f),
             );
@@ -471,7 +432,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: Text(AppLocalizations.of(ctx).removeThisItem),
-                    content: Text('${AppLocalizations.of(ctx).remove} "${f.label}"?'),
+                    content: Text(
+                        '${AppLocalizations.of(ctx).remove} "${f.label}"?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(ctx, false),
@@ -637,8 +599,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child:
-                Text(l10n.delete, style: const TextStyle(color: AppTheme.red500)),
+            child: Text(l10n.delete,
+                style: const TextStyle(color: AppTheme.red500)),
           ),
         ],
       ),
@@ -749,12 +711,14 @@ class _FoodDetailRow extends StatelessWidget {
   const _FoodDetailRow({
     required this.food,
     required this.grams,
+    this.score,
     this.bolusUnits,
     required this.onEdit,
     required this.onGroundTruth,
   });
   final DetectedFood food;
   final double grams;
+  final FoodScoreExplanation? score;
   final double? bolusUnits;
   final VoidCallback onEdit;
   final VoidCallback onGroundTruth;
@@ -767,7 +731,12 @@ class _FoodDetailRow extends StatelessWidget {
         HapticFeedback.mediumImpact();
         onGroundTruth();
       },
-      child: _FoodDetailCard(food: food, grams: grams, bolusUnits: bolusUnits),
+      child: _FoodDetailCard(
+        food: food,
+        grams: grams,
+        score: score,
+        bolusUnits: bolusUnits,
+      ),
     );
   }
 }
@@ -776,10 +745,12 @@ class _FoodDetailCard extends StatelessWidget {
   const _FoodDetailCard({
     required this.food,
     required this.grams,
+    this.score,
     this.bolusUnits,
   });
   final DetectedFood food;
   final double grams;
+  final FoodScoreExplanation? score;
   final double? bolusUnits;
 
   /// Returns a color indicating uncertainty: green=low, amber=med, red=high.
@@ -836,6 +807,13 @@ class _FoodDetailCard extends StatelessWidget {
                             color: AppTheme.gray400,
                           ),
                         ),
+                        if (score != null) ...[
+                          const SizedBox(height: 6),
+                          FoodScoreBadge(
+                            explanation: score!,
+                            compact: true,
+                          ),
+                        ],
                         if (bolusUnits != null && bolusUnits! > 0)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
@@ -965,6 +943,67 @@ class _RangeRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _RestrictionAlertCard extends StatelessWidget {
+  const _RestrictionAlertCard({required this.alerts});
+  final List<String> alerts;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Card(
+      color: Colors.amber.shade50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.amber.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.warning_amber_rounded,
+                color: Colors.amber.shade800, size: 24),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.restrictionAlert,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.amber.shade900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    alerts.join('\n'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.gray700,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.restrictionScanNote,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.gray500,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

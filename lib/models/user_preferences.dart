@@ -1,3 +1,4 @@
+import 'dietary_restriction.dart';
 import 'glucose_unit.dart';
 import 'mascot_type.dart';
 import 'nutrition_goal.dart';
@@ -61,8 +62,17 @@ class UserPreferences {
   /// Preferred blood-glucose unit for display and input (mg/dL or mmol/L).
   final GlucoseUnit glucoseUnit;
 
-  /// User's current body weight in kg (used for BMR-based calorie targets).
+  /// User's current body weight in kg (used for calorie target estimates).
   final double weightKg;
+
+  /// User height in cm, used with weight and muscle level for calorie estimates.
+  final double heightCm;
+
+  /// Self-reported muscle amount used to avoid underestimating muscular users.
+  final MuscleMassLevel muscleMassLevel;
+
+  /// Dietary restrictions used for meal planning, recipes, scan alerts, and manual entry warnings.
+  final Set<DietaryRestriction> dietaryRestrictions;
 
   /// When true, streaks are not broken by missed days. Persisted across app restarts.
   final bool vacationMode;
@@ -105,6 +115,9 @@ class UserPreferences {
     this.targetBloodGlucoseMgdl = 100.0,
     this.glucoseUnit = GlucoseUnit.mgdl,
     this.weightKg = 70.0,
+    this.heightCm = 170.0,
+    this.muscleMassLevel = MuscleMassLevel.average,
+    this.dietaryRestrictions = const <DietaryRestriction>{},
     this.vacationMode = false,
     this.dailyWaterGoalMl = 2000,
     this.waterIntakeMl = 0,
@@ -135,6 +148,10 @@ class UserPreferences {
       'target_bg_mgdl': targetBloodGlucoseMgdl,
       'glucose_unit': glucoseUnit.dbValue,
       'weight_kg': weightKg,
+      'height_cm': heightCm,
+      'muscle_mass_level': muscleMassLevel.dbValue,
+      'dietary_restrictions':
+          DietaryRestrictionCodec.encode(dietaryRestrictions),
       'vacation_mode': vacationMode ? 1 : 0,
       'daily_water_goal_ml': dailyWaterGoalMl,
       'water_intake_ml': waterIntakeMl,
@@ -170,6 +187,12 @@ class UserPreferences {
           (map['target_bg_mgdl'] as num?)?.toDouble() ?? 100.0,
       glucoseUnit: GlucoseUnit.fromDbValue(map['glucose_unit'] as String?),
       weightKg: (map['weight_kg'] as num?)?.toDouble() ?? 70.0,
+      heightCm: (map['height_cm'] as num?)?.toDouble() ?? 170.0,
+      muscleMassLevel:
+          MuscleMassLevel.fromDbValue(map['muscle_mass_level'] as String?),
+      dietaryRestrictions: DietaryRestrictionCodec.decode(
+        map['dietary_restrictions'] as String?,
+      ),
       vacationMode: (map['vacation_mode'] as int?) == 1,
       dailyWaterGoalMl: (map['daily_water_goal_ml'] as int?) ?? 2000,
       waterIntakeMl: (map['water_intake_ml'] as int?) ?? 0,
@@ -200,6 +223,9 @@ class UserPreferences {
     double? targetBloodGlucoseMgdl,
     GlucoseUnit? glucoseUnit,
     double? weightKg,
+    double? heightCm,
+    MuscleMassLevel? muscleMassLevel,
+    Set<DietaryRestriction>? dietaryRestrictions,
     bool? vacationMode,
     int? dailyWaterGoalMl,
     int? waterIntakeMl,
@@ -230,6 +256,9 @@ class UserPreferences {
           targetBloodGlucoseMgdl ?? this.targetBloodGlucoseMgdl,
       glucoseUnit: glucoseUnit ?? this.glucoseUnit,
       weightKg: weightKg ?? this.weightKg,
+      heightCm: heightCm ?? this.heightCm,
+      muscleMassLevel: muscleMassLevel ?? this.muscleMassLevel,
+      dietaryRestrictions: dietaryRestrictions ?? this.dietaryRestrictions,
       vacationMode: vacationMode ?? this.vacationMode,
       dailyWaterGoalMl: dailyWaterGoalMl ?? this.dailyWaterGoalMl,
       waterIntakeMl: waterIntakeMl ?? this.waterIntakeMl,

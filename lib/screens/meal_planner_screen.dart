@@ -13,9 +13,11 @@ import '../models/recipe.dart';
 import '../providers/meal_planner_provider.dart';
 import '../providers/grocery_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/pantry_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/database_service.dart';
 import '../services/recipe_repository.dart';
+import '../services/recipe_swap_service.dart';
 import '../theme/app_theme.dart';
 import 'recipes_screen.dart';
 
@@ -90,6 +92,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
       ref.read(mealPlanProvider.notifier).languageCode =
           ref.read(localeProvider).code;
       ref.read(mealPlanProvider.notifier).load(goal);
+      ref.read(pantryProvider.notifier).load();
     });
   }
 
@@ -115,6 +118,11 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: l10n.mealPlanAutopilot,
+            onPressed: () => _runAutopilot(context),
+            icon: const Icon(Icons.auto_awesome_outlined),
+          ),
           if (plan.assignments.isNotEmpty)
             TextButton.icon(
               onPressed: () => _generateGroceryList(context),
@@ -171,6 +179,8 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 8),
+                _PlannerActionBar(onAutopilot: () => _runAutopilot(context)),
                 const SizedBox(height: 8),
                 // ── Day list ──
                 Expanded(
@@ -229,6 +239,27 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
               ),
             )
           : null,
+    );
+  }
+
+  Future<void> _runAutopilot(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final prefs = ref.read(userPrefsProvider);
+    final pantryMode = ref.read(pantryModeProvider);
+    final pantryNames =
+        pantryMode ? ref.read(pantryProvider).availableNames : const <String>{};
+    await ref.read(mealPlanProvider.notifier).autoFillWeek(
+          goal: prefs.nutritionGoal,
+          dailyCalorieGoal: prefs.dailyCalorieGoal,
+          dietaryRestrictions: prefs.dietaryRestrictions,
+          pantryNames: pantryNames,
+        );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.mealPlanAutopilotDone),
+        backgroundColor: AppTheme.green600,
+      ),
     );
   }
 
@@ -398,6 +429,69 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
   }
 }
 
+class _PlannerActionBar extends ConsumerWidget {
+  const _PlannerActionBar({required this.onAutopilot});
+
+  final VoidCallback onAutopilot;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final pantryMode = ref.watch(pantryModeProvider);
+    final pantry = ref.watch(pantryProvider);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: onAutopilot,
+              icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+              label: Text(l10n.mealPlanAutopilot),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(42),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Tooltip(
+            message: l10n.pantryMode,
+            child: FilterChip(
+              avatar: Icon(
+                Icons.kitchen_outlined,
+                size: 17,
+                color: pantryMode ? context.primary700 : AppTheme.gray500,
+              ),
+              label: Text(
+                pantryMode
+                    ? '${l10n.pantryMode} (${pantry.availableItems.length})'
+                    : l10n.pantryMode,
+              ),
+              selected: pantryMode,
+              selectedColor: context.primary100,
+              onSelected: (value) =>
+                  ref.read(pantryModeProvider.notifier).state = value,
+            ),
+          ),
+          IconButton.filledTonal(
+            tooltip: l10n.managePantry,
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => const _PantrySheet(),
+            ),
+            icon: const Icon(Icons.inventory_2_outlined),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Day card ─────────────────────────────────────────────────────────────────
 
 class _DayCard extends ConsumerWidget {
@@ -502,8 +596,14 @@ class _MealSlotRow extends ConsumerWidget {
     final isEnabled = plan.isEnabled(dayIndex, mealType);
     final recipe = plan.recipeFor(dayIndex, mealType);
     final portionMultiplier = plan.portionMultiplierFor(dayIndex, mealType);
-    final goal = ref.watch(userPrefsProvider).nutritionGoal;
-    final dailyCal = ref.watch(userPrefsProvider).dailyCalorieGoal;
+    final prefs = ref.watch(userPrefsProvider);
+    final goal = prefs.nutritionGoal;
+    final dailyCal = prefs.dailyCalorieGoal;
+    final restrictions = prefs.dietaryRestrictions;
+    final pantryMode = ref.watch(pantryModeProvider);
+    final pantryNames = pantryMode
+        ? ref.watch(pantryProvider).availableNames
+        : const <String>{};
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -527,7 +627,9 @@ class _MealSlotRow extends ConsumerWidget {
               borderRadius: BorderRadius.circular(10),
               onTap: () => ref.read(mealPlanProvider.notifier).toggleSlot(
                   dayIndex, mealType, goal,
-                  dailyCalorieGoal: dailyCal),
+                  dailyCalorieGoal: dailyCal,
+                  dietaryRestrictions: restrictions,
+                  pantryNames: pantryNames),
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -550,7 +652,9 @@ class _MealSlotRow extends ConsumerWidget {
                         onTap: () => ref
                             .read(mealPlanProvider.notifier)
                             .shuffleSlot(dayIndex, mealType, goal,
-                                dailyCalorieGoal: dailyCal),
+                                dailyCalorieGoal: dailyCal,
+                                dietaryRestrictions: restrictions,
+                                pantryNames: pantryNames),
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -567,7 +671,9 @@ class _MealSlotRow extends ConsumerWidget {
                       onChanged: (_) => ref
                           .read(mealPlanProvider.notifier)
                           .toggleSlot(dayIndex, mealType, goal,
-                              dailyCalorieGoal: dailyCal),
+                              dailyCalorieGoal: dailyCal,
+                              dietaryRestrictions: restrictions,
+                              pantryNames: pantryNames),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ],
@@ -695,7 +801,7 @@ class _MealSlotRow extends ConsumerWidget {
                       ),
                       // Swap recipe button
                       GestureDetector(
-                        onTap: () => _pickDifferentRecipe(context, ref, goal),
+                        onTap: () => _showSmartSwapSheet(context, ref, goal),
                         child: Container(
                           margin: const EdgeInsets.all(8),
                           padding: const EdgeInsets.all(8),
@@ -731,6 +837,37 @@ class _MealSlotRow extends ConsumerWidget {
     );
   }
 
+  Future<void> _showSmartSwapSheet(
+    BuildContext context,
+    WidgetRef ref,
+    NutritionGoalType goal,
+  ) async {
+    final prefs = ref.read(userPrefsProvider);
+    final pantryMode = ref.read(pantryModeProvider);
+    final pantryNames =
+        pantryMode ? ref.read(pantryProvider).availableNames : const <String>{};
+    final choice = await showModalBottomSheet<_SwapChoice>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SmartSwapSheet(mealType: mealType),
+    );
+    if (choice == null) return;
+    if (choice.manualPick) {
+      if (!context.mounted) return;
+      await _pickDifferentRecipe(context, ref, goal);
+      return;
+    }
+    await ref.read(mealPlanProvider.notifier).smartSwapSlot(
+          dayIndex,
+          mealType,
+          goal,
+          intent: choice.intent,
+          dailyCalorieGoal: prefs.dailyCalorieGoal,
+          dietaryRestrictions: prefs.dietaryRestrictions,
+          pantryNames: pantryNames,
+        );
+  }
+
   void _openDetail(BuildContext context, Recipe recipe) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => RecipeDetailScreen(recipe: recipe)),
@@ -742,11 +879,13 @@ class _MealSlotRow extends ConsumerWidget {
     WidgetRef ref,
     goal,
   ) async {
+    final prefs = ref.read(userPrefsProvider);
     final candidates = await RecipeRepository.instance.query(
       goal: goal,
       mealType: mealType,
       limit: 1000,
       language: ref.read(localeProvider).code,
+      dietaryRestrictions: prefs.dietaryRestrictions,
     );
     // Also include custom meals that match this meal type
     final allCustom = await DatabaseService.instance.getCustomMeals();
@@ -759,8 +898,11 @@ class _MealSlotRow extends ConsumerWidget {
       };
       return mt == mealType;
     }).toList();
-    final customAsRecipes =
-        matchingCustom.map((m) => _customMealToRecipe(m, allFoods)).toList();
+    final customAsRecipes = matchingCustom
+        .map((m) => _customMealToRecipe(m, allFoods))
+        .where((recipe) => RecipeRepository.instance
+            .isAllowedByRestrictions(recipe, prefs.dietaryRestrictions))
+        .toList();
     if (!context.mounted) return;
     final picked = await showModalBottomSheet<Recipe>(
       context: context,
@@ -772,11 +914,269 @@ class _MealSlotRow extends ConsumerWidget {
       ),
     );
     if (picked != null) {
-      final prefs = ref.read(userPrefsProvider);
       await ref.read(mealPlanProvider.notifier).assignRecipe(
           dayIndex, mealType, picked,
           goal: prefs.nutritionGoal, dailyCalorieGoal: prefs.dailyCalorieGoal);
     }
+  }
+}
+
+class _SwapChoice {
+  const _SwapChoice.intent(this.intent) : manualPick = false;
+  const _SwapChoice.manual()
+      : intent = SmartSwapIntent.balanced,
+        manualPick = true;
+
+  final SmartSwapIntent intent;
+  final bool manualPick;
+}
+
+class _SmartSwapSheet extends StatelessWidget {
+  const _SmartSwapSheet({required this.mealType});
+
+  final RecipeMealType mealType;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.gray300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Text(mealType.emoji, style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 8),
+                Text(
+                  l10n.smartSwap,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l10n.smartSwapSubtitle,
+              style: const TextStyle(fontSize: 12, color: AppTheme.gray500),
+            ),
+            const SizedBox(height: 12),
+            ...SmartSwapIntent.values.map(
+              (intent) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(_swapIcon(intent), color: context.primary600),
+                title: Text(l10n.smartSwapIntentLabel(intent.name),
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(l10n.smartSwapIntentDescription(intent.name)),
+                onTap: () => Navigator.pop(context, _SwapChoice.intent(intent)),
+              ),
+            ),
+            const Divider(height: 18),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.search_outlined, color: context.primary600),
+              title: Text(l10n.pickRecipe(mealType.label),
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(l10n.manualRecipePicker),
+              onTap: () => Navigator.pop(context, const _SwapChoice.manual()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _swapIcon(SmartSwapIntent intent) {
+    switch (intent) {
+      case SmartSwapIntent.balanced:
+        return Icons.tune_outlined;
+      case SmartSwapIntent.higherProtein:
+        return Icons.fitness_center_outlined;
+      case SmartSwapIntent.lowerCarb:
+        return Icons.grain_outlined;
+      case SmartSwapIntent.faster:
+        return Icons.timer_outlined;
+      case SmartSwapIntent.pantryFirst:
+        return Icons.kitchen_outlined;
+    }
+  }
+}
+
+class _PantrySheet extends ConsumerStatefulWidget {
+  const _PantrySheet();
+
+  @override
+  ConsumerState<_PantrySheet> createState() => _PantrySheetState();
+}
+
+class _PantrySheetState extends ConsumerState<_PantrySheet> {
+  final _controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => ref.read(pantryProvider.notifier).load(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _add() async {
+    final value = _controller.text.trim();
+    if (value.isEmpty) return;
+    await ref.read(pantryProvider.notifier).addItem(value);
+    _controller.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final state = ref.watch(pantryProvider);
+    return DraggableScrollableSheet(
+      initialChildSize: 0.72,
+      maxChildSize: 0.92,
+      minChildSize: 0.42,
+      builder: (_, scrollController) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.gray300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.inventory_2_outlined,
+                          color: context.primary600),
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.managePantry,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    l10n.pantryModeDescription,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.gray500,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _add(),
+                          decoration: InputDecoration(
+                            hintText: l10n.addPantryItem,
+                            prefixIcon: const Icon(Icons.add_outlined),
+                            filled: true,
+                            fillColor: AppTheme.gray100,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(onPressed: _add, child: Text(l10n.add)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: state.loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : state.items.isEmpty
+                      ? Center(
+                          child: Text(
+                            l10n.emptyPantry,
+                            style: const TextStyle(color: AppTheme.gray400),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          itemCount: state.items.length,
+                          itemBuilder: (_, index) {
+                            final item = state.items[index];
+                            return ListTile(
+                              leading: Checkbox(
+                                value: item.available,
+                                onChanged: (_) => ref
+                                    .read(pantryProvider.notifier)
+                                    .toggleAvailable(item),
+                              ),
+                              title: Text(item.name),
+                              subtitle: Text(item.available
+                                  ? l10n.availableForPlanning
+                                  : l10n.hiddenFromPlanning),
+                              trailing: IconButton(
+                                tooltip: l10n.delete,
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () => ref
+                                    .read(pantryProvider.notifier)
+                                    .deleteItem(item),
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -864,7 +1264,8 @@ class _GroceryPreviewSheet extends StatelessWidget {
                       Text(AppLocalizations.of(context).weeklyGroceryList,
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w700)),
-                      Text('${sorted.length} ${AppLocalizations.of(context).ingredientsFromPlan}',
+                      Text(
+                          '${sorted.length} ${AppLocalizations.of(context).ingredientsFromPlan}',
                           style: const TextStyle(
                               fontSize: 12, color: AppTheme.gray500)),
                     ],
@@ -1010,7 +1411,9 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                   Text(widget.mealType.emoji,
                       style: const TextStyle(fontSize: 22)),
                   const SizedBox(width: 8),
-                  Text(AppLocalizations.of(context).pickRecipe(widget.mealType.label),
+                  Text(
+                      AppLocalizations.of(context)
+                          .pickRecipe(widget.mealType.label),
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.w700)),
                 ],

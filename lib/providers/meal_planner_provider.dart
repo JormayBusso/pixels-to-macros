@@ -3,11 +3,13 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/custom_meal.dart';
+import '../models/dietary_restriction.dart';
 import '../models/food_data.dart';
 import '../models/nutrition_goal.dart';
 import '../models/recipe.dart';
 import '../services/database_service.dart';
 import '../services/recipe_repository.dart';
+import '../services/recipe_swap_service.dart';
 
 /// Key: (dayOfWeek, mealType) → Recipe or null.
 typedef SlotMap = Map<String, Recipe?>;
@@ -72,6 +74,7 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
 
   /// The user's selected language code (en, de, nl). Set by the UI.
   String? languageCode;
+  final Map<String, int> _shuffleCounts = <String, int>{};
 
   /// Load saved plan from DB.
   Future<void> load(NutritionGoalType goal) async {
@@ -124,6 +127,8 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     RecipeMealType mealType,
     NutritionGoalType goal, {
     int dailyCalorieGoal = 0,
+    Set<DietaryRestriction> dietaryRestrictions = const <DietaryRestriction>{},
+    Set<String> pantryNames = const <String>{},
   }) async {
     final key = MealPlanState.slotKey(dayOfWeek, mealType);
     final nowEnabled = state.enabledSlots.contains(key);
@@ -152,7 +157,11 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
       state = state.copyWith(
           enabledSlots: newEnabled, portionMultipliers: newPortions);
       await _assignRecipe(dayOfWeek, mealType, goal,
-          forceNew: false, dailyCalorieGoal: dailyCalorieGoal);
+          forceNew: false,
+          dailyCalorieGoal: dailyCalorieGoal,
+          dietaryRestrictions: dietaryRestrictions,
+          pantryNames: pantryNames,
+          swapIntent: pantryNames.isEmpty ? null : SmartSwapIntent.pantryFirst);
       await _autoTuneDayCalories(dayOfWeek, goal, dailyCalorieGoal);
     }
   }
@@ -163,10 +172,93 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     RecipeMealType mealType,
     NutritionGoalType goal, {
     int dailyCalorieGoal = 0,
+    Set<DietaryRestriction> dietaryRestrictions = const <DietaryRestriction>{},
+    Set<String> pantryNames = const <String>{},
   }) async {
     await _assignRecipe(dayOfWeek, mealType, goal,
-        forceNew: true, dailyCalorieGoal: dailyCalorieGoal);
+        forceNew: true,
+        dailyCalorieGoal: dailyCalorieGoal,
+        dietaryRestrictions: dietaryRestrictions,
+        pantryNames: pantryNames,
+        swapIntent: pantryNames.isEmpty
+            ? SmartSwapIntent.balanced
+            : SmartSwapIntent.pantryFirst);
     await _autoTuneDayCalories(dayOfWeek, goal, dailyCalorieGoal);
+  }
+
+  Future<void> smartSwapSlot(
+    int dayOfWeek,
+    RecipeMealType mealType,
+    NutritionGoalType goal, {
+    required SmartSwapIntent intent,
+    int dailyCalorieGoal = 0,
+    Set<DietaryRestriction> dietaryRestrictions = const <DietaryRestriction>{},
+    Set<String> pantryNames = const <String>{},
+  }) async {
+    await _assignRecipe(
+      dayOfWeek,
+      mealType,
+      goal,
+      forceNew: true,
+      dailyCalorieGoal: dailyCalorieGoal,
+      dietaryRestrictions: dietaryRestrictions,
+      pantryNames: pantryNames,
+      swapIntent: intent,
+    );
+    await _autoTuneDayCalories(dayOfWeek, goal, dailyCalorieGoal);
+  }
+
+  Future<void> autoFillWeek({
+    required NutritionGoalType goal,
+    required int dailyCalorieGoal,
+    Set<DietaryRestriction> dietaryRestrictions = const <DietaryRestriction>{},
+    Set<String> pantryNames = const <String>{},
+    bool replaceExisting = false,
+  }) async {
+    state = state.copyWith(loading: true);
+    if (replaceExisting) {
+      await clearWeek();
+    }
+    const defaultMeals = <RecipeMealType>[
+      RecipeMealType.breakfast,
+      RecipeMealType.lunch,
+      RecipeMealType.dinner,
+      RecipeMealType.snack,
+    ];
+    final enabled = {...state.enabledSlots};
+    final portions = {...state.portionMultipliers};
+    for (var day = 1; day <= 7; day++) {
+      for (final mealType in defaultMeals) {
+        final key = MealPlanState.slotKey(day, mealType);
+        if (!replaceExisting && state.assignments.containsKey(key)) continue;
+        enabled.add(key);
+        portions.putIfAbsent(key, () => 1.0);
+      }
+    }
+    state = state.copyWith(
+      enabledSlots: enabled,
+      portionMultipliers: portions,
+      loading: false,
+    );
+    for (var day = 1; day <= 7; day++) {
+      for (final mealType in defaultMeals) {
+        final key = MealPlanState.slotKey(day, mealType);
+        if (!replaceExisting && state.assignments.containsKey(key)) continue;
+        await _assignRecipe(
+          day,
+          mealType,
+          goal,
+          forceNew: true,
+          dailyCalorieGoal: dailyCalorieGoal,
+          dietaryRestrictions: dietaryRestrictions,
+          pantryNames: pantryNames,
+          swapIntent: pantryNames.isEmpty
+              ? SmartSwapIntent.balanced
+              : SmartSwapIntent.pantryFirst,
+        );
+      }
+      await _autoTuneDayCalories(day, goal, dailyCalorieGoal);
+    }
   }
 
   /// Replace the recipe for a slot with the given recipe.
@@ -207,6 +299,9 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     NutritionGoalType goal, {
     required bool forceNew,
     int dailyCalorieGoal = 0,
+    Set<DietaryRestriction> dietaryRestrictions = const <DietaryRestriction>{},
+    Set<String> pantryNames = const <String>{},
+    SmartSwapIntent? swapIntent,
   }) async {
     final key = MealPlanState.slotKey(dayOfWeek, mealType);
     final currentId = state.assignments[key]?.id;
@@ -216,6 +311,7 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
       mealType: mealType,
       limit: 1000,
       language: languageCode,
+      dietaryRestrictions: dietaryRestrictions,
     );
 
     if (candidates.isEmpty) return;
@@ -226,6 +322,10 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     var pool = (fresh.isNotEmpty && (forceNew || currentId == null))
         ? fresh
         : candidates;
+    if (forceNew && currentId != null) {
+      final withoutCurrent = pool.where((r) => r.id != currentId).toList();
+      if (withoutCurrent.isNotEmpty) pool = withoutCurrent;
+    }
 
     // ── Calorie-budget filtering ──────────────────────────────────────────
     // If the caller provided a daily calorie goal, pick a recipe that keeps
@@ -253,10 +353,17 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
       if (calorieFiltered.isNotEmpty) pool = calorieFiltered;
     }
 
-    // Pick deterministically but varied — seed from day + mealType + current assignments count
-    final rng =
-        Random(dayOfWeek * 100 + mealType.index + state.assignments.length);
-    final recipe = pool[rng.nextInt(pool.length)];
+    final recipe = swapIntent == null
+        ? _pickRandomRecipe(pool, key, dayOfWeek, mealType)
+        : (RecipeSwapService.pickBestSwap(
+              current: state.assignments[key],
+              candidates: pool,
+              intent: swapIntent,
+              goal: goal,
+              pantryNames: pantryNames,
+              usedRecipeIds: usedIds,
+            ) ??
+            _pickRandomRecipe(pool, key, dayOfWeek, mealType));
 
     final newAssignments = {...state.assignments}..[key] = recipe;
     final newPortions = {...state.portionMultipliers}
@@ -272,6 +379,26 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
       recipeId: recipe.id,
       recipeName: recipe.name,
     );
+  }
+
+  Recipe _pickRandomRecipe(
+    List<Recipe> pool,
+    String key,
+    int dayOfWeek,
+    RecipeMealType mealType,
+  ) {
+    final shuffleCount = (_shuffleCounts[key] ?? 0) + 1;
+    _shuffleCounts[key] = shuffleCount;
+    final rng = Random(Object.hash(
+      state.year,
+      state.weekNumber,
+      dayOfWeek,
+      mealType.index,
+      shuffleCount,
+      DateTime.now().microsecondsSinceEpoch,
+    ));
+    pool.shuffle(rng);
+    return pool[rng.nextInt(pool.length)];
   }
 
   int _dayCalories(int dayOfWeek) {

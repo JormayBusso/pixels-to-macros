@@ -211,6 +211,72 @@ class RecommendationsNotifier extends StateNotifier<RecommendationsState> {
           color: Colors.red.shade400,
         ));
 
+      // ── Pescatarian ──────────────────────────────────────────────────────
+      case NutritionGoalType.pescatarian:
+        if (protein < proteinTarget * 0.65) {
+          recs.add(Recommendation(
+            message:
+                'Protein is low for a pescatarian day — ${protein.round()}g / ${proteinTarget.round()}g.',
+            suggestion:
+                'Add fish, Greek yogurt, eggs, tofu, lentils, or a protein smoothie.',
+            icon: Icons.set_meal_outlined,
+            color: Colors.orange.shade700,
+          ));
+        } else {
+          recs.add(Recommendation(
+            message: 'Good pescatarian protein intake: ${protein.round()}g.',
+            icon: Icons.set_meal_outlined,
+            color: Colors.green.shade600,
+          ));
+        }
+        recs.add(Recommendation(
+          message:
+              'Aim for omega-3-rich seafood such as salmon, sardines, trout, or mackerel during the week.',
+          icon: Icons.water_outlined,
+          color: Colors.teal.shade600,
+        ));
+        recs.add(Recommendation(
+          message:
+              'Keep the plate plant-forward: legumes, whole grains, vegetables, fruit, nuts, and olive oil.',
+          icon: Icons.eco_outlined,
+          color: Colors.green.shade700,
+        ));
+
+      // ── Mediterranean ────────────────────────────────────────────────────
+      case NutritionGoalType.mediterranean:
+        final fiber = intake.nutrientTotals.fiberG;
+        if (fiber < 15) {
+          recs.add(Recommendation(
+            message:
+                'Fiber is still low for a Mediterranean pattern (${fiber.round()}g today).',
+            suggestion:
+                'Add beans, lentils, chickpeas, oats, berries, vegetables, or whole grains.',
+            icon: Icons.grass_outlined,
+            color: Colors.orange.shade700,
+          ));
+        } else {
+          recs.add(Recommendation(
+            message:
+                'Strong plant-food foundation today: ${fiber.round()}g fiber.',
+            icon: Icons.grass_outlined,
+            color: Colors.green.shade600,
+          ));
+        }
+        if (fat < fatTarget * 0.45) {
+          recs.add(Recommendation(
+            message:
+                'Healthy fats are low for Mediterranean eating. Use olive oil, avocado, nuts, seeds, or fish.',
+            icon: Icons.opacity,
+            color: Colors.teal.shade600,
+          ));
+        }
+        recs.add(Recommendation(
+          message:
+              'Choose fish, legumes, or yogurt more often than processed meat for heart-friendly meals.',
+          icon: Icons.favorite_border,
+          color: Colors.red.shade400,
+        ));
+
       // ── Weight Loss ────────────────────────────────────────────────────────
       case NutritionGoalType.weightLoss:
         if (kcal > kcalTarget * 1.05) {
@@ -375,7 +441,8 @@ class RecommendationsNotifier extends StateNotifier<RecommendationsState> {
     // positives) and drop near-duplicate reminders (e.g. multiple hydration
     // tips) so the user sees a focused, varied set instead of whatever happened
     // to be added first.
-    state = RecommendationsState(recs: _prioritiseAndDedupe(recs).take(8).toList());
+    state =
+        RecommendationsState(recs: _prioritiseAndDedupe(recs).take(8).toList());
   }
 
   /// Re-orders recommendations by urgency and removes near-duplicates.

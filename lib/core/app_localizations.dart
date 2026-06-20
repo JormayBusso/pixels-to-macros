@@ -97,6 +97,22 @@ class AppLocalizations {
         'de': 'Suchen',
       });
 
+  String get add => _t({
+        'en': 'Add',
+        'pl': 'Dodaj',
+        'nl': 'Toevoegen',
+        'es': 'Añadir',
+        'de': 'Hinzufügen',
+      });
+
+  String get refresh => _t({
+        'en': 'Refresh',
+        'pl': 'Odśwież',
+        'nl': 'Vernieuwen',
+        'es': 'Actualizar',
+        'de': 'Aktualisieren',
+      });
+
   String get loading => _t({
         'en': 'Loading...',
         'pl': 'Ładowanie...',
@@ -285,10 +301,508 @@ class AppLocalizations {
         'de': 'Dein Gewicht (kg)',
       });
 
+  String get weightEstimateNote => _t({
+        'en':
+            'Used for a guideline-based starting calorie target. It is still an estimate: body composition, height, age, activity and your progress trend matter.',
+        'pl':
+            'Używane do wyliczenia orientacyjnego celu kalorycznego. To nadal szacunek: znaczenie mają skład ciała, wzrost, wiek, aktywność i trend postępów.',
+        'nl':
+            'Gebruikt voor een richtlijngebaseerd startdoel voor calorieën. Het blijft een schatting: lichaamssamenstelling, lengte, leeftijd, activiteit en je voortgangstrend tellen mee.',
+        'es':
+            'Se usa para un objetivo calórico inicial basado en guías. Sigue siendo una estimación: importan la composición corporal, altura, edad, actividad y tu tendencia de progreso.',
+        'de':
+            'Wird für ein leitlinienbasiertes Startziel für Kalorien verwendet. Es bleibt eine Schätzung: Körperzusammensetzung, Größe, Alter, Aktivität und dein Verlauf zählen mit.',
+      });
+
+  String get heightCm => _t({
+        'en': 'Height',
+        'pl': 'Wzrost',
+        'nl': 'Lengte',
+        'es': 'Altura',
+        'de': 'Größe',
+      });
+
+  String get muscleAmount => _t({
+        'en': 'Muscle amount',
+        'pl': 'Ilość mięśni',
+        'nl': 'Spiermassa',
+        'es': 'Cantidad de músculo',
+        'de': 'Muskelanteil',
+      });
+
+  String get bodyProfileEstimateNote => _t({
+        'en':
+            'Calories use weight, height, biological sex and muscle amount as a starting estimate, then should be refined from your real weight trend.',
+        'pl':
+            'Kalorie używają masy, wzrostu, płci biologicznej i ilości mięśni jako punktu startowego, a potem powinny być dopasowane do realnego trendu masy.',
+        'nl':
+            'Calorieën gebruiken gewicht, lengte, biologisch geslacht en spiermassa als startschatting en moeten daarna worden verfijnd met je echte gewichtstrend.',
+        'es':
+            'Las calorías usan peso, altura, sexo biológico y cantidad de músculo como estimación inicial, y luego deben ajustarse con tu tendencia real de peso.',
+        'de':
+            'Kalorien nutzen Gewicht, Größe, biologisches Geschlecht und Muskelanteil als Startschätzung und sollten danach mit deinem echten Gewichtstrend verfeinert werden.',
+      });
+
+  String get adaptiveCalorieCalibration => _t({
+        'en': 'Adaptive calorie calibration',
+        'pl': 'Adaptacyjna kalibracja kalorii',
+        'nl': 'Adaptieve caloriecalibratie',
+        'es': 'Calibración calórica adaptativa',
+        'de': 'Adaptive Kalorienkalibrierung',
+      });
+
+  String get adaptiveCalorieCalibrationDesc => _t({
+        'en':
+            'Log your weight once per month. The app gently adjusts calorie targets from trend instead of guessing forever from a formula.',
+        'pl':
+            'Zapisuj masę raz w miesiącu. Aplikacja delikatnie dopasowuje kalorie z trendu, zamiast ciągle zgadywać ze wzoru.',
+        'nl':
+            'Log je gewicht één keer per maand. De app past calorieën voorzichtig aan op basis van trend in plaats van steeds te schatten.',
+        'es':
+            'Registra tu peso una vez al mes. La app ajusta suavemente las calorías según la tendencia en vez de adivinar siempre con una fórmula.',
+        'de':
+            'Trage dein Gewicht einmal pro Monat ein. Die App passt Kalorien vorsichtig nach Trend an, statt dauerhaft nur zu schätzen.',
+      });
+
+  String get logMonthlyWeight => _t({
+        'en': 'Log monthly weight',
+        'pl': 'Zapisz miesięczną masę',
+        'nl': 'Maandgewicht loggen',
+        'es': 'Registrar peso mensual',
+        'de': 'Monatsgewicht eintragen',
+      });
+
+  String get noMonthlyWeightsYet => _t({
+        'en': 'No monthly weights yet. Add this month to start calibration.',
+        'pl':
+            'Brak miesięcznych pomiarów. Dodaj ten miesiąc, aby zacząć kalibrację.',
+        'nl': 'Nog geen maandgewichten. Voeg deze maand toe om te starten.',
+        'es': 'Aún no hay pesos mensuales. Añade este mes para empezar.',
+        'de':
+            'Noch keine Monatsgewichte. Füge diesen Monat hinzu, um zu starten.',
+      });
+
+  String get monthlyWeightHelper => _t({
+        'en': 'One entry per month; saving again updates this month.',
+        'pl': 'Jeden wpis na miesiąc; ponowny zapis aktualizuje ten miesiąc.',
+        'nl': 'Eén invoer per maand; opnieuw opslaan werkt deze maand bij.',
+        'es': 'Una entrada por mes; guardar otra vez actualiza este mes.',
+        'de':
+            'Ein Eintrag pro Monat; erneutes Speichern aktualisiert diesen Monat.',
+      });
+
+  String calorieCalibrationMessage(String key) {
+    switch (key) {
+      case 'firstMonthlyWeightSaved':
+        return _t({
+          'en':
+              'First monthly weight saved. Add another month to calibrate from trend.',
+          'pl':
+              'Pierwsza miesięczna masa zapisana. Dodaj kolejny miesiąc, aby kalibrować z trendu.',
+          'nl':
+              'Eerste maandgewicht opgeslagen. Voeg nog een maand toe om op trend te kalibreren.',
+          'es':
+              'Primer peso mensual guardado. Añade otro mes para calibrar con la tendencia.',
+          'de':
+              'Erstes Monatsgewicht gespeichert. Füge einen weiteren Monat hinzu, um nach Trend zu kalibrieren.',
+        });
+      case 'weightTrendAligned':
+        return _t({
+          'en': 'Weight trend is aligned; calories stayed steady.',
+          'pl': 'Trend masy jest zgodny; kalorie zostały bez zmian.',
+          'nl': 'Gewichtstrend past; calorieën blijven gelijk.',
+          'es':
+              'La tendencia de peso está alineada; las calorías se mantienen.',
+          'de': 'Gewichtstrend passt; Kalorien bleiben stabil.',
+        });
+      case 'weightLossSlow':
+        return _t({
+          'en':
+              'Weight loss is slower than planned, so calories were nudged down gently.',
+          'pl':
+              'Utrata masy jest wolniejsza niż plan, więc kalorie delikatnie obniżono.',
+          'nl':
+              'Gewichtsverlies gaat trager dan gepland, dus calorieën zijn licht verlaagd.',
+          'es':
+              'La pérdida de peso va más lenta de lo previsto, así que se bajaron suavemente las calorías.',
+          'de':
+              'Gewichtsverlust ist langsamer als geplant, daher wurden Kalorien leicht gesenkt.',
+        });
+      case 'weightLossFast':
+        return _t({
+          'en':
+              'Weight loss is fast, so calories were nudged up to protect energy and lean mass.',
+          'pl':
+              'Utrata masy jest szybka, więc kalorie lekko podniesiono dla energii i mięśni.',
+          'nl':
+              'Gewichtsverlies gaat snel, dus calorieën zijn licht verhoogd voor energie en spiermassa.',
+          'es':
+              'La pérdida de peso es rápida, así que se subieron calorías para proteger energía y masa magra.',
+          'de':
+              'Gewichtsverlust ist schnell, daher wurden Kalorien zum Schutz von Energie und Muskelmasse leicht erhöht.',
+        });
+      case 'weightGainSlow':
+        return _t({
+          'en':
+              'Weight gain is slower than planned, so calories were nudged up.',
+          'pl':
+              'Przyrost masy jest wolniejszy niż plan, więc kalorie lekko podniesiono.',
+          'nl':
+              'Gewichtstoename gaat trager dan gepland, dus calorieën zijn licht verhoogd.',
+          'es':
+              'La subida de peso va más lenta de lo previsto, así que se subieron calorías.',
+          'de':
+              'Gewichtszunahme ist langsamer als geplant, daher wurden Kalorien leicht erhöht.',
+        });
+      case 'weightGainFast':
+        return _t({
+          'en':
+              'Weight is rising quickly, so calories were nudged down slightly.',
+          'pl': 'Masa rośnie szybko, więc kalorie lekko obniżono.',
+          'nl': 'Gewicht stijgt snel, dus calorieën zijn licht verlaagd.',
+          'es': 'El peso sube rápido, así que se bajaron un poco las calorías.',
+          'de': 'Gewicht steigt schnell, daher wurden Kalorien leicht gesenkt.',
+        });
+      case 'weightTrendingUp':
+        return _t({
+          'en':
+              'Weight is trending upward, so calories were nudged down slightly.',
+          'pl': 'Masa trenduje w górę, więc kalorie lekko obniżono.',
+          'nl': 'Gewicht trendt omhoog, dus calorieën zijn licht verlaagd.',
+          'es':
+              'El peso tiende a subir, así que se bajaron un poco las calorías.',
+          'de':
+              'Gewicht tendiert nach oben, daher wurden Kalorien leicht gesenkt.',
+        });
+      case 'weightTrendingDown':
+        return _t({
+          'en':
+              'Weight is trending downward, so calories were nudged up slightly.',
+          'pl': 'Masa trenduje w dół, więc kalorie lekko podniesiono.',
+          'nl': 'Gewicht trendt omlaag, dus calorieën zijn licht verhoogd.',
+          'es':
+              'El peso tiende a bajar, así que se subieron un poco las calorías.',
+          'de':
+              'Gewicht tendiert nach unten, daher wurden Kalorien leicht erhöht.',
+        });
+    }
+    return key;
+  }
+
+  String get dietaryRestrictions => _t({
+        'en': 'Dietary restrictions',
+        'pl': 'Ograniczenia żywieniowe',
+        'nl': 'Dieetbeperkingen',
+        'es': 'Restricciones dietéticas',
+        'de': 'Ernährungseinschränkungen',
+      });
+
+  String get dietaryRestrictionsDesc => _t({
+        'en':
+            'Used for recipe filters, meal planning, and scan/manual entry alerts.',
+        'pl':
+            'Używane w filtrach przepisów, planowaniu posiłków i alertach skanu/ręcznego wpisu.',
+        'nl':
+            'Gebruikt voor receptfilters, maaltijdplanning en waarschuwingen bij scan/handmatige invoer.',
+        'es':
+            'Se usa en filtros de recetas, planificación y alertas de escaneo/entrada manual.',
+        'de':
+            'Für Rezeptfilter, Mahlzeitenplanung und Scan-/manuelle Warnungen.',
+      });
+
+  String get restrictionAlert => _t({
+        'en': 'Restriction alert',
+        'pl': 'Alert ograniczenia',
+        'nl': 'Beperkingswaarschuwing',
+        'es': 'Alerta de restricción',
+        'de': 'Einschränkungswarnung',
+      });
+
+  String get restrictionScanNote => _t({
+        'en':
+            'Scan labels can be imperfect. Check ingredients and labels before eating or logging.',
+        'pl':
+            'Etykiety ze skanu mogą być niedokładne. Sprawdź skład i etykiety przed jedzeniem lub zapisem.',
+        'nl':
+            'Scanlabels kunnen onvolmaakt zijn. Controleer ingrediënten en etiketten vóór eten of loggen.',
+        'es':
+            'Las etiquetas del escaneo pueden fallar. Revisa ingredientes y etiquetas antes de comer o registrar.',
+        'de':
+            'Scan-Bezeichnungen können ungenau sein. Prüfe Zutaten und Etiketten vor dem Essen oder Speichern.',
+      });
+
+  String dietaryRestrictionLabel(String key) {
+    switch (key) {
+      case 'glutenFree':
+        return _t({
+          'en': 'Gluten-Free',
+          'pl': 'Bez glutenu',
+          'nl': 'Glutenvrij',
+          'es': 'Sin gluten',
+          'de': 'Glutenfrei',
+        });
+      case 'dairyFree':
+        return _t({
+          'en': 'Lactose-Free / Dairy-Free',
+          'pl': 'Bez laktozy / nabiału',
+          'nl': 'Lactosevrij / zuivelvrij',
+          'es': 'Sin lactosa / sin lácteos',
+          'de': 'Laktosefrei / milchfrei',
+        });
+      case 'nutFree':
+        return _t({
+          'en': 'Nut-Free',
+          'pl': 'Bez orzechów',
+          'nl': 'Notenvrij',
+          'es': 'Sin frutos secos',
+          'de': 'Nussfrei',
+        });
+    }
+    return key;
+  }
+
+  String dietaryRestrictionShortLabel(String key) {
+    switch (key) {
+      case 'glutenFree':
+        return _t({
+          'en': 'Gluten-Free',
+          'pl': 'Bez glutenu',
+          'nl': 'Glutenvrij',
+          'es': 'Sin gluten',
+          'de': 'Glutenfrei',
+        });
+      case 'dairyFree':
+        return _t({
+          'en': 'Dairy-Free',
+          'pl': 'Bez nabiału',
+          'nl': 'Zuivelvrij',
+          'es': 'Sin lácteos',
+          'de': 'Milchfrei',
+        });
+      case 'nutFree':
+        return _t({
+          'en': 'Nut-Free',
+          'pl': 'Bez orzechów',
+          'nl': 'Notenvrij',
+          'es': 'Sin frutos secos',
+          'de': 'Nussfrei',
+        });
+    }
+    return key;
+  }
+
+  String dietaryRestrictionDescription(String key) {
+    switch (key) {
+      case 'glutenFree':
+        return _t({
+          'en':
+              'Filters wheat, rye, barley, malt, seitan, flour, pasta, bread, and similar gluten sources.',
+          'pl':
+              'Filtruje pszenicę, żyto, jęczmień, słód, seitan, mąkę, makaron, chleb i podobne źródła glutenu.',
+          'nl':
+              'Filtert tarwe, rogge, gerst, mout, seitan, bloem, pasta, brood en vergelijkbare glutenbronnen.',
+          'es':
+              'Filtra trigo, centeno, cebada, malta, seitán, harina, pasta, pan y fuentes similares de gluten.',
+          'de':
+              'Filtert Weizen, Roggen, Gerste, Malz, Seitan, Mehl, Pasta, Brot und ähnliche Glutenquellen.',
+        });
+      case 'dairyFree':
+        return _t({
+          'en':
+              'Filters milk, lactose, cheese, yogurt, cream, butter, whey, casein, and similar dairy sources.',
+          'pl':
+              'Filtruje mleko, laktozę, ser, jogurt, śmietanę, masło, serwatkę, kazeinę i podobne źródła nabiału.',
+          'nl':
+              'Filtert melk, lactose, kaas, yoghurt, room, boter, wei, caseïne en vergelijkbare zuivelbronnen.',
+          'es':
+              'Filtra leche, lactosa, queso, yogur, crema, mantequilla, suero, caseína y fuentes lácteas similares.',
+          'de':
+              'Filtert Milch, Laktose, Käse, Joghurt, Sahne, Butter, Molke, Casein und ähnliche Milchquellen.',
+        });
+      case 'nutFree':
+        return _t({
+          'en':
+              'Filters tree nuts and peanut ingredients, including nut butters, nut flours, and common nut oils.',
+          'pl':
+              'Filtruje orzechy drzewne i arachidowe, w tym masła, mąki i popularne oleje orzechowe.',
+          'nl':
+              'Filtert noten en pinda-ingrediënten, inclusief notenpasta, notenmeel en veelgebruikte notenoliën.',
+          'es':
+              'Filtra frutos secos y cacahuete, incluidas mantequillas, harinas y aceites comunes de frutos secos.',
+          'de':
+              'Filtert Nüsse und Erdnusszutaten, einschließlich Nussmus, Nussmehl und gängiger Nussöle.',
+        });
+    }
+    return key;
+  }
+
+  String restrictionItemAlert(String itemName, String restrictionKey) => _t({
+        'en':
+            '$itemName may not fit your ${dietaryRestrictionShortLabel(restrictionKey)} setting. Check ingredients and labels before logging it.',
+        'pl':
+            '$itemName może nie pasować do ustawienia ${dietaryRestrictionShortLabel(restrictionKey)}. Sprawdź skład i etykiety przed zapisem.',
+        'nl':
+            '$itemName past mogelijk niet bij je instelling ${dietaryRestrictionShortLabel(restrictionKey)}. Controleer ingrediënten en etiketten vóór het loggen.',
+        'es':
+            '$itemName puede no encajar con tu ajuste ${dietaryRestrictionShortLabel(restrictionKey)}. Revisa ingredientes y etiquetas antes de registrarlo.',
+        'de':
+            '$itemName passt möglicherweise nicht zu deiner Einstellung ${dietaryRestrictionShortLabel(restrictionKey)}. Prüfe Zutaten und Etiketten vor dem Speichern.',
+      });
+
+  String get progressStoryTitle => _t({
+        'en': 'Progress Story',
+        'pl': 'Historia postępów',
+        'nl': 'Voortgangsverhaal',
+        'es': 'Historia de progreso',
+        'de': 'Fortschrittsstory',
+      });
+
+  String get progressStorySubtitle => _t({
+        'en':
+            'A compact recap of how your logging, planning, pantry and body trend are moving together.',
+        'pl':
+            'Krótkie podsumowanie tego, jak łączą się logowanie, planowanie, spiżarnia i trend masy.',
+        'nl':
+            'Een compacte samenvatting van hoe je logging, planning, voorraad en gewichtstrend samen bewegen.',
+        'es':
+            'Un resumen compacto de cómo avanzan juntos tu registro, planificación, despensa y tendencia corporal.',
+        'de':
+            'Eine kompakte Übersicht, wie Logging, Planung, Vorrat und Gewichtstrend zusammenspielen.',
+      });
+
+  String progressMomentum(int percent) => _t({
+        'en': '$percent% monthly logging momentum',
+        'pl': '$percent% miesięcznej regularności',
+        'nl': '$percent% maandelijkse logmomentum',
+        'es': '$percent% de impulso mensual de registro',
+        'de': '$percent% monatlicher Logging-Schwung',
+      });
+
+  String storyTotalScans(int count) => _t({
+        'en': '$count meals scanned',
+        'pl': '$count zeskanowanych posiłków',
+        'nl': '$count maaltijden gescand',
+        'es': '$count comidas escaneadas',
+        'de': '$count Mahlzeiten gescannt',
+      });
+
+  String get storyTotalScansBody => _t({
+        'en': 'Every scan gives the app more context for your food patterns.',
+        'pl':
+            'Każdy skan daje aplikacji więcej kontekstu o Twoich wzorcach jedzenia.',
+        'nl': 'Elke scan geeft de app meer context over je eetpatronen.',
+        'es': 'Cada escaneo da más contexto sobre tus patrones de comida.',
+        'de': 'Jeder Scan gibt der App mehr Kontext zu deinen Essmustern.',
+      });
+
+  String storyLoggedDays(int count) => _t({
+        'en': '$count active days in the last 30',
+        'pl': '$count aktywnych dni z ostatnich 30',
+        'nl': '$count actieve dagen in de laatste 30',
+        'es': '$count días activos en los últimos 30',
+        'de': '$count aktive Tage in den letzten 30',
+      });
+
+  String get storyLoggedDaysBody => _t({
+        'en': 'Consistency matters more than perfect entries.',
+        'pl': 'Regularność jest ważniejsza niż idealne wpisy.',
+        'nl': 'Consistentie telt meer dan perfecte invoer.',
+        'es': 'La constancia importa más que entradas perfectas.',
+        'de': 'Konstanz ist wichtiger als perfekte Einträge.',
+      });
+
+  String storyAverageCalories(int kcal) => _t({
+        'en':
+            kcal > 0 ? '$kcal kcal average logged day' : 'No calorie trend yet',
+        'pl': kcal > 0
+            ? 'Średnio $kcal kcal w dniu z wpisem'
+            : 'Brak trendu kalorii',
+        'nl': kcal > 0
+            ? '$kcal kcal gemiddeld per logdag'
+            : 'Nog geen calorietrend',
+        'es': kcal > 0
+            ? '$kcal kcal de media en días registrados'
+            : 'Aún no hay tendencia calórica',
+        'de': kcal > 0
+            ? '$kcal kcal im Schnitt pro Logtag'
+            : 'Noch kein Kalorientrend',
+      });
+
+  String get storyAverageCaloriesBody => _t({
+        'en': 'Use the trend with your goal, weight change and energy levels.',
+        'pl': 'Łącz trend z celem, zmianą masy i poziomem energii.',
+        'nl': 'Gebruik de trend samen met je doel, gewicht en energieniveau.',
+        'es': 'Usa la tendencia junto con tu objetivo, peso y energía.',
+        'de': 'Nutze den Trend zusammen mit Ziel, Gewicht und Energie.',
+      });
+
+  String storyWeightTrend(double? changeKg) => _t({
+        'en': changeKg == null
+            ? 'Weight trend needs 2 months'
+            : '${changeKg >= 0 ? '+' : ''}${changeKg.toStringAsFixed(1)} kg since last month',
+        'pl': changeKg == null
+            ? 'Trend masy wymaga 2 miesięcy'
+            : '${changeKg >= 0 ? '+' : ''}${changeKg.toStringAsFixed(1)} kg od zeszłego miesiąca',
+        'nl': changeKg == null
+            ? 'Gewichtstrend heeft 2 maanden nodig'
+            : '${changeKg >= 0 ? '+' : ''}${changeKg.toStringAsFixed(1)} kg sinds vorige maand',
+        'es': changeKg == null
+            ? 'La tendencia necesita 2 meses'
+            : '${changeKg >= 0 ? '+' : ''}${changeKg.toStringAsFixed(1)} kg desde el mes pasado',
+        'de': changeKg == null
+            ? 'Gewichtstrend braucht 2 Monate'
+            : '${changeKg >= 0 ? '+' : ''}${changeKg.toStringAsFixed(1)} kg seit letztem Monat',
+      });
+
+  String get storyWeightTrendBody => _t({
+        'en':
+            'Monthly entries help calibrate calorie targets from real outcomes.',
+        'pl':
+            'Miesięczne wpisy pomagają kalibrować kalorie z realnych efektów.',
+        'nl': 'Maandelijkse invoer kalibreert calorieën op echte resultaten.',
+        'es': 'Las entradas mensuales calibran calorías con resultados reales.',
+        'de':
+            'Monatliche Einträge kalibrieren Kalorien mit echten Ergebnissen.',
+      });
+
+  String storyPlannedMeals(int count) => _t({
+        'en': '$count meals planned this week',
+        'pl': '$count posiłków zaplanowanych w tym tygodniu',
+        'nl': '$count maaltijden gepland deze week',
+        'es': '$count comidas planificadas esta semana',
+        'de': '$count Mahlzeiten diese Woche geplant',
+      });
+
+  String get storyPlannedMealsBody => _t({
+        'en': 'Planning turns goals into ready choices before hunger decides.',
+        'pl': 'Planowanie zamienia cele w gotowe wybory, zanim zdecyduje głód.',
+        'nl': 'Planning maakt doelen klaar voordat honger beslist.',
+        'es':
+            'Planificar convierte objetivos en opciones antes de que decida el hambre.',
+        'de':
+            'Planung macht Ziele zu fertigen Entscheidungen, bevor Hunger entscheidet.',
+      });
+
+  String storyPantryItems(int count) => _t({
+        'en': '$count pantry ingredients ready',
+        'pl': '$count składników w spiżarni',
+        'nl': '$count voorraadingrediënten klaar',
+        'es': '$count ingredientes listos en despensa',
+        'de': '$count Vorratszutaten bereit',
+      });
+
+  String get storyPantryItemsBody => _t({
+        'en': 'Pantry Mode helps plans use what you already have.',
+        'pl': 'Tryb spiżarni pomaga planom używać tego, co już masz.',
+        'nl': 'Voorraadmodus helpt plannen gebruiken wat je al hebt.',
+        'es': 'El modo despensa ayuda a usar lo que ya tienes.',
+        'de': 'Vorratsmodus hilft, vorhandene Zutaten zu nutzen.',
+      });
+
   String get getStarted => _t({
-        'en': "Let's get started!",
+        'en': 'Let\'s get started!',
         'pl': 'Zaczynajmy!',
-        'nl': "Laten we beginnen!",
+        'nl': 'Laten we beginnen!',
         'es': '¡Comencemos!',
         'de': 'Los geht\'s!',
       });
@@ -874,6 +1388,377 @@ class AppLocalizations {
         'de': 'Portion',
       });
 
+  String get mealPlanAutopilot => _t({
+        'en': 'Autopilot',
+        'pl': 'Autopilot',
+        'nl': 'Autopilot',
+        'es': 'Piloto automático',
+        'de': 'Autopilot',
+      });
+
+  String get mealPlanAutopilotDone => _t({
+        'en': 'Your week was planned with goal-matched meals.',
+        'pl': 'Tydzień został zaplanowany posiłkami dopasowanymi do celu.',
+        'nl': 'Je week is gepland met maaltijden die bij je doel passen.',
+        'es': 'Tu semana se planificó con comidas según tu objetivo.',
+        'de': 'Deine Woche wurde mit passenden Mahlzeiten geplant.',
+      });
+
+  String get pantryMode => _t({
+        'en': 'Pantry Mode',
+        'pl': 'Tryb spiżarni',
+        'nl': 'Voorraadmodus',
+        'es': 'Modo despensa',
+        'de': 'Vorratsmodus',
+      });
+
+  String get managePantry => _t({
+        'en': 'Manage Pantry',
+        'pl': 'Zarządzaj spiżarnią',
+        'nl': 'Voorraad beheren',
+        'es': 'Gestionar despensa',
+        'de': 'Vorrat verwalten',
+      });
+
+  String get pantryModeDescription => _t({
+        'en':
+            'Add ingredients you already have. Autopilot and Smart Swap can prefer recipes that use them.',
+        'pl':
+            'Dodaj składniki, które już masz. Autopilot i inteligentna zamiana mogą wybierać przepisy, które ich używają.',
+        'nl':
+            'Voeg ingrediënten toe die je al hebt. Autopilot en slimme wissels kunnen recepten met die ingrediënten voorrang geven.',
+        'es':
+            'Añade ingredientes que ya tienes. El piloto automático y los cambios inteligentes pueden priorizar recetas que los usen.',
+        'de':
+            'Füge Zutaten hinzu, die du schon hast. Autopilot und intelligente Wechsel können Rezepte damit bevorzugen.',
+      });
+
+  String get addPantryItem => _t({
+        'en': 'Add ingredient you have',
+        'pl': 'Dodaj składnik, który masz',
+        'nl': 'Voeg ingrediënt toe dat je hebt',
+        'es': 'Añade un ingrediente que tienes',
+        'de': 'Vorhandene Zutat hinzufügen',
+      });
+
+  String get emptyPantry => _t({
+        'en': 'No pantry items yet.',
+        'pl': 'Nie ma jeszcze składników w spiżarni.',
+        'nl': 'Nog geen voorraaditems.',
+        'es': 'Aún no hay ingredientes en la despensa.',
+        'de': 'Noch keine Vorratsartikel.',
+      });
+
+  String get availableForPlanning => _t({
+        'en': 'Available for planning',
+        'pl': 'Dostępne do planowania',
+        'nl': 'Beschikbaar voor planning',
+        'es': 'Disponible para planificar',
+        'de': 'Für Planung verfügbar',
+      });
+
+  String get hiddenFromPlanning => _t({
+        'en': 'Hidden from planning',
+        'pl': 'Ukryte przed planowaniem',
+        'nl': 'Verborgen voor planning',
+        'es': 'Oculto de la planificación',
+        'de': 'Für Planung ausgeblendet',
+      });
+
+  String get smartSwap => _t({
+        'en': 'Smart Swap',
+        'pl': 'Inteligentna zamiana',
+        'nl': 'Slim wisselen',
+        'es': 'Cambio inteligente',
+        'de': 'Intelligent tauschen',
+      });
+
+  String get smartSwapSubtitle => _t({
+        'en': 'Choose what should improve in this meal.',
+        'pl': 'Wybierz, co ma się poprawić w tym posiłku.',
+        'nl': 'Kies wat beter moet worden in deze maaltijd.',
+        'es': 'Elige qué debería mejorar en esta comida.',
+        'de': 'Wähle, was an dieser Mahlzeit besser werden soll.',
+      });
+
+  String smartSwapIntentLabel(String key) {
+    switch (key) {
+      case 'balanced':
+        return _t({
+          'en': 'More balanced',
+          'pl': 'Bardziej zbilansowane',
+          'nl': 'Meer in balans',
+          'es': 'Más equilibrado',
+          'de': 'Ausgewogener',
+        });
+      case 'higherProtein':
+        return _t({
+          'en': 'Higher protein',
+          'pl': 'Więcej białka',
+          'nl': 'Meer eiwit',
+          'es': 'Más proteína',
+          'de': 'Mehr Eiweiß',
+        });
+      case 'lowerCarb':
+        return _t({
+          'en': 'Lower carb',
+          'pl': 'Mniej węglowodanów',
+          'nl': 'Minder koolhydraten',
+          'es': 'Menos carbohidratos',
+          'de': 'Weniger Kohlenhydrate',
+        });
+      case 'faster':
+        return _t({
+          'en': 'Faster to cook',
+          'pl': 'Szybsze w gotowaniu',
+          'nl': 'Sneller te maken',
+          'es': 'Más rápido de preparar',
+          'de': 'Schneller gekocht',
+        });
+      case 'pantryFirst':
+        return _t({
+          'en': 'Use pantry first',
+          'pl': 'Najpierw spiżarnia',
+          'nl': 'Eerst voorraad gebruiken',
+          'es': 'Usar despensa primero',
+          'de': 'Vorrat zuerst nutzen',
+        });
+    }
+    return key;
+  }
+
+  String smartSwapIntentDescription(String key) {
+    switch (key) {
+      case 'balanced':
+        return _t({
+          'en': 'Keeps calories and macros closer to the day target.',
+          'pl': 'Utrzymuje kalorie i makro bliżej dziennego celu.',
+          'nl': 'Houdt calorieën en macro’s dichter bij je dagdoel.',
+          'es': 'Mantiene calorías y macros cerca del objetivo diario.',
+          'de': 'Hält Kalorien und Makros näher am Tagesziel.',
+        });
+      case 'higherProtein':
+        return _t({
+          'en': 'Prioritizes recipes with stronger protein density.',
+          'pl': 'Priorytet dla przepisów z większą gęstością białka.',
+          'nl': 'Geeft voorkeur aan recepten met meer eiwitdichtheid.',
+          'es': 'Prioriza recetas con mayor densidad de proteína.',
+          'de': 'Bevorzugt Rezepte mit höherer Eiweißdichte.',
+        });
+      case 'lowerCarb':
+        return _t({
+          'en': 'Finds a steadier lower-carb option for the same slot.',
+          'pl': 'Szuka spokojniejszej opcji z mniejszą ilością węglowodanów.',
+          'nl': 'Zoekt een stabielere optie met minder koolhydraten.',
+          'es': 'Busca una opción más estable y baja en carbohidratos.',
+          'de': 'Findet eine stabilere Option mit weniger Kohlenhydraten.',
+        });
+      case 'faster':
+        return _t({
+          'en': 'Prefers shorter prep and cook times.',
+          'pl': 'Preferuje krótsze przygotowanie i gotowanie.',
+          'nl': 'Geeft voorkeur aan kortere bereidings- en kooktijd.',
+          'es': 'Prefiere menor tiempo de preparación y cocción.',
+          'de': 'Bevorzugt kürzere Vorbereitungs- und Kochzeit.',
+        });
+      case 'pantryFirst':
+        return _t({
+          'en': 'Boosts recipes that use ingredients you marked available.',
+          'pl': 'Premiuje przepisy ze składnikami oznaczonymi jako dostępne.',
+          'nl': 'Geeft recepten met beschikbare ingrediënten extra gewicht.',
+          'es': 'Impulsa recetas que usan ingredientes marcados disponibles.',
+          'de': 'Bevorzugt Rezepte mit als verfügbar markierten Zutaten.',
+        });
+    }
+    return key;
+  }
+
+  String get foodScore => _t({
+        'en': 'Food score',
+        'pl': 'Ocena jedzenia',
+        'nl': 'Voedingsscore',
+        'es': 'Puntuación del alimento',
+        'de': 'Lebensmittelbewertung',
+      });
+
+  String get whyThisScore => _t({
+        'en': 'Why this score',
+        'pl': 'Skąd ta ocena',
+        'nl': 'Waarom deze score',
+        'es': 'Por qué esta puntuación',
+        'de': 'Warum diese Bewertung',
+      });
+
+  String foodScoreTitle(String key) {
+    switch (key) {
+      case 'excellentFit':
+        return _t({
+          'en': 'Excellent fit',
+          'pl': 'Świetne dopasowanie',
+          'nl': 'Uitstekende keuze',
+          'es': 'Excelente ajuste',
+          'de': 'Sehr gute Wahl',
+        });
+      case 'strongChoice':
+        return _t({
+          'en': 'Strong choice',
+          'pl': 'Mocny wybór',
+          'nl': 'Sterke keuze',
+          'es': 'Buena elección',
+          'de': 'Starke Wahl',
+        });
+      case 'usefulWithBalance':
+        return _t({
+          'en': 'Useful with balance',
+          'pl': 'Dobre z balansem',
+          'nl': 'Nuttig met balans',
+          'es': 'Útil con equilibrio',
+          'de': 'Gut mit Ausgleich',
+        });
+      case 'needsBalancing':
+        return _t({
+          'en': 'Needs balancing',
+          'pl': 'Wymaga zbalansowania',
+          'nl': 'Heeft balans nodig',
+          'es': 'Necesita equilibrio',
+          'de': 'Braucht Ausgleich',
+        });
+    }
+    return key;
+  }
+
+  String foodScoreReason(String key) {
+    switch (key) {
+      case 'highProtein':
+        return _t({
+          'en': 'High protein supports fullness and lean mass.',
+          'pl': 'Wysokie białko wspiera sytość i masę mięśniową.',
+          'nl': 'Veel eiwit ondersteunt verzadiging en vetvrije massa.',
+          'es': 'La proteína alta ayuda a la saciedad y masa magra.',
+          'de': 'Viel Eiweiß unterstützt Sättigung und fettfreie Masse.',
+        });
+      case 'usefulProtein':
+        return _t({
+          'en': 'Provides a useful protein contribution.',
+          'pl': 'Dostarcza sensowną ilość białka.',
+          'nl': 'Levert een nuttige eiwitbijdrage.',
+          'es': 'Aporta una cantidad útil de proteína.',
+          'de': 'Liefert einen nützlichen Eiweißbeitrag.',
+        });
+      case 'highFiber':
+        return _t({
+          'en': 'High fiber supports digestion and steadier glucose.',
+          'pl': 'Wysoki błonnik wspiera trawienie i stabilniejszą glukozę.',
+          'nl':
+              'Veel vezels ondersteunen spijsvertering en stabielere glucose.',
+          'es': 'La fibra alta ayuda a digestión y glucosa más estable.',
+          'de':
+              'Viele Ballaststoffe unterstützen Verdauung und stabilere Glukose.',
+        });
+      case 'meaningfulFiber':
+        return _t({
+          'en': 'Adds meaningful fiber to the meal.',
+          'pl': 'Dodaje do posiłku sensowną ilość błonnika.',
+          'nl': 'Voegt merkbaar vezels toe aan de maaltijd.',
+          'es': 'Añade fibra relevante a la comida.',
+          'de': 'Fügt der Mahlzeit relevante Ballaststoffe hinzu.',
+        });
+      case 'highSugar':
+        return _t({
+          'en': 'High sugar can make the meal less steady.',
+          'pl': 'Wysoki cukier może obniżyć stabilność posiłku.',
+          'nl': 'Veel suiker kan de maaltijd minder stabiel maken.',
+          'es': 'El azúcar alto puede hacer la comida menos estable.',
+          'de': 'Viel Zucker kann die Mahlzeit weniger stabil machen.',
+        });
+      case 'moderateSugar':
+        return _t({
+          'en': 'Moderate sugar: pair with protein or fiber.',
+          'pl': 'Umiarkowany cukier: połącz z białkiem lub błonnikiem.',
+          'nl': 'Matige suiker: combineer met eiwit of vezels.',
+          'es': 'Azúcar moderado: combínalo con proteína o fibra.',
+          'de': 'Mäßiger Zucker: mit Eiweiß oder Ballaststoffen kombinieren.',
+        });
+      case 'highSaturatedFat':
+        return _t({
+          'en': 'Saturated fat is high for frequent choices.',
+          'pl': 'Tłuszcz nasycony jest wysoki jak na częsty wybór.',
+          'nl': 'Verzadigd vet is hoog voor een frequente keuze.',
+          'es': 'La grasa saturada es alta para una opción frecuente.',
+          'de': 'Gesättigte Fette sind hoch für eine häufige Wahl.',
+        });
+      case 'highSodium':
+        return _t({
+          'en': 'Sodium is high; balance the day with lower-salt foods.',
+          'pl': 'Sód jest wysoki; zbalansuj dzień mniej słonym jedzeniem.',
+          'nl': 'Natrium is hoog; balanceer de dag met minder zout.',
+          'es': 'El sodio es alto; equilibra el día con menos sal.',
+          'de': 'Natrium ist hoch; gleiche den Tag mit weniger Salz aus.',
+        });
+      case 'energyDenseLowSatiety':
+        return _t({
+          'en': 'Energy dense without much protein or fiber.',
+          'pl': 'Wysoka gęstość energii bez dużej ilości białka lub błonnika.',
+          'nl': 'Energierijk zonder veel eiwit of vezels.',
+          'es': 'Denso en energía sin mucha proteína o fibra.',
+          'de': 'Energiedicht ohne viel Eiweiß oder Ballaststoffe.',
+        });
+      case 'diabetesCarbFiber':
+        return _t({
+          'en': 'For diabetes, carbs are better when fiber is higher.',
+          'pl':
+              'Przy cukrzycy węglowodany są korzystniejsze z większą ilością błonnika.',
+          'nl': 'Bij diabetes zijn koolhydraten beter met meer vezels.',
+          'es': 'Para diabetes, los carbohidratos van mejor con más fibra.',
+          'de':
+              'Bei Diabetes sind Kohlenhydrate mit mehr Ballaststoffen besser.',
+        });
+      case 'ketoHighCarb':
+        return _t({
+          'en': 'Carbs are high for keto.',
+          'pl': 'Węglowodany są wysokie jak na keto.',
+          'nl': 'Koolhydraten zijn hoog voor keto.',
+          'es': 'Los carbohidratos son altos para keto.',
+          'de': 'Kohlenhydrate sind hoch für Keto.',
+        });
+      case 'weightLossSatiety':
+        return _t({
+          'en': 'Helpful for weight loss because it supports satiety.',
+          'pl': 'Pomocne przy odchudzaniu, bo wspiera sytość.',
+          'nl': 'Helpt bij gewichtsverlies doordat het verzadigt.',
+          'es': 'Ayuda a perder peso porque favorece saciedad.',
+          'de': 'Hilfreich beim Abnehmen, weil es sättigt.',
+        });
+      case 'muscleProteinFit':
+        return _t({
+          'en': 'Strong fit for muscle growth protein targets.',
+          'pl': 'Dobre dopasowanie do celów białka na budowę mięśni.',
+          'nl': 'Past goed bij eiwitdoelen voor spiergroei.',
+          'es': 'Encaja bien con objetivos de proteína para músculo.',
+          'de': 'Passt gut zu Eiweißzielen für Muskelaufbau.',
+        });
+      case 'balancedContext':
+        return _t({
+          'en': 'Balanced everyday food; portion and plate context matter.',
+          'pl':
+              'Zbalansowane codzienne jedzenie; liczy się porcja i cały talerz.',
+          'nl': 'Gebalanceerde dagelijkse keuze; portie en bordcontext tellen.',
+          'es':
+              'Alimento cotidiano equilibrado; importan porción y plato completo.',
+          'de': 'Ausgewogene Alltagswahl; Portion und Tellerkontext zählen.',
+        });
+    }
+    return key;
+  }
+
+  String get manualRecipePicker => _t({
+        'en': 'Browse all matching recipes manually.',
+        'pl': 'Przejrzyj ręcznie wszystkie pasujące przepisy.',
+        'nl': 'Blader handmatig door alle passende recepten.',
+        'es': 'Explora manualmente todas las recetas compatibles.',
+        'de': 'Alle passenden Rezepte manuell durchsuchen.',
+      });
+
   // ── Grocery ──
 
   String get weeklyGroceryList => _t({
@@ -1031,11 +1916,16 @@ class AppLocalizations {
       });
 
   String get dataStoredLocally => _t({
-        'en': 'All data is stored locally on your device. No data is sent to any server.',
-        'pl': 'Wszystkie dane są przechowywane lokalnie na Twoim urządzeniu. Żadne dane nie są wysyłane na serwer.',
-        'nl': 'Alle gegevens worden lokaal op je apparaat opgeslagen. Er worden geen gegevens naar een server gestuurd.',
-        'es': 'Todos los datos se almacenan localmente en tu dispositivo. No se envían datos a ningún servidor.',
-        'de': 'Alle Daten werden lokal auf deinem Gerät gespeichert. Es werden keine Daten an einen Server gesendet.',
+        'en':
+            'All data is stored locally on your device. No data is sent to any server.',
+        'pl':
+            'Wszystkie dane są przechowywane lokalnie na Twoim urządzeniu. Żadne dane nie są wysyłane na serwer.',
+        'nl':
+            'Alle gegevens worden lokaal op je apparaat opgeslagen. Er worden geen gegevens naar een server gestuurd.',
+        'es':
+            'Todos los datos se almacenan localmente en tu dispositivo. No se envían datos a ningún servidor.',
+        'de':
+            'Alle Daten werden lokal auf deinem Gerät gespeichert. Es werden keine Daten an einen Server gesendet.',
       });
 
   String get storage => _t({
@@ -1074,7 +1964,8 @@ class AppLocalizations {
         'en': 'Scientific evaluation tools for thesis research.',
         'pl': 'Naukowe narzędzia oceny do badań w pracy dyplomowej.',
         'nl': 'Wetenschappelijke evaluatiehulpmiddelen voor scriptieonderzoek.',
-        'es': 'Herramientas de evaluación científica para la investigación de tesis.',
+        'es':
+            'Herramientas de evaluación científica para la investigación de tesis.',
         'de': 'Wissenschaftliche Bewertungswerkzeuge für die Abschlussarbeit.',
       });
 
@@ -1092,8 +1983,10 @@ class AppLocalizations {
           }),
           body: _t({
             'en': "Let's take a quick tour so you know where everything is.",
-            'pl': 'Zróbmy krótką wycieczkę, abyś wiedział, gdzie wszystko się znajduje.',
-            'nl': 'Laten we een korte rondleiding doen zodat je weet waar alles staat.',
+            'pl':
+                'Zróbmy krótką wycieczkę, abyś wiedział, gdzie wszystko się znajduje.',
+            'nl':
+                'Laten we een korte rondleiding doen zodat je weet waar alles staat.',
             'es': 'Hagamos un recorrido rápido para que sepas dónde está todo.',
             'de': 'Machen wir eine kurze Tour, damit du weißt, wo alles ist.',
           }),
@@ -1108,11 +2001,16 @@ class AppLocalizations {
             'de': 'KI-Scan 📷',
           }),
           body: _t({
-            'en': 'Tap AI Scan to open the camera.\nPoint at your plate and get instant calories & macros!\nIncludes flashlight toggle and low-light warnings.',
-            'pl': 'Dotknij Skan AI, aby otworzyć aparat.\nWyceluj w talerz i natychmiast poznaj kalorie i makroskładniki!\nZawiera przełącznik latarki i ostrzeżenia o słabym oświetleniu.',
-            'nl': 'Tik op AI-scan om de camera te openen.\nRicht op je bord en krijg direct calorieën en macro\'s!\nMet zaklamp-schakelaar en waarschuwingen bij weinig licht.',
-            'es': 'Toca Escaneo IA para abrir la cámara.\n¡Apunta a tu plato y obtén calorías y macros al instante!\nIncluye linterna y avisos de poca luz.',
-            'de': 'Tippe auf KI-Scan, um die Kamera zu öffnen.\nRichte sie auf deinen Teller und erhalte sofort Kalorien & Makros!\nInklusive Taschenlampe und Warnungen bei wenig Licht.',
+            'en':
+                'Tap AI Scan to open the camera.\nPoint at your plate and get instant calories & macros!\nIncludes flashlight toggle and low-light warnings.',
+            'pl':
+                'Dotknij Skan AI, aby otworzyć aparat.\nWyceluj w talerz i natychmiast poznaj kalorie i makroskładniki!\nZawiera przełącznik latarki i ostrzeżenia o słabym oświetleniu.',
+            'nl':
+                'Tik op AI-scan om de camera te openen.\nRicht op je bord en krijg direct calorieën en macro\'s!\nMet zaklamp-schakelaar en waarschuwingen bij weinig licht.',
+            'es':
+                'Toca Escaneo IA para abrir la cámara.\n¡Apunta a tu plato y obtén calorías y macros al instante!\nIncluye linterna y avisos de poca luz.',
+            'de':
+                'Tippe auf KI-Scan, um die Kamera zu öffnen.\nRichte sie auf deinen Teller und erhalte sofort Kalorien & Makros!\nInklusive Taschenlampe und Warnungen bei wenig Licht.',
           }),
         ),
         // 2 – AI Speech
@@ -1125,11 +2023,16 @@ class AppLocalizations {
             'de': 'KI-Sprache 🎤',
           }),
           body: _t({
-            'en': 'Tap AI Speech to log food by voice in English.\nSay "200 grams of chicken and a banana" — it matches your food database automatically.',
-            'pl': 'Dotknij Mowa AI, aby zapisać jedzenie głosem po angielsku.\nPowiedz „200 gramów kurczaka i banan" — automatycznie dopasuje to do Twojej bazy żywności.',
-            'nl': 'Tik op AI-spraak om eten met je stem in het Engels te loggen.\nZeg "200 gram kip en een banaan" — het matcht automatisch met je voedingsdatabase.',
-            'es': 'Toca Voz IA para registrar comida por voz en inglés.\nDi "200 gramos de pollo y un plátano" — coincide con tu base de datos de alimentos automáticamente.',
-            'de': 'Tippe auf KI-Sprache, um Essen per Stimme auf Englisch zu erfassen.\nSage "200 Gramm Hähnchen und eine Banane" — es wird automatisch mit deiner Lebensmitteldatenbank abgeglichen.',
+            'en':
+                'Tap AI Speech to log food by voice in English.\nSay "200 grams of chicken and a banana" — it matches your food database automatically.',
+            'pl':
+                'Dotknij Mowa AI, aby zapisać jedzenie głosem po angielsku.\nPowiedz „200 gramów kurczaka i banan" — automatycznie dopasuje to do Twojej bazy żywności.',
+            'nl':
+                'Tik op AI-spraak om eten met je stem in het Engels te loggen.\nZeg "200 gram kip en een banaan" — het matcht automatisch met je voedingsdatabase.',
+            'es':
+                'Toca Voz IA para registrar comida por voz en inglés.\nDi "200 gramos de pollo y un plátano" — coincide con tu base de datos de alimentos automáticamente.',
+            'de':
+                'Tippe auf KI-Sprache, um Essen per Stimme auf Englisch zu erfassen.\nSage "200 Gramm Hähnchen und eine Banane" — es wird automatisch mit deiner Lebensmitteldatenbank abgeglichen.',
           }),
         ),
         // 3 – Manual Log
@@ -1142,11 +2045,16 @@ class AppLocalizations {
             'de': 'Essen manuell erfassen ✏️',
           }),
           body: _t({
-            'en': 'Search foods, pick from My Meals, or scan a barcode.\nBarcode scanning shows a health score (0-100) before logging.',
-            'pl': 'Wyszukaj produkty, wybierz z Moich Posiłków lub zeskanuj kod kreskowy.\nSkanowanie kodu pokazuje ocenę zdrowotności (0-100) przed zapisem.',
-            'nl': 'Zoek voedsel, kies uit Mijn Maaltijden of scan een barcode.\nBarcode scannen toont een gezondheidsscore (0-100) vóór het loggen.',
-            'es': 'Busca alimentos, elige de Mis Comidas o escanea un código de barras.\nEl escaneo muestra una puntuación de salud (0-100) antes de registrar.',
-            'de': 'Suche Lebensmittel, wähle aus Meine Mahlzeiten oder scanne einen Barcode.\nDer Barcode-Scan zeigt vor dem Erfassen einen Gesundheitswert (0-100).',
+            'en':
+                'Search foods, pick from My Meals, or scan a barcode.\nBarcode scanning shows a health score (0-100) before logging.',
+            'pl':
+                'Wyszukaj produkty, wybierz z Moich Posiłków lub zeskanuj kod kreskowy.\nSkanowanie kodu pokazuje ocenę zdrowotności (0-100) przed zapisem.',
+            'nl':
+                'Zoek voedsel, kies uit Mijn Maaltijden of scan een barcode.\nBarcode scannen toont een gezondheidsscore (0-100) vóór het loggen.',
+            'es':
+                'Busca alimentos, elige de Mis Comidas o escanea un código de barras.\nEl escaneo muestra una puntuación de salud (0-100) antes de registrar.',
+            'de':
+                'Suche Lebensmittel, wähle aus Meine Mahlzeiten oder scanne einen Barcode.\nDer Barcode-Scan zeigt vor dem Erfassen einen Gesundheitswert (0-100).',
           }),
         ),
         // 4 – Daily Streak
@@ -1159,11 +2067,16 @@ class AppLocalizations {
             'de': 'Tagesserie 🔥',
           }),
           body: _t({
-            'en': 'Your streak badge is now bigger and easier to spot. Keep logging daily to build momentum.',
-            'pl': 'Twoja odznaka serii jest teraz większa i łatwiejsza do zauważenia. Zapisuj codziennie, aby utrzymać tempo.',
-            'nl': 'Je reeks-badge is nu groter en beter zichtbaar. Blijf dagelijks loggen om je momentum op te bouwen.',
-            'es': 'Tu insignia de racha ahora es más grande y fácil de ver. Sigue registrando a diario para mantener el impulso.',
-            'de': 'Dein Serien-Abzeichen ist jetzt größer und leichter zu erkennen. Erfasse täglich weiter, um den Schwung zu halten.',
+            'en':
+                'Your streak badge is now bigger and easier to spot. Keep logging daily to build momentum.',
+            'pl':
+                'Twoja odznaka serii jest teraz większa i łatwiejsza do zauważenia. Zapisuj codziennie, aby utrzymać tempo.',
+            'nl':
+                'Je reeks-badge is nu groter en beter zichtbaar. Blijf dagelijks loggen om je momentum op te bouwen.',
+            'es':
+                'Tu insignia de racha ahora es más grande y fácil de ver. Sigue registrando a diario para mantener el impulso.',
+            'de':
+                'Dein Serien-Abzeichen ist jetzt größer und leichter zu erkennen. Erfasse täglich weiter, um den Schwung zu halten.',
           }),
         ),
         // 5 – Body Map
@@ -1176,11 +2089,16 @@ class AppLocalizations {
             'de': 'Körperkarte 🫀',
           }),
           body: _t({
-            'en': 'Tap the body icon to open the anatomy map.\nBrain, eyes, heart, lungs, gut, bones, muscles, skin, blood, and immune regions are tappable and color-coded from your nutrient intake.',
-            'pl': 'Dotknij ikony ciała, aby otworzyć mapę anatomii.\nMózg, oczy, serce, płuca, jelita, kości, mięśnie, skóra, krew i obszary odpornościowe są klikalne i oznaczone kolorami na podstawie spożycia składników odżywczych.',
-            'nl': 'Tik op het lichaamspictogram om de anatomiekaart te openen.\nHersenen, ogen, hart, longen, darmen, botten, spieren, huid, bloed en immuungebieden zijn aantikbaar en kleurgecodeerd op basis van je voedingsinname.',
-            'es': 'Toca el icono del cuerpo para abrir el mapa anatómico.\nCerebro, ojos, corazón, pulmones, intestino, huesos, músculos, piel, sangre y zonas inmunitarias son tocables y con colores según tu ingesta de nutrientes.',
-            'de': 'Tippe auf das Körpersymbol, um die Anatomiekarte zu öffnen.\nGehirn, Augen, Herz, Lunge, Darm, Knochen, Muskeln, Haut, Blut und Immunbereiche sind antippbar und je nach Nährstoffzufuhr farblich markiert.',
+            'en':
+                'Tap the body icon to open the anatomy map.\nBrain, eyes, heart, lungs, gut, bones, muscles, skin, blood, and immune regions are tappable and color-coded from your nutrient intake.',
+            'pl':
+                'Dotknij ikony ciała, aby otworzyć mapę anatomii.\nMózg, oczy, serce, płuca, jelita, kości, mięśnie, skóra, krew i obszary odpornościowe są klikalne i oznaczone kolorami na podstawie spożycia składników odżywczych.',
+            'nl':
+                'Tik op het lichaamspictogram om de anatomiekaart te openen.\nHersenen, ogen, hart, longen, darmen, botten, spieren, huid, bloed en immuungebieden zijn aantikbaar en kleurgecodeerd op basis van je voedingsinname.',
+            'es':
+                'Toca el icono del cuerpo para abrir el mapa anatómico.\nCerebro, ojos, corazón, pulmones, intestino, huesos, músculos, piel, sangre y zonas inmunitarias son tocables y con colores según tu ingesta de nutrientes.',
+            'de':
+                'Tippe auf das Körpersymbol, um die Anatomiekarte zu öffnen.\nGehirn, Augen, Herz, Lunge, Darm, Knochen, Muskeln, Haut, Blut und Immunbereiche sind antippbar und je nach Nährstoffzufuhr farblich markiert.',
           }),
         ),
         // 6 – Today's Nutrition
@@ -1193,11 +2111,16 @@ class AppLocalizations {
             'de': 'Heutige Ernährung 🌿',
           }),
           body: _t({
-            'en': 'The leaf icon opens your full nutrition dashboard with macros, vitamins, minerals, and the upgraded micronutrient wheel.',
-            'pl': 'Ikona liścia otwiera pełny pulpit odżywiania z makroskładnikami, witaminami, minerałami i ulepszonym kołem mikroskładników.',
-            'nl': 'Het bladpictogram opent je volledige voedingsdashboard met macro\'s, vitamines, mineralen en het verbeterde micronutriëntenwiel.',
-            'es': 'El icono de la hoja abre tu panel de nutrición completo con macros, vitaminas, minerales y la rueda de micronutrientes mejorada.',
-            'de': 'Das Blattsymbol öffnet dein vollständiges Ernährungs-Dashboard mit Makros, Vitaminen, Mineralien und dem verbesserten Mikronährstoff-Rad.',
+            'en':
+                'The leaf icon opens your full nutrition dashboard with macros, vitamins, minerals, and the upgraded micronutrient wheel.',
+            'pl':
+                'Ikona liścia otwiera pełny pulpit odżywiania z makroskładnikami, witaminami, minerałami i ulepszonym kołem mikroskładników.',
+            'nl':
+                'Het bladpictogram opent je volledige voedingsdashboard met macro\'s, vitamines, mineralen en het verbeterde micronutriëntenwiel.',
+            'es':
+                'El icono de la hoja abre tu panel de nutrición completo con macros, vitaminas, minerales y la rueda de micronutrientes mejorada.',
+            'de':
+                'Das Blattsymbol öffnet dein vollständiges Ernährungs-Dashboard mit Makros, Vitaminen, Mineralien und dem verbesserten Mikronährstoff-Rad.',
           }),
         ),
         // 7 – Hydration Tracking
@@ -1210,11 +2133,16 @@ class AppLocalizations {
             'de': 'Flüssigkeits-Tracking 💧',
           }),
           body: _t({
-            'en': 'The hydration card tracks your daily water intake.\nUse the + drink button to log water, coffee, tea, and more.',
-            'pl': 'Karta nawodnienia śledzi dzienne spożycie wody.\nUżyj przycisku + napój, aby zapisać wodę, kawę, herbatę i więcej.',
-            'nl': 'De hydratatiekaart houdt je dagelijkse waterinname bij.\nGebruik de + drankknop om water, koffie, thee en meer te loggen.',
-            'es': 'La tarjeta de hidratación registra tu consumo diario de agua.\nUsa el botón + bebida para registrar agua, café, té y más.',
-            'de': 'Die Flüssigkeitskarte verfolgt deine tägliche Wasseraufnahme.\nNutze die + Getränk-Taste, um Wasser, Kaffee, Tee und mehr zu erfassen.',
+            'en':
+                'The hydration card tracks your daily water intake.\nUse the + drink button to log water, coffee, tea, and more.',
+            'pl':
+                'Karta nawodnienia śledzi dzienne spożycie wody.\nUżyj przycisku + napój, aby zapisać wodę, kawę, herbatę i więcej.',
+            'nl':
+                'De hydratatiekaart houdt je dagelijkse waterinname bij.\nGebruik de + drankknop om water, koffie, thee en meer te loggen.',
+            'es':
+                'La tarjeta de hidratación registra tu consumo diario de agua.\nUsa el botón + bebida para registrar agua, café, té y más.',
+            'de':
+                'Die Flüssigkeitskarte verfolgt deine tägliche Wasseraufnahme.\nNutze die + Getränk-Taste, um Wasser, Kaffee, Tee und mehr zu erfassen.',
           }),
         ),
         // 8 – Quick Add +200 ml
@@ -1227,11 +2155,16 @@ class AppLocalizations {
             'de': 'Schnell +200 ml',
           }),
           body: _t({
-            'en': 'Need a fast water log? Tap +200 ml for one-tap hydration updates.',
-            'pl': 'Potrzebujesz szybkiego zapisu wody? Dotknij +200 ml, aby zaktualizować nawodnienie jednym dotknięciem.',
-            'nl': 'Snel water loggen? Tik op +200 ml voor hydratatie-updates met één tik.',
-            'es': '¿Necesitas registrar agua rápido? Toca +200 ml para actualizar la hidratación con un toque.',
-            'de': 'Schnell Wasser erfassen? Tippe auf +200 ml für Flüssigkeits-Updates mit einem Tipp.',
+            'en':
+                'Need a fast water log? Tap +200 ml for one-tap hydration updates.',
+            'pl':
+                'Potrzebujesz szybkiego zapisu wody? Dotknij +200 ml, aby zaktualizować nawodnienie jednym dotknięciem.',
+            'nl':
+                'Snel water loggen? Tik op +200 ml voor hydratatie-updates met één tik.',
+            'es':
+                '¿Necesitas registrar agua rápido? Toca +200 ml para actualizar la hidratación con un toque.',
+            'de':
+                'Schnell Wasser erfassen? Tippe auf +200 ml für Flüssigkeits-Updates mit einem Tipp.',
           }),
         ),
         // 9 – Smart Nutrition Coach
@@ -1244,11 +2177,16 @@ class AppLocalizations {
             'de': 'Smarter Ernährungscoach 🧠',
           }),
           body: _t({
-            'en': 'Recommendations now adapt to your goal and nutrient gaps (like low iron, vitamin D, B12, calcium, and more).',
-            'pl': 'Rekomendacje dostosowują się teraz do Twojego celu i niedoborów składników (jak niski poziom żelaza, witaminy D, B12, wapnia i innych).',
-            'nl': 'Aanbevelingen passen zich nu aan je doel en voedingstekorten aan (zoals weinig ijzer, vitamine D, B12, calcium en meer).',
-            'es': 'Las recomendaciones ahora se adaptan a tu objetivo y a tus carencias de nutrientes (como hierro, vitamina D, B12, calcio y más).',
-            'de': 'Empfehlungen passen sich jetzt deinem Ziel und Nährstofflücken an (z. B. wenig Eisen, Vitamin D, B12, Kalzium und mehr).',
+            'en':
+                'Recommendations now adapt to your goal and nutrient gaps (like low iron, vitamin D, B12, calcium, and more).',
+            'pl':
+                'Rekomendacje dostosowują się teraz do Twojego celu i niedoborów składników (jak niski poziom żelaza, witaminy D, B12, wapnia i innych).',
+            'nl':
+                'Aanbevelingen passen zich nu aan je doel en voedingstekorten aan (zoals weinig ijzer, vitamine D, B12, calcium en meer).',
+            'es':
+                'Las recomendaciones ahora se adaptan a tu objetivo y a tus carencias de nutrientes (como hierro, vitamina D, B12, calcio y más).',
+            'de':
+                'Empfehlungen passen sich jetzt deinem Ziel und Nährstofflücken an (z. B. wenig Eisen, Vitamin D, B12, Kalzium und mehr).',
           }),
         ),
         // 10 – Analytics
@@ -1262,10 +2200,14 @@ class AppLocalizations {
           }),
           body: _t({
             'en': 'Track weekly & monthly calorie and macro trends here.',
-            'pl': 'Śledź tutaj tygodniowe i miesięczne trendy kalorii i makroskładników.',
-            'nl': 'Volg hier wekelijkse en maandelijkse calorie- en macrotrends.',
-            'es': 'Sigue aquí las tendencias semanales y mensuales de calorías y macros.',
-            'de': 'Verfolge hier wöchentliche und monatliche Kalorien- und Makrotrends.',
+            'pl':
+                'Śledź tutaj tygodniowe i miesięczne trendy kalorii i makroskładników.',
+            'nl':
+                'Volg hier wekelijkse en maandelijkse calorie- en macrotrends.',
+            'es':
+                'Sigue aquí las tendencias semanales y mensuales de calorías y macros.',
+            'de':
+                'Verfolge hier wöchentliche und monatliche Kalorien- und Makrotrends.',
           }),
         ),
         // 11 – Recipes
@@ -1278,11 +2220,16 @@ class AppLocalizations {
             'de': 'Rezepte 🍽️',
           }),
           body: _t({
-            'en': 'Browse recipes tailored to your nutrition goal and log meals quickly.',
-            'pl': 'Przeglądaj przepisy dopasowane do Twojego celu żywieniowego i szybko zapisuj posiłki.',
-            'nl': 'Blader door recepten op maat van je voedingsdoel en log maaltijden snel.',
-            'es': 'Explora recetas adaptadas a tu objetivo nutricional y registra comidas rápidamente.',
-            'de': 'Durchstöbere Rezepte passend zu deinem Ernährungsziel und erfasse Mahlzeiten schnell.',
+            'en':
+                'Browse recipes tailored to your nutrition goal and log meals quickly.',
+            'pl':
+                'Przeglądaj przepisy dopasowane do Twojego celu żywieniowego i szybko zapisuj posiłki.',
+            'nl':
+                'Blader door recepten op maat van je voedingsdoel en log maaltijden snel.',
+            'es':
+                'Explora recetas adaptadas a tu objetivo nutricional y registra comidas rápidamente.',
+            'de':
+                'Durchstöbere Rezepte passend zu deinem Ernährungsziel und erfasse Mahlzeiten schnell.',
           }),
         ),
         // 12 – Recipe Search
@@ -1295,11 +2242,16 @@ class AppLocalizations {
             'de': 'Rezeptsuche',
           }),
           body: _t({
-            'en': 'Use search + goal filters to find recipes that match your needs faster.',
-            'pl': 'Użyj wyszukiwania i filtrów celu, aby szybciej znaleźć przepisy pasujące do Twoich potrzeb.',
-            'nl': 'Gebruik zoeken + doelfilters om sneller recepten te vinden die bij je passen.',
-            'es': 'Usa la búsqueda y los filtros de objetivo para encontrar recetas que se ajusten a ti más rápido.',
-            'de': 'Nutze Suche + Zielfilter, um schneller passende Rezepte zu finden.',
+            'en':
+                'Use search + goal filters to find recipes that match your needs faster.',
+            'pl':
+                'Użyj wyszukiwania i filtrów celu, aby szybciej znaleźć przepisy pasujące do Twoich potrzeb.',
+            'nl':
+                'Gebruik zoeken + doelfilters om sneller recepten te vinden die bij je passen.',
+            'es':
+                'Usa la búsqueda y los filtros de objetivo para encontrar recetas que se ajusten a ti más rápido.',
+            'de':
+                'Nutze Suche + Zielfilter, um schneller passende Rezepte zu finden.',
           }),
         ),
         // 13 – Grocery List
@@ -1312,14 +2264,41 @@ class AppLocalizations {
             'de': 'Einkaufsliste 🛒',
           }),
           body: _t({
-            'en': 'Add items manually or get smart suggestions based on your scan history.',
-            'pl': 'Dodawaj produkty ręcznie lub otrzymuj inteligentne sugestie na podstawie historii skanów.',
-            'nl': 'Voeg items handmatig toe of krijg slimme suggesties op basis van je scangeschiedenis.',
-            'es': 'Añade artículos manualmente u obtén sugerencias inteligentes según tu historial de escaneos.',
-            'de': 'Füge Artikel manuell hinzu oder erhalte smarte Vorschläge aus deinem Scan-Verlauf.',
+            'en':
+                'Add items manually or get smart suggestions based on your scan history.',
+            'pl':
+                'Dodawaj produkty ręcznie lub otrzymuj inteligentne sugestie na podstawie historii skanów.',
+            'nl':
+                'Voeg items handmatig toe of krijg slimme suggesties op basis van je scangeschiedenis.',
+            'es':
+                'Añade artículos manualmente u obtén sugerencias inteligentes según tu historial de escaneos.',
+            'de':
+                'Füge Artikel manuell hinzu oder erhalte smarte Vorschläge aus deinem Scan-Verlauf.',
           }),
         ),
-        // 14 – Settings
+        // 14 – Planner
+        (
+          title: _t({
+            'en': 'Planner 🗓️',
+            'pl': 'Planner 🗓️',
+            'nl': 'Planner 🗓️',
+            'es': 'Planificador 🗓️',
+            'de': 'Planer 🗓️',
+          }),
+          body: _t({
+            'en':
+                'Build a weekly meal plan from goal-matched recipes, then shuffle individual meals when you want more variety.',
+            'pl':
+                'Ułóż tygodniowy plan posiłków z przepisów pasujących do celu, a potem tasuj pojedyncze posiłki, gdy chcesz więcej różnorodności.',
+            'nl':
+                'Maak een weekmenu met recepten die bij je doel passen en shuffle losse maaltijden wanneer je meer variatie wilt.',
+            'es':
+                'Crea un plan semanal con recetas según tu objetivo y cambia comidas individuales cuando quieras más variedad.',
+            'de':
+                'Erstelle einen Wochenplan aus ziel passenden Rezepten und mische einzelne Mahlzeiten neu, wenn du mehr Abwechslung möchtest.',
+          }),
+        ),
+        // 15 – Settings
         (
           title: _t({
             'en': 'Settings ⚙️',
@@ -1329,14 +2308,19 @@ class AppLocalizations {
             'de': 'Einstellungen ⚙️',
           }),
           body: _t({
-            'en': 'Change your nutrition goal, color theme, mascot, text size, weekly badge recap, and more.\nDiabetes users can set ICR for bolus calculations.',
-            'pl': 'Zmień cel żywieniowy, motyw kolorystyczny, maskotkę, rozmiar tekstu, cotygodniowe podsumowanie odznak i więcej.\nUżytkownicy z cukrzycą mogą ustawić ICR do obliczeń bolusa.',
-            'nl': 'Wijzig je voedingsdoel, kleurthema, mascotte, tekstgrootte, wekelijkse badge-samenvatting en meer.\nDiabetesgebruikers kunnen ICR instellen voor bolusberekeningen.',
-            'es': 'Cambia tu objetivo nutricional, tema de color, mascota, tamaño de texto, resumen semanal de insignias y más.\nLos usuarios con diabetes pueden configurar el ICR para el cálculo de bolos.',
-            'de': 'Ändere dein Ernährungsziel, Farbthema, Maskottchen, Textgröße, wöchentliche Abzeichen-Zusammenfassung und mehr.\nDiabetes-Nutzer können das KE-Verhältnis (ICR) für Bolusberechnungen festlegen.',
+            'en':
+                'Change your nutrition goal, color theme, mascot, text size, weekly badge recap, and more.\nDiabetes users can set ICR for bolus calculations.',
+            'pl':
+                'Zmień cel żywieniowy, motyw kolorystyczny, maskotkę, rozmiar tekstu, cotygodniowe podsumowanie odznak i więcej.\nUżytkownicy z cukrzycą mogą ustawić ICR do obliczeń bolusa.',
+            'nl':
+                'Wijzig je voedingsdoel, kleurthema, mascotte, tekstgrootte, wekelijkse badge-samenvatting en meer.\nDiabetesgebruikers kunnen ICR instellen voor bolusberekeningen.',
+            'es':
+                'Cambia tu objetivo nutricional, tema de color, mascota, tamaño de texto, resumen semanal de insignias y más.\nLos usuarios con diabetes pueden configurar el ICR para el cálculo de bolos.',
+            'de':
+                'Ändere dein Ernährungsziel, Farbthema, Maskottchen, Textgröße, wöchentliche Abzeichen-Zusammenfassung und mehr.\nDiabetes-Nutzer können das KE-Verhältnis (ICR) für Bolusberechnungen festlegen.',
           }),
         ),
-        // 15 – Weekly Badges
+        // 16 – Weekly Badges
         (
           title: _t({
             'en': 'Weekly Badges 🏅',
@@ -1346,14 +2330,19 @@ class AppLocalizations {
             'de': 'Wöchentliche Abzeichen 🏅',
           }),
           body: _t({
-            'en': 'At the start of each week, the app can show the badges you earned last week.\nUse this setting to turn that recap on or off.',
-            'pl': 'Na początku każdego tygodnia aplikacja może pokazać odznaki zdobyte w zeszłym tygodniu.\nUżyj tego ustawienia, aby włączyć lub wyłączyć to podsumowanie.',
-            'nl': 'Aan het begin van elke week kan de app de badges tonen die je vorige week verdiende.\nGebruik deze instelling om die samenvatting aan of uit te zetten.',
-            'es': 'Al inicio de cada semana, la app puede mostrar las insignias que ganaste la semana pasada.\nUsa este ajuste para activar o desactivar ese resumen.',
-            'de': 'Zu Beginn jeder Woche kann die App die Abzeichen der letzten Woche anzeigen.\nMit dieser Einstellung schaltest du diese Zusammenfassung ein oder aus.',
+            'en':
+                'At the start of each week, the app can show the badges you earned last week.\nUse this setting to turn that recap on or off.',
+            'pl':
+                'Na początku każdego tygodnia aplikacja może pokazać odznaki zdobyte w zeszłym tygodniu.\nUżyj tego ustawienia, aby włączyć lub wyłączyć to podsumowanie.',
+            'nl':
+                'Aan het begin van elke week kan de app de badges tonen die je vorige week verdiende.\nGebruik deze instelling om die samenvatting aan of uit te zetten.',
+            'es':
+                'Al inicio de cada semana, la app puede mostrar las insignias que ganaste la semana pasada.\nUsa este ajuste para activar o desactivar ese resumen.',
+            'de':
+                'Zu Beginn jeder Woche kann die App die Abzeichen der letzten Woche anzeigen.\nMit dieser Einstellung schaltest du diese Zusammenfassung ein oder aus.',
           }),
         ),
-        // 16 – Vacation Mode
+        // 17 – Vacation Mode
         (
           title: _t({
             'en': 'Vacation Mode 🏖️',
@@ -1363,14 +2352,19 @@ class AppLocalizations {
             'de': 'Urlaubsmodus 🏖️',
           }),
           body: _t({
-            'en': 'Protect your streak while you\'re away.\nTap the toggle to activate Vacation Mode.\nYou can also adjust your daily water goal and Glycemic Load settings here.',
-            'pl': 'Chroń swoją serię, gdy Cię nie ma.\nDotknij przełącznika, aby włączyć Tryb wakacyjny.\nMożesz tu również dostosować dzienny cel wody i ustawienia ładunku glikemicznego.',
-            'nl': 'Bescherm je reeks terwijl je weg bent.\nTik op de schakelaar om Vakantiemodus in te schakelen.\nJe kunt hier ook je dagelijkse waterdoel en glycemische lading-instellingen aanpassen.',
-            'es': 'Protege tu racha mientras estás fuera.\nToca el interruptor para activar el Modo vacaciones.\nTambién puedes ajustar aquí tu objetivo diario de agua y la carga glucémica.',
-            'de': 'Schütze deine Serie, während du weg bist.\nTippe auf den Schalter, um den Urlaubsmodus zu aktivieren.\nHier kannst du auch dein tägliches Wasserziel und die glykämische Last anpassen.',
+            'en':
+                'Protect your streak while you\'re away.\nTap the toggle to activate Vacation Mode.\nYou can also adjust your daily water goal and Glycemic Load settings here.',
+            'pl':
+                'Chroń swoją serię, gdy Cię nie ma.\nDotknij przełącznika, aby włączyć Tryb wakacyjny.\nMożesz tu również dostosować dzienny cel wody i ustawienia ładunku glikemicznego.',
+            'nl':
+                'Bescherm je reeks terwijl je weg bent.\nTik op de schakelaar om Vakantiemodus in te schakelen.\nJe kunt hier ook je dagelijkse waterdoel en glycemische lading-instellingen aanpassen.',
+            'es':
+                'Protege tu racha mientras estás fuera.\nToca el interruptor para activar el Modo vacaciones.\nTambién puedes ajustar aquí tu objetivo diario de agua y la carga glucémica.',
+            'de':
+                'Schütze deine Serie, während du weg bist.\nTippe auf den Schalter, um den Urlaubsmodus zu aktivieren.\nHier kannst du auch dein tägliches Wasserziel und die glykämische Last anpassen.',
           }),
         ),
-        // 17 – Outro
+        // 18 – Outro
         (
           title: _t({
             'en': "You're All Set! 🚀",
@@ -1380,11 +2374,16 @@ class AppLocalizations {
             'de': 'Alles bereit! 🚀',
           }),
           body: _t({
-            'en': 'Start scanning your first meal — or speak it!\n\nTip: you can replay this tour anytime from Settings → About.',
-            'pl': 'Zacznij od zeskanowania pierwszego posiłku — lub powiedz go!\n\nWskazówka: możesz powtórzyć tę wycieczkę w dowolnym momencie w Ustawienia → Informacje.',
-            'nl': 'Begin met het scannen van je eerste maaltijd — of spreek het in!\n\nTip: je kunt deze rondleiding altijd opnieuw afspelen via Instellingen → Over.',
-            'es': '¡Empieza escaneando tu primera comida o dícela!\n\nConsejo: puedes repetir este recorrido cuando quieras desde Ajustes → Acerca de.',
-            'de': 'Scanne deine erste Mahlzeit — oder sprich sie ein!\n\nTipp: Du kannst diese Tour jederzeit unter Einstellungen → Info erneut starten.',
+            'en':
+                'Start scanning your first meal — or speak it!\n\nTip: you can replay this tour anytime from Settings → About.',
+            'pl':
+                'Zacznij od zeskanowania pierwszego posiłku — lub powiedz go!\n\nWskazówka: możesz powtórzyć tę wycieczkę w dowolnym momencie w Ustawienia → Informacje.',
+            'nl':
+                'Begin met het scannen van je eerste maaltijd — of spreek het in!\n\nTip: je kunt deze rondleiding altijd opnieuw afspelen via Instellingen → Over.',
+            'es':
+                '¡Empieza escaneando tu primera comida o dícela!\n\nConsejo: puedes repetir este recorrido cuando quieras desde Ajustes → Acerca de.',
+            'de':
+                'Scanne deine erste Mahlzeit — oder sprich sie ein!\n\nTipp: Du kannst diese Tour jederzeit unter Einstellungen → Info erneut starten.',
           }),
         ),
       ];
@@ -2026,9 +3025,9 @@ class AppLocalizations {
   // ── Nutrition Dashboard ──
 
   String get todaysNutrition => _t({
-        'en': "Today's Nutrition",
+        'en': 'Today\'s Nutrition',
         'pl': 'Dzisiejsze odżywianie',
-        'nl': "Voeding van vandaag",
+        'nl': 'Voeding van vandaag',
         'es': 'Nutrición de hoy',
         'de': 'Heutige Ernährung',
       });

@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/nutrition_goal.dart';
+import '../models/dietary_restriction.dart';
 import '../models/recipe.dart';
 import '../providers/locale_provider.dart';
+import '../providers/user_prefs_provider.dart';
 
 /// Loads real scraped recipes from the bundled offline JSON asset.
 class RecipeRepository {
@@ -55,19 +57,24 @@ class RecipeRepository {
     bool strictGoalRules = true,
     bool includeGenerated = false,
     String? language,
+    Set<DietaryRestriction> dietaryRestrictions = const <DietaryRestriction>{},
   }) async {
     final q = (search ?? '').trim().toLowerCase();
     final list = await all();
     final filtered = <Recipe>[];
     for (final r in list) {
       if (!includeGenerated && r.source.toLowerCase() == 'generated') continue;
-      if (goal != null && !r.goals.contains(goal)) continue;
+      if (goal != null && !_matchesGoal(r, goal)) continue;
       if (goal != null &&
           strictGoalRules &&
           !_isRecipeEligibleForGoal(r, goal)) {
         continue;
       }
       if (mealType != null && r.mealType != mealType) continue;
+      if (!_isMealQualityMatch(r, mealType, allowFallbackFillers: false)) {
+        continue;
+      }
+      if (!isAllowedByRestrictions(r, dietaryRestrictions)) continue;
       if (maxMinutes > 0 && r.minutes > maxMinutes) continue;
       if (q.isNotEmpty) {
         // Match against individual ingredient names so searching "bread"
@@ -99,13 +106,18 @@ class RecipeRepository {
         localized.length < _focusBucketFallbackLimit) {
       final relaxed = <Recipe>[];
       for (final r in list) {
-        if (!includeGenerated && r.source.toLowerCase() == 'generated') continue;
-        if (goal != null && !r.goals.contains(goal)) continue;
+        if (!includeGenerated && r.source.toLowerCase() == 'generated')
+          continue;
+        if (goal != null && !_matchesGoal(r, goal)) continue;
         if (mealType != null && r.mealType != mealType) continue;
+        if (!_isMealQualityMatch(r, mealType, allowFallbackFillers: true)) {
+          continue;
+        }
+        if (!isAllowedByRestrictions(r, dietaryRestrictions)) continue;
         if (maxMinutes > 0 && r.minutes > maxMinutes) continue;
         if (q.isNotEmpty) {
-          final ingredientMatch = r.ingredients
-              .any((i) => i.name.toLowerCase().contains(q));
+          final ingredientMatch =
+              r.ingredients.any((i) => i.name.toLowerCase().contains(q));
           final nameMatch = r.name.toLowerCase().contains(q);
           if (!ingredientMatch && !nameMatch) continue;
         }
@@ -126,7 +138,8 @@ class RecipeRepository {
         if (localized.length >= _focusBucketFallbackLimit) break;
       }
     }
-    if (limit > 0 && localized.length > limit) return localized.sublist(0, limit);
+    if (limit > 0 && localized.length > limit)
+      return localized.sublist(0, limit);
     return localized;
   }
 
@@ -139,14 +152,16 @@ class RecipeRepository {
     final language = requestedLanguage?.trim().toLowerCase();
     if (language == null || language.isEmpty) return recipes;
 
-    final primary = recipes.where((recipe) => recipe.language == language).toList();
+    final primary =
+        recipes.where((recipe) => recipe.language == language).toList();
     if (!_needsLanguageTopUp(primary, goal: goal, mealType: mealType)) {
       return primary;
     }
 
     final fallbackLanguages = {
       for (final recipe in recipes)
-        if (recipe.language != language && recipe.language != 'en') recipe.language,
+        if (recipe.language != language && recipe.language != 'en')
+          recipe.language,
     }.toList()
       ..sort();
 
@@ -197,6 +212,8 @@ class RecipeRepository {
       NutritionGoalType.vegan => true,
       NutritionGoalType.diabetes => true,
       NutritionGoalType.keto => true,
+      NutritionGoalType.pescatarian => true,
+      NutritionGoalType.mediterranean => true,
       _ => false,
     };
     return isFocusGoal &&
@@ -252,20 +269,107 @@ class RecipeRepository {
         return _isVeganRecipe(recipe);
       case NutritionGoalType.vegetarian:
         return _isVegetarianRecipe(recipe);
+      case NutritionGoalType.pescatarian:
+        return _isPescatarianRecipe(recipe);
+      case NutritionGoalType.mediterranean:
+        return _isMediterraneanRecipe(recipe);
       case NutritionGoalType.maintain:
         return true;
     }
   }
 
+  bool _matchesGoal(Recipe recipe, NutritionGoalType goal) {
+    if (recipe.goals.contains(goal))
+      return _isRecipeEligibleForGoal(recipe, goal);
+    switch (goal) {
+      case NutritionGoalType.pescatarian:
+      case NutritionGoalType.mediterranean:
+        return _isRecipeEligibleForGoal(recipe, goal);
+      case NutritionGoalType.muscleGrowth:
+      case NutritionGoalType.diabetes:
+      case NutritionGoalType.vegan:
+      case NutritionGoalType.vegetarian:
+      case NutritionGoalType.weightLoss:
+      case NutritionGoalType.keto:
+      case NutritionGoalType.maintain:
+        return false;
+    }
+  }
+
   bool _isVeganRecipe(Recipe recipe) {
-    final text = _recipeIngredientText(recipe);
-    return !_containsAnyTerm(text, _meatSeafoodTerms) &&
+    final text = _recipeRuleText(recipe);
+    return !_containsAnyTerm(text, _meatTerms) &&
+        !_containsAnyTerm(text, _seafoodTerms) &&
         !_containsAnyTerm(text, _dairyEggHoneyTerms);
   }
 
   bool _isVegetarianRecipe(Recipe recipe) {
-    final text = _recipeIngredientText(recipe);
-    return !_containsAnyTerm(text, _meatSeafoodTerms);
+    final text = _recipeRuleText(recipe);
+    return !_containsAnyTerm(text, _meatTerms) &&
+        !_containsAnyTerm(text, _seafoodTerms);
+  }
+
+  bool _isPescatarianRecipe(Recipe recipe) {
+    final text = _recipeRuleText(recipe);
+    return !_containsAnyTerm(text, _meatTerms);
+  }
+
+  bool _isMediterraneanRecipe(Recipe recipe) {
+    final sugarPerServing = recipe.sugarPerServing(recipe.servings);
+    final fiberPerServing = recipe.fiberPerServing(recipe.servings);
+    final caloriesPerServing = recipe.caloriesPerServing(recipe.servings);
+    final text = _recipeRuleText(recipe);
+    if (_containsAnyTerm(text, _processedMeatTerms)) return false;
+    if (sugarPerServing > 24) return false;
+    if (caloriesPerServing > 900) return false;
+    return fiberPerServing >= 3 ||
+        _containsAnyTerm(text, _mediterraneanAnchorTerms);
+  }
+
+  bool _isMealQualityMatch(
+    Recipe recipe,
+    RecipeMealType? requestedMealType, {
+    required bool allowFallbackFillers,
+  }) {
+    final mealType = requestedMealType ?? recipe.mealType;
+    final text = _recipeRuleText(recipe);
+    if (allowFallbackFillers && recipe.name.contains('(Breakfast)')) {
+      return true;
+    }
+    switch (mealType) {
+      case RecipeMealType.breakfast:
+        final dinnerLike = _containsAnyTerm(text, _dinnerLikeBreakfastTerms);
+        final explicitBreakfast =
+            recipe.name.toLowerCase().contains('breakfast');
+        if (dinnerLike && !explicitBreakfast) return false;
+        if (_containsAnyTerm(text, _breakfastAnchorTerms)) return true;
+        return !dinnerLike;
+      case RecipeMealType.lunch:
+        if (recipe.caloriesPerServing(recipe.servings) > 850) return false;
+        if (_containsAnyTerm(text, _heavyDinnerTerms) &&
+            !_containsAnyTerm(text, _lunchAnchorTerms)) {
+          return false;
+        }
+        return true;
+      case RecipeMealType.dinner:
+      case RecipeMealType.snack:
+      case RecipeMealType.dessert:
+        return true;
+    }
+  }
+
+  bool isAllowedByRestrictions(
+    Recipe recipe,
+    Set<DietaryRestriction> dietaryRestrictions,
+  ) {
+    if (dietaryRestrictions.isEmpty) return true;
+    final text = [
+      recipe.name,
+      recipe.tags.join(' '),
+      _recipeIngredientText(recipe),
+    ].join(' ');
+    return !dietaryRestrictions
+        .any((restriction) => restriction.matchesText(text));
   }
 
   String _recipeIngredientText(Recipe recipe) {
@@ -273,6 +377,14 @@ class RecipeRepository {
         .map((ingredient) => '${ingredient.name} ${ingredient.amount}')
         .join(' ')
         .toLowerCase();
+  }
+
+  String _recipeRuleText(Recipe recipe) {
+    return [
+      recipe.name,
+      recipe.tags.join(' '),
+      _recipeIngredientText(recipe),
+    ].join(' ').toLowerCase();
   }
 
   bool _containsAnyTerm(String text, List<String> terms) {
@@ -286,7 +398,7 @@ class RecipeRepository {
     return false;
   }
 
-  static const _meatSeafoodTerms = [
+  static const _meatTerms = [
     'beef',
     'steak',
     'chicken',
@@ -297,12 +409,6 @@ class RecipeRepository {
     'lamb',
     'veal',
     'duck',
-    'fish',
-    'salmon',
-    'tuna',
-    'shrimp',
-    'prawn',
-    'anchovy',
     'gelatin',
     'gelatine',
     'salami',
@@ -310,26 +416,10 @@ class RecipeRepository {
     'prosciutto',
     'chorizo',
     'pancetta',
-    'crab',
-    'lobster',
-    'mussel',
-    'oyster',
-    'clam',
-    'squid',
-    'octopus',
-    'scallop',
-    'cod',
-    'haddock',
-    'mackerel',
-    'sardine',
     'kip',
     'rund',
     'varken',
     'spek',
-    'garnalen',
-    'zalm',
-    'makreel',
-    'mosselen',
     'hähnchen',
     'haehnchen',
     'huhn',
@@ -347,6 +437,126 @@ class RecipeRepository {
     'cerdo',
     'jamón',
     'jamon',
+  ];
+
+  static const _seafoodTerms = [
+    'fish',
+    'salmon',
+    'tuna',
+    'shrimp',
+    'prawn',
+    'anchovy',
+    'crab',
+    'lobster',
+    'mussel',
+    'oyster',
+    'clam',
+    'squid',
+    'octopus',
+    'scallop',
+    'cod',
+    'haddock',
+    'mackerel',
+    'sardine',
+    'garnalen',
+    'zalm',
+    'makreel',
+    'mosselen',
+  ];
+
+  static const _processedMeatTerms = [
+    'bacon',
+    'ham',
+    'salami',
+    'sausage',
+    'prosciutto',
+    'chorizo',
+    'pancetta',
+    'spek',
+    'speck',
+    'schinken',
+    'wurst',
+    'jamón',
+    'jamon',
+  ];
+
+  static const _mediterraneanAnchorTerms = [
+    'olive oil',
+    'olives',
+    'tomato',
+    'lentil',
+    'bean',
+    'chickpea',
+    'hummus',
+    'fish',
+    'salmon',
+    'tuna',
+    'sardine',
+    'whole grain',
+    'vegetable',
+    'spinach',
+    'eggplant',
+    'zucchini',
+  ];
+
+  static const _breakfastAnchorTerms = [
+    'breakfast',
+    'oat',
+    'porridge',
+    'granola',
+    'muesli',
+    'yogurt',
+    'yoghurt',
+    'smoothie',
+    'toast',
+    'egg',
+    'omelette',
+    'omelet',
+    'pancake',
+    'waffle',
+    'cereal',
+    'fruit bowl',
+  ];
+
+  static const _lunchAnchorTerms = [
+    'salad',
+    'wrap',
+    'sandwich',
+    'bowl',
+    'soup',
+    'toast',
+    'pita',
+    'flatbread',
+  ];
+
+  static const _dinnerLikeBreakfastTerms = [
+    'curry',
+    'stew',
+    'roast',
+    'steak',
+    'burger',
+    'pasta',
+    'noodle',
+    'risotto',
+    'stir fry',
+    'stir-fry',
+    'casserole',
+    'lasagne',
+    'lasagna',
+    'ragu',
+    'ragout',
+    'chili',
+  ];
+
+  static const _heavyDinnerTerms = [
+    'roast',
+    'braised',
+    'casserole',
+    'lasagne',
+    'lasagna',
+    'stew',
+    'ragu',
+    'ragout',
   ];
 
   static const _dairyEggHoneyTerms = [
@@ -446,5 +656,6 @@ final recipeResultsProvider = FutureProvider<List<Recipe>>((ref) async {
     search: q.search,
     maxMinutes: q.maxMinutes,
     language: lang.code,
+    dietaryRestrictions: ref.watch(userPrefsProvider).dietaryRestrictions,
   );
 });

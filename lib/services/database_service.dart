@@ -13,9 +13,11 @@ import '../models/ground_truth.dart';
 import '../models/insulin_dose_log.dart';
 import '../models/insulin_settings.dart';
 import '../models/nutrient_data.dart';
+import '../models/pantry_item.dart';
 import '../models/scan_benchmark.dart';
 import '../models/scan_result.dart';
 import '../models/user_preferences.dart';
+import '../models/weight_entry.dart';
 
 /// Singleton service wrapping the local SQLite database.
 ///
@@ -46,7 +48,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 34,
+      version: 37,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -138,6 +140,9 @@ class DatabaseService {
         target_bg_mgdl           REAL    NOT NULL DEFAULT 100.0,
         glucose_unit             TEXT    NOT NULL DEFAULT 'mgdl',
         weight_kg                REAL    NOT NULL DEFAULT 70.0,
+        height_cm                REAL    NOT NULL DEFAULT 170.0,
+        muscle_mass_level        TEXT    NOT NULL DEFAULT 'average',
+        dietary_restrictions     TEXT    NOT NULL DEFAULT '',
         vacation_mode            INTEGER NOT NULL DEFAULT 0,
         daily_water_goal_ml      INTEGER NOT NULL DEFAULT 2000,
         water_intake_ml          INTEGER NOT NULL DEFAULT 0,
@@ -216,6 +221,8 @@ class DatabaseService {
         created_at TEXT    NOT NULL
       )
     ''');
+
+    await _createPersonalizationTables(db);
 
     // meal_plan_entries — weekly meal planner slots
     await db.execute('''
@@ -651,6 +658,47 @@ class DatabaseService {
       // audit log. See _createDiabetesTables for schema + safety notes.
       await _createDiabetesTables(db);
     }
+    if (oldVersion < 35) {
+      try {
+        await db.execute(
+            "ALTER TABLE user_preferences ADD COLUMN dietary_restrictions TEXT NOT NULL DEFAULT ''");
+      } catch (_) {}
+    }
+    if (oldVersion < 36) {
+      try {
+        await db.execute(
+            'ALTER TABLE user_preferences ADD COLUMN height_cm REAL NOT NULL DEFAULT 170.0');
+      } catch (_) {}
+      try {
+        await db.execute(
+            "ALTER TABLE user_preferences ADD COLUMN muscle_mass_level TEXT NOT NULL DEFAULT 'average'");
+      } catch (_) {}
+    }
+    if (oldVersion < 37) {
+      await _createPersonalizationTables(db);
+    }
+  }
+
+  Future<void> _createPersonalizationTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS weight_history (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        recorded_at TEXT    NOT NULL,
+        weight_kg   REAL    NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS pantry_items (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        name        TEXT    NOT NULL,
+        category    TEXT,
+        quantity    REAL    NOT NULL DEFAULT 1,
+        unit        TEXT,
+        available   INTEGER NOT NULL DEFAULT 1,
+        created_at  TEXT    NOT NULL,
+        updated_at  TEXT    NOT NULL
+      )
+    ''');
   }
 
   /// Creates the Bolus Calculator Mode tables. Safe to call on upgrade
@@ -3957,6 +4005,74 @@ class DatabaseService {
       where: 'calculation_id = ?',
       whereArgs: [calculationId],
     );
+  }
+
+  // ── Weight history ──────────────────────────────────────────────────────
+
+  Future<List<WeightEntry>> getWeightHistory() async {
+    final db = await database;
+    final rows = await db.query('weight_history', orderBy: 'recorded_at DESC');
+    return rows.map(WeightEntry.fromMap).toList();
+  }
+
+  Future<int> upsertMonthlyWeight(WeightEntry entry) async {
+    final db = await database;
+    final monthPrefix =
+        '${entry.recordedAt.year.toString().padLeft(4, '0')}-${entry.recordedAt.month.toString().padLeft(2, '0')}';
+    final existing = await db.query(
+      'weight_history',
+      where: 'substr(recorded_at, 1, 7) = ?',
+      whereArgs: [monthPrefix],
+      limit: 1,
+    );
+    if (existing.isEmpty) {
+      return db.insert('weight_history', entry.toMap());
+    }
+    final id = existing.first['id'] as int;
+    await db.update(
+      'weight_history',
+      entry.toMap(),
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    return id;
+  }
+
+  Future<void> deleteWeightEntry(int id) async {
+    final db = await database;
+    await db.delete('weight_history', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ── Pantry inventory ────────────────────────────────────────────────────
+
+  Future<List<PantryItem>> getPantryItems() async {
+    final db = await database;
+    final rows = await db.query(
+      'pantry_items',
+      orderBy: 'available DESC, updated_at DESC, name ASC',
+    );
+    return rows.map(PantryItem.fromMap).toList();
+  }
+
+  Future<int> insertPantryItem(PantryItem item) async {
+    final db = await database;
+    return db.insert('pantry_items', item.toMap());
+  }
+
+  Future<void> updatePantryItem(PantryItem item) async {
+    if (item.id == null) return;
+    final db = await database;
+    await db.update(
+      'pantry_items',
+      item.toMap(),
+      where: 'id = ?',
+      whereArgs: [item.id],
+    );
+  }
+
+  Future<void> deletePantryItem(int id) async {
+    final db = await database;
+    await db.delete('pantry_items', where: 'id = ?', whereArgs: [id]);
   }
 
   // ── Grocery list ────────────────────────────────────────────────────────

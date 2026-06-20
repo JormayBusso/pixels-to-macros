@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../models/nutrition_goal.dart';
 import '../theme/app_theme.dart';
 
 /// An animated circular "plate score" from 0 to 100 that reveals after a scan.
@@ -118,9 +119,7 @@ class _PlateScoreRevealState extends State<PlateScoreReveal>
                 points: widget.breakdown.proteinPoints,
                 max: 20),
             _BreakdownRow(
-                label: 'Fiber',
-                points: widget.breakdown.fiberPoints,
-                max: 12),
+                label: 'Fiber', points: widget.breakdown.fiberPoints, max: 12),
             _BreakdownRow(
                 label: 'Variety',
                 points: widget.breakdown.varietyPoints,
@@ -265,17 +264,22 @@ class PlateScoreBreakdown {
     required this.micronutrientPoints,
   });
 
-  final int caloriePoints;      // out of 25
-  final int proteinPoints;      // out of 20
-  final int fiberPoints;        // out of 12
-  final int varietyPoints;      // out of 10
-  final int sugarPoints;        // out of 13
-  final int fatBalancePoints;   // out of 10
+  final int caloriePoints; // out of 25
+  final int proteinPoints; // out of 20
+  final int fiberPoints; // out of 12
+  final int varietyPoints; // out of 10
+  final int sugarPoints; // out of 13
+  final int fatBalancePoints; // out of 10
   final int micronutrientPoints; // out of 10
 
   int get total =>
-      caloriePoints + proteinPoints + fiberPoints + varietyPoints +
-      sugarPoints + fatBalancePoints + micronutrientPoints;
+      caloriePoints +
+      proteinPoints +
+      fiberPoints +
+      varietyPoints +
+      sugarPoints +
+      fatBalancePoints +
+      micronutrientPoints;
 }
 
 /// Calculate plate score for a meal — professionally evaluated on a 0–100 scale.
@@ -300,6 +304,7 @@ class PlateScoreBreakdown {
 /// [carbsG] — total carbohydrates (optional, for macro balance)
 /// [sodiumMg] — sodium in mg (optional, for excess sodium penalty)
 PlateScoreBreakdown calculatePlateScore({
+  required NutritionGoalType goal,
   required double mealCalories,
   required int dailyGoal,
   required double proteinG,
@@ -332,37 +337,72 @@ PlateScoreBreakdown calculatePlateScore({
     }
     // Extra penalty for extreme overconsumption (>2x target)
     if (calRatio > 2.0) calScore = 0.0;
+    if (goal == NutritionGoalType.weightLoss && calRatio > 1.15) {
+      calScore *= 0.75;
+    }
+    if (goal == NutritionGoalType.muscleGrowth && calRatio < 0.80) {
+      calScore *= 0.80;
+    }
   }
   final caloriePoints = (25 * calScore.clamp(0.0, 1.0)).round();
 
   // ── Protein adequacy (20 pts) ────────────────────────────────────────
-  // Optimal range: 25–40g per meal for most adults.
-  // Below 10g = poor. 10–25g = linear improvement. 25–40g = full marks.
-  // Above 40g = slight diminishing (still good but no extra points).
+  // Goal-specific optimal range. Muscle gain and weight loss need higher
+  // protein for hypertrophy/satiety/lean-mass retention; Mediterranean and
+  // maintenance can score well with a more moderate target.
+  final proteinFull = switch (goal) {
+    NutritionGoalType.muscleGrowth => 35.0,
+    NutritionGoalType.weightLoss => 30.0,
+    NutritionGoalType.diabetes => 25.0,
+    NutritionGoalType.vegan => 25.0,
+    NutritionGoalType.vegetarian => 25.0,
+    NutritionGoalType.pescatarian => 25.0,
+    NutritionGoalType.keto => 22.0,
+    NutritionGoalType.mediterranean => 20.0,
+    NutritionGoalType.maintain => 25.0,
+  };
+  final proteinGood = proteinFull * 0.60;
+  final proteinMinimum = proteinFull * 0.25;
   double proteinScore;
-  if (proteinG >= 25) {
+  if (proteinG >= proteinFull) {
     proteinScore = 1.0;
-  } else if (proteinG >= 15) {
-    proteinScore = 0.6 + (proteinG - 15) / 10.0 * 0.4; // 0.6 → 1.0
-  } else if (proteinG >= 5) {
-    proteinScore = 0.2 + (proteinG - 5) / 10.0 * 0.4; // 0.2 → 0.6
+  } else if (proteinG >= proteinGood) {
+    proteinScore =
+        0.6 + (proteinG - proteinGood) / (proteinFull - proteinGood) * 0.4;
+  } else if (proteinG >= proteinMinimum) {
+    proteinScore = 0.2 +
+        (proteinG - proteinMinimum) / (proteinGood - proteinMinimum) * 0.4;
   } else {
-    proteinScore = proteinG / 5.0 * 0.2; // 0 → 0.2
+    proteinScore = proteinG / proteinMinimum * 0.2;
   }
   final proteinPoints = (20 * proteinScore.clamp(0.0, 1.0)).round();
 
   // ── Dietary fiber (12 pts) ──────────────────────────────────────────
-  // WHO recommends 25–30g/day ≈ 8–10g per meal.
-  // Logarithmic curve: first few grams matter most.
+  // Goal-specific fiber target. Diabetes and Mediterranean goals score most
+  // strongly for high-fiber, minimally processed carbohydrate choices.
+  final fiberFull = switch (goal) {
+    NutritionGoalType.diabetes => 10.0,
+    NutritionGoalType.mediterranean => 10.0,
+    NutritionGoalType.weightLoss => 9.0,
+    NutritionGoalType.vegan => 10.0,
+    NutritionGoalType.vegetarian => 9.0,
+    NutritionGoalType.pescatarian => 9.0,
+    NutritionGoalType.keto => 5.0,
+    NutritionGoalType.muscleGrowth => 8.0,
+    NutritionGoalType.maintain => 8.0,
+  };
+  final fiberGood = fiberFull * 0.5;
+  final fiberMinimum = fiberFull * 0.2;
   double fiberScore;
-  if (fiberG >= 10) {
+  if (fiberG >= fiberFull) {
     fiberScore = 1.0;
-  } else if (fiberG >= 5) {
-    fiberScore = 0.6 + (fiberG - 5) / 5.0 * 0.4;
-  } else if (fiberG >= 2) {
-    fiberScore = 0.2 + (fiberG - 2) / 3.0 * 0.4;
+  } else if (fiberG >= fiberGood) {
+    fiberScore = 0.6 + (fiberG - fiberGood) / (fiberFull - fiberGood) * 0.4;
+  } else if (fiberG >= fiberMinimum) {
+    fiberScore =
+        0.2 + (fiberG - fiberMinimum) / (fiberGood - fiberMinimum) * 0.4;
   } else {
-    fiberScore = fiberG / 2.0 * 0.2;
+    fiberScore = fiberG / fiberMinimum * 0.2;
   }
   final fiberPoints = (12 * fiberScore.clamp(0.0, 1.0)).round();
 
@@ -400,6 +440,30 @@ PlateScoreBreakdown calculatePlateScore({
   } else {
     glScore = 0.0;
   }
+  switch (goal) {
+    case NutritionGoalType.diabetes:
+      if (totalGL > 10) glScore *= 0.75;
+      if (carbsG > 45) glScore *= 0.70;
+      break;
+    case NutritionGoalType.keto:
+      if (carbsG > 20) glScore *= 0.30;
+      if (carbsG > 35) glScore = 0.0;
+      break;
+    case NutritionGoalType.weightLoss:
+      if (totalGL > 25) glScore *= 0.85;
+      break;
+    case NutritionGoalType.mediterranean:
+      if (fiberG >= 8 && totalGL <= 20) {
+        glScore = (glScore + 0.10).clamp(0.0, 1.0);
+      }
+      break;
+    case NutritionGoalType.muscleGrowth:
+    case NutritionGoalType.vegan:
+    case NutritionGoalType.vegetarian:
+    case NutritionGoalType.pescatarian:
+    case NutritionGoalType.maintain:
+      break;
+  }
   final sugarPoints = (13 * glScore.clamp(0.0, 1.0)).round();
 
   // ── Fat quality (10 pts) ─────────────────────────────────────────────
@@ -422,6 +486,12 @@ PlateScoreBreakdown calculatePlateScore({
     } else if (saturatedFatG > 10) {
       fatScore *= 0.75;
     }
+    if (goal == NutritionGoalType.mediterranean && satRatio <= 0.25) {
+      fatScore = (fatScore + 0.10).clamp(0, 1);
+    }
+    if (goal == NutritionGoalType.keto && satRatio > 0.45) {
+      fatScore *= 0.85;
+    }
   }
   final fatBalancePoints = (10 * fatScore.clamp(0.0, 1.0)).round();
 
@@ -442,6 +512,12 @@ PlateScoreBreakdown calculatePlateScore({
   }
   // Bonus for adequate protein (complete amino acids)
   if (proteinG >= 20) microScore += 0.10;
+  if (goal == NutritionGoalType.mediterranean && fiberG >= 8) {
+    microScore += 0.10;
+  }
+  if (goal == NutritionGoalType.diabetes && totalGL <= 10 && fiberG >= 6) {
+    microScore += 0.08;
+  }
   final micronutrientPoints = (10 * microScore.clamp(0.0, 1.0)).round();
 
   return PlateScoreBreakdown(

@@ -36,6 +36,10 @@ class GoalMascotWidget extends StatelessWidget {
         return MascotType.plant;
       case NutritionGoalType.vegetarian:
         return MascotType.plant;
+      case NutritionGoalType.pescatarian:
+        return MascotType.plant;
+      case NutritionGoalType.mediterranean:
+        return MascotType.plant;
       case NutritionGoalType.keto:
         return MascotType.flame;
       case NutritionGoalType.weightLoss:

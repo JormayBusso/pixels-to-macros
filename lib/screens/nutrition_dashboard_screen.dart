@@ -345,6 +345,14 @@ class _GoalContextNote extends StatelessWidget {
         note = 'Vegetarian targets are adjusted for nutrients that can run low '
             'without meat or seafood: iron, zinc, iodine, omega-3, and B12. '
             'Dairy and eggs can help, while fortified foods are still useful.';
+      case NutritionGoalType.pescatarian:
+        note = 'Pescatarian targets keep the plant-forward vegetarian focus '
+            'while recognizing that seafood can supply B12, iodine, selenium, '
+            'complete protein, and EPA/DHA omega-3 fats.';
+      case NutritionGoalType.mediterranean:
+        note = 'Mediterranean targets emphasize cardiometabolic health: more '
+            'fiber-rich plants, legumes, whole grains, olive oil, nuts, fish, '
+            'and tighter sodium control.';
       case NutritionGoalType.maintain:
         note = 'Targets are standard NASEM/NIH Dietary Reference Intakes for '
             'healthy adults, adjusted for your biological sex.';

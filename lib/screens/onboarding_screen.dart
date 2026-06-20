@@ -32,9 +32,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   // Weight (kg) — collected between name and gender
   double _weightKg = 70.0;
+  double _heightCm = 170.0;
+  MuscleMassLevel _muscleMassLevel = MuscleMassLevel.average;
 
   // Page 4: macro targets (pre-filled from goal defaults, editable)
-  late int _calories = GoalDefaults.calories(_selectedGoalType);
+  late int _calories = GoalDefaults.caloriesForProfile(
+    _selectedGoalType,
+    weightKg: _weightKg,
+    heightCm: _heightCm,
+    muscleMassLevel: _muscleMassLevel,
+    male: _selectedGender == UserGender.male,
+  );
   late int _carbLimit = GoalDefaults.carbLimitG(_selectedGoalType);
   late int _proteinTarget = GoalDefaults.proteinTargetG(_selectedGoalType);
   late int _fatTarget = GoalDefaults.fatTargetG(_selectedGoalType);
@@ -74,9 +82,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   void _selectGender(UserGender gender) {
     final isMale = gender == UserGender.male;
-    final newCal = GoalDefaults.caloriesForWeight(
+    final newCal = GoalDefaults.caloriesForProfile(
       _selectedGoalType,
       weightKg: _weightKg,
+      heightCm: _heightCm,
+      muscleMassLevel: _muscleMassLevel,
       male: isMale,
     );
     final r = GoalDefaults.macroRatios(_selectedGoalType);
@@ -91,14 +101,36 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   void _selectGoal(NutritionGoalType goal) {
     final isMale = _selectedGender == UserGender.male;
-    final newCal = GoalDefaults.caloriesForWeight(
+    final newCal = GoalDefaults.caloriesForProfile(
       goal,
       weightKg: _weightKg,
+      heightCm: _heightCm,
+      muscleMassLevel: _muscleMassLevel,
       male: isMale,
     );
     final r = GoalDefaults.macroRatios(goal);
     setState(() {
       _selectedGoalType = goal;
+      _calories = newCal;
+      _carbLimit = (newCal * r.carb / 4).round().clamp(15, 500);
+      _proteinTarget = (newCal * r.protein / 4).round().clamp(30, 300);
+      _fatTarget = (newCal * r.fat / 9).round().clamp(20, 250);
+    });
+  }
+
+  void _onWeightChanged(double weightKg) {
+    final snappedWeight = GoalDefaults.snapWeightKg(weightKg);
+    final isMale = _selectedGender == UserGender.male;
+    final newCal = GoalDefaults.caloriesForProfile(
+      _selectedGoalType,
+      weightKg: snappedWeight,
+      heightCm: _heightCm,
+      muscleMassLevel: _muscleMassLevel,
+      male: isMale,
+    );
+    final r = GoalDefaults.macroRatios(_selectedGoalType);
+    setState(() {
+      _weightKg = snappedWeight;
       _calories = newCal;
       _carbLimit = (newCal * r.carb / 4).round().clamp(15, 500);
       _proteinTarget = (newCal * r.protein / 4).round().clamp(30, 300);
@@ -129,6 +161,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           gender: _selectedGender,
           icrGramsPerUnit: _icr,
           weightKg: _weightKg,
+          heightCm: _heightCm,
+          muscleMassLevel: _muscleMassLevel,
         );
   }
 
@@ -178,7 +212,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       controller: _nameCtrl, onNext: _next, onBack: _back),
                   _WeightPage(
                     weightKg: _weightKg,
-                    onChanged: (w) => setState(() => _weightKg = w),
+                    onChanged: _onWeightChanged,
                     onNext: _next,
                     onBack: _back,
                   ),
@@ -901,6 +935,9 @@ class _WeightPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final displayWeight = GoalDefaults.formatWeightKg(weightKg);
+
     return _OnboardingScrollFrame(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -908,49 +945,99 @@ class _WeightPage extends StatelessWidget {
           Icon(Icons.monitor_weight_outlined,
               size: 56, color: context.primary500),
           const SizedBox(height: 24),
-          const Text(
-            'Current Weight',
-            style: TextStyle(
+          Text(
+            l10n.weightKg,
+            style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
               color: AppTheme.gray900,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Used to estimate your daily calorie needs\nvia the Mifflin-St Jeor equation.',
+          Text(
+            l10n.weightEstimateNote,
             textAlign: TextAlign.center,
-            style:
-                TextStyle(fontSize: 14, color: AppTheme.gray400, height: 1.5),
+            style: const TextStyle(
+                fontSize: 14, color: AppTheme.gray400, height: 1.5),
           ),
           const SizedBox(height: 32),
-          Text(
-            '${weightKg.round()} kg',
-            style: TextStyle(
-              fontSize: 36,
-              fontWeight: FontWeight.w800,
-              color: context.primary700,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton.filledTonal(
+                onPressed: weightKg <= GoalDefaults.minWeightKg
+                    ? null
+                    : () => onChanged(weightKg - GoalDefaults.weightStepKg),
+                icon: const Icon(Icons.remove),
+              ),
+              const SizedBox(width: 12),
+              Tooltip(
+                message: l10n.weightKg,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _editWeight(context),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$displayWeight kg',
+                          style: TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.w800,
+                            color: context.primary700,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(Icons.edit_outlined,
+                            size: 20, color: context.primary500),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              IconButton.filledTonal(
+                onPressed: weightKg >= GoalDefaults.maxWeightKg
+                    ? null
+                    : () => onChanged(weightKg + GoalDefaults.weightStepKg),
+                icon: const Icon(Icons.add),
+              ),
+            ],
           ),
           Text(
             '≈ ${(weightKg * 2.20462).round()} lbs',
             style: const TextStyle(fontSize: 14, color: AppTheme.gray400),
           ),
           const SizedBox(height: 16),
-          Slider(
-            value: weightKg,
-            min: 30,
-            max: 200,
-            divisions: 170,
-            activeColor: context.primary600,
-            inactiveColor: context.primary200,
-            onChanged: onChanged,
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 8,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 13),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 26),
+            ),
+            child: Slider(
+              value: GoalDefaults.clampWeightKg(weightKg),
+              min: GoalDefaults.minWeightKg,
+              max: GoalDefaults.maxWeightKg,
+              divisions:
+                  ((GoalDefaults.maxWeightKg - GoalDefaults.minWeightKg) /
+                          GoalDefaults.weightStepKg)
+                      .round(),
+              activeColor: context.primary600,
+              inactiveColor: context.primary200,
+              onChanged: (value) => onChanged(value),
+            ),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('30 kg', style: TextStyle(fontSize: 11, color: AppTheme.gray400)),
-              Text('200 kg', style: TextStyle(fontSize: 11, color: AppTheme.gray400)),
+              Text('${GoalDefaults.minWeightKg.round()} kg',
+                  style: TextStyle(fontSize: 11, color: AppTheme.gray400)),
+              Text('${GoalDefaults.maxWeightKg.round()} kg',
+                  style: TextStyle(fontSize: 11, color: AppTheme.gray400)),
             ],
           ),
           const SizedBox(height: 32),
@@ -971,6 +1058,49 @@ class _WeightPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _editWeight(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final controller =
+        TextEditingController(text: GoalDefaults.formatWeightKg(weightKg));
+
+    double? parse() {
+      final parsed = double.tryParse(controller.text.replaceAll(',', '.'));
+      if (parsed == null) return null;
+      return GoalDefaults.snapWeightKg(parsed);
+    }
+
+    final selected = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.weightKg),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            suffixText: 'kg',
+            helperText:
+                '${GoalDefaults.minWeightKg.round()}-${GoalDefaults.maxWeightKg.round()} kg',
+          ),
+          onSubmitted: (_) => Navigator.pop(ctx, parse()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, parse()),
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+    if (selected != null) onChanged(selected);
   }
 }
 

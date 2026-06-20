@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
 import '../models/custom_meal.dart';
+import '../models/dietary_restriction.dart';
 import '../models/food_data.dart';
 import '../models/nutrition_goal.dart';
 import '../models/recipe.dart';
@@ -50,7 +51,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     super.dispose();
   }
 
-  List<CustomMeal> _filteredCustomMeals(RecipeQueryState query) {
+  List<CustomMeal> _filteredCustomMeals(
+    RecipeQueryState query,
+    Set<DietaryRestriction> dietaryRestrictions,
+  ) {
     final searchLower = query.search.toLowerCase();
     return _customMeals.where((meal) {
       if (searchLower.isNotEmpty &&
@@ -64,6 +68,13 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           MealType.dinner => RecipeMealType.dinner,
         };
         if (mealType != query.mealType) return false;
+      }
+      if (dietaryRestrictions.any((restriction) {
+        return meal.ingredients.any(
+          (ingredient) => restriction.matchesText(ingredient.foodLabel),
+        );
+      })) {
+        return false;
       }
       return true;
     }).toList();
@@ -80,8 +91,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     BuildContext context,
     AppLocalizations l10n,
     RecipeQueryState query,
+    Set<DietaryRestriction> dietaryRestrictions,
   ) {
-    final meals = _filteredCustomMeals(query);
+    final meals = _filteredCustomMeals(query, dietaryRestrictions);
     if (meals.isEmpty) {
       return Center(
         child: Padding(
@@ -118,6 +130,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     final l10n = AppLocalizations.of(context);
     final query = ref.watch(recipeQueryProvider);
     final resultsAsync = ref.watch(recipeResultsProvider);
+    final dietaryRestrictions =
+        ref.watch(userPrefsProvider).dietaryRestrictions;
 
     return Scaffold(
       appBar: AppBar(
@@ -217,8 +231,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                   onTap: () =>
                       ref.read(recipeQueryProvider.notifier).setMealType(null),
                 ),
-                for (final m in RecipeMealType.values
-                    .where((t) => t != RecipeMealType.snack))
+                for (final m in RecipeMealType.values)
                   _FilterChip(
                     label: m.label,
                     emoji: m.emoji,
@@ -233,7 +246,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           // ── Results ──
           Expanded(
             child: _showMyMealsTab
-                ? _buildMyMealsTab(context, l10n, query)
+                ? _buildMyMealsTab(context, l10n, query, dietaryRestrictions)
                 : resultsAsync.when(
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),

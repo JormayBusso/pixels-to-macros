@@ -110,15 +110,13 @@ class NutrientTotals {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NutrientDRV — 2026 Dietary Reference Intakes (NASEM / NIH)
+// NutrientDRV — adult daily reference targets (NASEM / NIH)
 //
 // Sources:
-//   • NASEM DRI tables (2006–2011, reaffirmed 2024)
-//   • NIH Office of Dietary Supplements fact sheets (updated 2024–2025)
-//   • American Diabetes Association Standards of Care 2024
-//   • ISSN Position Stand on Protein & Exercise 2017 / 2023 update
-//   • AHA omega-3 guidance 2023
-//   • Endocrine Society Vitamin D guidelines 2024
+//   • NASEM Dietary Reference Intakes (DRI) and NIH ODS fact sheets
+//   • ADA Standards of Care in Diabetes (current annual guidance)
+//   • ISSN position stands / sports nutrition reviews for training goals
+//   • AHA dietary guidance for cardiometabolic risk reduction
 //
 // Use [NutrientDRV.forContext] to get goal- and gender-adjusted values.
 // The legacy static constants are kept for backward compatibility.
@@ -218,28 +216,30 @@ class NutrientDRV {
         );
 
       case NutritionGoalType.diabetes:
-        // ADA 2024: higher fiber, magnesium (insulin sensitivity), chromium,
-        // omega-3 (cardiometabolic protection), vitamin D.
+        // ADA nutrition therapy: no single ideal micronutrient or macro split
+        // fits every person with diabetes. Keep default targets conservative:
+        // emphasize fiber-rich minimally processed carbs and sodium control,
+        // while using standard RDA/AI levels unless a clinician diagnoses a
+        // deficiency or prescribes supplementation.
         return NutrientDRV(
           fiberG: isMale ? 38.0 : 30.0, // ADA recommends ≥25–38 g/day
           vitaminAUg: vitA,
           vitaminCMg: vitC,
-          vitaminDUg: 25.0, // insulin sensitivity, reduces HbA1c risk
+          vitaminDUg: vitD,
           vitaminEMg: vitE,
           vitaminKUg: vitK,
           folateMcg: folate,
           b12Mcg: b12,
           calciumMg: calcium,
           ironMg: iron,
-          magnesiumMg:
-              isMale ? 500.0 : 420.0, // #1 mineral for insulin sensitivity
+          magnesiumMg: magnesium,
           potassiumMg: potassium,
           sodiumMaxMg: 2300.0,
           zincMg: zinc,
-          omega3G: 2.0, // ADA: EPA+DHA for CV risk reduction
+          omega3G: omega3,
           seleniumMcg: selenium,
           iodineMcg: iodine,
-          chromiumMcg: 200.0, // AI raised for insulin co-factor role
+          chromiumMcg: chromium,
         );
 
       case NutritionGoalType.weightLoss:
@@ -339,6 +339,54 @@ class NutrientDRV {
           omega3G: 2.0,
           seleniumMcg: selenium,
           iodineMcg: 180.0,
+          chromiumMcg: chromium,
+        );
+
+      case NutritionGoalType.pescatarian:
+        // Pescatarian diets reduce meat intake while keeping seafood-derived
+        // B12, iodine, selenium and omega-3 available.
+        return NutrientDRV(
+          fiberG: fiber,
+          vitaminAUg: vitA,
+          vitaminCMg: vitC,
+          vitaminDUg: 25.0,
+          vitaminEMg: vitE,
+          vitaminKUg: vitK,
+          folateMcg: folate,
+          b12Mcg: b12,
+          calciumMg: 1100.0,
+          ironMg: isMale ? 10.0 : 20.0,
+          magnesiumMg: magnesium,
+          potassiumMg: potassium,
+          sodiumMaxMg: sodiumMax,
+          zincMg: zinc,
+          omega3G: 2.5,
+          seleniumMcg: 65.0,
+          iodineMcg: 180.0,
+          chromiumMcg: chromium,
+        );
+
+      case NutritionGoalType.mediterranean:
+        // Mediterranean-style patterns emphasize cardiometabolic health:
+        // fiber-rich plants, olive oil, nuts, legumes, fish and sodium control.
+        return NutrientDRV(
+          fiberG: isMale ? 38.0 : 30.0,
+          vitaminAUg: vitA,
+          vitaminCMg: vitC,
+          vitaminDUg: vitD,
+          vitaminEMg: vitE,
+          vitaminKUg: vitK,
+          folateMcg: folate,
+          b12Mcg: b12,
+          calciumMg: calcium,
+          ironMg: iron,
+          magnesiumMg: magnesium,
+          potassiumMg: potassium,
+          sodiumMaxMg: 2000.0,
+          zincMg: zinc,
+          omega3G: 2.0,
+          seleniumMcg: selenium,
+          iodineMcg: iodine,
           chromiumMcg: chromium,
         );
 

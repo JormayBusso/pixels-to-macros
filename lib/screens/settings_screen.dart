@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
 import '../core/app_locale.dart';
+import '../models/dietary_restriction.dart';
 import '../models/mascot_type.dart';
 import '../models/glucose_unit.dart';
 import '../models/nutrition_goal.dart';
@@ -13,6 +14,7 @@ import '../providers/scroll_trigger_provider.dart';
 import '../providers/locale_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../providers/diabetes_provider.dart';
+import '../providers/weight_tracking_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
 import '../services/auth_service.dart';
@@ -39,6 +41,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _nameCtrl;
   late TextEditingController _goalCtrl;
   late TextEditingController _passwordCtrl;
+  late TextEditingController _weightCtrl;
+  late TextEditingController _heightCtrl;
   late TextEditingController _carbCtrl;
   late TextEditingController _proteinCtrl;
   late TextEditingController _fatCtrl;
@@ -58,11 +62,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _nameCtrl = TextEditingController(text: prefs.name);
     _goalCtrl = TextEditingController(text: prefs.dailyCalorieGoal.toString());
     _passwordCtrl = TextEditingController();
+    _weightCtrl = TextEditingController(
+        text: GoalDefaults.formatWeightKg(prefs.weightKg));
+    _heightCtrl = TextEditingController(
+        text: GoalDefaults.formatHeightCm(prefs.heightCm));
     _carbCtrl = TextEditingController(text: prefs.dailyCarbLimitG.toString());
     _proteinCtrl =
         TextEditingController(text: prefs.dailyProteinTargetG.toString());
     _fatCtrl = TextEditingController(text: prefs.dailyFatTargetG.toString());
     _waterCtrl = TextEditingController(text: prefs.dailyWaterGoalMl.toString());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => ref.read(weightTrackingProvider.notifier).load(),
+    );
     _loadFoodCount();
   }
 
@@ -77,6 +88,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _nameCtrl.dispose();
     _goalCtrl.dispose();
     _passwordCtrl.dispose();
+    _weightCtrl.dispose();
+    _heightCtrl.dispose();
     _carbCtrl.dispose();
     _proteinCtrl.dispose();
     _fatCtrl.dispose();
@@ -117,6 +130,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final protein = int.tryParse(_proteinCtrl.text) ?? 80;
     final fat = int.tryParse(_fatCtrl.text) ?? 65;
     final water = int.tryParse(_waterCtrl.text) ?? 2000;
+    final weight = double.tryParse(_weightCtrl.text.replaceAll(',', '.')) ??
+        ref.read(userPrefsProvider).weightKg;
+    final height = double.tryParse(_heightCtrl.text.replaceAll(',', '.')) ??
+        ref.read(userPrefsProvider).heightCm;
     final prefs = ref.read(userPrefsProvider).copyWith(
           name: _nameCtrl.text.trim(),
           dailyCalorieGoal: goal.clamp(500, 10000),
@@ -124,8 +141,96 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           dailyProteinTargetG: protein.clamp(0, 500),
           dailyFatTargetG: fat.clamp(0, 500),
           dailyWaterGoalMl: water.clamp(500, 10000),
+          weightKg: GoalDefaults.snapWeightKg(weight),
+          heightCm: GoalDefaults.snapHeightCm(height),
         );
     await ref.read(userPrefsProvider.notifier).update(prefs);
+  }
+
+  void _setWeightKg(double weightKg) {
+    final snappedWeight = GoalDefaults.snapWeightKg(weightKg);
+    final prefs = ref.read(userPrefsProvider);
+    final isMale = prefs.gender == UserGender.male;
+    final calories = GoalDefaults.caloriesForProfile(
+      prefs.nutritionGoal,
+      weightKg: snappedWeight,
+      heightCm: prefs.heightCm,
+      muscleMassLevel: prefs.muscleMassLevel,
+      male: isMale,
+    );
+    final macros = GoalDefaults.macroGrams(prefs.nutritionGoal, calories);
+    setState(() {
+      _weightCtrl.text = GoalDefaults.formatWeightKg(snappedWeight);
+      _goalCtrl.text = calories.toString();
+      _carbCtrl.text = macros.carbG.clamp(15, 500).toString();
+      _proteinCtrl.text = macros.proteinG.clamp(30, 300).toString();
+      _fatCtrl.text = macros.fatG.clamp(20, 250).toString();
+    });
+    _saveSilent();
+  }
+
+  void _setHeightCm(double heightCm) {
+    final snappedHeight = GoalDefaults.snapHeightCm(heightCm);
+    final prefs = ref.read(userPrefsProvider);
+    final isMale = prefs.gender == UserGender.male;
+    final weight = double.tryParse(_weightCtrl.text.replaceAll(',', '.')) ??
+        prefs.weightKg;
+    final snappedWeight = GoalDefaults.snapWeightKg(weight);
+    final calories = GoalDefaults.caloriesForProfile(
+      prefs.nutritionGoal,
+      weightKg: snappedWeight,
+      heightCm: snappedHeight,
+      muscleMassLevel: prefs.muscleMassLevel,
+      male: isMale,
+    );
+    final macros = GoalDefaults.macroGrams(prefs.nutritionGoal, calories);
+    setState(() {
+      _heightCtrl.text = GoalDefaults.formatHeightCm(snappedHeight);
+      _weightCtrl.text = GoalDefaults.formatWeightKg(snappedWeight);
+      _goalCtrl.text = calories.toString();
+      _carbCtrl.text = macros.carbG.clamp(15, 500).toString();
+      _proteinCtrl.text = macros.proteinG.clamp(30, 300).toString();
+      _fatCtrl.text = macros.fatG.clamp(20, 250).toString();
+    });
+    _saveSilent();
+  }
+
+  Future<void> _setMuscleMassLevel(MuscleMassLevel muscleMassLevel) async {
+    final prefs = ref.read(userPrefsProvider);
+    final isMale = prefs.gender == UserGender.male;
+    final weight = double.tryParse(_weightCtrl.text.replaceAll(',', '.')) ??
+        prefs.weightKg;
+    final height = double.tryParse(_heightCtrl.text.replaceAll(',', '.')) ??
+        prefs.heightCm;
+    final snappedWeight = GoalDefaults.snapWeightKg(weight);
+    final snappedHeight = GoalDefaults.snapHeightCm(height);
+    final calories = GoalDefaults.caloriesForProfile(
+      prefs.nutritionGoal,
+      weightKg: snappedWeight,
+      heightCm: snappedHeight,
+      muscleMassLevel: muscleMassLevel,
+      male: isMale,
+    );
+    final macros = GoalDefaults.macroGrams(prefs.nutritionGoal, calories);
+    setState(() {
+      _weightCtrl.text = GoalDefaults.formatWeightKg(snappedWeight);
+      _heightCtrl.text = GoalDefaults.formatHeightCm(snappedHeight);
+      _goalCtrl.text = calories.toString();
+      _carbCtrl.text = macros.carbG.clamp(15, 500).toString();
+      _proteinCtrl.text = macros.proteinG.clamp(30, 300).toString();
+      _fatCtrl.text = macros.fatG.clamp(20, 250).toString();
+    });
+    await ref.read(userPrefsProvider.notifier).update(
+          prefs.copyWith(
+            weightKg: snappedWeight,
+            heightCm: snappedHeight,
+            muscleMassLevel: muscleMassLevel,
+            dailyCalorieGoal: calories,
+            dailyCarbLimitG: macros.carbG.clamp(15, 500),
+            dailyProteinTargetG: macros.proteinG.clamp(30, 300),
+            dailyFatTargetG: macros.fatG.clamp(20, 250),
+          ),
+        );
   }
 
   Future<void> _exportCsv({required bool detailed}) async {
@@ -245,9 +350,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 TextField(
                   controller: _nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Your name',
-                    prefixIcon: Icon(Icons.person_outline),
+                  decoration: InputDecoration(
+                    labelText: l10n.yourName,
+                    prefixIcon: const Icon(Icons.person_outline),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Consumer(
+                  builder: (context, ref, _) => _WeightCalibrationCard(
+                    onTargetsChanged: (calories, weightKg) {
+                      setState(() {
+                        _goalCtrl.text = calories.toString();
+                        _weightCtrl.text =
+                            GoalDefaults.formatWeightKg(weightKg);
+                      });
+                    },
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -256,9 +373,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.done,
                   onEditingComplete: () => FocusScope.of(context).unfocus(),
-                  decoration: const InputDecoration(
-                    labelText: 'Daily calorie goal (kcal)',
-                    prefixIcon: Icon(Icons.flag_outlined),
+                  decoration: InputDecoration(
+                    labelText: l10n.dailyCalorieGoal,
+                    prefixIcon: const Icon(Icons.flag_outlined),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -269,9 +386,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Biological sex',
-                          style: TextStyle(
+                        Text(
+                          l10n.selectGender,
+                          style: const TextStyle(
                             fontSize: 12,
                             color: AppTheme.gray400,
                             fontWeight: FontWeight.w500,
@@ -279,34 +396,112 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const SizedBox(height: 8),
                         SegmentedButton<UserGender>(
-                          segments: const [
+                          segments: [
                             ButtonSegment(
                               value: UserGender.male,
-                              label: Text('Male'),
-                              icon: Icon(Icons.male, size: 18),
+                              label: Text(l10n.male),
+                              icon: const Icon(Icons.male, size: 18),
                             ),
                             ButtonSegment(
                               value: UserGender.female,
-                              label: Text('Female'),
-                              icon: Icon(Icons.female, size: 18),
+                              label: Text(l10n.female),
+                              icon: const Icon(Icons.female, size: 18),
                             ),
                             ButtonSegment(
                               value: UserGender.preferNotToSay,
-                              label: Text('Other'),
-                              icon: Icon(Icons.help_outline, size: 18),
+                              label: Text(l10n.other),
+                              icon: const Icon(Icons.help_outline, size: 18),
                             ),
                           ],
                           selected: {prefs.gender},
-                          onSelectionChanged: (selection) {
-                            ref
-                                .read(userPrefsProvider.notifier)
-                                .setGender(selection.first);
+                          onSelectionChanged: (selection) async {
+                            final gender = selection.first;
+                            final isMale = gender == UserGender.male;
+                            final weight = double.tryParse(
+                                  _weightCtrl.text.replaceAll(',', '.'),
+                                ) ??
+                                prefs.weightKg;
+                            final height = double.tryParse(
+                                  _heightCtrl.text.replaceAll(',', '.'),
+                                ) ??
+                                prefs.heightCm;
+                            final snappedWeight =
+                                GoalDefaults.snapWeightKg(weight);
+                            final snappedHeight =
+                                GoalDefaults.snapHeightCm(height);
+                            final calories = GoalDefaults.caloriesForProfile(
+                              prefs.nutritionGoal,
+                              weightKg: snappedWeight,
+                              heightCm: snappedHeight,
+                              muscleMassLevel: prefs.muscleMassLevel,
+                              male: isMale,
+                            );
+                            final macros = GoalDefaults.macroGrams(
+                              prefs.nutritionGoal,
+                              calories,
+                            );
+                            setState(() {
+                              _weightCtrl.text =
+                                  GoalDefaults.formatWeightKg(snappedWeight);
+                              _heightCtrl.text =
+                                  GoalDefaults.formatHeightCm(snappedHeight);
+                              _goalCtrl.text = calories.toString();
+                              _carbCtrl.text =
+                                  macros.carbG.clamp(15, 500).toString();
+                              _proteinCtrl.text =
+                                  macros.proteinG.clamp(30, 300).toString();
+                              _fatCtrl.text =
+                                  macros.fatG.clamp(20, 250).toString();
+                            });
+                            await ref.read(userPrefsProvider.notifier).update(
+                                  prefs.copyWith(
+                                    gender: gender,
+                                    weightKg: snappedWeight,
+                                    heightCm: snappedHeight,
+                                    dailyCalorieGoal: calories,
+                                    dailyCarbLimitG:
+                                        macros.carbG.clamp(15, 500),
+                                    dailyProteinTargetG:
+                                        macros.proteinG.clamp(30, 300),
+                                    dailyFatTargetG: macros.fatG.clamp(20, 250),
+                                  ),
+                                );
                           },
                           style: SegmentedButton.styleFrom(
                             textStyle: const TextStyle(fontSize: 12),
                           ),
                         ),
                       ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final prefs = ref.watch(userPrefsProvider);
+                    final weight = double.tryParse(
+                          _weightCtrl.text.replaceAll(',', '.'),
+                        ) ??
+                        prefs.weightKg;
+                    return _WeightSettingsInput(
+                      value: weight,
+                      onChanged: _setWeightKg,
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final prefs = ref.watch(userPrefsProvider);
+                    final height = double.tryParse(
+                          _heightCtrl.text.replaceAll(',', '.'),
+                        ) ??
+                        prefs.heightCm;
+                    return _BodyProfileSettingsInput(
+                      heightCm: height,
+                      muscleMassLevel: prefs.muscleMassLevel,
+                      onHeightChanged: _setHeightCm,
+                      onMuscleChanged: _setMuscleMassLevel,
                     );
                   },
                 ),
@@ -332,7 +527,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _save,
-                    child: const Text('Save Changes'),
+                    child: Text(l10n.saveChanges),
                   ),
                 ),
               ],
@@ -343,7 +538,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
         _SectionHeader(l10n.nutritionGoal),
         const SizedBox(height: 12),
-        _NutritionGoalPickerCard(),
+        _NutritionGoalPickerCard(
+          onTargetsChanged: (calories, macros) {
+            setState(() {
+              _goalCtrl.text = calories.toString();
+              _carbCtrl.text = macros.carbG.clamp(15, 500).toString();
+              _proteinCtrl.text = macros.proteinG.clamp(30, 300).toString();
+              _fatCtrl.text = macros.fatG.clamp(20, 250).toString();
+            });
+          },
+        ),
+        const SizedBox(height: 12),
+        const _DietaryRestrictionsCard(),
         const SizedBox(height: 12),
         // Diabetes management card — only shown for Diabetes goal
         Consumer(
@@ -591,8 +797,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 color: context.primary100,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child:
-                  Icon(Icons.document_scanner_outlined, color: context.primary600),
+              child: Icon(Icons.document_scanner_outlined,
+                  color: context.primary600),
             ),
             title: Text(l10n.replayScanTutorial,
                 style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -849,7 +1055,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                                content: Text(AppLocalizations.of(context).scanHistoryCleared)),
+                                content: Text(AppLocalizations.of(context)
+                                    .scanHistoryCleared)),
                           );
                         }
                       }
@@ -988,10 +1195,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               await supabase.auth.signOut();
                             }
                           } catch (_) {}
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                                builder: (_) => const OnboardingScreen()),
-                            (route) => false,
+                          unawaited(
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                  builder: (_) => const OnboardingScreen()),
+                              (route) => false,
+                            ),
                           );
                         }
                       }
@@ -1051,7 +1260,8 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
     super.initState();
     final p = ref.read(userPrefsProvider);
     _unit = p.glucoseUnit;
-    _icrCtrl = TextEditingController(text: p.icrGramsPerUnit.round().toString());
+    _icrCtrl =
+        TextEditingController(text: p.icrGramsPerUnit.round().toString());
     _isfCtrl = TextEditingController(
         text: p.insulinSensitivityFactor > 0
             ? _fmtGlucose(p.insulinSensitivityFactor)
@@ -1263,11 +1473,9 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
             const SizedBox(height: 8),
             Builder(
               builder: (context) {
-                final enabled = ref
-                    .watch(insulinSettingsProvider)
-                    .bolusCalculatorEnabled;
-                final available =
-                    ref.watch(bolusCalculatorAvailableProvider);
+                final enabled =
+                    ref.watch(insulinSettingsProvider).bolusCalculatorEnabled;
+                final available = ref.watch(bolusCalculatorAvailableProvider);
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1297,9 +1505,8 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
                           available
                               ? Icons.check_circle_outline
                               : Icons.error_outline,
-                          color: available
-                              ? AppTheme.green700
-                              : AppTheme.amber700,
+                          color:
+                              available ? AppTheme.green700 : AppTheme.amber700,
                           size: 18,
                         ),
                         label: Text(
@@ -1344,8 +1551,7 @@ class _FieldRow extends StatelessWidget {
           width: 140,
           child: TextField(
             controller: controller,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textInputAction: TextInputAction.done,
             onEditingComplete: onSave,
             decoration: InputDecoration(
@@ -1586,6 +1792,13 @@ class _TextSizePickerCard extends ConsumerWidget {
 // ── Nutrition goal picker ──────────────────────────────────────────────────────
 
 class _NutritionGoalPickerCard extends ConsumerWidget {
+  const _NutritionGoalPickerCard({this.onTargetsChanged});
+
+  final void Function(
+    int calories,
+    ({int carbG, int proteinG, int fatG}) macros,
+  )? onTargetsChanged;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(userPrefsProvider);
@@ -1614,18 +1827,119 @@ class _NutritionGoalPickerCard extends ConsumerWidget {
                   selected: selected,
                   selectedColor: goal.lightColor,
                   onSelected: (_) async {
+                    final calories = GoalDefaults.caloriesForProfile(
+                      goal,
+                      weightKg: prefs.weightKg,
+                      heightCm: prefs.heightCm,
+                      muscleMassLevel: prefs.muscleMassLevel,
+                      male: prefs.gender == UserGender.male,
+                    );
+                    final macros = GoalDefaults.macroGrams(goal, calories);
                     final updated = prefs.copyWith(
                       nutritionGoal: goal,
-                      dailyCalorieGoal: GoalDefaults.calories(goal),
-                      dailyCarbLimitG: GoalDefaults.carbLimitG(goal),
-                      dailyProteinTargetG: GoalDefaults.proteinTargetG(goal),
-                      dailyFatTargetG: GoalDefaults.fatTargetG(goal),
+                      dailyCalorieGoal: calories,
+                      dailyCarbLimitG: macros.carbG.clamp(15, 500),
+                      dailyProteinTargetG: macros.proteinG.clamp(30, 300),
+                      dailyFatTargetG: macros.fatG.clamp(20, 250),
                     );
+                    onTargetsChanged?.call(calories, macros);
                     await ref.read(userPrefsProvider.notifier).update(updated);
                   },
                 );
               }).toList(),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DietaryRestrictionsCard extends ConsumerWidget {
+  const _DietaryRestrictionsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs = ref.watch(userPrefsProvider);
+    final selected = prefs.dietaryRestrictions;
+    final l10n = AppLocalizations.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.no_food_outlined,
+                    size: 20, color: context.primary600),
+                const SizedBox(width: 8),
+                Text(
+                  l10n.dietaryRestrictions,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.dietaryRestrictionsDesc,
+              style: const TextStyle(fontSize: 12, color: AppTheme.gray600),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: DietaryRestriction.values.map((restriction) {
+                final isSelected = selected.contains(restriction);
+                return FilterChip(
+                  label: Text(l10n.dietaryRestrictionLabel(restriction.name)),
+                  selected: isSelected,
+                  selectedColor: context.primary100,
+                  checkmarkColor: context.primary700,
+                  onSelected: (_) async {
+                    final updated = {...selected};
+                    if (isSelected) {
+                      updated.remove(restriction);
+                    } else {
+                      updated.add(restriction);
+                    }
+                    await ref.read(userPrefsProvider.notifier).update(
+                          prefs.copyWith(dietaryRestrictions: updated),
+                        );
+                  },
+                );
+              }).toList(),
+            ),
+            if (selected.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              ...selected.map(
+                (restriction) => Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline,
+                          size: 15, color: context.primary500),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${l10n.dietaryRestrictionShortLabel(restriction.name)}: ${l10n.dietaryRestrictionDescription(restriction.name)}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.gray600,
+                            height: 1.25,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -2028,6 +2342,516 @@ class _RemindersCardState extends State<_RemindersCard> {
         ),
       ),
     );
+  }
+}
+
+class _WeightCalibrationCard extends ConsumerWidget {
+  const _WeightCalibrationCard({required this.onTargetsChanged});
+
+  final void Function(int calories, double weightKg) onTargetsChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final state = ref.watch(weightTrackingProvider);
+    final latest = state.latest;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.insights_outlined, color: context.primary600),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.adaptiveCalorieCalibration,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: () => _logWeight(context, ref),
+                  icon: const Icon(Icons.monitor_weight_outlined, size: 17),
+                  label: Text(l10n.logMonthlyWeight),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.adaptiveCalorieCalibrationDesc,
+              style: const TextStyle(fontSize: 12, color: AppTheme.gray600),
+            ),
+            if (state.lastCalibration != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: context.primary50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: context.primary200),
+                ),
+                child: Text(
+                  '${state.lastCalibration!.recommendedCalories} kcal. ${l10n.calorieCalibrationMessage(state.lastCalibration!.messageKey)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: context.primary700,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            if (state.loading)
+              const Center(child: CircularProgressIndicator())
+            else if (state.entries.isEmpty)
+              Text(
+                l10n.noMonthlyWeightsYet,
+                style: const TextStyle(fontSize: 12, color: AppTheme.gray500),
+              )
+            else
+              Column(
+                children: state.entries.take(4).map((entry) {
+                  final isLatest = latest?.id == entry.id;
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      isLatest
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: isLatest ? context.primary600 : AppTheme.gray400,
+                    ),
+                    title: Text('${entry.weightKg.round()} kg'),
+                    subtitle: Text(_formatMonth(entry.recordedAt)),
+                    trailing: IconButton(
+                      tooltip: l10n.delete,
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => ref
+                          .read(weightTrackingProvider.notifier)
+                          .deleteEntry(entry),
+                    ),
+                  );
+                }).toList(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _logWeight(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final prefs = ref.read(userPrefsProvider);
+    final controller = TextEditingController(
+      text: GoalDefaults.formatWeightKg(prefs.weightKg),
+    );
+
+    double? parse() {
+      final value = double.tryParse(controller.text.replaceAll(',', '.'));
+      if (value == null) return null;
+      return GoalDefaults.snapWeightKg(value);
+    }
+
+    final selected = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.logMonthlyWeight),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            suffixText: 'kg',
+            helperText: l10n.monthlyWeightHelper,
+          ),
+          onSubmitted: (_) => Navigator.pop(ctx, parse()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, parse()),
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (selected == null) return;
+    final result = await ref
+        .read(weightTrackingProvider.notifier)
+        .logMonthlyWeight(selected);
+    onTargetsChanged(result.recommendedCalories, selected);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(l10n.calorieCalibrationMessage(result.messageKey))),
+    );
+  }
+
+  String _formatMonth(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.year}';
+  }
+}
+
+class _WeightSettingsInput extends StatelessWidget {
+  const _WeightSettingsInput({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final snapped = GoalDefaults.snapWeightKg(value);
+    final displayWeight = GoalDefaults.formatWeightKg(snapped);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.weightKg,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppTheme.gray400,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            IconButton.filledTonal(
+              onPressed: snapped <= GoalDefaults.minWeightKg
+                  ? null
+                  : () => onChanged(snapped - GoalDefaults.weightStepKg),
+              icon: const Icon(Icons.remove),
+            ),
+            Expanded(
+              child: Tooltip(
+                message: l10n.weightKg,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _editWeight(context),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$displayWeight kg',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: context.primary700,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(Icons.edit_outlined,
+                            size: 18, color: context.primary500),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            IconButton.filledTonal(
+              onPressed: snapped >= GoalDefaults.maxWeightKg
+                  ? null
+                  : () => onChanged(snapped + GoalDefaults.weightStepKg),
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 8,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 13),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 26),
+          ),
+          child: Slider(
+            value: snapped,
+            min: GoalDefaults.minWeightKg,
+            max: GoalDefaults.maxWeightKg,
+            divisions: ((GoalDefaults.maxWeightKg - GoalDefaults.minWeightKg) /
+                    GoalDefaults.weightStepKg)
+                .round(),
+            activeColor: context.primary600,
+            inactiveColor: context.primary200,
+            onChanged: onChanged,
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('${GoalDefaults.minWeightKg.round()} kg',
+                style: const TextStyle(fontSize: 11, color: AppTheme.gray400)),
+            Text('${GoalDefaults.maxWeightKg.round()} kg',
+                style: const TextStyle(fontSize: 11, color: AppTheme.gray400)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          l10n.weightEstimateNote,
+          style: const TextStyle(fontSize: 12, color: AppTheme.gray500),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _editWeight(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final controller =
+        TextEditingController(text: GoalDefaults.formatWeightKg(value));
+
+    double? parse() {
+      final parsed = double.tryParse(controller.text.replaceAll(',', '.'));
+      if (parsed == null) return null;
+      return GoalDefaults.snapWeightKg(parsed);
+    }
+
+    final selected = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.weightKg),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            suffixText: 'kg',
+            helperText:
+                '${GoalDefaults.minWeightKg.round()}-${GoalDefaults.maxWeightKg.round()} kg',
+          ),
+          onSubmitted: (_) => Navigator.pop(ctx, parse()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, parse()),
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+    if (selected != null) onChanged(selected);
+  }
+}
+
+class _BodyProfileSettingsInput extends StatelessWidget {
+  const _BodyProfileSettingsInput({
+    required this.heightCm,
+    required this.muscleMassLevel,
+    required this.onHeightChanged,
+    required this.onMuscleChanged,
+  });
+
+  final double heightCm;
+  final MuscleMassLevel muscleMassLevel;
+  final ValueChanged<double> onHeightChanged;
+  final ValueChanged<MuscleMassLevel> onMuscleChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final snappedHeight = GoalDefaults.snapHeightCm(heightCm);
+    final displayHeight = GoalDefaults.formatHeightCm(snappedHeight);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Height',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppTheme.gray400,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            IconButton.filledTonal(
+              onPressed: snappedHeight <= GoalDefaults.minHeightCm
+                  ? null
+                  : () => onHeightChanged(
+                        snappedHeight - GoalDefaults.heightStepCm,
+                      ),
+              icon: const Icon(Icons.remove),
+            ),
+            Expanded(
+              child: Tooltip(
+                message: 'Height',
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _editHeight(context),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$displayHeight cm',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: context.primary700,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(Icons.edit_outlined,
+                            size: 18, color: context.primary500),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            IconButton.filledTonal(
+              onPressed: snappedHeight >= GoalDefaults.maxHeightCm
+                  ? null
+                  : () => onHeightChanged(
+                        snappedHeight + GoalDefaults.heightStepCm,
+                      ),
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 8,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 13),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 26),
+          ),
+          child: Slider(
+            value: snappedHeight,
+            min: GoalDefaults.minHeightCm,
+            max: GoalDefaults.maxHeightCm,
+            divisions: ((GoalDefaults.maxHeightCm - GoalDefaults.minHeightCm) /
+                    GoalDefaults.heightStepCm)
+                .round(),
+            activeColor: context.primary600,
+            inactiveColor: context.primary200,
+            onChanged: onHeightChanged,
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('${GoalDefaults.minHeightCm.round()} cm',
+                style: const TextStyle(fontSize: 11, color: AppTheme.gray400)),
+            Text('${GoalDefaults.maxHeightCm.round()} cm',
+                style: const TextStyle(fontSize: 11, color: AppTheme.gray400)),
+          ],
+        ),
+        const SizedBox(height: 14),
+        const Text(
+          'Muscle amount',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppTheme.gray400,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: MuscleMassLevel.values.map((level) {
+            return ChoiceChip(
+              label: Text(level.label),
+              selected: muscleMassLevel == level,
+              selectedColor: context.primary100,
+              onSelected: (_) => onMuscleChanged(level),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          muscleMassLevel.description,
+          style: const TextStyle(fontSize: 12, color: AppTheme.gray500),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Calories use weight, height, biological sex and muscle amount as a starting estimate, then should be refined from your real weight trend.',
+          style: TextStyle(fontSize: 12, color: AppTheme.gray500),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _editHeight(BuildContext context) async {
+    final controller =
+        TextEditingController(text: GoalDefaults.formatHeightCm(heightCm));
+
+    double? parse() {
+      final parsed = double.tryParse(controller.text.replaceAll(',', '.'));
+      if (parsed == null) return null;
+      return GoalDefaults.snapHeightCm(parsed);
+    }
+
+    final selected = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Height'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            suffixText: 'cm',
+            helperText:
+                '${GoalDefaults.minHeightCm.round()}-${GoalDefaults.maxHeightCm.round()} cm',
+          ),
+          onSubmitted: (_) => Navigator.pop(ctx, parse()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(AppLocalizations.of(ctx).cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, parse()),
+            child: Text(AppLocalizations.of(ctx).save),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+    if (selected != null) onHeightChanged(selected);
   }
 }
 

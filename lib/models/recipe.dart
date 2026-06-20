@@ -330,6 +330,15 @@ class Recipe {
       case 'veggie':
       case 'meatless':
         return NutritionGoalType.vegetarian;
+      case 'pescatarian':
+      case 'pescetarian':
+      case 'fish':
+      case 'seafood':
+        return NutritionGoalType.pescatarian;
+      case 'mediterranean':
+      case 'mediterranean_diet':
+      case 'heart_healthy':
+        return NutritionGoalType.mediterranean;
       case 'weight_loss':
       case 'weightloss':
       case 'lose_weight':

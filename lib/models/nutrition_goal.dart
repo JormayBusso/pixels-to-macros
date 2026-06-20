@@ -6,9 +6,79 @@ enum NutritionGoalType {
   diabetes,
   vegan,
   vegetarian,
+  pescatarian,
+  mediterranean,
   weightLoss,
   keto,
   maintain,
+}
+
+enum MuscleMassLevel {
+  low,
+  average,
+  high,
+  veryHigh;
+
+  String get dbValue => name;
+
+  String get label {
+    switch (this) {
+      case MuscleMassLevel.low:
+        return 'Low';
+      case MuscleMassLevel.average:
+        return 'Average';
+      case MuscleMassLevel.high:
+        return 'High';
+      case MuscleMassLevel.veryHigh:
+        return 'Very high';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case MuscleMassLevel.low:
+        return 'Lower lean mass or mostly sedentary right now.';
+      case MuscleMassLevel.average:
+        return 'Typical lean mass for your weight and height.';
+      case MuscleMassLevel.high:
+        return 'Clearly muscular or strength training regularly.';
+      case MuscleMassLevel.veryHigh:
+        return 'Very muscular athlete/bodybuilding profile.';
+    }
+  }
+
+  double get kcalPerKgAdjustment {
+    switch (this) {
+      case MuscleMassLevel.low:
+        return -2.0;
+      case MuscleMassLevel.average:
+        return 0.0;
+      case MuscleMassLevel.high:
+        return 2.5;
+      case MuscleMassLevel.veryHigh:
+        return 4.0;
+    }
+  }
+
+  double get weightLossDeficitFraction {
+    switch (this) {
+      case MuscleMassLevel.low:
+        return 0.20;
+      case MuscleMassLevel.average:
+        return 0.18;
+      case MuscleMassLevel.high:
+        return 0.16;
+      case MuscleMassLevel.veryHigh:
+        return 0.15;
+    }
+  }
+
+  static MuscleMassLevel fromDbValue(String? value) {
+    return MuscleMassLevel.values.firstWhere(
+      (level) => level.name == value,
+      orElse: () => MuscleMassLevel.average,
+    );
+  }
 }
 
 extension NutritionGoalTypeX on NutritionGoalType {
@@ -22,6 +92,10 @@ extension NutritionGoalTypeX on NutritionGoalType {
         return 'Vegan Diet';
       case NutritionGoalType.vegetarian:
         return 'Vegetarian Diet';
+      case NutritionGoalType.pescatarian:
+        return 'Pescatarian';
+      case NutritionGoalType.mediterranean:
+        return 'Mediterranean';
       case NutritionGoalType.weightLoss:
         return 'Weight Loss';
       case NutritionGoalType.keto:
@@ -41,6 +115,10 @@ extension NutritionGoalTypeX on NutritionGoalType {
         return 'Track nutrients often missing from plant-based diets: protein, B12, iron, vitamin D.';
       case NutritionGoalType.vegetarian:
         return 'Avoid meat and seafood while allowing dairy, eggs, and honey when they fit your plan.';
+      case NutritionGoalType.pescatarian:
+        return 'Vegetarian-style eating that includes fish and seafood for omega-3 fats, iodine, selenium, and complete protein.';
+      case NutritionGoalType.mediterranean:
+        return 'A cardiometabolic pattern built around vegetables, legumes, whole grains, fruit, olive oil, nuts, fish, and modest dairy.';
       case NutritionGoalType.weightLoss:
         return 'Lose weight sustainably with a moderate calorie deficit and high protein.';
       case NutritionGoalType.keto:
@@ -60,6 +138,10 @@ extension NutritionGoalTypeX on NutritionGoalType {
         return '🌱';
       case NutritionGoalType.vegetarian:
         return '🥬';
+      case NutritionGoalType.pescatarian:
+        return '🐟';
+      case NutritionGoalType.mediterranean:
+        return '🫒';
       case NutritionGoalType.weightLoss:
         return '⚖️';
       case NutritionGoalType.keto:
@@ -79,6 +161,10 @@ extension NutritionGoalTypeX on NutritionGoalType {
         return const Color(0xFF2E7D32);
       case NutritionGoalType.vegetarian:
         return const Color(0xFF558B2F);
+      case NutritionGoalType.pescatarian:
+        return const Color(0xFF00796B);
+      case NutritionGoalType.mediterranean:
+        return const Color(0xFF5D8A38);
       case NutritionGoalType.weightLoss:
         return const Color(0xFFF57C00);
       case NutritionGoalType.keto:
@@ -98,6 +184,10 @@ extension NutritionGoalTypeX on NutritionGoalType {
         return const Color(0xFFF1F8E9);
       case NutritionGoalType.vegetarian:
         return const Color(0xFFF0F4C3);
+      case NutritionGoalType.pescatarian:
+        return const Color(0xFFE0F2F1);
+      case NutritionGoalType.mediterranean:
+        return const Color(0xFFF1F8E9);
       case NutritionGoalType.weightLoss:
         return const Color(0xFFFFF3E0);
       case NutritionGoalType.keto:
@@ -121,6 +211,31 @@ extension NutritionGoalTypeX on NutritionGoalType {
 /// Default macro targets per goal — gender-aware.
 /// Males generally need ~200–300 kcal more per day than females.
 abstract final class GoalDefaults {
+  static const double minWeightKg = 40.0;
+  static const double maxWeightKg = 180.0;
+  static const double weightStepKg = 1.0;
+  static const double minHeightCm = 120.0;
+  static const double maxHeightCm = 230.0;
+  static const double heightStepCm = 1.0;
+
+  static double clampWeightKg(double weightKg) =>
+      weightKg.clamp(minWeightKg, maxWeightKg).toDouble();
+
+  static double snapWeightKg(double weightKg) =>
+      (clampWeightKg(weightKg) / weightStepKg).round() * weightStepKg;
+
+  static String formatWeightKg(double weightKg) =>
+      snapWeightKg(weightKg).round().toString();
+
+  static double clampHeightCm(double heightCm) =>
+      heightCm.clamp(minHeightCm, maxHeightCm).toDouble();
+
+  static double snapHeightCm(double heightCm) =>
+      (clampHeightCm(heightCm) / heightStepCm).round() * heightStepCm;
+
+  static String formatHeightCm(double heightCm) =>
+      snapHeightCm(heightCm).round().toString();
+
   /// Fallback calorie targets when no weight is provided.
   static int calories(NutritionGoalType t, {bool male = false}) {
     switch (t) {
@@ -132,6 +247,10 @@ abstract final class GoalDefaults {
         return male ? 2200 : 2000;
       case NutritionGoalType.vegetarian:
         return male ? 2300 : 2000;
+      case NutritionGoalType.pescatarian:
+        return male ? 2400 : 2000;
+      case NutritionGoalType.mediterranean:
+        return male ? 2400 : 2000;
       case NutritionGoalType.weightLoss:
         return male ? 1800 : 1600;
       case NutritionGoalType.keto:
@@ -141,22 +260,61 @@ abstract final class GoalDefaults {
     }
   }
 
-  /// Mifflin-St Jeor BMR estimate.
+  /// Profile-based maintenance starting estimate.
   ///
-  /// Uses only weight + a "typical" height/age assumption because the
-  /// onboarding intentionally stays lightweight (no height/age fields).
-  /// Assumes 170 cm / 30 y for men, 163 cm / 30 y for women.
-  static double _bmr({required double weightKg, required bool male}) {
-    if (male) {
-      return 10 * weightKg + 6.25 * 170 - 5 * 30 + 5; // Mifflin male
-    } else {
-      return 10 * weightKg + 6.25 * 163 - 5 * 30 - 161; // Mifflin female
-    }
+  /// This intentionally avoids BMI-category logic and avoids equations that
+  /// need age. It starts from guideline-style kcal/kg/day, then adjusts for
+  /// height/frame and self-reported muscle amount so muscular users are not
+  /// pushed into an overly aggressive deficit from weight alone.
+  static int _maintenance({
+    required double weightKg,
+    required double heightCm,
+    required MuscleMassLevel muscleMassLevel,
+    required bool male,
+  }) {
+    final kg = clampWeightKg(weightKg);
+    final height = snapHeightCm(heightCm);
+    final referenceHeight = male ? 175.0 : 165.0;
+    final heightAdjustment =
+        ((height - referenceHeight) / 10.0 * 0.6).clamp(-3.0, 3.0).toDouble();
+    final kcalPerKg = (male ? 33.0 : 30.0) +
+        heightAdjustment +
+        muscleMassLevel.kcalPerKgAdjustment;
+    return (kg * kcalPerKg).round().clamp(1200, 5000);
   }
 
-  /// Maintenance calories from BMR × 1.55 (moderate activity).
-  static int _maintenance({required double weightKg, required bool male}) {
-    return (_bmr(weightKg: weightKg, male: male) * 1.55).round();
+  static int caloriesForProfile(
+    NutritionGoalType t, {
+    required double weightKg,
+    required double heightCm,
+    required MuscleMassLevel muscleMassLevel,
+    required bool male,
+  }) {
+    final maint = _maintenance(
+      weightKg: weightKg,
+      heightCm: heightCm,
+      muscleMassLevel: muscleMassLevel,
+      male: male,
+    );
+    switch (t) {
+      case NutritionGoalType.muscleGrowth:
+        final surplus = (maint * 0.12).round().clamp(250, 500);
+        return (maint + surplus).clamp(1200, 5000);
+      case NutritionGoalType.weightLoss:
+        final deficit = (maint * muscleMassLevel.weightLossDeficitFraction)
+            .round()
+            .clamp(250, 650);
+        final floor = male ? 1500 : 1200;
+        return (maint - deficit).clamp(floor, 5000);
+      case NutritionGoalType.diabetes:
+      case NutritionGoalType.keto:
+      case NutritionGoalType.vegan:
+      case NutritionGoalType.vegetarian:
+      case NutritionGoalType.pescatarian:
+      case NutritionGoalType.mediterranean:
+      case NutritionGoalType.maintain:
+        return maint;
+    }
   }
 
   /// Weight-aware calorie target for a goal.
@@ -166,19 +324,13 @@ abstract final class GoalDefaults {
     required double weightKg,
     required bool male,
   }) {
-    final maint = _maintenance(weightKg: weightKg, male: male);
-    switch (t) {
-      case NutritionGoalType.muscleGrowth:
-        return maint + 400; // 300-500 surplus
-      case NutritionGoalType.weightLoss:
-        return (maint - 500).clamp(1200, 5000); // 500 deficit
-      case NutritionGoalType.diabetes:
-      case NutritionGoalType.keto:
-      case NutritionGoalType.vegan:
-      case NutritionGoalType.vegetarian:
-      case NutritionGoalType.maintain:
-        return maint;
-    }
+    return caloriesForProfile(
+      t,
+      weightKg: weightKg,
+      heightCm: male ? 175.0 : 165.0,
+      muscleMassLevel: MuscleMassLevel.average,
+      male: male,
+    );
   }
 
   /// Evidence-based macro percentage distributions per goal.
@@ -199,6 +351,12 @@ abstract final class GoalDefaults {
       case NutritionGoalType.vegetarian:
         // 25P / 45C / 30F — balanced vegetarian pattern with solid protein.
         return (carb: 0.45, protein: 0.25, fat: 0.30);
+      case NutritionGoalType.pescatarian:
+        // 25P / 45C / 30F — fish/seafood plus plant-forward carbs and fats.
+        return (carb: 0.45, protein: 0.25, fat: 0.30);
+      case NutritionGoalType.mediterranean:
+        // 20P / 45C / 35F — Mediterranean-style AMDR with olive oil and nuts.
+        return (carb: 0.45, protein: 0.20, fat: 0.35);
       case NutritionGoalType.weightLoss:
         // 40P / 30C / 30F — high protein for satiety + muscle preservation.
         return (carb: 0.30, protein: 0.40, fat: 0.30);
@@ -268,6 +426,16 @@ abstract final class GoalDefaults {
         if (progress < 0.33) return 'Fresh Start';
         if (progress < 0.66) return 'Balanced Plate';
         if (progress < 1.00) return 'Well Nourished';
+        return 'Thriving';
+      case NutritionGoalType.pescatarian:
+        if (progress < 0.33) return 'Fresh Catch';
+        if (progress < 0.66) return 'Balanced Plate';
+        if (progress < 1.00) return 'Well Nourished';
+        return 'Thriving';
+      case NutritionGoalType.mediterranean:
+        if (progress < 0.33) return 'Fresh Start';
+        if (progress < 0.66) return 'Colorful Plate';
+        if (progress < 1.00) return 'Heart Smart';
         return 'Thriving';
       case NutritionGoalType.weightLoss:
         if (progress < 0.33) return 'Just Started';
