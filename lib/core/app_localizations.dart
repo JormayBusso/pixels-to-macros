@@ -670,6 +670,14 @@ class AppLocalizations {
             'Eine kompakte Übersicht, wie Logging, Planung, Vorrat und Gewichtstrend zusammenspielen.',
       });
 
+  String get progressStoryLoadFailed => _t({
+        'en': 'Progress story could not be loaded.',
+        'pl': 'Nie udało się wczytać historii postępów.',
+        'nl': 'Voortgangsverhaal kon niet worden geladen.',
+        'es': 'No se pudo cargar la historia de progreso.',
+        'de': 'Fortschrittsstory konnte nicht geladen werden.',
+      });
+
   String progressMomentum(int percent) => _t({
         'en': '$percent% monthly logging momentum',
         'pl': '$percent% miesięcznej regularności',
@@ -921,6 +929,22 @@ class AppLocalizations {
         'de': 'Vegetarische Ernährung',
       });
 
+  String get pescatarian => _t({
+        'en': 'Pescatarian',
+        'pl': 'Peskatarianizm',
+        'nl': 'Pescotarisch',
+        'es': 'Pescetariana',
+        'de': 'Pescetarisch',
+      });
+
+  String get mediterranean => _t({
+        'en': 'Mediterranean',
+        'pl': 'Dieta śródziemnomorska',
+        'nl': 'Mediterraan',
+        'es': 'Mediterránea',
+        'de': 'Mediterran',
+      });
+
   String get weightLoss => _t({
         'en': 'Weight Loss',
         'pl': 'Odchudzanie',
@@ -977,6 +1001,14 @@ class AppLocalizations {
         'nl': 'Snack',
         'es': 'Merienda',
         'de': 'Snack',
+      });
+
+  String get dessert => _t({
+        'en': 'Dessert',
+        'pl': 'Deser',
+        'nl': 'Dessert',
+        'es': 'Postre',
+        'de': 'Dessert',
       });
 
   // ── Macros ──
@@ -1354,6 +1386,27 @@ class AppLocalizations {
         'nl': 'Week wissen',
         'es': 'Borrar semana',
         'de': 'Woche löschen',
+      });
+
+  String personalisedFor(String goal) => _t({
+        'en': 'Personalised for $goal',
+        'pl': 'Spersonalizowane dla: $goal',
+        'nl': 'Gepersonaliseerd voor $goal',
+        'es': 'Personalizado para $goal',
+        'de': 'Personalisiert für $goal',
+      });
+
+  String get mealPlannerInstructions => _t({
+        'en':
+            'Toggle meal slots to plan your week. Tap shuffle to get a new recipe.',
+        'pl':
+            'Włącz posiłki, aby zaplanować tydzień. Dotknij mieszania, aby dostać nowy przepis.',
+        'nl':
+            'Schakel maaltijden in om je week te plannen. Tik op schudden voor een nieuw recept.',
+        'es':
+            'Activa comidas para planificar tu semana. Toca mezclar para obtener otra receta.',
+        'de':
+            'Aktiviere Mahlzeiten, um deine Woche zu planen. Tippe auf Mischen für ein neues Rezept.',
       });
 
   String get generateGroceryList => _t({
@@ -2470,6 +2523,152 @@ class AppLocalizations {
         'de': 'Erneut scannen',
       });
 
+  String get noFoodDetectedTitle => _t({
+        'en': 'No food detected',
+        'pl': 'Nie wykryto jedzenia',
+        'nl': 'Geen eten gedetecteerd',
+        'es': 'No se detectó comida',
+        'de': 'Kein Essen erkannt',
+      });
+
+  String get noFoodDetectedBody => _t({
+        'en': 'Point the camera at a plate or food item and scan again.',
+        'pl': 'Skieruj kamerę na talerz lub jedzenie i zeskanuj ponownie.',
+        'nl': 'Richt de camera op een bord of voedsel en scan opnieuw.',
+        'es': 'Apunta la cámara a un plato o alimento y escanea de nuevo.',
+        'de':
+            'Richte die Kamera auf einen Teller oder ein Lebensmittel und scanne erneut.',
+      });
+
+  String get scanAnalysisFailed => _t({
+        'en': 'Scan analysis failed. Please rescan.',
+        'pl': 'Analiza skanu nie powiodła się. Zeskanuj ponownie.',
+        'nl': 'Scananalyse mislukt. Scan opnieuw.',
+        'es': 'Falló el análisis del escaneo. Escanea de nuevo.',
+        'de': 'Scananalyse fehlgeschlagen. Bitte erneut scannen.',
+      });
+
+  String get scan3dFailed => _t({
+        'en': '3D scan failed. Please rescan.',
+        'pl': 'Skan 3D nie powiódł się. Zeskanuj ponownie.',
+        'nl': '3D-scan mislukt. Scan opnieuw.',
+        'es': 'Falló el escaneo 3D. Escanea de nuevo.',
+        'de': '3D-Scan fehlgeschlagen. Bitte erneut scannen.',
+      });
+
+  String get scanErrorCopyTitle => _t({
+        'en': 'Error - tap and hold to copy',
+        'pl': 'Błąd - dotknij i przytrzymaj, aby skopiować',
+        'nl': 'Fout - tik en houd vast om te kopiëren',
+        'es': 'Error - mantén pulsado para copiar',
+        'de': 'Fehler - zum Kopieren gedrückt halten',
+      });
+
+  String get copyError => _t({
+        'en': 'Copy error',
+        'pl': 'Kopiuj błąd',
+        'nl': 'Fout kopiëren',
+        'es': 'Copiar error',
+        'de': 'Fehler kopieren',
+      });
+
+  String get building3dPreview => _t({
+        'en': 'Building 3D scan preview',
+        'pl': 'Budowanie podglądu skanu 3D',
+        'nl': '3D-scanvoorbeeld maken',
+        'es': 'Creando vista previa 3D',
+        'de': '3D-Scanvorschau wird erstellt',
+      });
+
+  String get refining3dFoodModel => _t({
+        'en': 'Refining generated 3D food model',
+        'pl': 'Dopracowywanie wygenerowanego modelu 3D jedzenia',
+        'nl': 'Gegenereerd 3D-voedselmodel verfijnen',
+        'es': 'Refinando el modelo 3D de comida generado',
+        'de': 'Generiertes 3D-Lebensmittelmodell wird verfeinert',
+      });
+
+  String get turnOffFlashlight => _t({
+        'en': 'Turn off flashlight',
+        'pl': 'Wyłącz latarkę',
+        'nl': 'Zaklamp uitzetten',
+        'es': 'Apagar linterna',
+        'de': 'Taschenlampe ausschalten',
+      });
+
+  String get turnOnFlashlight => _t({
+        'en': 'Turn on flashlight',
+        'pl': 'Włącz latarkę',
+        'nl': 'Zaklamp aanzetten',
+        'es': 'Encender linterna',
+        'de': 'Taschenlampe einschalten',
+      });
+
+  String get lowLightScanWarning => _t({
+        'en': 'Low light - turn on the flashlight for better detection.',
+        'pl': 'Słabe światło - włącz latarkę, aby poprawić wykrywanie.',
+        'nl': 'Weinig licht - zet de zaklamp aan voor betere detectie.',
+        'es': 'Poca luz - enciende la linterna para detectar mejor.',
+        'de':
+            'Wenig Licht - schalte die Taschenlampe für bessere Erkennung ein.',
+      });
+
+  String get generatingEstimated3dModel => _t({
+        'en': 'Generating estimated 3D model...',
+        'pl': 'Generowanie szacowanego modelu 3D...',
+        'nl': 'Geschat 3D-model maken...',
+        'es': 'Generando modelo 3D estimado...',
+        'de': 'Geschätztes 3D-Modell wird erstellt...',
+      });
+
+  String get buildingLidar3dModel => _t({
+        'en': 'Building LiDAR 3D model...',
+        'pl': 'Budowanie modelu 3D LiDAR...',
+        'nl': 'LiDAR 3D-model maken...',
+        'es': 'Creando modelo 3D LiDAR...',
+        'de': 'LiDAR-3D-Modell wird erstellt...',
+      });
+
+  String get tapToScan => _t({
+        'en': 'Tap to scan',
+        'pl': 'Dotknij, aby skanować',
+        'nl': 'Tik om te scannen',
+        'es': 'Toca para escanear',
+        'de': 'Tippen zum Scannen',
+      });
+
+  String get startingCamera => _t({
+        'en': 'Starting camera...',
+        'pl': 'Uruchamianie kamery...',
+        'nl': 'Camera starten...',
+        'es': 'Iniciando cámara...',
+        'de': 'Kamera wird gestartet...',
+      });
+
+  String secondsRemaining(int seconds) => _t({
+        'en': '${seconds}s remaining',
+        'pl': 'Pozostało ${seconds}s',
+        'nl': '${seconds}s resterend',
+        'es': 'Quedan ${seconds}s',
+        'de': '${seconds}s verbleibend',
+      });
+
+  String get topViewDetectedStarting => _t({
+        'en': 'Top view detected - starting...',
+        'pl': 'Wykryto widok z góry - start...',
+        'nl': 'Bovenaanzicht gedetecteerd - starten...',
+        'es': 'Vista superior detectada - iniciando...',
+        'de': 'Draufsicht erkannt - Start...',
+      });
+
+  String tiltPhoneDown(int degrees) => _t({
+        'en': 'Tilt phone down (${degrees}°)',
+        'pl': 'Pochyl telefon w dół (${degrees}°)',
+        'nl': 'Kantel telefoon omlaag (${degrees}°)',
+        'es': 'Inclina el teléfono hacia abajo (${degrees}°)',
+        'de': 'Telefon nach unten neigen (${degrees}°)',
+      });
+
   String get retry => _t({
         'en': 'Retry',
         'pl': 'Ponów',
@@ -2766,6 +2965,38 @@ class AppLocalizations {
         'nl': 'Kies een $meal recept',
         'es': 'Elige una receta de $meal',
         'de': 'Wähle ein $meal-Rezept',
+      });
+
+  String get searchRecipes => _t({
+        'en': 'Search recipes...',
+        'pl': 'Szukaj przepisów...',
+        'nl': 'Recepten zoeken...',
+        'es': 'Buscar recetas...',
+        'de': 'Rezepte suchen...',
+      });
+
+  String addItemsToGroceryList(int n) => _t({
+        'en': 'Add $n Items to Grocery List',
+        'pl': 'Dodaj $n pozycji do listy zakupów',
+        'nl': 'Voeg $n items toe aan boodschappenlijst',
+        'es': 'Añadir $n artículos a la lista de compras',
+        'de': '$n Artikel zur Einkaufsliste hinzufügen',
+      });
+
+  String usedCount(int n) => _t({
+        'en': 'used ${n}x',
+        'pl': 'użyto ${n}x',
+        'nl': '${n}x gebruikt',
+        'es': 'usado ${n}x',
+        'de': '${n}x verwendet',
+      });
+
+  String gramsTotal(int grams) => _t({
+        'en': 'about $grams g total',
+        'pl': 'około $grams g łącznie',
+        'nl': 'ongeveer $grams g totaal',
+        'es': 'aprox. $grams g en total',
+        'de': 'ca. $grams g gesamt',
       });
 
   // ── Manual entry ──

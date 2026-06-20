@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/app_localizations.dart';
 import '../widgets/scan_3d_viewer.dart';
 
 /// Full-screen Stage 3 viewer. Hosts the native SceneKit scene plus a
@@ -156,20 +157,22 @@ class _ViewerErrorOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ColoredBox(
+    final l10n = AppLocalizations.of(context);
+    return ColoredBox(
       color: Colors.black87,
       child: Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline, color: Colors.redAccent, size: 44),
-              SizedBox(height: 12),
+              const Icon(Icons.error_outline,
+                  color: Colors.redAccent, size: 44),
+              const SizedBox(height: 12),
               Text(
-                '3D scan failed. Please rescan.',
+                l10n.scan3dFailed,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,

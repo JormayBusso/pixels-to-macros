@@ -420,16 +420,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     PerfMonitor.instance.end();
 
     if (result == null || (result.foods.isEmpty && result.error == null)) {
-      // Strict 3-D contract: empty video output is a failed reconstruction,
-      // not a successful scan.
       _hapticError();
-      setState(() => _sessionErrorDetail = '3D scan failed. Please rescan.');
-      ref.read(scanStateProvider.notifier).modelFailed();
+      setState(() => _sessionErrorDetail = null);
+      ref.read(scanStateProvider.notifier).plateNotDetected();
     } else if (result.error != null) {
-      DebugLog.instance.log('Scan', 'Inference error: ${result.error}');
+      final failedResult = result;
+      DebugLog.instance.log('Scan', 'Inference error: ${failedResult.error}');
       _hapticError();
-      setState(() => _sessionErrorDetail = '3D scan failed. Please rescan.');
-      ref.read(scanStateProvider.notifier).modelFailed();
+      if (failedResult.failureKind == ScanFailureKind.noFood) {
+        setState(() => _sessionErrorDetail = null);
+        ref.read(scanStateProvider.notifier).plateNotDetected();
+      } else {
+        setState(() => _sessionErrorDetail = failedResult.error);
+        ref.read(scanStateProvider.notifier).modelFailed();
+      }
     } else {
       final successfulResult = result;
       if (mounted) {
@@ -445,9 +449,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       DebugLog.instance.log('Perf', PerfMonitor.instance.report());
       try {
         await _saveScanResult(successfulResult);
-      } catch (_) {
+      } catch (e, st) {
         if (!mounted) return;
-        setState(() => _sessionErrorDetail = '3D scan failed. Please rescan.');
+        DebugLog.instance.log('Scan3D', 'Save failed: $e\n$st');
+        setState(() =>
+            _sessionErrorDetail = AppLocalizations.of(context).scan3dFailed);
         _hapticError();
         ref.read(scanStateProvider.notifier).modelFailed();
         return;
@@ -480,7 +486,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
       if (!modelExists) {
         debugPrint('[SCAN] ERROR: missing 3D model');
-        throw StateError('3D scan failed. Please rescan.');
+        throw StateError('missing_3d_model');
       }
 
       final scanResult = ScanResult(
@@ -571,6 +577,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   Widget build(BuildContext context) {
     final scanState = ref.watch(scanStateProvider);
     final scanResult = ref.watch(scanResultProvider);
+    final l10n = AppLocalizations.of(context);
     final isProcessing =
         scanState == ScanState.calculating || scanState == ScanState.done;
 
@@ -605,8 +612,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 isBuilding: true,
                 height: 250,
                 title: _buildPreviewFoods.isEmpty
-                    ? 'Building 3D scan preview'
-                    : 'Refining generated 3D food model',
+                    ? l10n.building3dPreview
+                    : l10n.refining3dFoodModel,
               ),
             ),
 
@@ -677,7 +684,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                   size: 28,
                 ),
                 tooltip:
-                    _torchOn ? 'Turn off flashlight' : 'Turn on flashlight',
+                    _torchOn ? l10n.turnOffFlashlight : l10n.turnOnFlashlight,
                 onPressed: () async {
                   final next = !_torchOn;
                   final ok = await _bridge.setTorch(next);
@@ -687,7 +694,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(AppLocalizations.of(context).flashlightUnavailable),
+                        content: Text(
+                            AppLocalizations.of(context).flashlightUnavailable),
                         duration: const Duration(seconds: 2),
                       ),
                     );
@@ -711,15 +719,16 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.amber500),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.nightlight_round,
+                    const Icon(Icons.nightlight_round,
                         color: AppTheme.amber500, size: 18),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Low light — turn on the flashlight for better detection.',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
+                        l10n.lowLightScanWarning,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ),
                   ],
@@ -729,7 +738,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
           // ── Tutorial overlay (first scan) ───────────────────────────
           if (_showTutorial) ScanTutorialOverlay(onDismiss: _dismissTutorial),
-
         ],
       ),
     );
@@ -770,8 +778,17 @@ class _BottomPanel extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback? onViewDetails;
 
+  String _scanErrorTitle(AppLocalizations l10n) {
+    return scanResult.failureKind == ScanFailureKind.reconstructionFailed
+        ? l10n.scan3dFailed
+        : l10n.scanAnalysisFailed;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final isNoFood = scanResult.failureKind == ScanFailureKind.noFood ||
+        scanState == ScanState.plateNotDetected;
     return Container(
       decoration: const BoxDecoration(
         color: Colors.black87,
@@ -795,6 +812,7 @@ class _BottomPanel extends StatelessWidget {
             _OrientationIndicator(
               pitch: currentPitch,
               sessionStarted: sessionStarted,
+              l10n: l10n,
             ),
 
           // ── Ready to record (manual start) ─────────────────────
@@ -803,6 +821,7 @@ class _BottomPanel extends StatelessWidget {
               enabled: sessionStarted,
               isRecording: false,
               progress: 0,
+              l10n: l10n,
               onPressed: onStartRecord,
             ),
 
@@ -812,6 +831,7 @@ class _BottomPanel extends StatelessWidget {
               enabled: true,
               isRecording: true,
               progress: recordProgress,
+              l10n: l10n,
               onPressed: onStopRecord,
             ),
 
@@ -819,14 +839,14 @@ class _BottomPanel extends StatelessWidget {
           if (scanState == ScanState.calculating) ...[
             _ProcessingIndicator(
               text: depthMode == 'monocular_scale'
-                  ? 'Generating estimated 3-D model…'
-                  : 'Building LiDAR 3-D model…',
+                  ? l10n.generatingEstimated3dModel
+                  : l10n.buildingLidar3dModel,
             ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: onClose,
-              child: const Text('Cancel',
-                  style: TextStyle(color: Colors.white60, fontSize: 14)),
+              child: Text(l10n.cancel,
+                  style: const TextStyle(color: Colors.white60, fontSize: 14)),
             ),
           ],
 
@@ -913,8 +933,9 @@ class _BottomPanel extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: onViewDetails ?? onClose,
-                    child:
-                        Text(onViewDetails != null ? AppLocalizations.of(context).scanDetails : AppLocalizations.of(context).done),
+                    child: Text(onViewDetails != null
+                        ? AppLocalizations.of(context).scanDetails
+                        : AppLocalizations.of(context).done),
                   ),
                 ),
               ],
@@ -923,19 +944,31 @@ class _BottomPanel extends StatelessWidget {
 
           // ── Error states → retry + back ───────────────────────────
           if (scanState.isError) ...[
-            const Icon(Icons.error_outline, size: 40, color: AppTheme.red500),
+            Icon(
+              isNoFood ? Icons.no_food_outlined : Icons.error_outline,
+              size: 40,
+              color: isNoFood ? AppTheme.amber500 : AppTheme.red500,
+            ),
             const SizedBox(height: 8),
             Text(
-              scanState.label,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              isNoFood ? l10n.noFoodDetectedTitle : _scanErrorTitle(l10n),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
               textAlign: TextAlign.center,
             ),
-            // Show the ACTUAL native error so the user/developer can
-            // see exactly why the camera failed.
-            if (sessionErrorDetail != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              isNoFood ? l10n.noFoodDetectedBody : scanState.label,
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            if (!isNoFood && sessionErrorDetail != null) ...[
               const SizedBox(height: 8),
               _ScanErrorBox(error: sessionErrorDetail!),
-            ] else if (scanResult.error != null) ...[
+            ] else if (!isNoFood && scanResult.error != null) ...[
               const SizedBox(height: 8),
               _ScanErrorBox(error: scanResult.error!),
             ],
@@ -1079,12 +1112,14 @@ class _RecordButton extends StatelessWidget {
     required this.enabled,
     required this.isRecording,
     required this.progress,
+    required this.l10n,
     required this.onPressed,
   });
 
   final bool enabled;
   final bool isRecording;
   final double progress; // 0.0 – 1.0
+  final AppLocalizations l10n;
   final VoidCallback onPressed;
 
   @override
@@ -1139,8 +1174,12 @@ class _RecordButton extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           isRecording
-              ? '${((1.0 - progress) * _ScanScreenState._maxRecordDuration.inSeconds).ceil()}s remaining'
-              : (enabled ? 'Tap to scan' : 'Starting camera…'),
+              ? l10n.secondsRemaining(
+                  ((1.0 - progress) *
+                          _ScanScreenState._maxRecordDuration.inSeconds)
+                      .ceil(),
+                )
+              : (enabled ? l10n.tapToScan : l10n.startingCamera),
           style: TextStyle(
             fontSize: 12,
             color: isRecording ? AppTheme.amber500 : Colors.white54,
@@ -1184,6 +1223,7 @@ class _InfoChipDark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -1211,15 +1251,17 @@ class _OrientationIndicator extends StatelessWidget {
   const _OrientationIndicator({
     required this.pitch,
     required this.sessionStarted,
+    required this.l10n,
   });
 
   final double pitch; // radians: -π/2 = top-view, 0 = horizontal
   final bool sessionStarted;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
     if (!sessionStarted) {
-      return const _ProcessingIndicator(text: 'Starting camera…');
+      return _ProcessingIndicator(text: l10n.startingCamera);
     }
 
     // Map pitch to 0..1 progress: -π/2 → 1.0 (top-view), 0 → 0.0 (horizontal).
@@ -1259,8 +1301,8 @@ class _OrientationIndicator extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           isTopView
-              ? 'Top view detected — starting…'
-              : 'Tilt phone down ($angleDeg°)',
+              ? l10n.topViewDetectedStarting
+              : l10n.tiltPhoneDown(angleDeg),
           style: TextStyle(
             fontSize: 12,
             color: isTopView ? context.primary400 : AppTheme.amber500,
@@ -1279,6 +1321,7 @@ class _ScanErrorBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       constraints: const BoxConstraints(maxHeight: 150),
@@ -1299,7 +1342,7 @@ class _ScanErrorBox extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Error — tap & hold to copy',
+                    l10n.scanErrorCopyTitle,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -1309,14 +1352,14 @@ class _ScanErrorBox extends StatelessWidget {
                 ),
                 IconButton(
                   icon: Icon(Icons.copy, size: 14, color: Colors.red.shade300),
-                  tooltip: 'Copy error',
+                  tooltip: l10n.copyError,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: error));
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(AppLocalizations.of(context).errorCopied),
+                        content: Text(l10n.errorCopied),
                         duration: const Duration(seconds: 2),
                       ),
                     );

@@ -87,7 +87,8 @@ class RecipeSwapService {
     for (final ingredient in recipe.ingredients) {
       final name = _normalise(ingredient.name);
       if (pantryNames.any((pantry) =>
-          pantry.length >= 3 && (name.contains(pantry) || pantry.contains(name)))) {
+          pantry.length >= 3 &&
+          (name.contains(pantry) || pantry.contains(name)))) {
         matches++;
       }
     }
@@ -130,13 +131,13 @@ class RecipeSwapService {
         score += protein.clamp(0, 35) * 0.25;
         break;
       case SmartSwapIntent.higherProtein:
-        score += protein.clamp(0, 60) * 1.2;
+        score += _cappedScoreImpact(protein.clamp(0, 60) * 1.2, 36);
         score -= (calories / 180).clamp(0, 6);
         break;
       case SmartSwapIntent.lowerCarb:
-        score -= carbs.clamp(0, 100) * 0.75;
+        score -= _cappedScoreImpact(carbs.clamp(0, 100) * 0.75, 45);
         score -= recipe.glycemicLoad.clamp(0, 40) * 0.35;
-        score += fiber.clamp(0, 14) * 1.8;
+        score += _cappedScoreImpact(fiber.clamp(0, 14) * 1.8, 20);
         break;
       case SmartSwapIntent.faster:
         score -= recipe.minutes.clamp(0, 180) * 0.45;
@@ -149,11 +150,11 @@ class RecipeSwapService {
 
     switch (goal) {
       case NutritionGoalType.diabetes:
-        score -= carbs.clamp(0, 80) * 0.45;
-        score += fiber.clamp(0, 12) * 1.5;
+        score -= _cappedScoreImpact(carbs.clamp(0, 80) * 0.45, 28);
+        score += _cappedScoreImpact(fiber.clamp(0, 12) * 1.5, 16);
         break;
       case NutritionGoalType.muscleGrowth:
-        score += protein.clamp(0, 60) * 0.8;
+        score += _cappedScoreImpact(protein.clamp(0, 60) * 0.8, 30);
         break;
       case NutritionGoalType.weightLoss:
         score += protein.clamp(0, 45) * 0.45;
@@ -173,6 +174,10 @@ class RecipeSwapService {
     }
 
     return score;
+  }
+
+  static double _cappedScoreImpact(num value, double maxAbs) {
+    return value.toDouble().clamp(-maxAbs, maxAbs).toDouble();
   }
 
   static String _normalise(String value) {

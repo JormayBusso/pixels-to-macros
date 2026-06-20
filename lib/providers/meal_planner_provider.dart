@@ -310,6 +310,7 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
       goal: goal,
       mealType: mealType,
       limit: 1000,
+      includeGenerated: true,
       language: languageCode,
       dietaryRestrictions: dietaryRestrictions,
     );

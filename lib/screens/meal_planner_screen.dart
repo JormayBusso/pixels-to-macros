@@ -67,6 +67,30 @@ Recipe _customMealToRecipe(CustomMeal meal, List<FoodData> foods) {
   );
 }
 
+String _localizedGoalLabel(AppLocalizations l10n, NutritionGoalType goal) {
+  return switch (goal) {
+    NutritionGoalType.muscleGrowth => l10n.muscleGrowth,
+    NutritionGoalType.diabetes => l10n.diabetes,
+    NutritionGoalType.vegan => l10n.veganDiet,
+    NutritionGoalType.vegetarian => l10n.vegetarianDiet,
+    NutritionGoalType.pescatarian => l10n.pescatarian,
+    NutritionGoalType.mediterranean => l10n.mediterranean,
+    NutritionGoalType.weightLoss => l10n.weightLoss,
+    NutritionGoalType.keto => l10n.keto,
+    NutritionGoalType.maintain => l10n.maintainWeight,
+  };
+}
+
+String _localizedMealTypeLabel(AppLocalizations l10n, RecipeMealType mealType) {
+  return switch (mealType) {
+    RecipeMealType.breakfast => l10n.breakfast,
+    RecipeMealType.lunch => l10n.lunch,
+    RecipeMealType.dinner => l10n.dinner,
+    RecipeMealType.snack => l10n.snack,
+    RecipeMealType.dessert => l10n.dessert,
+  };
+}
+
 /// Full-screen smart weekly meal planner.
 class MealPlannerScreen extends ConsumerStatefulWidget {
   const MealPlannerScreen({super.key});
@@ -161,16 +185,21 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Personalised for ${prefs.nutritionGoal.label}',
+                              l10n.personalisedFor(
+                                _localizedGoalLabel(
+                                  l10n,
+                                  prefs.nutritionGoal,
+                                ),
+                              ),
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: prefs.nutritionGoal.color,
                               ),
                             ),
-                            const Text(
-                              'Toggle meal slots to plan your week. Tap shuffle to get a new recipe.',
-                              style: TextStyle(
+                            Text(
+                              l10n.mealPlannerInstructions,
+                              style: const TextStyle(
                                   fontSize: 11, color: AppTheme.gray600),
                             ),
                           ],
@@ -216,7 +245,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('Clear Week'),
+                        child: Text(l10n.clearWeek),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -226,7 +255,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                         onPressed: () => _generateGroceryList(context),
                         icon: const Icon(Icons.shopping_basket_outlined,
                             size: 18),
-                        label: const Text('Generate Grocery List'),
+                        label: Text(l10n.generateGroceryList),
                         style: FilledButton.styleFrom(
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
@@ -279,7 +308,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
               ref.read(mealPlanProvider.notifier).clearWeek();
             },
             style: TextButton.styleFrom(foregroundColor: AppTheme.red500),
-            child: const Text('Clear'),
+            child: Text(l10n.clearWeek),
           ),
         ],
       ),
@@ -287,6 +316,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
   }
 
   Future<void> _generateGroceryList(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final plan = ref.read(mealPlanProvider);
     if (plan.assignments.isEmpty) return;
 
@@ -335,8 +365,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                    '${ingredientMap.length} items added to your grocery list!'),
+                content: Text(l10n.itemsAdded(ingredientMap.length)),
                 backgroundColor: AppTheme.green600,
               ),
             );
@@ -509,6 +538,7 @@ class _DayCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final plan = ref.watch(mealPlanProvider);
     final prefs = ref.watch(userPrefsProvider);
+    final l10n = AppLocalizations.of(context);
     final hasAny = mealTypes.any((m) => plan.isEnabled(dayIndex, m));
 
     // Sum calories for this day
@@ -560,8 +590,12 @@ class _DayCard extends ConsumerWidget {
                 ],
                 Text(
                   hasAny
-                      ? '${mealTypes.where((m) => plan.isEnabled(dayIndex, m)).length} meals'
-                      : 'Tap to add meals',
+                      ? l10n.nMeals(
+                          mealTypes
+                              .where((m) => plan.isEnabled(dayIndex, m))
+                              .length,
+                        )
+                      : l10n.tapToAddMeals,
                   style: TextStyle(
                     fontSize: 11,
                     color: hasAny ? AppTheme.gray500 : AppTheme.gray400,
@@ -597,6 +631,7 @@ class _MealSlotRow extends ConsumerWidget {
     final recipe = plan.recipeFor(dayIndex, mealType);
     final portionMultiplier = plan.portionMultiplierFor(dayIndex, mealType);
     final prefs = ref.watch(userPrefsProvider);
+    final l10n = AppLocalizations.of(context);
     final goal = prefs.nutritionGoal;
     final dailyCal = prefs.dailyCalorieGoal;
     final restrictions = prefs.dietaryRestrictions;
@@ -638,7 +673,7 @@ class _MealSlotRow extends ConsumerWidget {
                     Text(mealType.emoji, style: const TextStyle(fontSize: 16)),
                     const SizedBox(width: 8),
                     Text(
-                      mealType.label,
+                      _localizedMealTypeLabel(l10n, mealType),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -777,7 +812,7 @@ class _MealSlotRow extends ConsumerWidget {
                                   if (portionMultiplier > 1.05) ...[
                                     const SizedBox(width: 6),
                                     Text(
-                                      'x${portionMultiplier.toStringAsFixed(1)} portion',
+                                      'x${portionMultiplier.toStringAsFixed(1)} ${l10n.portion}',
                                       style: TextStyle(
                                         fontSize: 10,
                                         color: Colors.orange.shade700,
@@ -825,7 +860,7 @@ class _MealSlotRow extends ConsumerWidget {
                     const Icon(Icons.hourglass_empty,
                         size: 14, color: AppTheme.gray400),
                     const SizedBox(width: 6),
-                    Text('Finding recipe…',
+                    Text(l10n.findingRecipe,
                         style: const TextStyle(
                             fontSize: 11, color: AppTheme.gray400)),
                   ],
@@ -884,6 +919,7 @@ class _MealSlotRow extends ConsumerWidget {
       goal: goal,
       mealType: mealType,
       limit: 1000,
+      includeGenerated: true,
       language: ref.read(localeProvider).code,
       dietaryRestrictions: prefs.dietaryRestrictions,
     );
@@ -995,7 +1031,8 @@ class _SmartSwapSheet extends StatelessWidget {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(Icons.search_outlined, color: context.primary600),
-              title: Text(l10n.pickRecipe(mealType.label),
+              title: Text(
+                  l10n.pickRecipe(_localizedMealTypeLabel(l10n, mealType)),
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text(l10n.manualRecipePicker),
               onTap: () => Navigator.pop(context, const _SwapChoice.manual()),
@@ -1228,6 +1265,7 @@ class _GroceryPreviewSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final sorted = [...ingredients]
       ..sort((a, b) => b.totalGrams.compareTo(a.totalGrams));
 
@@ -1261,11 +1299,10 @@ class _GroceryPreviewSheet extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(AppLocalizations.of(context).weeklyGroceryList,
+                      Text(l10n.weeklyGroceryList,
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w700)),
-                      Text(
-                          '${sorted.length} ${AppLocalizations.of(context).ingredientsFromPlan}',
+                      Text('${sorted.length} ${l10n.ingredientsFromPlan}',
                           style: const TextStyle(
                               fontSize: 12, color: AppTheme.gray500)),
                     ],
@@ -1306,13 +1343,13 @@ class _GroceryPreviewSheet extends StatelessWidget {
                             fontSize: 13, fontWeight: FontWeight.w500)),
                     subtitle: agg.totalGrams > 0
                         ? Text(
-                            '≈ ${agg.totalGrams.round()} g total',
+                            l10n.gramsTotal(agg.totalGrams.round()),
                             style: const TextStyle(
                                 fontSize: 11, color: AppTheme.gray400),
                           )
                         : null,
                     trailing: Text(
-                      'used ${agg.count}×',
+                      l10n.usedCount(agg.count),
                       style: const TextStyle(
                           fontSize: 10, color: AppTheme.gray400),
                     ),
@@ -1327,7 +1364,7 @@ class _GroceryPreviewSheet extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: onAdd,
                   icon: const Icon(Icons.add_shopping_cart_outlined, size: 18),
-                  label: Text('Add ${sorted.length} Items to Grocery List'),
+                  label: Text(l10n.addItemsToGroceryList(sorted.length)),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(50),
                     shape: RoundedRectangleBorder(
@@ -1384,6 +1421,7 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return DraggableScrollableSheet(
       initialChildSize: 0.65,
       maxChildSize: 0.95,
@@ -1412,8 +1450,9 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                       style: const TextStyle(fontSize: 22)),
                   const SizedBox(width: 8),
                   Text(
-                      AppLocalizations.of(context)
-                          .pickRecipe(widget.mealType.label),
+                      l10n.pickRecipe(
+                        _localizedMealTypeLabel(l10n, widget.mealType),
+                      ),
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.w700)),
                 ],
@@ -1425,7 +1464,7 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                 controller: _ctrl,
                 onChanged: _filter,
                 decoration: InputDecoration(
-                  hintText: 'Search recipes…',
+                  hintText: l10n.searchRecipes,
                   prefixIcon: const Icon(Icons.search, size: 18),
                   filled: true,
                   fillColor: AppTheme.gray100,

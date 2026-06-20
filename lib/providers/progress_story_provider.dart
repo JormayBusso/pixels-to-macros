@@ -12,9 +12,11 @@ class ProgressStoryState {
     this.plannedMealsThisWeek = 0,
     this.availablePantryItems = 0,
     this.weightEntries = const [],
+    this.error,
   });
 
   final bool loading;
+  final String? error;
   final int totalScans;
   final int loggedDays30;
   final double averageCalories30;
@@ -33,34 +35,39 @@ class ProgressStoryNotifier extends StateNotifier<ProgressStoryState> {
 
   Future<void> load() async {
     state = const ProgressStoryState(loading: true);
-    final db = DatabaseService.instance;
-    final scans = await db.getAllScanResults();
-    final weights = await db.getWeightHistory();
-    final pantryItems = await db.getPantryItems();
-    final now = DateTime.now();
-    final start30 = DateTime(now.year, now.month, now.day)
-        .subtract(const Duration(days: 29));
-    final recentScans =
-        scans.where((scan) => !scan.timestamp.isBefore(start30));
-    final days = <String>{};
-    var calories = 0.0;
-    for (final scan in recentScans) {
-      days.add(
-          '${scan.timestamp.year}-${scan.timestamp.month}-${scan.timestamp.day}');
-      calories += (scan.totalCaloriesMin + scan.totalCaloriesMax) / 2;
-    }
+    try {
+      final db = DatabaseService.instance;
+      final scans = await db.getAllScanResults();
+      final weights = await db.getWeightHistory();
+      final pantryItems = await db.getPantryItems();
+      final now = DateTime.now();
+      final start30 = DateTime(now.year, now.month, now.day)
+          .subtract(const Duration(days: 29));
+      final recentScans =
+          scans.where((scan) => !scan.timestamp.isBefore(start30));
+      final days = <String>{};
+      var calories = 0.0;
+      for (final scan in recentScans) {
+        days.add(
+            '${scan.timestamp.year}-${scan.timestamp.month}-${scan.timestamp.day}');
+        calories += (scan.totalCaloriesMin + scan.totalCaloriesMax) / 2;
+      }
 
-    final week = _isoWeekNumber(now);
-    final entries =
-        await db.getMealPlanEntries(weekNumber: week, year: now.year);
-    state = ProgressStoryState(
-      totalScans: scans.length,
-      loggedDays30: days.length,
-      averageCalories30: days.isEmpty ? 0 : calories / days.length,
-      plannedMealsThisWeek: entries.length,
-      availablePantryItems: pantryItems.where((item) => item.available).length,
-      weightEntries: weights,
-    );
+      final week = _isoWeekNumber(now);
+      final entries =
+          await db.getMealPlanEntries(weekNumber: week, year: now.year);
+      state = ProgressStoryState(
+        totalScans: scans.length,
+        loggedDays30: days.length,
+        averageCalories30: days.isEmpty ? 0 : calories / days.length,
+        plannedMealsThisWeek: entries.length,
+        availablePantryItems:
+            pantryItems.where((item) => item.available).length,
+        weightEntries: weights,
+      );
+    } catch (e) {
+      state = ProgressStoryState(error: e.toString());
+    }
   }
 }
 

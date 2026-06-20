@@ -1,31 +1,42 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 import '../models/scan_result.dart';
 import '../services/database_service.dart';
 import '../services/debug_log.dart';
 import '../services/native_bridge.dart';
 
+enum ScanFailureKind {
+  noFood,
+  analysisFailed,
+  reconstructionFailed,
+}
+
 /// Holds the results of the most recent scan.
 class ScanResultState {
   const ScanResultState({
     this.loading = false,
     this.error,
+    this.failureKind,
     this.foods = const [],
   });
 
   final bool loading;
   final String? error;
+  final ScanFailureKind? failureKind;
   final List<DetectedFood> foods;
 
   ScanResultState copyWith({
     bool? loading,
     String? error,
+    ScanFailureKind? failureKind,
     List<DetectedFood>? foods,
   }) {
     return ScanResultState(
       loading: loading ?? this.loading,
       error: error,
+      failureKind: failureKind,
       foods: foods ?? this.foods,
     );
   }
@@ -132,9 +143,12 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
       if (rawVolumes.isEmpty) {
         DebugLog.instance.log(
           'VideoScan',
-          'Native video inference returned empty; treating scan as 3D failure.',
+          'Native video inference returned empty; treating as no-food scan.',
         );
-        state = const ScanResultState(error: '3D scan failed. Please rescan.');
+        state = const ScanResultState(
+          error: 'No food detected.',
+          failureKind: ScanFailureKind.noFood,
+        );
         return;
       }
 
@@ -197,17 +211,52 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
       }
 
       if (foods.isEmpty) {
-        state = const ScanResultState(error: '3D scan failed. Please rescan.');
+        state = const ScanResultState(
+          error: 'No food detected.',
+          failureKind: ScanFailureKind.noFood,
+        );
       } else {
         state = ScanResultState(foods: foods);
       }
     } catch (e) {
+      final failureKind = _classifyFailure(e);
       DebugLog.instance.log(
         'VideoScan',
-        'Native video inference failed: $e',
+        'Native video inference failed: $e ($failureKind)',
       );
-      state = ScanResultState(error: e.toString());
+      state = ScanResultState(
+        error: failureKind == ScanFailureKind.noFood
+            ? 'No food detected.'
+            : e.toString(),
+        failureKind: failureKind,
+      );
     }
+  }
+
+  ScanFailureKind _classifyFailure(Object error) {
+    if (error is PlatformException) {
+      if (error.code == 'NO_FOOD_DETECTED') return ScanFailureKind.noFood;
+      final message = '${error.message ?? ''} ${error.details ?? ''}'
+          .toLowerCase();
+      if (_looksLikeNoFoodFailure(message)) return ScanFailureKind.noFood;
+      if (message.contains('3d') || message.contains('export')) {
+        return ScanFailureKind.reconstructionFailed;
+      }
+    }
+    final text = error.toString().toLowerCase();
+    if (_looksLikeNoFoodFailure(text)) return ScanFailureKind.noFood;
+    if (text.contains('3d') || text.contains('export')) {
+      return ScanFailureKind.reconstructionFailed;
+    }
+    return ScanFailureKind.analysisFailed;
+  }
+
+  bool _looksLikeNoFoodFailure(String text) {
+    return text.contains('no_food') ||
+        text.contains('no food') ||
+        text.contains('food_gate_rejected') ||
+        text.contains('food_presence_gate_failed') ||
+        text.contains('segmentation_empty');
   }
 
   bool _passesDetectionGate({

@@ -221,7 +221,7 @@ class RecipeRepository {
             mealType == RecipeMealType.lunch);
   }
 
-  static const int _focusBucketFallbackLimit = 8;
+  static const int _focusBucketFallbackLimit = 16;
 
   bool _isRecipeEligibleForGoal(Recipe recipe, NutritionGoalType goal) {
     final carbsPerServing = recipe.carbsPerServing(recipe.servings);
@@ -279,8 +279,7 @@ class RecipeRepository {
   }
 
   bool _matchesGoal(Recipe recipe, NutritionGoalType goal) {
-    if (recipe.goals.contains(goal))
-      return _isRecipeEligibleForGoal(recipe, goal);
+    if (recipe.goals.contains(goal)) return true;
     switch (goal) {
       case NutritionGoalType.pescatarian:
       case NutritionGoalType.mediterranean:
@@ -345,7 +344,7 @@ class RecipeRepository {
         if (_containsAnyTerm(text, _breakfastAnchorTerms)) return true;
         return !dinnerLike;
       case RecipeMealType.lunch:
-        if (recipe.caloriesPerServing(recipe.servings) > 850) return false;
+        if (recipe.caloriesPerServing(recipe.servings) > 950) return false;
         if (_containsAnyTerm(text, _heavyDinnerTerms) &&
             !_containsAnyTerm(text, _lunchAnchorTerms)) {
           return false;
@@ -513,9 +512,34 @@ class RecipeRepository {
     'omelette',
     'omelet',
     'pancake',
+    'pancakes',
     'waffle',
+    'waffles',
     'cereal',
     'fruit bowl',
+    'bagel',
+    'bagels',
+    'muffin',
+    'muffins',
+    'pastry',
+    'pastries',
+    'crepe',
+    'crepes',
+    'shakshuka',
+    'frittata',
+    'hash brown',
+    'brunch',
+    'ontbijt',
+    'frühstück',
+    'fruehstueck',
+    'śniadanie',
+    'sniadanie',
+    'desayuno',
+    'bagietka',
+    'bułka',
+    'bulka',
+    'jajecznica',
+    'tortilla española',
   ];
 
   static const _lunchAnchorTerms = [
@@ -527,6 +551,24 @@ class RecipeRepository {
     'toast',
     'pita',
     'flatbread',
+    'poke',
+    'sushi',
+    'burrito',
+    'taco',
+    'tacos',
+    'quesadilla',
+    'quiche',
+    'frittata',
+    'mezze',
+    'lunch',
+    'brunch',
+    'mittagessen',
+    'lunchgerecht',
+    'almuerzo',
+    'obiad',
+    'wrapy',
+    'kanapka',
+    'kanapki',
   ];
 
   static const _dinnerLikeBreakfastTerms = [
@@ -650,11 +692,15 @@ final recipeQueryProvider =
 final recipeResultsProvider = FutureProvider<List<Recipe>>((ref) async {
   final q = ref.watch(recipeQueryProvider);
   final lang = ref.watch(localeProvider);
+  final includeGenerated = q.goal != null ||
+      q.mealType == RecipeMealType.breakfast ||
+      q.mealType == RecipeMealType.lunch;
   return RecipeRepository.instance.query(
     goal: q.goal,
     mealType: q.mealType,
     search: q.search,
     maxMinutes: q.maxMinutes,
+    includeGenerated: includeGenerated,
     language: lang.code,
     dietaryRestrictions: ref.watch(userPrefsProvider).dietaryRestrictions,
   );

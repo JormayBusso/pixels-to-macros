@@ -46,6 +46,7 @@ final class InferencePipeline {
 
     enum PipelineError: LocalizedError {
         case noTopFrame
+        case noFoodDetected(String)
         case preprocessingFailed
         case segmentationFailed(Error)
         case volumeFailed
@@ -54,6 +55,7 @@ final class InferencePipeline {
         var errorDescription: String? {
             switch self {
             case .noTopFrame:            return "Top frame has not been captured"
+            case .noFoodDetected(let reason): return "No food detected. (\(reason))"
             case .preprocessingFailed:   return "Frame preprocessing failed"
             case .segmentationFailed(let e): return "Segmentation failed: \(e.localizedDescription)"
             case .volumeFailed:          return "Volume calculation failed"
@@ -118,7 +120,7 @@ final class InferencePipeline {
             print("[PIPELINE] export success: false")
             print("[PIPELINE] model3dPath: nil")
             print("[PIPELINE] file exists: false")
-            throw PipelineError.model3DExportFailed("mlkit_food_gate_rejected")
+            throw PipelineError.noFoodDetected("mlkit_food_gate_rejected")
         }
 
         // ── 3. Segmentation ─────────────────────────────────────────────
@@ -135,7 +137,7 @@ final class InferencePipeline {
             print("[PIPELINE] export success: false")
             print("[PIPELINE] model3dPath: nil")
             print("[PIPELINE] file exists: false")
-            throw PipelineError.model3DExportFailed("segmentation_empty")
+            throw PipelineError.noFoodDetected("segmentation_empty")
         }
 
         // Override the largest segment's label with ML Kit's best specific
@@ -157,7 +159,7 @@ final class InferencePipeline {
             print("[PIPELINE] export success: false")
             print("[PIPELINE] model3dPath: nil")
             print("[PIPELINE] file exists: false")
-            throw PipelineError.model3DExportFailed("food_presence_gate_failed")
+            throw PipelineError.noFoodDetected("food_presence_gate_failed")
         }
         print("[SCAN] foodPresenceGate PASSED")
 

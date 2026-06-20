@@ -131,6 +131,15 @@ final class ScannerPlugin {
                     ))
                 } else if let err = swiftError {
                     print("[ScannerPlugin] runVideoInference failed: \(err)")
+                    if let pipelineError = err as? InferencePipeline.PipelineError,
+                       case .noFoodDetected(let reason) = pipelineError {
+                        safeResult(FlutterError(
+                            code: "NO_FOOD_DETECTED",
+                            message: "No food detected.",
+                            details: reason
+                        ))
+                        return
+                    }
                     safeResult(FlutterError(
                         code: "VIDEO_INFERENCE_FAILED",
                         message: err.localizedDescription,

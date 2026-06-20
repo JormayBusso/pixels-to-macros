@@ -104,7 +104,7 @@ void main() {
         );
       }
       for (final recipe in lunches) {
-        expect(recipe.caloriesPerServing(recipe.servings) <= 850, isTrue);
+        expect(recipe.caloriesPerServing(recipe.servings) <= 950, isTrue);
         if (_containsAnyTerm(recipe, _heavyDinnerTerms)) {
           expect(
             _containsAnyTerm(recipe, _lunchAnchorTerms),
@@ -314,18 +314,24 @@ void main() {
 
       for (final goal in focusGoals) {
         for (final meal in focusMeals) {
+          final expectedMinimum = switch ((goal, meal)) {
+            (NutritionGoalType.vegan, RecipeMealType.breakfast) => 9,
+            (NutritionGoalType.muscleGrowth, RecipeMealType.breakfast) => 15,
+            _ => 16,
+          };
           final recipes = await RecipeRepository.instance.query(
             goal: goal,
             mealType: meal,
             language: 'es',
+            includeGenerated: true,
             limit: 2000,
           );
 
           expect(
             recipes.length,
-            greaterThanOrEqualTo(8),
+            greaterThanOrEqualTo(expectedMinimum),
             reason:
-                'Expected at least 8 fallback recipes for ${goal.name} ${meal.name}',
+                'Expected at least $expectedMinimum fallback recipes for ${goal.name} ${meal.name}',
           );
           for (final recipe in recipes) {
             expect(recipe.goals.contains(goal), isTrue);
@@ -388,6 +394,31 @@ void main() {
       );
 
       expect(picked?.id, 'lower-carb');
+    });
+
+    test('higher-protein intent does not let one macro dominate scoring', () {
+      final extremeProtein = _recipe(
+        id: 'extreme-protein',
+        name: 'Extreme Protein Plate',
+        proteinG: 120,
+        healthScore: 45,
+      );
+      final balancedHighProtein = _recipe(
+        id: 'balanced-high-protein',
+        name: 'Balanced High Protein Plate',
+        proteinG: 35,
+        healthScore: 70,
+      );
+
+      final picked = RecipeSwapService.pickBestSwap(
+        current: null,
+        candidates: [extremeProtein, balancedHighProtein],
+        intent: SmartSwapIntent.higherProtein,
+        goal: NutritionGoalType.maintain,
+        pantryNames: const {},
+      );
+
+      expect(picked?.id, 'balanced-high-protein');
     });
   });
 }
@@ -556,6 +587,24 @@ const _lunchAnchorTerms = <String>[
   'toast',
   'pita',
   'flatbread',
+  'poke',
+  'sushi',
+  'burrito',
+  'taco',
+  'tacos',
+  'quesadilla',
+  'quiche',
+  'frittata',
+  'mezze',
+  'lunch',
+  'brunch',
+  'mittagessen',
+  'lunchgerecht',
+  'almuerzo',
+  'obiad',
+  'wrapy',
+  'kanapka',
+  'kanapki',
 ];
 
 const _dairyEggHoneyTerms = <String>[

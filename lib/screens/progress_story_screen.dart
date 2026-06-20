@@ -40,58 +40,92 @@ class _ProgressStoryScreenState extends ConsumerState<ProgressStoryScreen> {
       ),
       body: story.loading
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: () => ref.read(progressStoryProvider.notifier).load(),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                children: [
-                  _HeroStoryCard(story: story),
-                  const SizedBox(height: 14),
-                  _StoryTile(
-                    icon: Icons.camera_alt_outlined,
-                    title: l10n.storyTotalScans(story.totalScans),
-                    body: l10n.storyTotalScansBody,
-                    color: AppTheme.green600,
-                  ),
-                  _StoryTile(
-                    icon: Icons.calendar_today_outlined,
-                    title: l10n.storyLoggedDays(story.loggedDays30),
-                    body: l10n.storyLoggedDaysBody,
-                    color: Colors.blue.shade600,
-                  ),
-                  _StoryTile(
-                    icon: Icons.local_fire_department_outlined,
-                    title: l10n.storyAverageCalories(
-                      story.averageCalories30.round(),
+          : story.error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 40,
+                          color: AppTheme.red500,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          l10n.progressStoryLoadFailed,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.gray700,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          onPressed: () =>
+                              ref.read(progressStoryProvider.notifier).load(),
+                          icon: const Icon(Icons.refresh),
+                          label: Text(l10n.retry),
+                        ),
+                      ],
                     ),
-                    body: l10n.storyAverageCaloriesBody,
-                    color: Colors.orange.shade700,
                   ),
-                  _StoryTile(
-                    icon: Icons.monitor_weight_outlined,
-                    title: l10n.storyWeightTrend(
-                      story.monthlyWeightChangeKg,
-                    ),
-                    body: l10n.storyWeightTrendBody,
-                    color: Colors.purple.shade500,
+                )
+              : RefreshIndicator(
+                  onRefresh: () =>
+                      ref.read(progressStoryProvider.notifier).load(),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    children: [
+                      _HeroStoryCard(story: story),
+                      const SizedBox(height: 14),
+                      _StoryTile(
+                        icon: Icons.camera_alt_outlined,
+                        title: l10n.storyTotalScans(story.totalScans),
+                        body: l10n.storyTotalScansBody,
+                        color: AppTheme.green600,
+                      ),
+                      _StoryTile(
+                        icon: Icons.calendar_today_outlined,
+                        title: l10n.storyLoggedDays(story.loggedDays30),
+                        body: l10n.storyLoggedDaysBody,
+                        color: Colors.blue.shade600,
+                      ),
+                      _StoryTile(
+                        icon: Icons.local_fire_department_outlined,
+                        title: l10n.storyAverageCalories(
+                          story.averageCalories30.round(),
+                        ),
+                        body: l10n.storyAverageCaloriesBody,
+                        color: Colors.orange.shade700,
+                      ),
+                      _StoryTile(
+                        icon: Icons.monitor_weight_outlined,
+                        title: l10n.storyWeightTrend(
+                          story.monthlyWeightChangeKg,
+                        ),
+                        body: l10n.storyWeightTrendBody,
+                        color: Colors.purple.shade500,
+                      ),
+                      _StoryTile(
+                        icon: Icons.restaurant_menu_outlined,
+                        title: l10n.storyPlannedMeals(
+                          story.plannedMealsThisWeek,
+                        ),
+                        body: l10n.storyPlannedMealsBody,
+                        color: Colors.teal.shade600,
+                      ),
+                      _StoryTile(
+                        icon: Icons.kitchen_outlined,
+                        title:
+                            l10n.storyPantryItems(story.availablePantryItems),
+                        body: l10n.storyPantryItemsBody,
+                        color: Colors.brown.shade500,
+                      ),
+                    ],
                   ),
-                  _StoryTile(
-                    icon: Icons.restaurant_menu_outlined,
-                    title: l10n.storyPlannedMeals(
-                      story.plannedMealsThisWeek,
-                    ),
-                    body: l10n.storyPlannedMealsBody,
-                    color: Colors.teal.shade600,
-                  ),
-                  _StoryTile(
-                    icon: Icons.kitchen_outlined,
-                    title: l10n.storyPantryItems(story.availablePantryItems),
-                    body: l10n.storyPantryItemsBody,
-                    color: Colors.brown.shade500,
-                  ),
-                ],
-              ),
-            ),
+                ),
     );
   }
 }
