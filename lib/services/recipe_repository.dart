@@ -228,7 +228,12 @@ class RecipeRepository {
         return true;
 
       case NutritionGoalType.keto:
-        return carbsPerServing <= 20;
+        // Keto is governed by NET carbs (total carbs minus fibre), which is the
+        // standard way ketogenic diets are counted. A high-fibre dish with 25g
+        // total but 8g fibre is 17g net and legitimately keto-eligible.
+        final netCarbsPerServing =
+            carbsPerServing - recipe.fiberPerServing(recipe.servings);
+        return netCarbsPerServing <= 20;
 
       case NutritionGoalType.weightLoss:
         return caloriesPerServing <= 600 && proteinPerServing >= 15;

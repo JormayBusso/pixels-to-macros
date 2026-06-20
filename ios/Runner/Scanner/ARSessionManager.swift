@@ -112,18 +112,36 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
 
         let config = ARWorldTrackingConfiguration()
 
-        if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
-            config.sceneReconstruction = .mesh
-        }
-        if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) {
-            config.frameSemantics.insert(.smoothedSceneDepth)
-        }
-        if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
+        // Log what the static capability checks say — on iOS 26 these
+        // return false even on LiDAR-equipped devices (iPhone Pro).
+        let supportsDepth = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
+        let supportsSmoothed = ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth)
+        let supportsMesh = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
+        print("[ARSession] capability — sceneDepth=\(supportsDepth), smoothedDepth=\(supportsSmoothed), meshRecon=\(supportsMesh)")
+
+        // Use AVCaptureDevice hardware detection instead of broken ARKit checks
+        let hasLiDAR = DepthModeDetector.hasLiDARHardware
+
+        if hasLiDAR {
+            // Force ALL depth semantics — iOS 26 static checks are broken
             config.frameSemantics.insert(.sceneDepth)
+            config.frameSemantics.insert(.smoothedSceneDepth)
+            config.sceneReconstruction = .mesh
+            print("[ARSession] LiDAR detected — forcing sceneDepth + smoothedSceneDepth + mesh")
+        } else {
+            // Non-LiDAR: try sceneDepth only if the check actually passes
+            if supportsDepth {
+                config.frameSemantics.insert(.sceneDepth)
+            }
+            if supportsSmoothed {
+                config.frameSemantics.insert(.smoothedSceneDepth)
+            }
+            if supportsMesh {
+                config.sceneReconstruction = .mesh
+            }
+            print("[ARSession] No LiDAR hardware — using standard capability checks")
         }
 
-        // `run(_:)` on an already-running session reconfigures without
-        // restarting the camera pipeline.
         session.run(config)
         print("[ARSession] Upgraded config: mesh=\(config.sceneReconstruction), semantics=\(config.frameSemantics)")
     }

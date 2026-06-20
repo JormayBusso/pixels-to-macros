@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../core/app_locale.dart';
-
 /// App-wide localised strings.
 ///
 /// Usage: `AppLocalizations.of(context).settings`
@@ -991,6 +989,405 @@ class AppLocalizations {
         'es': 'Vuelve a ver el recorrido guiado por funciones',
         'de': 'Geführte Funktions-Tour erneut ansehen',
       });
+
+  String get replayScanTutorial => _t({
+        'en': 'Replay Scan Tutorial',
+        'pl': 'Powtórz samouczek skanowania',
+        'nl': 'Scan-uitleg opnieuw',
+        'es': 'Repetir tutorial de escaneo',
+        'de': 'Scan-Anleitung wiederholen',
+      });
+
+  String get replayScanTutorialSubtitle => _t({
+        'en': 'Show the scanner walkthrough again',
+        'pl': 'Pokaż ponownie samouczek skanera',
+        'nl': 'Toon de uitleg van de scanner opnieuw',
+        'es': 'Muestra de nuevo la guía del escáner',
+        'de': 'Die Scanner-Einführung erneut anzeigen',
+      });
+
+  String get dataAndPrivacy => _t({
+        'en': 'Data & Privacy',
+        'pl': 'Dane i prywatność',
+        'nl': 'Gegevens en privacy',
+        'es': 'Datos y privacidad',
+        'de': 'Daten & Datenschutz',
+      });
+
+  String get evaluationTools => _t({
+        'en': 'Evaluation Tools',
+        'pl': 'Narzędzia oceny',
+        'nl': 'Evaluatiehulpmiddelen',
+        'es': 'Herramientas de evaluación',
+        'de': 'Bewertungswerkzeuge',
+      });
+
+  String get debug => _t({
+        'en': 'Debug',
+        'pl': 'Debugowanie',
+        'nl': 'Foutopsporing',
+        'es': 'Depuración',
+        'de': 'Fehlersuche',
+      });
+
+  String get dataStoredLocally => _t({
+        'en': 'All data is stored locally on your device. No data is sent to any server.',
+        'pl': 'Wszystkie dane są przechowywane lokalnie na Twoim urządzeniu. Żadne dane nie są wysyłane na serwer.',
+        'nl': 'Alle gegevens worden lokaal op je apparaat opgeslagen. Er worden geen gegevens naar een server gestuurd.',
+        'es': 'Todos los datos se almacenan localmente en tu dispositivo. No se envían datos a ningún servidor.',
+        'de': 'Alle Daten werden lokal auf deinem Gerät gespeichert. Es werden keine Daten an einen Server gesendet.',
+      });
+
+  String get storage => _t({
+        'en': 'Storage',
+        'pl': 'Pamięć',
+        'nl': 'Opslag',
+        'es': 'Almacenamiento',
+        'de': 'Speicher',
+      });
+
+  String get onDeviceOnly => _t({
+        'en': 'On-device only',
+        'pl': 'Tylko na urządzeniu',
+        'nl': 'Alleen op apparaat',
+        'es': 'Solo en el dispositivo',
+        'de': 'Nur auf dem Gerät',
+      });
+
+  String get noneLabel => _t({
+        'en': 'None',
+        'pl': 'Brak',
+        'nl': 'Geen',
+        'es': 'Ninguno',
+        'de': 'Keine',
+      });
+
+  String get clearAllScanHistory => _t({
+        'en': 'Clear All Scan History',
+        'pl': 'Wyczyść całą historię skanów',
+        'nl': 'Alle scangeschiedenis wissen',
+        'es': 'Borrar todo el historial de escaneos',
+        'de': 'Gesamten Scan-Verlauf löschen',
+      });
+
+  String get evaluationToolsDesc => _t({
+        'en': 'Scientific evaluation tools for thesis research.',
+        'pl': 'Naukowe narzędzia oceny do badań w pracy dyplomowej.',
+        'nl': 'Wetenschappelijke evaluatiehulpmiddelen voor scriptieonderzoek.',
+        'es': 'Herramientas de evaluación científica para la investigación de tesis.',
+        'de': 'Wissenschaftliche Bewertungswerkzeuge für die Abschlussarbeit.',
+      });
+
+  /// Localized text for the in-app guided tour. Order must match the
+  /// structural step list in `app_tutorial_overlay.dart`.
+  List<({String title, String body})> get tourSteps => [
+        // 0 – Welcome
+        (
+          title: _t({
+            'en': 'Welcome to Pixels to Macros! 👋',
+            'pl': 'Witaj w Pixels to Macros! 👋',
+            'nl': 'Welkom bij Pixels to Macros! 👋',
+            'es': '¡Bienvenido a Pixels to Macros! 👋',
+            'de': 'Willkommen bei Pixels to Macros! 👋',
+          }),
+          body: _t({
+            'en': "Let's take a quick tour so you know where everything is.",
+            'pl': 'Zróbmy krótką wycieczkę, abyś wiedział, gdzie wszystko się znajduje.',
+            'nl': 'Laten we een korte rondleiding doen zodat je weet waar alles staat.',
+            'es': 'Hagamos un recorrido rápido para que sepas dónde está todo.',
+            'de': 'Machen wir eine kurze Tour, damit du weißt, wo alles ist.',
+          }),
+        ),
+        // 1 – AI Scan
+        (
+          title: _t({
+            'en': 'AI Scan 📷',
+            'pl': 'Skan AI 📷',
+            'nl': 'AI-scan 📷',
+            'es': 'Escaneo IA 📷',
+            'de': 'KI-Scan 📷',
+          }),
+          body: _t({
+            'en': 'Tap AI Scan to open the camera.\nPoint at your plate and get instant calories & macros!\nIncludes flashlight toggle and low-light warnings.',
+            'pl': 'Dotknij Skan AI, aby otworzyć aparat.\nWyceluj w talerz i natychmiast poznaj kalorie i makroskładniki!\nZawiera przełącznik latarki i ostrzeżenia o słabym oświetleniu.',
+            'nl': 'Tik op AI-scan om de camera te openen.\nRicht op je bord en krijg direct calorieën en macro\'s!\nMet zaklamp-schakelaar en waarschuwingen bij weinig licht.',
+            'es': 'Toca Escaneo IA para abrir la cámara.\n¡Apunta a tu plato y obtén calorías y macros al instante!\nIncluye linterna y avisos de poca luz.',
+            'de': 'Tippe auf KI-Scan, um die Kamera zu öffnen.\nRichte sie auf deinen Teller und erhalte sofort Kalorien & Makros!\nInklusive Taschenlampe und Warnungen bei wenig Licht.',
+          }),
+        ),
+        // 2 – AI Speech
+        (
+          title: _t({
+            'en': 'AI Speech 🎤',
+            'pl': 'Mowa AI 🎤',
+            'nl': 'AI-spraak 🎤',
+            'es': 'Voz IA 🎤',
+            'de': 'KI-Sprache 🎤',
+          }),
+          body: _t({
+            'en': 'Tap AI Speech to log food by voice in English.\nSay "200 grams of chicken and a banana" — it matches your food database automatically.',
+            'pl': 'Dotknij Mowa AI, aby zapisać jedzenie głosem po angielsku.\nPowiedz „200 gramów kurczaka i banan" — automatycznie dopasuje to do Twojej bazy żywności.',
+            'nl': 'Tik op AI-spraak om eten met je stem in het Engels te loggen.\nZeg "200 gram kip en een banaan" — het matcht automatisch met je voedingsdatabase.',
+            'es': 'Toca Voz IA para registrar comida por voz en inglés.\nDi "200 gramos de pollo y un plátano" — coincide con tu base de datos de alimentos automáticamente.',
+            'de': 'Tippe auf KI-Sprache, um Essen per Stimme auf Englisch zu erfassen.\nSage "200 Gramm Hähnchen und eine Banane" — es wird automatisch mit deiner Lebensmitteldatenbank abgeglichen.',
+          }),
+        ),
+        // 3 – Manual Log
+        (
+          title: _t({
+            'en': 'Log Food Manually ✏️',
+            'pl': 'Zapisz jedzenie ręcznie ✏️',
+            'nl': 'Eten handmatig loggen ✏️',
+            'es': 'Registrar comida manualmente ✏️',
+            'de': 'Essen manuell erfassen ✏️',
+          }),
+          body: _t({
+            'en': 'Search foods, pick from My Meals, or scan a barcode.\nBarcode scanning shows a health score (0-100) before logging.',
+            'pl': 'Wyszukaj produkty, wybierz z Moich Posiłków lub zeskanuj kod kreskowy.\nSkanowanie kodu pokazuje ocenę zdrowotności (0-100) przed zapisem.',
+            'nl': 'Zoek voedsel, kies uit Mijn Maaltijden of scan een barcode.\nBarcode scannen toont een gezondheidsscore (0-100) vóór het loggen.',
+            'es': 'Busca alimentos, elige de Mis Comidas o escanea un código de barras.\nEl escaneo muestra una puntuación de salud (0-100) antes de registrar.',
+            'de': 'Suche Lebensmittel, wähle aus Meine Mahlzeiten oder scanne einen Barcode.\nDer Barcode-Scan zeigt vor dem Erfassen einen Gesundheitswert (0-100).',
+          }),
+        ),
+        // 4 – Daily Streak
+        (
+          title: _t({
+            'en': 'Daily Streak 🔥',
+            'pl': 'Dzienna seria 🔥',
+            'nl': 'Dagelijkse reeks 🔥',
+            'es': 'Racha diaria 🔥',
+            'de': 'Tagesserie 🔥',
+          }),
+          body: _t({
+            'en': 'Your streak badge is now bigger and easier to spot. Keep logging daily to build momentum.',
+            'pl': 'Twoja odznaka serii jest teraz większa i łatwiejsza do zauważenia. Zapisuj codziennie, aby utrzymać tempo.',
+            'nl': 'Je reeks-badge is nu groter en beter zichtbaar. Blijf dagelijks loggen om je momentum op te bouwen.',
+            'es': 'Tu insignia de racha ahora es más grande y fácil de ver. Sigue registrando a diario para mantener el impulso.',
+            'de': 'Dein Serien-Abzeichen ist jetzt größer und leichter zu erkennen. Erfasse täglich weiter, um den Schwung zu halten.',
+          }),
+        ),
+        // 5 – Body Map
+        (
+          title: _t({
+            'en': 'Body Map 🫀',
+            'pl': 'Mapa ciała 🫀',
+            'nl': 'Lichaamskaart 🫀',
+            'es': 'Mapa corporal 🫀',
+            'de': 'Körperkarte 🫀',
+          }),
+          body: _t({
+            'en': 'Tap the body icon to open the anatomy map.\nBrain, eyes, heart, lungs, gut, bones, muscles, skin, blood, and immune regions are tappable and color-coded from your nutrient intake.',
+            'pl': 'Dotknij ikony ciała, aby otworzyć mapę anatomii.\nMózg, oczy, serce, płuca, jelita, kości, mięśnie, skóra, krew i obszary odpornościowe są klikalne i oznaczone kolorami na podstawie spożycia składników odżywczych.',
+            'nl': 'Tik op het lichaamspictogram om de anatomiekaart te openen.\nHersenen, ogen, hart, longen, darmen, botten, spieren, huid, bloed en immuungebieden zijn aantikbaar en kleurgecodeerd op basis van je voedingsinname.',
+            'es': 'Toca el icono del cuerpo para abrir el mapa anatómico.\nCerebro, ojos, corazón, pulmones, intestino, huesos, músculos, piel, sangre y zonas inmunitarias son tocables y con colores según tu ingesta de nutrientes.',
+            'de': 'Tippe auf das Körpersymbol, um die Anatomiekarte zu öffnen.\nGehirn, Augen, Herz, Lunge, Darm, Knochen, Muskeln, Haut, Blut und Immunbereiche sind antippbar und je nach Nährstoffzufuhr farblich markiert.',
+          }),
+        ),
+        // 6 – Today's Nutrition
+        (
+          title: _t({
+            'en': "Today's Nutrition 🌿",
+            'pl': 'Dzisiejsze odżywianie 🌿',
+            'nl': 'Voeding van vandaag 🌿',
+            'es': 'Nutrición de hoy 🌿',
+            'de': 'Heutige Ernährung 🌿',
+          }),
+          body: _t({
+            'en': 'The leaf icon opens your full nutrition dashboard with macros, vitamins, minerals, and the upgraded micronutrient wheel.',
+            'pl': 'Ikona liścia otwiera pełny pulpit odżywiania z makroskładnikami, witaminami, minerałami i ulepszonym kołem mikroskładników.',
+            'nl': 'Het bladpictogram opent je volledige voedingsdashboard met macro\'s, vitamines, mineralen en het verbeterde micronutriëntenwiel.',
+            'es': 'El icono de la hoja abre tu panel de nutrición completo con macros, vitaminas, minerales y la rueda de micronutrientes mejorada.',
+            'de': 'Das Blattsymbol öffnet dein vollständiges Ernährungs-Dashboard mit Makros, Vitaminen, Mineralien und dem verbesserten Mikronährstoff-Rad.',
+          }),
+        ),
+        // 7 – Hydration Tracking
+        (
+          title: _t({
+            'en': 'Hydration Tracking 💧',
+            'pl': 'Śledzenie nawodnienia 💧',
+            'nl': 'Hydratatie bijhouden 💧',
+            'es': 'Seguimiento de hidratación 💧',
+            'de': 'Flüssigkeits-Tracking 💧',
+          }),
+          body: _t({
+            'en': 'The hydration card tracks your daily water intake.\nUse the + drink button to log water, coffee, tea, and more.',
+            'pl': 'Karta nawodnienia śledzi dzienne spożycie wody.\nUżyj przycisku + napój, aby zapisać wodę, kawę, herbatę i więcej.',
+            'nl': 'De hydratatiekaart houdt je dagelijkse waterinname bij.\nGebruik de + drankknop om water, koffie, thee en meer te loggen.',
+            'es': 'La tarjeta de hidratación registra tu consumo diario de agua.\nUsa el botón + bebida para registrar agua, café, té y más.',
+            'de': 'Die Flüssigkeitskarte verfolgt deine tägliche Wasseraufnahme.\nNutze die + Getränk-Taste, um Wasser, Kaffee, Tee und mehr zu erfassen.',
+          }),
+        ),
+        // 8 – Quick Add +200 ml
+        (
+          title: _t({
+            'en': 'Quick Add +200 ml',
+            'pl': 'Szybkie dodanie +200 ml',
+            'nl': 'Snel toevoegen +200 ml',
+            'es': 'Añadir rápido +200 ml',
+            'de': 'Schnell +200 ml',
+          }),
+          body: _t({
+            'en': 'Need a fast water log? Tap +200 ml for one-tap hydration updates.',
+            'pl': 'Potrzebujesz szybkiego zapisu wody? Dotknij +200 ml, aby zaktualizować nawodnienie jednym dotknięciem.',
+            'nl': 'Snel water loggen? Tik op +200 ml voor hydratatie-updates met één tik.',
+            'es': '¿Necesitas registrar agua rápido? Toca +200 ml para actualizar la hidratación con un toque.',
+            'de': 'Schnell Wasser erfassen? Tippe auf +200 ml für Flüssigkeits-Updates mit einem Tipp.',
+          }),
+        ),
+        // 9 – Smart Nutrition Coach
+        (
+          title: _t({
+            'en': 'Smart Nutrition Coach 🧠',
+            'pl': 'Inteligentny trener żywienia 🧠',
+            'nl': 'Slimme voedingscoach 🧠',
+            'es': 'Coach de nutrición inteligente 🧠',
+            'de': 'Smarter Ernährungscoach 🧠',
+          }),
+          body: _t({
+            'en': 'Recommendations now adapt to your goal and nutrient gaps (like low iron, vitamin D, B12, calcium, and more).',
+            'pl': 'Rekomendacje dostosowują się teraz do Twojego celu i niedoborów składników (jak niski poziom żelaza, witaminy D, B12, wapnia i innych).',
+            'nl': 'Aanbevelingen passen zich nu aan je doel en voedingstekorten aan (zoals weinig ijzer, vitamine D, B12, calcium en meer).',
+            'es': 'Las recomendaciones ahora se adaptan a tu objetivo y a tus carencias de nutrientes (como hierro, vitamina D, B12, calcio y más).',
+            'de': 'Empfehlungen passen sich jetzt deinem Ziel und Nährstofflücken an (z. B. wenig Eisen, Vitamin D, B12, Kalzium und mehr).',
+          }),
+        ),
+        // 10 – Analytics
+        (
+          title: _t({
+            'en': 'Analytics 📊',
+            'pl': 'Analityka 📊',
+            'nl': 'Analyse 📊',
+            'es': 'Análisis 📊',
+            'de': 'Analyse 📊',
+          }),
+          body: _t({
+            'en': 'Track weekly & monthly calorie and macro trends here.',
+            'pl': 'Śledź tutaj tygodniowe i miesięczne trendy kalorii i makroskładników.',
+            'nl': 'Volg hier wekelijkse en maandelijkse calorie- en macrotrends.',
+            'es': 'Sigue aquí las tendencias semanales y mensuales de calorías y macros.',
+            'de': 'Verfolge hier wöchentliche und monatliche Kalorien- und Makrotrends.',
+          }),
+        ),
+        // 11 – Recipes
+        (
+          title: _t({
+            'en': 'Recipes 🍽️',
+            'pl': 'Przepisy 🍽️',
+            'nl': 'Recepten 🍽️',
+            'es': 'Recetas 🍽️',
+            'de': 'Rezepte 🍽️',
+          }),
+          body: _t({
+            'en': 'Browse recipes tailored to your nutrition goal and log meals quickly.',
+            'pl': 'Przeglądaj przepisy dopasowane do Twojego celu żywieniowego i szybko zapisuj posiłki.',
+            'nl': 'Blader door recepten op maat van je voedingsdoel en log maaltijden snel.',
+            'es': 'Explora recetas adaptadas a tu objetivo nutricional y registra comidas rápidamente.',
+            'de': 'Durchstöbere Rezepte passend zu deinem Ernährungsziel und erfasse Mahlzeiten schnell.',
+          }),
+        ),
+        // 12 – Recipe Search
+        (
+          title: _t({
+            'en': 'Recipe Search',
+            'pl': 'Wyszukiwanie przepisów',
+            'nl': 'Recept zoeken',
+            'es': 'Buscar recetas',
+            'de': 'Rezeptsuche',
+          }),
+          body: _t({
+            'en': 'Use search + goal filters to find recipes that match your needs faster.',
+            'pl': 'Użyj wyszukiwania i filtrów celu, aby szybciej znaleźć przepisy pasujące do Twoich potrzeb.',
+            'nl': 'Gebruik zoeken + doelfilters om sneller recepten te vinden die bij je passen.',
+            'es': 'Usa la búsqueda y los filtros de objetivo para encontrar recetas que se ajusten a ti más rápido.',
+            'de': 'Nutze Suche + Zielfilter, um schneller passende Rezepte zu finden.',
+          }),
+        ),
+        // 13 – Grocery List
+        (
+          title: _t({
+            'en': 'Grocery List 🛒',
+            'pl': 'Lista zakupów 🛒',
+            'nl': 'Boodschappenlijst 🛒',
+            'es': 'Lista de compras 🛒',
+            'de': 'Einkaufsliste 🛒',
+          }),
+          body: _t({
+            'en': 'Add items manually or get smart suggestions based on your scan history.',
+            'pl': 'Dodawaj produkty ręcznie lub otrzymuj inteligentne sugestie na podstawie historii skanów.',
+            'nl': 'Voeg items handmatig toe of krijg slimme suggesties op basis van je scangeschiedenis.',
+            'es': 'Añade artículos manualmente u obtén sugerencias inteligentes según tu historial de escaneos.',
+            'de': 'Füge Artikel manuell hinzu oder erhalte smarte Vorschläge aus deinem Scan-Verlauf.',
+          }),
+        ),
+        // 14 – Settings
+        (
+          title: _t({
+            'en': 'Settings ⚙️',
+            'pl': 'Ustawienia ⚙️',
+            'nl': 'Instellingen ⚙️',
+            'es': 'Ajustes ⚙️',
+            'de': 'Einstellungen ⚙️',
+          }),
+          body: _t({
+            'en': 'Change your nutrition goal, color theme, mascot, text size, weekly badge recap, and more.\nDiabetes users can set ICR for bolus calculations.',
+            'pl': 'Zmień cel żywieniowy, motyw kolorystyczny, maskotkę, rozmiar tekstu, cotygodniowe podsumowanie odznak i więcej.\nUżytkownicy z cukrzycą mogą ustawić ICR do obliczeń bolusa.',
+            'nl': 'Wijzig je voedingsdoel, kleurthema, mascotte, tekstgrootte, wekelijkse badge-samenvatting en meer.\nDiabetesgebruikers kunnen ICR instellen voor bolusberekeningen.',
+            'es': 'Cambia tu objetivo nutricional, tema de color, mascota, tamaño de texto, resumen semanal de insignias y más.\nLos usuarios con diabetes pueden configurar el ICR para el cálculo de bolos.',
+            'de': 'Ändere dein Ernährungsziel, Farbthema, Maskottchen, Textgröße, wöchentliche Abzeichen-Zusammenfassung und mehr.\nDiabetes-Nutzer können das KE-Verhältnis (ICR) für Bolusberechnungen festlegen.',
+          }),
+        ),
+        // 15 – Weekly Badges
+        (
+          title: _t({
+            'en': 'Weekly Badges 🏅',
+            'pl': 'Cotygodniowe odznaki 🏅',
+            'nl': 'Wekelijkse badges 🏅',
+            'es': 'Insignias semanales 🏅',
+            'de': 'Wöchentliche Abzeichen 🏅',
+          }),
+          body: _t({
+            'en': 'At the start of each week, the app can show the badges you earned last week.\nUse this setting to turn that recap on or off.',
+            'pl': 'Na początku każdego tygodnia aplikacja może pokazać odznaki zdobyte w zeszłym tygodniu.\nUżyj tego ustawienia, aby włączyć lub wyłączyć to podsumowanie.',
+            'nl': 'Aan het begin van elke week kan de app de badges tonen die je vorige week verdiende.\nGebruik deze instelling om die samenvatting aan of uit te zetten.',
+            'es': 'Al inicio de cada semana, la app puede mostrar las insignias que ganaste la semana pasada.\nUsa este ajuste para activar o desactivar ese resumen.',
+            'de': 'Zu Beginn jeder Woche kann die App die Abzeichen der letzten Woche anzeigen.\nMit dieser Einstellung schaltest du diese Zusammenfassung ein oder aus.',
+          }),
+        ),
+        // 16 – Vacation Mode
+        (
+          title: _t({
+            'en': 'Vacation Mode 🏖️',
+            'pl': 'Tryb wakacyjny 🏖️',
+            'nl': 'Vakantiemodus 🏖️',
+            'es': 'Modo vacaciones 🏖️',
+            'de': 'Urlaubsmodus 🏖️',
+          }),
+          body: _t({
+            'en': 'Protect your streak while you\'re away.\nTap the toggle to activate Vacation Mode.\nYou can also adjust your daily water goal and Glycemic Load settings here.',
+            'pl': 'Chroń swoją serię, gdy Cię nie ma.\nDotknij przełącznika, aby włączyć Tryb wakacyjny.\nMożesz tu również dostosować dzienny cel wody i ustawienia ładunku glikemicznego.',
+            'nl': 'Bescherm je reeks terwijl je weg bent.\nTik op de schakelaar om Vakantiemodus in te schakelen.\nJe kunt hier ook je dagelijkse waterdoel en glycemische lading-instellingen aanpassen.',
+            'es': 'Protege tu racha mientras estás fuera.\nToca el interruptor para activar el Modo vacaciones.\nTambién puedes ajustar aquí tu objetivo diario de agua y la carga glucémica.',
+            'de': 'Schütze deine Serie, während du weg bist.\nTippe auf den Schalter, um den Urlaubsmodus zu aktivieren.\nHier kannst du auch dein tägliches Wasserziel und die glykämische Last anpassen.',
+          }),
+        ),
+        // 17 – Outro
+        (
+          title: _t({
+            'en': "You're All Set! 🚀",
+            'pl': 'Wszystko gotowe! 🚀',
+            'nl': 'Je bent klaar! 🚀',
+            'es': '¡Todo listo! 🚀',
+            'de': 'Alles bereit! 🚀',
+          }),
+          body: _t({
+            'en': 'Start scanning your first meal — or speak it!\n\nTip: you can replay this tour anytime from Settings → About.',
+            'pl': 'Zacznij od zeskanowania pierwszego posiłku — lub powiedz go!\n\nWskazówka: możesz powtórzyć tę wycieczkę w dowolnym momencie w Ustawienia → Informacje.',
+            'nl': 'Begin met het scannen van je eerste maaltijd — of spreek het in!\n\nTip: je kunt deze rondleiding altijd opnieuw afspelen via Instellingen → Over.',
+            'es': '¡Empieza escaneando tu primera comida o dícela!\n\nConsejo: puedes repetir este recorrido cuando quieras desde Ajustes → Acerca de.',
+            'de': 'Scanne deine erste Mahlzeit — oder sprich sie ein!\n\nTipp: Du kannst diese Tour jederzeit unter Einstellungen → Info erneut starten.',
+          }),
+        ),
+      ];
 
   String get mascotAuto => _t({
         'en': 'Auto (matches goal)',

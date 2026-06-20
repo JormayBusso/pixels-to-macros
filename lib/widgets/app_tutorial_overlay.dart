@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/app_localizations.dart';
 import '../providers/scroll_trigger_provider.dart';
 import '../theme/app_theme.dart';
 import 'tour_keys.dart';
@@ -306,12 +307,21 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
   }
 
   /// Exact bounding box of [key]'s widget in global screen coordinates.
+  ///
+  /// Tall targets (whole section cards) are capped to their top portion so the
+  /// tour spotlights *where the section starts* — the first line — instead of
+  /// darkening the rest of the screen around a full-height card.
   Rect? _keyRect(GlobalKey key) {
     final ctx = key.currentContext;
     if (ctx == null) return null;
     final box = ctx.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return null;
-    return box.localToGlobal(Offset.zero) & box.size;
+    final rect = box.localToGlobal(Offset.zero) & box.size;
+    const maxSpotlightHeight = 150.0;
+    if (rect.height > maxSpotlightHeight) {
+      return Rect.fromLTWH(rect.left, rect.top, rect.width, maxSpotlightHeight);
+    }
+    return rect;
   }
 
   /// Computes the bounding rect for [NavigationBar] destination at [index].
@@ -337,9 +347,14 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final l10n = AppLocalizations.of(context);
     final step = _kSteps[_step];
     final isLast = _step == _kSteps.length - 1;
     final spotRect = _measureStep(step);
+    final tourTexts = l10n.tourSteps;
+    final stepText = _step < tourTexts.length ? tourTexts[_step] : null;
+    final stepTitle = stepText?.title ?? step.title;
+    final stepBody = stepText?.body ?? step.body;
 
     return FadeTransition(
       opacity: _fade,
@@ -364,8 +379,9 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: TextButton(
                   onPressed: _skip,
-                  child: const Text('Skip',
-                      style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  child: Text(l10n.skip,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 14)),
                 ),
               ),
             ),
@@ -374,6 +390,9 @@ class _AppTutorialOverlayState extends ConsumerState<AppTutorialOverlay>
           // ── Tooltip card ──────────────────────────────────────────────
           _TooltipCard(
             step: step,
+            title: stepTitle,
+            body: stepBody,
+            nextLabel: isLast ? '${l10n.done} ✓' : '${l10n.next} →',
             stepIndex: _step,
             totalSteps: _kSteps.length,
             screenSize: size,
@@ -454,6 +473,9 @@ class _SpotlightPainter extends CustomPainter {
 class _TooltipCard extends StatelessWidget {
   const _TooltipCard({
     required this.step,
+    required this.title,
+    required this.body,
+    required this.nextLabel,
     required this.stepIndex,
     required this.totalSteps,
     required this.screenSize,
@@ -463,6 +485,9 @@ class _TooltipCard extends StatelessWidget {
   });
 
   final _Step step;
+  final String title;
+  final String body;
+  final String nextLabel;
   final int stepIndex;
   final int totalSteps;
   final Size screenSize;
@@ -472,36 +497,44 @@ class _TooltipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Vertical placement: below the spotlight (or centred if no spotlight).
-    // Clamp so the card never goes off-screen.
-    final safeTop =
-        MediaQuery.of(context).padding.top + 48; // below status bar + skip btn
-    final safeBottom = 20.0;
-    final maxCardHeight = screenSize.height - safeTop - safeBottom;
-    const estimatedCardHeight = 280.0;
+    // Vertical placement: keep the whole card — including the Next/Done button —
+    // inside the safe area for any body length or language. The footer button
+    // lives outside the scroll view, so capping the card's height to the
+    // available band guarantees it is always visible (the body scrolls).
+    final mq = MediaQuery.of(context);
+    final safeTop = mq.padding.top + 48; // below status bar + Skip button
+    final safeBottom = mq.padding.bottom + 20;
+    final fullBand = screenSize.height - safeTop - safeBottom;
+
     double? top, bottom;
+    double maxCardHeight;
+
     if (spotRect == null) {
-      top = screenSize.height * 0.25;
-    } else if (step.tipBelow) {
-      final proposedTop = spotRect!.bottom + 12;
-      final maxTopForCard =
-          screenSize.height - safeBottom - estimatedCardHeight;
-      if (proposedTop <= maxTopForCard) {
-        top = proposedTop.clamp(safeTop, maxTopForCard);
-      } else {
-        // Not enough room below target: place above it.
-        bottom = screenSize.height - spotRect!.top + 12;
-      }
+      top = screenSize.height * 0.28;
+      maxCardHeight = (screenSize.height - safeBottom) - top;
     } else {
-      // Place above the spotlight
-      bottom = screenSize.height - spotRect!.top + 12;
-      // If it would go off the top, flip to below instead
-      final estimatedTop = screenSize.height - bottom! - 180;
-      if (estimatedTop < safeTop) {
-        bottom = null;
-        top = (spotRect!.bottom + 12).clamp(safeTop, screenSize.height - 200);
+      final gapBelow =
+          (screenSize.height - safeBottom) - (spotRect!.bottom + 12);
+      final gapAbove = (spotRect!.top - 12) - safeTop;
+      final bool placeBelow;
+      if (step.tipBelow) {
+        // Prefer below; flip above only when below is cramped and above roomier.
+        placeBelow = gapBelow >= 150 || gapBelow >= gapAbove;
+      } else {
+        // Prefer above; flip below only when above is cramped and below roomier.
+        placeBelow = gapAbove < 150 && gapBelow > gapAbove;
+      }
+      if (placeBelow) {
+        top = (spotRect!.bottom + 12)
+            .clamp(safeTop, screenSize.height - safeBottom - 150);
+        maxCardHeight = (screenSize.height - safeBottom) - top;
+      } else {
+        bottom = screenSize.height - spotRect!.top + 12;
+        maxCardHeight = (screenSize.height - bottom) - safeTop;
       }
     }
+    // Never exceed the available band; keep a usable minimum height.
+    maxCardHeight = maxCardHeight.clamp(150.0, fullBand);
 
     return Positioned(
       left: 20,
@@ -536,7 +569,7 @@ class _TooltipCard extends StatelessWidget {
                     children: [
                       // Title
                       Text(
-                        step.title,
+                        title,
                         style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
@@ -545,7 +578,7 @@ class _TooltipCard extends StatelessWidget {
                       const SizedBox(height: 8),
                       // Body
                       Text(
-                        step.body,
+                        body,
                         style: const TextStyle(
                             fontSize: 14,
                             color: AppTheme.gray600,
@@ -586,7 +619,7 @@ class _TooltipCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                     ),
                     child: Text(
-                      isLast ? 'Done ✓' : 'Next →',
+                      nextLabel,
                       style: const TextStyle(
                           fontSize: 14, fontWeight: FontWeight.w700),
                     ),

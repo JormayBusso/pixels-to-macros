@@ -281,6 +281,15 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       if (result.finalResult) {
         try {
           _parsed = _parseTranscript(_transcript);
+          if (_parsed.isEmpty) {
+            _error = _transcript.trim().isEmpty
+                ? 'I didn\'t catch anything. Tap the mic and say e.g. '
+                    '"200 grams of chicken and a banana".'
+                : 'No foods recognised in "$_transcript". Try naming the food '
+                    'and amount, e.g. "two eggs and a slice of bread".';
+          } else {
+            _error = null;
+          }
         } catch (e) {
           _error = 'Failed to parse speech: $e';
           _parsed = [];
@@ -333,12 +342,12 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       if (seg.isEmpty) continue;
 
       // 4. Convert word numbers to digits
-      const _wordNumbers = {
+      const wordNumbers = {
         'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
         'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
         'half': '0.5', 'quarter': '0.25',
       };
-      for (final entry in _wordNumbers.entries) {
+      for (final entry in wordNumbers.entries) {
         if (seg.startsWith('${entry.key} ')) {
           seg = seg.replaceFirst(entry.key, entry.value);
           break;
@@ -347,6 +356,10 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
 
       // 4b. Extract quantity
       double? grams;
+      // When the user gives a count ("two apples", "a banana") rather than a
+      // weight, remember the count so the weight can be refined to the matched
+      // food's typical piece size after matching.
+      double? pieceCount;
       String foodQuery = seg;
 
       final qMatch = RegExp(
@@ -358,6 +371,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         foodQuery = qMatch.group(3)!.trim();
 
         if (unit.startsWith('piece') || unit.startsWith('serving')) {
+          pieceCount = qty;
           grams = qty * 100;
         } else if (unit.startsWith('cup')) {
           grams = qty * 240;
@@ -384,8 +398,9 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         } else if (unit.startsWith('g') || unit.startsWith('ml')) {
           grams = qty;
         } else {
-          // No unit: treat number as count of pieces (e.g. "2 bananas")
-          grams = qty * 120; // 1 piece ~ 120 g average
+          // No unit: treat number as count of pieces (e.g. "2 bananas").
+          pieceCount = qty;
+          grams = qty * 120; // provisional; refined per food category below
         }
       }
 
@@ -400,7 +415,10 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       // Handle "a/an" prefix for countable single foods.
       if (foodQuery.startsWith('a ') || foodQuery.startsWith('an ')) {
         foodQuery = foodQuery.replaceFirst(RegExp(r'^an?\s+'), '');
-        grams ??= 120;
+        if (grams == null) {
+          pieceCount = 1;
+          grams = 120; // provisional; refined per food category below
+        }
       }
 
       grams ??= 100;
@@ -419,11 +437,9 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
 
       if (queryWords.isEmpty) continue;
 
-      // Skip single common non-food words that speech recognition often picks up
-      if (queryWords.length == 1) {
-        final w = queryWords.first;
-        if (_nonFoodWords.contains(w)) continue;
-      }
+      // Skip queries made up entirely of common non-food / chatter words
+      // (e.g. "really good", "some stuff", "the thing").
+      if (queryWords.every(_nonFoodWords.contains)) continue;
 
       for (final f in _allFoods) {
         final fLabel = f.label.toLowerCase();
@@ -480,28 +496,100 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       }
 
       if (match != null && bestScore >= 5) {
-        results.add(_ParsedFood(food: match, grams: grams));
+        // Refine a spoken count into a realistic weight using the matched
+        // food's category (a "piece" of nuts is not a "piece" of steak).
+        final resolvedGrams = pieceCount != null
+            ? pieceCount * _typicalPieceGrams(match.category)
+            : grams;
+        results.add(_ParsedFood(food: match, grams: resolvedGrams));
       } else {
-        // Only add unrecognized items if the query looks like a plausible food name
-        // (3+ characters, not a single common word)
-        if (foodQuery.length >= 3 && queryWords.isNotEmpty) {
-          results.add(_ParsedFood(food: null, query: foodQuery, grams: grams));
+        // Only surface an unrecognised item when the residue genuinely looks
+        // like a food name — not leftover filler, verbs, numbers or chatter.
+        final cleaned = _foodLikeResidue(queryWords);
+        if (cleaned != null) {
+          results.add(_ParsedFood(food: null, query: cleaned, grams: grams));
         }
       }
     }
 
+    // Combine duplicate foods ("rice and rice", "a banana and another banana")
+    // into a single entry by summing their weights so each food is logged once.
+    if (results.length > 1) {
+      final mergedByKey = <String, _ParsedFood>{};
+      final order = <String>[];
+      for (final pf in results) {
+        final key =
+            pf.food != null ? 'food:${pf.food!.label}' : 'query:${pf.query}';
+        final existing = mergedByKey[key];
+        if (existing == null) {
+          mergedByKey[key] = pf;
+          order.add(key);
+        } else {
+          mergedByKey[key] = _ParsedFood(
+            food: existing.food,
+            query: existing.query,
+            grams: existing.grams + pf.grams,
+          );
+        }
+      }
+      return [for (final k in order) mergedByKey[k]!];
+    }
     return results;
+  }
+
+  /// Typical edible weight (grams) of one piece/serving of a food, by category.
+  /// Turns a spoken count ("two apples", "a banana") into a realistic weight
+  /// instead of a flat per-piece guess.
+  static double _typicalPieceGrams(String category) {
+    switch (category.toLowerCase()) {
+      case 'fruit':
+        return 120; // a medium apple / banana / orange
+      case 'vegetable':
+        return 90;
+      case 'protein':
+        return 120; // a fillet or portion of meat/fish
+      case 'grain':
+      case 'bread':
+        return 50; // a slice / roll / bun
+      case 'legume':
+        return 100;
+      case 'dairy':
+        return 120; // a yoghurt pot / cheese serving
+      case 'drink':
+        return 250; // a glass
+      case 'nut':
+        return 30; // a small handful
+      case 'snack':
+        return 35;
+      case 'dessert':
+        return 90;
+      default:
+        return 110; // sensible middle ground for "mixed"/unknown
+    }
   }
 
   static String _stripSpeechFillers(String text) {
     var out = text.replaceAll(RegExp(r'\s+'), ' ').trim();
     final phrasePatterns = [
+      // "I ate", "we had", "I just consumed", "I made", "I grabbed"
       RegExp(
-          r'\b(?:i|we)\s+(?:did\s+)?(?:just\s+)?(?:ate|eat|eaten|had|have|got|consumed)\b'),
+          r'\b(?:i|we)\s+(?:did\s+)?(?:just\s+)?(?:ate|eat|eaten|had|have|got|consumed|grabbed|made|cooked|prepared|fixed)\b'),
+      // contractions: "I'm having", "I've had", "we're eating" (apostrophes are
+      // already converted to spaces upstream, so "i'm" -> "i m")
+      RegExp(
+          r'\b(?:i|we)\s+(?:m|ve|re|am|was|were)\s+(?:just\s+)?(?:had|have|having|eating|eaten|got|getting|making|cooking|gonna\s+have)\b'),
+      // intention phrases: "gonna have", "going to eat", "want to grab"
+      RegExp(
+          r'\b(?:gonna|wanna|going\s+to|want\s+to|like\s+to)\s+(?:eat|have|grab|log|add|make)\b'),
       RegExp(r'\b(?:i|we)\s+(?:would\s+like\s+to\s+)?(?:log|add)\b'),
+      RegExp(r'\b(?:let\s+me|please)\s+(?:log|add)\b'),
+      RegExp(r'\bi\s+think\s+i\s+(?:had|ate|have)\b'),
       RegExp(
           r'\b(?:also|then)\s+(?:i|we)?\s*(?:did\s+)?(?:ate|eat|had|have|got)?\b'),
       RegExp(r'\bplease\s+(?:log|add)\b'),
+      // meal context lead-ins: "for breakfast", "for lunch i had"
+      RegExp(
+          r'\bfor\s+(?:breakfast|lunch|dinner|a\s+snack)\s+(?:i|we)?\s*(?:had|ate|have)?\b'),
     ];
     for (final pattern in phrasePatterns) {
       out = out.replaceAll(pattern, ' ');
@@ -516,10 +604,16 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       final before = out;
       out = out
           .replaceFirst(RegExp(r'^(?:and|also|then|plus|with)\s+'), '')
+          .replaceFirst(
+              RegExp(r'^(?:i|we)\s+(?:m|ve|re|am|was|were|did|just)\s+'), '')
           .replaceFirst(RegExp(r'^(?:i|we)\s+(?:did\s+)?'), '')
           .replaceFirst(
-              RegExp(r'^(?:ate|eat|eaten|had|have|got|consumed)\s+'), '')
-          .replaceFirst(RegExp(r'^(?:please\s+)?(?:log|add)\s+'), '')
+              RegExp(
+                  r'^(?:ate|eat|eaten|had|have|having|got|consumed|grabbed|made|cooked|prepared)\s+'),
+              '')
+          .replaceFirst(
+              RegExp(r'^(?:please\s+|let\s+me\s+)?(?:log|add)\s+'), '')
+          .replaceFirst(RegExp(r'^(?:just|also|then)\s+'), '')
           .trim();
       changed = out != before;
     }
@@ -543,7 +637,22 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   static bool _isNoiseFoodQuery(String query) {
     final words = query.split(' ').where((word) => word.isNotEmpty).toList();
     if (words.isEmpty) return true;
-    return words.every(_speechStopWords.contains);
+    return words.every(
+        (w) => _speechStopWords.contains(w) || _nonFoodWords.contains(w));
+  }
+
+  /// Returns a cleaned food-name string when [queryWords] plausibly describe a
+  /// real food, or `null` when the residue is just filler, verbs, stray numbers
+  /// or conversational chatter. Prevents random words from showing up as foods.
+  static String? _foodLikeResidue(List<String> queryWords) {
+    final words = queryWords
+        .map((w) => w.replaceAll(RegExp(r'[0-9]'), '').trim())
+        .where((w) => w.length >= 3)
+        .where((w) => !_speechStopWords.contains(w))
+        .where((w) => !_nonFoodWords.contains(w))
+        .toList();
+    if (words.isEmpty) return null;
+    return words.join(' ');
   }
 
   /// Map spoken word-numbers to digits so the quantity regex can pick them up.
@@ -604,7 +713,6 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     if ((a.length - b.length).abs() > 1) return false;
     if (a.length < 4 || b.length < 4) return false;
     int diffs = 0;
-    final maxLen = a.length > b.length ? a.length : b.length;
     int ia = 0, ib = 0;
     while (ia < a.length && ib < b.length) {
       if (a[ia] != b[ib]) {

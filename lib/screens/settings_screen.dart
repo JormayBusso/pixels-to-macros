@@ -15,6 +15,7 @@ import '../providers/user_prefs_provider.dart';
 import '../providers/diabetes_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
+import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
@@ -235,7 +236,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       controller: _accountScrollController,
       padding: const EdgeInsets.all(16),
       children: [
-        _SectionHeader('Profile'),
+        _SectionHeader(l10n.profile),
         const SizedBox(height: 12),
         Card(
           child: Padding(
@@ -340,7 +341,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 24),
 
-        _SectionHeader('Nutrition Goal'),
+        _SectionHeader(l10n.nutritionGoal),
         const SizedBox(height: 12),
         _NutritionGoalPickerCard(),
         const SizedBox(height: 12),
@@ -356,7 +357,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 24),
 
-        _SectionHeader('Daily Macro Targets'),
+        _SectionHeader(l10n.dailyMacroTargets),
         const SizedBox(height: 12),
         Consumer(
           builder: (context, ref, _) {
@@ -474,7 +475,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 24),
 
-        _SectionHeader('Water Goal'),
+        _SectionHeader(l10n.waterGoal),
         const SizedBox(height: 12),
         Card(
           child: Padding(
@@ -485,9 +486,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 TextField(
                   controller: _waterCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Daily water goal (ml)',
-                    prefixIcon: Icon(Icons.water_drop_outlined),
+                  decoration: InputDecoration(
+                    labelText: l10n.dailyWaterGoalMl,
+                    prefixIcon: const Icon(Icons.water_drop_outlined),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -507,7 +508,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _save,
-                    child: const Text('Save Water Goal'),
+                    child: Text(l10n.saveWaterGoal),
                   ),
                 ),
               ],
@@ -516,11 +517,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 24),
 
-        _SectionHeader('Reminders'),
+        _SectionHeader(l10n.reminders),
         const SizedBox(height: 12),
         const _RemindersCard(),
 
-        _SectionHeader('Database'),
+        _SectionHeader(l10n.database),
         const SizedBox(height: 12),
         Card(
           child: Padding(
@@ -530,7 +531,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 _InfoRow(
                   icon: Icons.restaurant_menu,
-                  label: 'Food database entries',
+                  label: l10n.foodDatabaseEntries,
                   value: '$_foodCount',
                 ),
                 const SizedBox(height: 12),
@@ -538,7 +539,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.list_alt),
-                    label: const Text('Browse Food Database'),
+                    label: Text(l10n.browseFoodDatabase),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => const FoodDatabaseScreen(),
@@ -577,6 +578,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: () {
               ref.read(userPrefsProvider.notifier).replayAppTutorial();
               ref.read(showTourProvider.notifier).state = true;
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: context.primary100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child:
+                  Icon(Icons.document_scanner_outlined, color: context.primary600),
+            ),
+            title: Text(l10n.replayScanTutorial,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text(l10n.replayScanTutorialSubtitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              ref.read(userPrefsProvider.notifier).replayScanTutorial();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(l10n.replayScanTutorialSubtitle)),
+                );
+              }
             },
           ),
         ),
@@ -736,10 +764,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildPrivacyTab() {
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _SectionHeader('Data & Privacy'),
+        _SectionHeader(l10n.dataAndPrivacy),
         const SizedBox(height: 12),
         Card(
           child: Padding(
@@ -747,29 +776,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'All data is stored locally on your device. '
-                  'No data is sent to any server.',
-                  style: TextStyle(fontSize: 13, color: AppTheme.gray600),
+                Text(
+                  l10n.dataStoredLocally,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.gray600),
                 ),
                 const SizedBox(height: 16),
-                const _InfoRow(
+                _InfoRow(
                   icon: Icons.phone_iphone,
-                  label: 'Storage',
-                  value: 'On-device only',
+                  label: l10n.storage,
+                  value: l10n.onDeviceOnly,
                 ),
                 const SizedBox(height: 8),
-                const _InfoRow(
+                _InfoRow(
                   icon: Icons.cloud_off,
-                  label: 'Cloud sync',
-                  value: 'None',
+                  label: l10n.cloudSync,
+                  value: l10n.noneLabel,
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.download),
-                    label: const Text('Export Daily Summary (CSV)'),
+                    label: Text(l10n.exportDailySummary),
                     onPressed: () => _exportCsv(detailed: false),
                   ),
                 ),
@@ -778,7 +806,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.download),
-                    label: const Text('Export Detailed Data (CSV)'),
+                    label: Text(l10n.exportDetailedData),
                     onPressed: () => _exportCsv(detailed: true),
                   ),
                 ),
@@ -787,9 +815,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    label: const Text(
-                      'Clear All Scan History',
-                      style: TextStyle(color: Colors.red),
+                    label: Text(
+                      l10n.clearAllScanHistory,
+                      style: const TextStyle(color: Colors.red),
                     ),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.red),
@@ -833,7 +861,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        _SectionHeader('About'),
+        _SectionHeader(l10n.aboutSection),
         const SizedBox(height: 12),
         Card(
           child: Padding(
@@ -868,10 +896,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildEvaluationTab() {
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _SectionHeader('Evaluation Tools'),
+        _SectionHeader(l10n.evaluationTools),
         const SizedBox(height: 12),
         Card(
           child: Padding(
@@ -879,9 +908,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Scientific evaluation tools for thesis research.',
-                  style: TextStyle(
+                Text(
+                  l10n.evaluationToolsDesc,
+                  style: const TextStyle(
                     fontSize: 13,
                     color: AppTheme.gray400,
                   ),
@@ -891,7 +920,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.science),
-                    label: const Text('Evaluation Dashboard'),
+                    label: Text(l10n.evaluationDashboard),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => const EvalDashboardScreen(),
@@ -904,7 +933,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        _SectionHeader('Debug'),
+        _SectionHeader(l10n.debug),
         const SizedBox(height: 12),
         Card(
           child: Padding(

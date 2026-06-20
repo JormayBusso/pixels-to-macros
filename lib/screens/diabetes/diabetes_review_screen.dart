@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/diabetes/diabetes_constants.dart';
-import '../../models/insulin_settings.dart';
 import '../../providers/diabetes_provider.dart';
 import '../../services/diabetes/diabetes_survey_scheduler.dart';
 import '../../theme/app_theme.dart';
@@ -57,11 +56,11 @@ class DiabetesReviewScreen extends ConsumerWidget {
             label: const Text('Update my insulin settings'),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'Reviewing your settings regularly keeps the calculator safe. '
             'Confirming marks them current for the next '
             '${DiabetesConstants.reviewInterval.inDays} days.',
-            style: TextStyle(fontSize: 12, color: AppTheme.gray500),
+            style: const TextStyle(fontSize: 12, color: AppTheme.gray500),
           ),
         ],
       ),

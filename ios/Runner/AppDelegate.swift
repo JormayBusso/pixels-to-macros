@@ -2,60 +2,47 @@ import UIKit
 import Flutter
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: UIResponder, UIApplicationDelegate {
+    var window: UIWindow?
+    var flutterEngine = FlutterEngine(name: "io.flutter", project: nil)
 
-    override func application(
+    func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        // GeneratedPluginRegistrant must run before super so Flutter pub-plugins
-        // (sqflite, permission_handler, etc.) are ready when the engine starts.
-        GeneratedPluginRegistrant.register(with: self)
-        let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+        // Start the Flutter engine explicitly — this guarantees the engine is
+        // running and registrarForPlugin: returns non-nil registrars.
+        // Using FlutterAppDelegate + scene lifecycle on iOS 26 was returning nil
+        // registrars, causing swift_getObjectType(nil) → EXC_BAD_ACCESS.
+        flutterEngine.run()
 
-        // ── Register custom scanner method channel ─────────────────────────
-        // Use self.registrar(forPlugin:).messenger() — the canonical Flutter
-        // approach.  This works regardless of the view-controller hierarchy and
-        // does NOT depend on window.rootViewController being a
-        // FlutterViewController (which can fail silently in some build configs).
-        if let scannerReg = registrar(forPlugin: "ScannerPlugin") {
-            ScannerPlugin.register(with: scannerReg.messenger())
-        }
+        GeneratedPluginRegistrant.register(with: flutterEngine)
 
-        // ── Register the live AR camera platform view ──────────────────────
+        let flutterVC = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
+
+        window = UIWindow(frame: UIScreen.main.bounds)
+        window?.rootViewController = flutterVC
+        window?.makeKeyAndVisible()
+        window?.backgroundColor = .black
+
+        // ── Custom scanner method channel ──────────────────────────────────
+        let scannerReg = flutterEngine.registrar(forPlugin: "ScannerPlugin")!
+        ScannerPlugin.register(with: scannerReg.messenger())
+
+        // ── Live AR camera platform view ───────────────────────────────────
         let cameraFactory = ARCameraPreviewFactory(
             sessionManager: ScannerPlugin.sessionManager
         )
-        if let cameraReg = registrar(forPlugin: "ARCameraPreviewPlugin") {
-            cameraReg.register(cameraFactory, withId: ARCameraPreviewFactory.viewType)
-        }
+        let cameraReg = flutterEngine.registrar(forPlugin: "ARCameraPreviewPlugin")!
+        cameraReg.register(cameraFactory, withId: ARCameraPreviewFactory.viewType)
 
-        // ── Register the post-scan 3D viewer platform view (Stage 2) ───────
-        if let viewerReg = registrar(forPlugin: "Scan3DViewerPlugin") {
-            viewerReg.register(
-                Scan3DViewerFactory(messenger: viewerReg.messenger()),
-                withId: Scan3DViewerFactory.viewType
-            )
-        }
+        // ── Post-scan 3D viewer platform view ──────────────────────────────
+        let viewerReg = flutterEngine.registrar(forPlugin: "Scan3DViewerPlugin")!
+        viewerReg.register(
+            Scan3DViewerFactory(messenger: viewerReg.messenger()),
+            withId: Scan3DViewerFactory.viewType
+        )
 
-        // ── Eliminate the white flash between LaunchScreen and Flutter ────
-        // The OS LaunchScreen.storyboard is black with the app icon. As soon
-        // as Flutter takes over, the underlying UIWindow defaults to white,
-        // which can flash for ~50-150 ms before the first Dart frame paints.
-        // Force the window background to black so the handoff is invisible
-        // (Instagram-style instant content).
-        if #available(iOS 13.0, *) {
-            // Multi-scene: paint each connected window black.
-            for scene in application.connectedScenes {
-                if let windowScene = scene as? UIWindowScene {
-                    for window in windowScene.windows {
-                        window.backgroundColor = .black
-                    }
-                }
-            }
-        }
-        window?.backgroundColor = .black
-
-        return result
+        return true
     }
 }

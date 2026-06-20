@@ -228,6 +228,8 @@ final class DepthFusion {
         for pending in pendingLabels {
             grid[pending.key] = pending.label
         }
+        let labelledCount = grid.values.filter { $0 > 0 }.count
+        print("[SCAN] assignLabels: pendingAssigned=\(pendingLabels.count), totalLabelled=\(labelledCount), totalGrid=\(grid.count), labelMap=\(labelMap)")
     }
 
     // MARK: – Volume queries
@@ -375,7 +377,11 @@ final class DepthFusion {
         for (key, label) in grid where label > 0 {
             keysByLabel[label, default: []].append(key)
         }
-        guard !keysByLabel.isEmpty else { return [] }
+        print("[SCAN] voxelClusters: totalOccupied=\(grid.count), labelled=\(keysByLabel.values.reduce(0) { $0 + $1.count }), labels=\(keysByLabel.count), minVoxelCount=\(minVoxelCount)")
+        guard !keysByLabel.isEmpty else {
+            print("[SCAN] voxelClusters: NO labelled voxels — returning empty")
+            return []
+        }
 
         // 2. Plate-plane subtraction.
         // Find the lowest stable Y across ALL labelled voxels (the plate
@@ -389,6 +395,8 @@ final class DepthFusion {
         let indexToName = Dictionary(uniqueKeysWithValues: labelMap.map { ($1, $0) })
         let voxVolCm3 = pow(Double(voxelSizeM * 100), 3)
 
+        print("[SCAN] voxelClusters: plateCutoffY=\(plateCutoffY), platePlaneVoxelY=\(platePlaneVoxelY)")
+
         var clusters: [FoodVoxelCluster] = []
         // Deterministic ordering so cluster IDs are stable across runs with
         // identical input — Dictionary iteration order is not deterministic.
@@ -397,16 +405,24 @@ final class DepthFusion {
             guard let label = indexToName[labelIdx] else { continue }
             let rawKeys = keysByLabel[labelIdx] ?? []
             let pruned = rawKeys.filter { $0.y >= plateCutoffY }
-            guard pruned.count >= minVoxelCount else { continue }
+            print("[SCAN] voxelClusters: label=\(label) raw=\(rawKeys.count) afterPlateSubtraction=\(pruned.count) threshold=\(minVoxelCount)")
+            guard pruned.count >= minVoxelCount else {
+                print("[SCAN] voxelClusters: DROPPED label=\(label) (\(pruned.count) < \(minVoxelCount))")
+                continue
+            }
 
             // 3. Connected components → per-instance clusters.
             let components = connectedComponents(of: pruned)
+            print("[SCAN] voxelClusters: label=\(label) components=\(components.count) sizes=\(components.map { $0.count }.sorted(by: >).prefix(5))")
             // Largest-first so `instanceIndex = 0` is the dominant instance.
             let sorted = components.sorted { $0.count > $1.count }
             var instanceIndex = 0
             for comp in sorted {
                 // Noise gate on the raw surface shell, BEFORE solidification.
-                guard comp.count >= minVoxelCount else { continue }
+                guard comp.count >= minVoxelCount else {
+                    print("[SCAN] voxelClusters: DROPPED component \(label)_\(instanceIndex) (\(comp.count) < \(minVoxelCount))")
+                    continue
+                }
                 // 5. Solidify: turn the measured depth shell into a true solid
                 //    by integrating height per (x,z) column from the plate
                 //    plane up to the surface. This is the source of truth for

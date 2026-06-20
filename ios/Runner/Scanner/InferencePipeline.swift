@@ -80,6 +80,9 @@ final class InferencePipeline {
         lastModel3DPath = nil
         lastModel3DObjects = []
 
+        print("[SCAN] ═══════════ VIDEO SCAN START ═══════════")
+        print("[SCAN] recorder: topFrame=\(recorder.topFrame != nil), topViewFrames=\(recorder.topViewFrames.count), lightFrames=\(recorder.lightFrames.count), frameCount=\(recorder.frameCount)")
+
         // If no top frame was captured (e.g. recording stopped immediately),
         // fail hard. Successful video scans must produce a valid 3-D model.
         guard let topFrame = recorder.topFrame else {
@@ -92,6 +95,8 @@ final class InferencePipeline {
         // ── 1. Plate detection ──────────────────────────────────────────
         let plate    = plateDetector.detect(in: topFrame.pixelBuffer)
         let cropRect: CGRect? = plate.rect
+        print("[SCAN] plate: detected=\(plate.detected), rect=\(plate.rect), diameterPx=\(Int(plate.diameterPx))")
+        print("[SCAN] topFrame: pixelBuffer=\(CVPixelBufferGetWidth(topFrame.pixelBuffer))x\(CVPixelBufferGetHeight(topFrame.pixelBuffer)), depthBuffer=\(topFrame.depthBuffer != nil)")
 
         // ── 2. Preprocess top frame for CoreML ─────────────────────────
         guard let preprocessedRGB = autoreleasepool(invoking: {
@@ -108,6 +113,7 @@ final class InferencePipeline {
 
         // ── 2b. ML Kit food-presence gate ───────────────────────────────
         let mlKitResult = mlKitValidator.validate(pixelBuffer: topFrame.pixelBuffer)
+        print("[SCAN] mlKit: hasFood=\(mlKitResult.hasFood), labels=\(mlKitResult.labels.map { "\($0.normalised)(\(String(format: "%.2f", $0.confidence)))" }.joined(separator: ", "))")
         guard mlKitResult.hasFood else {
             print("[PIPELINE] export success: false")
             print("[PIPELINE] model3dPath: nil")
@@ -120,8 +126,10 @@ final class InferencePipeline {
         do {
             segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
         } catch {
+            print("[SCAN] segmentation THREW: \(error)")
             throw PipelineError.segmentationFailed(error)
         }
+        print("[SCAN] segmentation: \(segments.count) objects — \(segments.map { "\($0.label)(\($0.pixelCount)px, conf \(String(format: "%.2f", $0.confidence)))" }.joined(separator: ", "))")
 
         guard !segments.isEmpty else {
             print("[PIPELINE] export success: false")
@@ -141,11 +149,17 @@ final class InferencePipeline {
             maskWidth: preprocessor.modelInputWidth,
             maskHeight: preprocessor.modelInputHeight
         ) else {
+            let maskPixels = max(1, preprocessor.modelInputWidth * preprocessor.modelInputHeight)
+            let foodPixels = segments.reduce(0) { $0 + $1.pixelCount }
+            let foodFraction = Double(foodPixels) / Double(maskPixels)
+            let avgConf = segments.reduce(Float(0)) { $0 + $1.confidence } / Float(max(segments.count, 1))
+            print("[SCAN] foodPresenceGate FAILED: foodFraction=\(String(format: "%.4f", foodFraction)), avgConf=\(String(format: "%.3f", avgConf)), hasDepth=\(topFrame.depthBuffer != nil || recorder.hasDepthData)")
             print("[PIPELINE] export success: false")
             print("[PIPELINE] model3dPath: nil")
             print("[PIPELINE] file exists: false")
             throw PipelineError.model3DExportFailed("food_presence_gate_failed")
         }
+        print("[SCAN] foodPresenceGate PASSED")
 
         // ── 3b. Non-LiDAR camera fallback ──────────────────────────────
         // If ARKit did not provide scene depth, do NOT force the device
@@ -178,6 +192,9 @@ final class InferencePipeline {
                 imageWidth:  CVPixelBufferGetWidth(topFrame.pixelBuffer),
                 imageHeight: CVPixelBufferGetHeight(topFrame.pixelBuffer)
             )
+            print("[SCAN] integrated topFrame depth: voxels now \(fusion.totalOccupiedVoxels)")
+        } else {
+            print("[SCAN] topFrame has NO depth buffer")
         }
 
         // Fuse locked top-view depth first, then the side-view sweep.
@@ -190,6 +207,7 @@ final class InferencePipeline {
                 imageHeight: frame.imageHeight
             )
         }
+        print("[SCAN] after topViewFrames(\(recorder.topViewFrames.count)): voxels=\(fusion.totalOccupiedVoxels)")
 
         // Fuse recorded side-view light frames.
         for frame in recorder.lightFrames {
@@ -201,6 +219,7 @@ final class InferencePipeline {
                 imageHeight: frame.imageHeight
             )
         }
+        print("[SCAN] after lightFrames(\(recorder.lightFrames.count)): voxels=\(fusion.totalOccupiedVoxels)")
 
         // ── 5. Label voxels from top-frame segmentation ─────────────────
         let plateNormRect = plate.rect
@@ -247,6 +266,7 @@ final class InferencePipeline {
             imageWidth:     CVPixelBufferGetWidth(topFrame.pixelBuffer),
             imageHeight:    CVPixelBufferGetHeight(topFrame.pixelBuffer)
         )
+        print("[SCAN] exportFoodObjects: \(foodObjects.count) meshes — \(foodObjects.map { "\($0.id)(v=\($0.vertices.count),f=\($0.faces.count/3))" }.joined(separator: ", "))")
         guard !foodObjects.isEmpty else {
             print("[PIPELINE] export success: false")
             print("[PIPELINE] model3dPath: nil")
@@ -341,24 +361,45 @@ final class InferencePipeline {
         let avgConfidence = segments.reduce(Float(0)) { $0 + $1.confidence } /
             Float(max(segments.count, 1))
 
-        // Tightened thresholds (May 2026): the bundled mini model has only 10
-        // food classes and force-classifies non-food regions, so we err on the
-        // side of "no food" rather than serving up a hallucinated label.
-        if foodFraction < 0.015 { return false }                  // was 0.025
-        if foodFraction > 0.65 && segments.count >= 2 { return false }
-        if segments.count >= 3 && largestFraction < foodFraction * 0.46 { return false }
-        if avgConfidence < 0.45 { return false }                  // was 0.70
-        // Reject "speckled" segmentations — many tiny disconnected blobs are
-        // almost always noise rather than real foods.
-        if segments.count >= 4 && largestFraction < 0.05 { return false }
+        print("[SCAN] foodPresenceGate: foodFraction=\(String(format: "%.4f", foodFraction)), " +
+              "largestFraction=\(String(format: "%.4f", largestFraction)), " +
+              "avgConf=\(String(format: "%.3f", avgConfidence)), " +
+              "segments=\(segments.count)")
+
+        if foodFraction < 0.015 {
+            print("[SCAN] foodPresenceGate: REJECT foodFraction < 0.015")
+            return false
+        }
+        if foodFraction > 0.65 && segments.count >= 2 {
+            print("[SCAN] foodPresenceGate: REJECT foodFraction > 0.65 with multiple segments")
+            return false
+        }
+        if segments.count >= 3 && largestFraction < foodFraction * 0.46 {
+            print("[SCAN] foodPresenceGate: REJECT speckled (3+ segs, largest too small)")
+            return false
+        }
+        if avgConfidence < 0.45 {
+            print("[SCAN] foodPresenceGate: REJECT avgConfidence < 0.45")
+            return false
+        }
+        if segments.count >= 4 && largestFraction < 0.05 {
+            print("[SCAN] foodPresenceGate: REJECT 4+ segments all tiny")
+            return false
+        }
 
         let hasDepth = topFrame.depthBuffer != nil || recorder.hasDepthData
         if hasDepth {
-            guard let heightCm = estimateFoodHeightCmIfAvailable(
+            let heightCm = estimateFoodHeightCmIfAvailable(
                 topFrame: topFrame,
                 recorder: recorder
-            ) else { return false }
-            if heightCm < 0.7 { return false }
+            )
+            print("[SCAN] foodPresenceGate: heightCm=\(heightCm.map { String(format: "%.2f", $0) } ?? "nil")")
+            // Only reject if we got a definitive height reading that's too flat.
+            // nil means depth data was too sparse to estimate — allow the scan to proceed.
+            if let h = heightCm, h < 0.5 {
+                print("[SCAN] foodPresenceGate: REJECT food too flat (height < 0.5 cm)")
+                return false
+            }
         }
 
         return true

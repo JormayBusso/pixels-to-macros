@@ -195,51 +195,58 @@ class _MainShellState extends ConsumerState<MainShell> {
                 ),
               ),
             ),
-            child: NavigationBar(
-              key: TourKeys.navBar,
-              selectedIndex: _tabIndex,
-              onDestinationSelected: (i) {
-                FocusScope.of(context).unfocus();
-                setState(() => _tabIndex = i);
-              },
-              backgroundColor: Colors.white,
-              indicatorColor: context.primary100,
-              destinations: [
-                NavigationDestination(
-                  icon: const Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home, color: context.primary700),
-                  label: l10n.home,
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.bar_chart_outlined),
-                  selectedIcon:
-                      Icon(Icons.bar_chart, color: context.primary700),
-                  label: l10n.analytics,
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.restaurant_menu_outlined),
-                  selectedIcon:
-                      Icon(Icons.restaurant_menu, color: context.primary700),
-                  label: l10n.recipes,
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.shopping_cart_outlined),
-                  selectedIcon:
-                      Icon(Icons.shopping_cart, color: context.primary700),
-                  label: l10n.groceryList,
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.calendar_month_outlined),
-                  selectedIcon:
-                      Icon(Icons.calendar_month, color: context.primary700),
-                  label: l10n.mealPlanner,
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings, color: context.primary700),
-                  label: l10n.settings,
-                ),
-              ],
+            child: MediaQuery.withClampedTextScaling(
+              // Keep nav labels at their designed size so longer translations
+              // and large text-size settings stay single-line and centred
+              // under each icon for every language.
+              maxScaleFactor: 1.0,
+              child: NavigationBar(
+                key: TourKeys.navBar,
+                selectedIndex: _tabIndex,
+                onDestinationSelected: (i) {
+                  FocusScope.of(context).unfocus();
+                  setState(() => _tabIndex = i);
+                },
+                backgroundColor: Colors.white,
+                indicatorColor: context.primary100,
+                destinations: [
+                  NavigationDestination(
+                    icon: const Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home, color: context.primary700),
+                    label: l10n.home,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.bar_chart_outlined),
+                    selectedIcon:
+                        Icon(Icons.bar_chart, color: context.primary700),
+                    label: l10n.analytics,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.restaurant_menu_outlined),
+                    selectedIcon:
+                        Icon(Icons.restaurant_menu, color: context.primary700),
+                    label: l10n.recipes,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.shopping_cart_outlined),
+                    selectedIcon:
+                        Icon(Icons.shopping_cart, color: context.primary700),
+                    label: l10n.groceryList,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.calendar_month_outlined),
+                    selectedIcon:
+                        Icon(Icons.calendar_month, color: context.primary700),
+                    label: l10n.mealPlanner,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.settings_outlined),
+                    selectedIcon:
+                        Icon(Icons.settings, color: context.primary700),
+                    label: l10n.settings,
+                  ),
+                ],
+              ),
             ),
           ),
           floatingActionButton: _tabIndex == 0

@@ -246,12 +246,16 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
 
     private func loadModel(at path: String?) {
         guard let path, !path.isEmpty else {
+            print("[SCAN] SceneKit: loadModel called with nil/empty path")
             sendInvalidModel(reason: "missing_model_path", details: nil)
             showPlaceholder("No 3D model available for this scan.")
             return
         }
         let url = URL(fileURLWithPath: path)
-        guard FileManager.default.fileExists(atPath: url.path) else {
+        let exists = FileManager.default.fileExists(atPath: url.path)
+        let size: Int = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
+        print("[SCAN] SceneKit: loadModel path=\(url.lastPathComponent) exists=\(exists) size=\(size) bytes")
+        guard exists else {
             sendInvalidModel(reason: "model_file_missing", details: url.path)
             showPlaceholder("3D model file missing:\n\(url.lastPathComponent)")
             return
@@ -265,6 +269,7 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
             configure(scene: scene)
             sceneView.scene = scene
             placeholderLabel.isHidden = true
+            print("[SCAN] SceneKit: LOADED scene successfully, foodNodes=\(foodNodes.count)")
 
             // ── Verification gate ───────────────────────────────────────
             // Validate that the number of scene food nodes matches the

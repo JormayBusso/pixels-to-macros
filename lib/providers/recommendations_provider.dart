@@ -370,8 +370,51 @@ class RecommendationsNotifier extends StateNotifier<RecommendationsState> {
       ));
     }
 
-    // Keep at most 8 recommendations
-    state = RecommendationsState(recs: recs.take(8).toList());
+    // ── Prioritise & de-duplicate before trimming ──────────────────────────
+    // Surface the most important guidance first (warnings → gaps/tips →
+    // positives) and drop near-duplicate reminders (e.g. multiple hydration
+    // tips) so the user sees a focused, varied set instead of whatever happened
+    // to be added first.
+    state = RecommendationsState(recs: _prioritiseAndDedupe(recs).take(8).toList());
+  }
+
+  /// Re-orders recommendations by urgency and removes near-duplicates.
+  ///
+  /// Ranking (lower = shown first): urgent warnings (⚠️/❌) → actionable gaps &
+  /// tips → positive "goal reached" notes. The sort is stable so items of equal
+  /// rank keep their original (goal-specific first) order, which means the most
+  /// specific hydration tip is the one kept when duplicates are collapsed.
+  static List<Recommendation> _prioritiseAndDedupe(List<Recommendation> recs) {
+    int rank(Recommendation r) {
+      final m = r.message;
+      if (m.contains('⚠️') || m.contains('❌')) return 0;
+      if (m.contains('✅') || m.contains('🎉') || m.contains('🎯')) return 2;
+      return 1;
+    }
+
+    final indexed = [for (var i = 0; i < recs.length; i++) (i, recs[i])];
+    indexed.sort((a, b) {
+      final byRank = rank(a.$2).compareTo(rank(b.$2));
+      return byRank != 0 ? byRank : a.$1.compareTo(b.$1);
+    });
+
+    final seenMessages = <String>{};
+    var hydrationShown = false;
+    final result = <Recommendation>[];
+    for (final entry in indexed) {
+      final r = entry.$2;
+      if (!seenMessages.add(r.message)) continue; // drop identical messages
+      final lower = r.message.toLowerCase();
+      final isHydration = r.icon == Icons.water_drop_outlined ||
+          lower.contains('water') ||
+          lower.contains('hydrat');
+      if (isHydration) {
+        if (hydrationShown) continue; // keep only the most specific water tip
+        hydrationShown = true;
+      }
+      result.add(r);
+    }
+    return result;
   }
 
   List<Recommendation> _buildMicronutrientRecommendations({

@@ -83,6 +83,13 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     await update(prefs);
   }
 
+  /// Resets the scan tutorial flag so it shows again next time the
+  /// scanner is opened.
+  Future<void> replayScanTutorial() async {
+    final prefs = state.copyWith(hasSeenScanTutorial: false);
+    await update(prefs);
+  }
+
   Future<void> setGender(UserGender gender) async {
     final prefs = state.copyWith(gender: gender);
     await update(prefs);

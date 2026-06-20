@@ -378,9 +378,6 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     }).toList();
   }
 
-  String _capitalize(String s) =>
-      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
-
   String _guessCategory(String label) {
     final l = label.toLowerCase();
     const fruits   = ['apple','banana','berry','orange','grape','mango','peach','pear','plum','melon','kiwi','pine','lemon','cherry','avocado'];
@@ -550,46 +547,6 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     } catch (_) {
       // ML Kit not available (e.g. simulator) — silently skip.
     }
-  }
-
-  /// Parses quantity and unit from text like "500g chicken", "2L milk", "3 pack".
-  /// Returns map with 'quantity' (int) and 'unit' (String? null).
-  static Map<String, dynamic> _parseQuantityAndUnit(String text) {
-    text = text.trim().toLowerCase();
-
-    // Common unit patterns with their regex
-    final unitPatterns = {
-      'g': r'(\d+(?:\.\d+)?)\s*g\b',
-      'kg': r'(\d+(?:\.\d+)?)\s*kg\b',
-      'mg': r'(\d+(?:\.\d+)?)\s*mg\b',
-      'ml': r'(\d+(?:\.\d+)?)\s*ml\b',
-      'L': r'(\d+(?:\.\d+)?)\s*L\b',
-      'l': r'(\d+(?:\.\d+)?)\s*l\b',
-      'pack': r'(\d+(?:\.\d+)?)\s*pack',
-      'box': r'(\d+(?:\.\d+)?)\s*box',
-      'bunch': r'(\d+(?:\.\d+)?)\s*bunch',
-      'count': r'(\d+(?:\.\d+)?)\s*ct\b',
-    };
-
-    for (final unit in unitPatterns.keys) {
-      final regex = RegExp(unitPatterns[unit]!);
-      final match = regex.firstMatch(text);
-      if (match != null) {
-        final qty = double.tryParse(match.group(1) ?? '1') ?? 1.0;
-        return {'quantity': qty.toInt(), 'unit': unit};
-      }
-    }
-
-    // Try simple "Nx" or "x N" pattern
-    final simpleMatch = RegExp(r'(\d+)\s*x\s*\w+|\w+\s*x\s*(\d+)').firstMatch(text);
-    if (simpleMatch != null) {
-      final num = simpleMatch.group(1) ?? simpleMatch.group(2);
-      if (num != null) {
-        return {'quantity': int.parse(num), 'unit': null};
-      }
-    }
-
-    return {'quantity': 1, 'unit': null};
   }
 
   /// Extracts quantity hints AND units from OCR text.

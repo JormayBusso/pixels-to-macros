@@ -91,12 +91,19 @@ class NativeBridge {
   /// Returns JSON metadata only after a 3-D model file exists on disk.
   /// Times out after 30 s to prevent UI freezes.
   Future<List<Map<String, dynamic>>> runVideoInference() async {
-    final raw = await _channel
-        .invokeMethod<String>('runVideoInference')
-        .timeout(const Duration(seconds: 30));
-    if (raw == null) return [];
-    final list = jsonDecode(raw) as List;
-    return list.cast<Map<String, dynamic>>();
+    debugPrint('[SCAN] NativeBridge.runVideoInference() called');
+    try {
+      final raw = await _channel
+          .invokeMethod<String>('runVideoInference')
+          .timeout(const Duration(seconds: 30));
+      debugPrint('[SCAN] NativeBridge.runVideoInference() raw=${raw?.substring(0, (raw.length > 200 ? 200 : raw.length))}');
+      if (raw == null) return [];
+      final list = jsonDecode(raw) as List;
+      return list.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('[SCAN] NativeBridge.runVideoInference() ERROR: $e');
+      rethrow;
+    }
   }
 
   // ── Point cloud (Part 15) ────────────────────────────────────────────────

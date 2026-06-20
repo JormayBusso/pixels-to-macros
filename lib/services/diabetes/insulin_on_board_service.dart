@@ -20,8 +20,10 @@ class InsulinOnBoardService {
   /// Compute total active insulin (units) at [now] from [doses], given the
   /// insulin action duration [actionDurationHours].
   ///
-  /// Only confirmed doses contribute. Doses with non-positive units, doses in
-  /// the future, or doses already fully decayed contribute zero.
+  /// Only confirmed doses contribute. Doses with non-positive units contribute
+  /// zero, and doses already fully decayed contribute zero. A future-dated dose
+  /// (device clock skew or a just-logged entry) is treated as taken now and
+  /// counted at full strength — the safe, conservative direction.
   static double calculateIob({
     required List<InsulinDoseLog> doses,
     required double actionDurationHours,
@@ -32,8 +34,12 @@ class InsulinOnBoardService {
     for (final d in doses) {
       if (!d.confirmed || d.units <= 0) continue;
       final elapsedHours = now.difference(d.timestamp).inSeconds / 3600.0;
-      if (elapsedHours < 0) continue; // future dose — ignore
-      final remainingFraction = 1.0 - (elapsedHours / actionDurationHours);
+      // Clock-skew / just-logged safety guard: a future-dated dose would
+      // otherwise be silently dropped, UNDER-counting IOB and risking insulin
+      // stacking. Treat any future dose as if taken now (full strength) — the
+      // conservative direction (more IOB -> less recommended insulin).
+      final activeHours = elapsedHours < 0 ? 0.0 : elapsedHours;
+      final remainingFraction = 1.0 - (activeHours / actionDurationHours);
       if (remainingFraction <= 0) continue; // fully decayed
       iob += d.units * remainingFraction;
     }

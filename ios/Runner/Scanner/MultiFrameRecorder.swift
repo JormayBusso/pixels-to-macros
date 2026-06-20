@@ -124,6 +124,7 @@ final class MultiFrameRecorder {
             // First frame → full top frame (RGB + depth).
             // Deep-copy pixel buffers so ARKit can reuse its internal pool.
             if topFrame == nil && isTopView {
+                print("[SCAN] sampleFrame topFrame: pitch=\(String(format: "%.2f", currentPitch)), sceneDepth=\(arFrame.sceneDepth != nil), depthMap=\(depthBuf != nil)")
                 topFrame = FrameCaptureService.CapturedFrame(
                     pixelBuffer:     MultiFrameRecorder.copyPixelBuffer(pixBuf),
                     depthBuffer:     depthBuf.flatMap { MultiFrameRecorder.copyPixelBuffer($0) },

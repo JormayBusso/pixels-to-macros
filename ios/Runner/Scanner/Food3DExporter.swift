@@ -41,6 +41,11 @@ final class Food3DExporter {
         for ext in ["usdz", "usdc", "obj"] where MDLAsset.canExportFileExtension(ext) {
             let url = docs.appendingPathComponent("\(baseName).\(ext)")
             if writeAsset(objects: objects, to: url) {
+                // Verify file size
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+                   let size = attrs[.size] as? Int {
+                    print("[Food3DExporter] SUCCESS: \(url.lastPathComponent) size=\(size) bytes")
+                }
                 return url
             }
         }

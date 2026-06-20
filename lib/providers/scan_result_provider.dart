@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/scan_result.dart';
@@ -123,6 +124,10 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
 
     try {
       final rawVolumes = await NativeBridge.instance.runVideoInference();
+      debugPrint('[SCAN] Flutter received ${rawVolumes.length} raw items from native');
+      for (final vol in rawVolumes) {
+        debugPrint('[SCAN] Flutter item: $vol');
+      }
 
       if (rawVolumes.isEmpty) {
         DebugLog.instance.log(
