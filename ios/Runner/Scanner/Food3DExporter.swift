@@ -1,3 +1,4 @@
+import CoreVideo
 import Foundation
 import ModelIO
 import simd
@@ -24,7 +25,8 @@ final class Food3DExporter {
     /// directory. Returns the URL on success, `nil` on failure (caller logs).
     func export(
         objects: [DepthFusion.Food3DObject],
-        baseName: String
+        baseName: String,
+        textureSource: CVPixelBuffer? = nil
     ) -> URL? {
         guard !objects.isEmpty else { return nil }
 
@@ -33,6 +35,17 @@ final class Food3DExporter {
             in: .userDomainMask
         ).first!
 
+        // Bake the top-frame photo once; every food mesh shares it as its
+        // baseColor texture so the model looks like the real food (not grey).
+        var textureURL: URL?
+        if let textureSource {
+            let candidate = docs.appendingPathComponent("\(baseName)_texture.png")
+            if Food3DTextureBaker.writeTexture(from: textureSource, to: candidate) {
+                textureURL = candidate
+                print("[Food3DExporter] Baked texture: \(candidate.lastPathComponent)")
+            }
+        }
+
         // Build the asset once and try multiple file types.
         print("[Food3DExporter] Export request: objects=\(objects.count), " +
               "usdz=\(MDLAsset.canExportFileExtension("usdz")), " +
@@ -40,7 +53,7 @@ final class Food3DExporter {
               "obj=\(MDLAsset.canExportFileExtension("obj"))")
         for ext in ["usdz", "usdc", "obj"] where MDLAsset.canExportFileExtension(ext) {
             let url = docs.appendingPathComponent("\(baseName).\(ext)")
-            if writeAsset(objects: objects, to: url) {
+            if writeAsset(objects: objects, to: url, textureURL: textureURL) {
                 // Verify file size
                 if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
                    let size = attrs[.size] as? Int {
@@ -57,7 +70,8 @@ final class Food3DExporter {
 
     private func writeAsset(
         objects: [DepthFusion.Food3DObject],
-        to url: URL
+        to url: URL,
+        textureURL: URL?
     ) -> Bool {
         let allocator = MDLMeshBufferDataAllocator()
         let asset = MDLAsset()
@@ -66,7 +80,7 @@ final class Food3DExporter {
         for object in objects {
             // INVARIANT: one Food3DObject = one MDLMesh = one MDLMaterial.
             // Never merge clusters here, even if two objects share a label.
-            guard let mesh = buildMesh(object: object, allocator: allocator) else {
+            guard let mesh = buildMesh(object: object, allocator: allocator, textureURL: textureURL) else {
                 continue
             }
             asset.add(mesh)
@@ -90,14 +104,20 @@ final class Food3DExporter {
 
     private func buildMesh(
         object: DepthFusion.Food3DObject,
-        allocator: MDLMeshBufferAllocator
+        allocator: MDLMeshBufferAllocator,
+        textureURL: URL?
     ) -> MDLMesh? {
         let vertexCount = object.vertices.count
         guard vertexCount > 0, object.faces.count >= 3 else { return nil }
 
-        // Interleaved vertex layout: position (3 × Float32) + RGBA (4 × UInt8).
-        // 4 bytes padding for the alpha channel keeps the stride 16 B aligned.
-        let stride = MemoryLayout<Float>.size * 3 + 4
+        // Texture only when we have both a baked photo and a UV per vertex.
+        let hasTexture = textureURL != nil && object.uvs.count == vertexCount
+
+        // Interleaved layout: position (3 × Float32) + RGBA (4 × UInt8), plus a
+        // UV (2 × Float32) when textured. RGBA padding keeps positions aligned;
+        // the UV is appended after it.
+        let uvOffset = MemoryLayout<Float>.size * 3 + 4 // 16
+        let stride = hasTexture ? uvOffset + MemoryLayout<Float>.size * 2 : uvOffset
 
         var vertexBytes = Data(count: vertexCount * stride)
         vertexBytes.withUnsafeMutableBytes { (raw: UnsafeMutableRawBufferPointer) in
@@ -116,6 +136,12 @@ final class Food3DExporter {
                 bytes[1] = cIdx + 1 < object.colors.count ? object.colors[cIdx + 1] : 200
                 bytes[2] = cIdx + 2 < object.colors.count ? object.colors[cIdx + 2] : 200
                 bytes[3] = 255
+
+                if hasTexture {
+                    let uv = row.advanced(by: uvOffset).assumingMemoryBound(to: Float.self)
+                    uv[0] = object.uvs[i].x
+                    uv[1] = object.uvs[i].y
+                }
             }
         }
         let vertexBuffer = allocator.newBuffer(with: vertexBytes, type: .vertex)
@@ -142,6 +168,14 @@ final class Food3DExporter {
             offset: 12,
             bufferIndex: 0
         )
+        if hasTexture {
+            descriptor.attributes[2] = MDLVertexAttribute(
+                name: MDLVertexAttributeTextureCoordinate,
+                format: .float2,
+                offset: uvOffset,
+                bufferIndex: 0
+            )
+        }
         descriptor.layouts[0] = MDLVertexBufferLayout(stride: stride)
 
         let submesh = MDLSubmesh(
@@ -149,7 +183,7 @@ final class Food3DExporter {
             indexCount: object.faces.count,
             indexType: .uInt32,
             geometryType: .triangles,
-            material: makeMaterial(label: object.id)
+            material: makeMaterial(label: object.id, textureURL: hasTexture ? textureURL : nil)
         )
 
         let mesh = MDLMesh(
@@ -172,11 +206,25 @@ final class Food3DExporter {
         return mesh
     }
 
-    private func makeMaterial(label: String) -> MDLMaterial {
+    private func makeMaterial(label: String, textureURL: URL?) -> MDLMaterial {
         // PhysicallyPlausible scattering keeps materials sensible in USD/USDZ.
         // One material per food object so per-instance edits stay isolated.
         let scatter = MDLPhysicallyPlausibleScatteringFunction()
         let material = MDLMaterial(name: sanitised(label: label), scatteringFunction: scatter)
+
+        // Bake the food photo onto the surface as the baseColor texture. This
+        // is what actually renders in USDZ/QuickLook/RealityKit (vertex colours
+        // are ignored), so the food looks real instead of grey.
+        if let textureURL {
+            let sampler = MDLTextureSampler()
+            sampler.texture = MDLURLTexture(
+                url: textureURL, name: sanitised(label: label) + "_tex"
+            )
+            let baseColor = MDLMaterialProperty(name: "baseColor", semantic: .baseColor)
+            baseColor.type = .texture
+            baseColor.textureSamplerValue = sampler
+            material.setProperty(baseColor)
+        }
         return material
     }
 

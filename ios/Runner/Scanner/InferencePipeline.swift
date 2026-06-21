@@ -299,7 +299,11 @@ final class InferencePipeline {
         }
 
         let baseName = "scan3d_\(Int(Date().timeIntervalSince1970 * 1000))"
-        guard let url = exporter.export(objects: foodObjects, baseName: baseName) else {
+        guard let url = exporter.export(
+            objects: foodObjects,
+            baseName: baseName,
+            textureSource: topFrame.pixelBuffer
+        ) else {
             print("[PIPELINE] export success: false")
             print("[PIPELINE] model3dPath: nil")
             print("[PIPELINE] file exists: false")

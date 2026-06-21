@@ -54,8 +54,11 @@ final class MultiFrameRecorder {
 
     /// 10 fps sample rate — enough for reconstruction without excessive memory use.
     private let sampleInterval: TimeInterval = 0.1
-    /// 20 frames == 2 seconds at 10 fps.
-    private let maxFrames = 20
+    /// 40 frames == 4 seconds at 10 fps — the HARD upper bound. The sweep
+    /// normally finishes earlier: the controller stops recording the moment the
+    /// top-to-side arc completes (scan_screen pitch early-stop), so a steady
+    /// user uses far fewer frames and only a slow sweep reaches this cap.
+    private let maxFrames = 40
     /// Keep a short stable top-view lock before side-view depth is allowed to influence volume.
     private let maxTopViewFrames = 4
 

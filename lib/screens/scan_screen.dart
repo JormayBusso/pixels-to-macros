@@ -63,10 +63,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   double _ambientLux = -1.0;
   int _pitchTickCounter = 0;
 
-  /// The native recorder keeps 20 frames at ~10 fps, so the user-facing sweep
-  /// must also be a ~2 second top-to-side motion. This keeps the visual UX,
-  /// captured frames, 3-D reconstruction, and volume calculation aligned.
-  static const _maxRecordDuration = Duration(seconds: 2);
+  /// The native recorder keeps up to 40 frames at ~10 fps (a 4-second HARD
+  /// cap). The sweep normally finishes earlier: recording auto-stops the moment
+  /// the phone completes the top-to-side arc (pitch > side-view threshold) once
+  /// [_minRecordDuration] has elapsed, so a steady user is done in ~1.6–2.5 s
+  /// and only a slow sweep uses the full 4 s.
+  static const _maxRecordDuration = Duration(seconds: 4);
   static const _minRecordDuration = Duration(milliseconds: 1600);
   static const _timerInterval = Duration(milliseconds: 80);
 
@@ -336,7 +338,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     }
 
     // Recording stops automatically when the phone reaches vertical (side-view)
-    // or at the 2-second native frame budget. The user should move in one
+    // or at the 4-second native frame budget. The user should move in one
     // smooth line from top view to side view during this window.
     final totalTicks =
         _maxRecordDuration.inMilliseconds ~/ _timerInterval.inMilliseconds;

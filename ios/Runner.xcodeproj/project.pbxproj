@@ -20,6 +20,7 @@
 		5CAF5253687665D15E7C256E /* Food3DExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1683C3A3958B6FE8DA56E51 /* Food3DExporter.swift */; };
 		5D01C0FF0017F00000000001 /* MonocularVolumeEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D01C0FF0017F00000000000 /* MonocularVolumeEstimator.swift */; };
 		6F06832C86A68E1812C45917 /* ScannerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF95F7274EDE7D628FF00B57 /* ScannerPlugin.swift */; };
+		710444ACC7C21EE9F504D11B /* Food3DTextureBaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F2D2ADD144D6E8613B574CF /* Food3DTextureBaker.swift */; };
 		716DF690045748758CCFCC22 /* PointCloudExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4147F5FBF2C3FF8FB550B03 /* PointCloudExporter.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
@@ -107,6 +108,7 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		97D9CB2E74FBD4A952254CFF /* Scan3DViewerPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Scan3DViewerPlugin.swift; sourceTree = "<group>"; };
 		9A430111209B9F1B66F2EB7D /* ARCameraPreviewPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ARCameraPreviewPlugin.swift; sourceTree = "<group>"; };
+		9F2D2ADD144D6E8613B574CF /* Food3DTextureBaker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Food3DTextureBaker.swift; sourceTree = "<group>"; };
 		AA000001000000000000001A /* ObjCExceptionCatcher.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ObjCExceptionCatcher.m; sourceTree = "<group>"; };
 		BC46B42D77B588FF7A5F69A7 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		BCCC3C44B46334EE1A23C7B2 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
@@ -184,6 +186,7 @@
 				97D9CB2E74FBD4A952254CFF /* Scan3DViewerPlugin.swift */,
 				F457EE21D28F8991FB1794F2 /* YOLOSegmentationService.swift */,
 				D64D28332E08F7760383C9EB /* FoodClassifierService.swift */,
+				9F2D2ADD144D6E8613B574CF /* Food3DTextureBaker.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -524,6 +527,7 @@
 				95DB82C4E0F591668815CCC5 /* Scan3DViewerPlugin.swift in Sources */,
 				354025B4414946373AE0E35E /* YOLOSegmentationService.swift in Sources */,
 				7A791A37CDFED49A71146C82 /* FoodClassifierService.swift in Sources */,
+				710444ACC7C21EE9F504D11B /* Food3DTextureBaker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

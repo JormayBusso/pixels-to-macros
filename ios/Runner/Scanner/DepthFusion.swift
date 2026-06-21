@@ -348,6 +348,13 @@ final class DepthFusion {
         let faces: [Int]
         /// Per-vertex RGB, length == vertices.count * 3.
         let colors: [UInt8]
+        /// Per-vertex texture coordinates (USD `st`, bottom-left origin),
+        /// length == vertices.count. Projected from the top frame so the
+        /// exporter can bake the real RGB photo onto the mesh as a baseColor
+        /// texture — USDZ/RealityKit ignore per-vertex colours, which (together
+        /// with the planar-YCbCr `capturedImage` defeating BGRA colour
+        /// sampling) is why meshes rendered grey.
+        let uvs: [SIMD2<Float>]
         /// Number of occupied voxels backing this object (post plate
         /// subtraction). Mirrors the source `FoodVoxelCluster.voxelKeys.count`
         /// so debug overlays can show voxel density alongside volume.
@@ -525,6 +532,28 @@ final class DepthFusion {
                 }
             }
 
+            // Per-vertex UVs: project each world vertex into the top frame so
+            // the exporter can bake the real RGB photo as a baseColor texture.
+            // Independent of the (BGRA) colour path above — UVs need only the
+            // camera projection, so they work even when colour sampling can't
+            // read the planar YCbCr buffer.
+            var uvs = [SIMD2<Float>](repeating: SIMD2(0.5, 0.5),
+                                     count: mesh.vertices.count)
+            if abs(fx) > 0.0001, abs(fy) > 0.0001, imageWidth > 0, imageHeight > 0 {
+                let iw = Float(imageWidth)
+                let ih = Float(imageHeight)
+                for i in 0..<mesh.vertices.count {
+                    let v = mesh.vertices[i]
+                    let cam = camInv * simd_float4(v.x, v.y, v.z, 1)
+                    guard cam.z > 0.001 else { continue }
+                    let upx = fx * cam.x / cam.z + cx
+                    let vpx = fy * cam.y / cam.z + cy
+                    let uu = min(max(upx / iw, 0), 1)
+                    let vv = min(max(vpx / ih, 0), 1)
+                    uvs[i] = SIMD2(uu, 1 - vv) // USD `st` origin is bottom-left
+                }
+            }
+
             objects.append(Food3DObject(
                 id: cluster.id,
                 label: cluster.label,
@@ -532,6 +561,7 @@ final class DepthFusion {
                 vertices: mesh.vertices,
                 faces: mesh.faces,
                 colors: colors,
+                uvs: uvs,
                 voxelCount: cluster.voxelKeys.count,
                 volumeCm3: cluster.volumeCm3
             ))

@@ -394,6 +394,10 @@ final class MonocularVolumeEstimator {
             vertices: vertices,
             faces: faces,
             colors: colors,
+            // No projected UVs: this is a synthetic local-space prism and the
+            // monocular path exports without a texture source, so texturing is
+            // a later step. Empty UVs make the exporter skip the texture path.
+            uvs: [],
             voxelCount: voxelCount,
             volumeCm3: volumeCm3
         )
