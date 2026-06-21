@@ -115,6 +115,73 @@ shutil.make_archive('/kaggle/working/FoodSegYolo', 'zip', out)
 print('Download /kaggle/working/FoodSegYolo.zip from the Output tab.')
 ```
 
+## Cell 5 - Export the nateraw/food ViT classifier (zipped as FoodClassifier)
+
+```python
+# Cell 5 - Fine-grained Food-101 classifier -> Core ML classifier model.
+# Runs ONCE per scan on-device (see FoodClassifierService.swift), so a ViT is
+# affordable. ~165 MB at FP16 — large; swap REPO for a MobileViT/EfficientFormer
+# Food-101 checkpoint if you need a lighter model.
+!pip install -q transformers coremltools
+
+import json, shutil
+from pathlib import Path
+import numpy as np
+import torch
+import coremltools as ct
+from transformers import AutoModelForImageClassification, AutoImageProcessor
+
+REPO = 'nateraw/food'
+processor = AutoImageProcessor.from_pretrained(REPO)
+model = AutoModelForImageClassification.from_pretrained(REPO).eval()
+
+size = 224
+mean = list(map(float, processor.image_mean))
+std = list(map(float, processor.image_std))
+
+# Bake the per-channel ViT normalisation INTO the graph (Core ML ImageType
+# `scale` is scalar-only and cannot express per-channel std). Swift then just
+# hands raw RGB pixels to the model.
+class Wrapped(torch.nn.Module):
+    def __init__(self, m, mean, std):
+        super().__init__()
+        self.m = m
+        self.register_buffer('mean', torch.tensor(mean).view(1, 3, 1, 1))
+        self.register_buffer('std', torch.tensor(std).view(1, 3, 1, 1))
+
+    def forward(self, x):          # x in [0,1] from ImageType scale=1/255
+        x = (x - self.mean) / self.std
+        return self.m(pixel_values=x).logits
+
+wrapped = Wrapped(model, mean, std).eval()
+traced = torch.jit.trace(wrapped, torch.rand(1, 3, size, size))
+
+labels = [model.config.id2label[i] for i in range(len(model.config.id2label))]
+
+mlmodel = ct.convert(
+    traced,
+    inputs=[ct.ImageType(name='image', shape=(1, 3, size, size),
+                         scale=1 / 255.0, bias=[0.0, 0.0, 0.0],
+                         color_layout=ct.colorlayout.RGB)],
+    classifier_config=ct.ClassifierConfig(labels),  # -> VNClassificationObservation
+    minimum_deployment_target=ct.target.iOS17,
+    compute_precision=ct.precision.FLOAT16,
+    convert_to='mlprogram',
+)
+mlmodel.short_description = 'Food-101 ViT classifier (nateraw/food)'
+
+out = Path('/kaggle/working/FoodClassifier')
+out.mkdir(exist_ok=True)
+mlmodel.save(str(out / 'FoodClassifier.mlpackage'))
+(out / 'FoodClassifierLabels.json').write_text(
+    json.dumps({str(i): l for i, l in enumerate(labels)}, indent=2)
+)
+shutil.make_archive('/kaggle/working/FoodClassifier', 'zip', out)
+print('Download /kaggle/working/FoodClassifier.zip from the Output tab.')
+print('On the Mac: xcrun coremlcompiler compile FoodClassifier.mlpackage ios/Runner/')
+print('Then drag ios/Runner/FoodClassifier.mlmodelc into the Runner target.')
+```
+
 ## Notes
 
 - **Reality check on accuracy:** FoodSeg103/154 has 100+ fine-grained, imbalanced
