@@ -928,33 +928,4 @@ class _NutrientDetailPanel extends StatelessWidget {
   }
 }
 
-// ── Element symbol icon (periodic-table style) ────────────────────────────────
-
-class _ElementIcon extends StatelessWidget {
-  const _ElementIcon(this.symbol, this.color);
-  final String symbol;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 24,
-      height: 24,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        symbol,
-        style: TextStyle(
-          fontSize: symbol.length > 2 ? 8 : 10,
-          fontWeight: FontWeight.w800,
-          color: color,
-          height: 1,
-        ),
-      ),
-    );
-  }
-}
+// (_ElementIcon removed — unused.)

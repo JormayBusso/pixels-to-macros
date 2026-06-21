@@ -47,12 +47,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
     'skin',
   ];
 
-  /// Mock data example requested by product spec.
-  /// This is a sample map demonstrating direct organ-id updates.
-  static const Map<String, int> mockHighlightScores = {
-    'liver': 82,
-    'brain': 41,
-  };
+  /// Mock data example removed — was unused.
 
   @override
   void initState() {

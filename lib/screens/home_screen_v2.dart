@@ -112,9 +112,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       if (food.id != null) {
                         await DatabaseService.instance
                             .deleteDetectedFood(food.id!);
-                        await ref
-                            .read(dailyIntakeProvider.notifier)
-                            .load();
+                        await ref.read(dailyIntakeProvider.notifier).load();
                         await ref.read(historyProvider.notifier).load();
                       }
                       if (ctx.mounted) Navigator.pop(ctx);
@@ -133,18 +131,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           double.tryParse(calController.text) ?? avgCal;
                       if (food.id != null) {
                         // Keep the same ± spread ratio
-                        final ratio = avgCal > 0
-                            ? newCal / avgCal
-                            : 1.0;
+                        final ratio = avgCal > 0 ? newCal / avgCal : 1.0;
                         await DatabaseService.instance.updateDetectedFood(
                           food.id!,
                           label: food.label,
                           caloriesMin: food.caloriesMin * ratio,
                           caloriesMax: food.caloriesMax * ratio,
                         );
-                        await ref
-                            .read(dailyIntakeProvider.notifier)
-                            .load();
+                        await ref.read(dailyIntakeProvider.notifier).load();
                         await ref.read(historyProvider.notifier).load();
                       }
                       if (ctx.mounted) Navigator.pop(ctx);
@@ -288,7 +282,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         if (streak.currentStreak > 0) ...[
                           Container(
                             key: TourKeys.streakBadge,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [Color(0xFFFF5A00), Color(0xFFFFA000)],
@@ -298,7 +293,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFFFF8C00).withValues(alpha: 0.45),
+                                  color: const Color(0xFFFF8C00)
+                                      .withValues(alpha: 0.45),
                                   blurRadius: 16,
                                   offset: const Offset(0, 6),
                                 ),
@@ -307,7 +303,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text('🔥', style: TextStyle(fontSize: 20, height: 1)),
+                                const Text('🔥',
+                                    style: TextStyle(fontSize: 20, height: 1)),
                                 const SizedBox(width: 8),
                                 Text(
                                   '${streak.currentStreak} day streak',
@@ -352,8 +349,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: const _HydrationCard(),
                     ),
                     const SizedBox(height: 16),
-
-
 
                     // ── Weekly challenges ────────────────────────────────────
                     const WeeklyChallengesCard(),
@@ -483,8 +478,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           onPressed: () =>
                                               Navigator.pop(ctx, true),
                                           child: const Text('Remove',
-                                              style: TextStyle(
-                                                  color: Colors.red)),
+                                              style:
+                                                  TextStyle(color: Colors.red)),
                                         ),
                                       ],
                                     ),
@@ -533,8 +528,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         ),
                                         const SizedBox(width: 4),
                                         Icon(Icons.edit_outlined,
-                                            size: 14,
-                                            color: AppTheme.gray300),
+                                            size: 14, color: AppTheme.gray300),
                                       ],
                                     ),
                                   ),
@@ -862,130 +856,6 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _StreakCard extends StatelessWidget {
-  const _StreakCard({required this.streak});
-  final StreakState streak;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = streak.currentStreak > 0;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: active
-            ? const LinearGradient(
-                colors: [Color(0xFFFF6B00), Color(0xFFFF9F00)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : const LinearGradient(
-                colors: [Color(0xFFF5F5F5), Color(0xFFE0E0E0)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: active
-            ? [
-                BoxShadow(
-                  color: const Color(0xFFFF8C00).withValues(alpha: 0.35),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
-                ),
-              ]
-            : [],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        child: Row(
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: active
-                    ? Colors.white.withValues(alpha: 0.20)
-                    : const Color(0xFFE0E0E0),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  active ? '🔥' : '💤',
-                  style: const TextStyle(fontSize: 32, height: 1),
-                ),
-              ),
-            ),
-            const SizedBox(width: 18),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    active
-                        ? '${streak.currentStreak} day streak!'
-                        : 'No streak yet',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: active ? Colors.white : AppTheme.gray700,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    streak.scannedToday
-                        ? '✅ Logged today — keep it up!'
-                        : active
-                            ? 'Scan today to keep the fire going!'
-                            : 'Start scanning to build your streak.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: active
-                          ? Colors.white.withValues(alpha: 0.85)
-                          : AppTheme.gray500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: active
-                    ? Colors.white.withValues(alpha: 0.22)
-                    : const Color(0xFFE0E0E0),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    '${streak.longestStreak}',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: active ? Colors.white : AppTheme.gray600,
-                      height: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'best',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: active
-                          ? Colors.white.withValues(alpha: 0.80)
-                          : AppTheme.gray400,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ── Goal progress card ────────────────────────────────────────────────────────
 
 class _GoalProgressCard extends StatelessWidget {
@@ -1126,9 +996,7 @@ class _MacroRow extends StatelessWidget {
     // Healthy state:
     //  • Carbs (isLimit=true):  healthy = under the limit (green = safe)
     //  • Others (protein, kcal, fat):  healthy = ≥85 % of target reached
-    final isHealthy = isLimit
-        ? !isOver
-        : current >= (target * 0.85).round();
+    final isHealthy = isLimit ? !isOver : current >= (target * 0.85).round();
 
     final barColor = isOver
         ? Colors.red.shade500
@@ -1204,7 +1072,8 @@ class _RecommendationsCard extends ConsumerWidget {
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
               ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
               children: [
@@ -1230,7 +1099,8 @@ class _RecommendationsCard extends ConsumerWidget {
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: context.primary500.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
@@ -1297,7 +1167,8 @@ class _RecommendationsCard extends ConsumerWidget {
                                   children: [
                                     Icon(Icons.tips_and_updates_outlined,
                                         size: 12,
-                                        color: rec.color.withValues(alpha: 0.7)),
+                                        color:
+                                            rec.color.withValues(alpha: 0.7)),
                                     const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
@@ -1452,7 +1323,10 @@ class _HydrationCard extends ConsumerWidget {
               children: [
                 _WaterButton(label: '+150 ml', ml: 150),
                 const SizedBox(width: 8),
-                _WaterButton(key: TourKeys.hydrationQuickAdd200, label: '+200 ml', ml: 200),
+                _WaterButton(
+                    key: TourKeys.hydrationQuickAdd200,
+                    label: '+200 ml',
+                    ml: 200),
                 const SizedBox(width: 8),
                 _WaterButton(label: '+250 ml', ml: 250),
                 const SizedBox(width: 8),
@@ -1638,6 +1512,7 @@ class _WaterButton extends ConsumerWidget {
 String _fmtMl(int ml) {
   if (ml < 1000) return '$ml ml';
   final s = (ml / 1000.0).toStringAsFixed(2);
-  final trimmed = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+  final trimmed =
+      s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
   return '$trimmed L';
 }
