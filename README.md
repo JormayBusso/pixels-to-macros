@@ -77,7 +77,6 @@ lib/
 │   ├── eval_dashboard_screen.dart    Accuracy + benchmark metrics
 │   ├── food_database_screen.dart     Browse + add custom foods
 │   ├── ground_truth_screen.dart      Enter actual measurements
-│   ├── history_screen.dart           Searchable scan history
 │   ├── home_screen_v2.dart           Dashboard with ring + streak + foods
 │   ├── main_shell.dart               4-tab navigation + scan FABs
 │   ├── manual_entry_screen.dart      Manual food + portion input
