@@ -405,9 +405,10 @@ final class YOLOSegmentationService {
             }
         }
 
-        // Highest confidence first: DepthFusion keeps the first label on
-        // overlapping pixels, so the best detection should win.
-        objects.sort { $0.confidence > $1.confidence }
+        // Largest instance first: matches the dense-seg convention so the
+        // pipeline's "segments[0] = largest" label-refinement logic holds, and
+        // the bigger food wins any rare overlapping pixel in DepthFusion.
+        objects.sort { $0.pixelCount > $1.pixelCount }
         return objects
     }
 

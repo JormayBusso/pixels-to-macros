@@ -24,6 +24,7 @@
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A232C2CA52BEB0C154F86E /* ARCameraPreviewPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A430111209B9F1B66F2EB7D /* ARCameraPreviewPlugin.swift */; };
+		7A791A37CDFED49A71146C82 /* FoodClassifierService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D64D28332E08F7760383C9EB /* FoodClassifierService.swift */; };
 		85261BCEEAF8890AB5AD6966 /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EB40F0EA6B69F7366A4C0A6D /* Vision.framework */; };
 		8799FEB7EE3524C3187E1815 /* ModelIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 45253471A282FCFFF61F56CE /* ModelIO.framework */; };
 		9067585C0B3681D95E7B0E7B /* MLKitFoodValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140240A56278DC831D8F29B5 /* MLKitFoodValidator.swift */; };
@@ -116,6 +117,7 @@
 		C3DBAEB08B6A6E88C4984849 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		C973C24EACDEDA0CA84F5A25 /* VolumeCalculator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VolumeCalculator.swift; sourceTree = "<group>"; };
 		D4147F5FBF2C3FF8FB550B03 /* PointCloudExporter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PointCloudExporter.swift; sourceTree = "<group>"; };
+		D64D28332E08F7760383C9EB /* FoodClassifierService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FoodClassifierService.swift; sourceTree = "<group>"; };
 		D713E30A5540B7F350AC47C2 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		DD21DFEC0A22BBFCB8544CBC /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E94BBFB04F45F07C2C97BB54 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -181,6 +183,7 @@
 				C1683C3A3958B6FE8DA56E51 /* Food3DExporter.swift */,
 				97D9CB2E74FBD4A952254CFF /* Scan3DViewerPlugin.swift */,
 				F457EE21D28F8991FB1794F2 /* YOLOSegmentationService.swift */,
+				D64D28332E08F7760383C9EB /* FoodClassifierService.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -520,6 +523,7 @@
 				5CAF5253687665D15E7C256E /* Food3DExporter.swift in Sources */,
 				95DB82C4E0F591668815CCC5 /* Scan3DViewerPlugin.swift in Sources */,
 				354025B4414946373AE0E35E /* YOLOSegmentationService.swift in Sources */,
+				7A791A37CDFED49A71146C82 /* FoodClassifierService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -20,6 +20,11 @@ final class InferencePipeline {
     /// YOLO*-seg instance-segmentation path (upgraded branch). Used when a
     /// `*-seg.mlmodelc` is bundled; otherwise the dense SegFormer service runs.
     private let yoloSegmentationService = YOLOSegmentationService()
+    /// Optional fine-grained food classifier (crop-and-classify hybrid). Runs
+    /// once per scan over the largest instance crops to refine labels, then
+    /// unloads before the memory-heavy 3-D phase. Inert until a classifier
+    /// `.mlmodelc` is bundled.
+    private let foodClassifier = FoodClassifierService()
     /// Generic Google ML Kit Image Labeler used as (1) a hard food-presence
     /// gate before we trust segmentation, and (2) a label-override hint that
     /// fixes mislabelled foods that the bundled 10-class mini segmentation
@@ -150,6 +155,16 @@ final class InferencePipeline {
         // Override the largest segment's label with ML Kit's best specific
         // food when available. See `applyMlKitLabelOverride` for the policy.
         segments = applyMlKitLabelOverride(segments: segments, mlKit: mlKitResult)
+
+        // Crop-and-classify refinement: when a dedicated fine-grained food
+        // classifier is bundled, run it ONCE on the top frame over the largest
+        // instance crops for higher-accuracy names than whole-frame ML Kit.
+        segments = refineLabelsWithClassifier(
+            segments: segments,
+            frame: preprocessedRGB,
+            maskWidth: preprocessor.modelInputWidth,
+            maskHeight: preprocessor.modelInputHeight
+        )
 
         guard passesFoodPresenceGate(
             segments: segments,
@@ -447,6 +462,85 @@ final class InferencePipeline {
         out[0] = overridden
         print("[InferencePipeline] ML Kit override: \(largest.label) → \(best.normalised) (conf \(best.confidence))")
         return out
+    }
+
+    /// Crop-and-classify refinement (hybrid). For the few largest instances,
+    /// crop the food region (via Vision `regionOfInterest`, no extra buffer)
+    /// and replace the label with a dedicated classifier's high-accuracy guess.
+    /// Bounded to `topK` crops and unloaded afterwards to protect RAM.
+    private func refineLabelsWithClassifier(
+        segments: [SegmentationService.SegmentedObject],
+        frame: CVPixelBuffer,
+        maskWidth: Int,
+        maskHeight: Int
+    ) -> [SegmentationService.SegmentedObject] {
+        guard foodClassifier.isAvailable, !segments.isEmpty else { return segments }
+        defer { foodClassifier.unload() }
+
+        let topK = 3
+        let confidenceFloor: Float = 0.45
+        let order = segments.indices.sorted {
+            segments[$0].pixelCount > segments[$1].pixelCount
+        }
+        var updated = segments
+        for index in order.prefix(topK) {
+            let segment = segments[index]
+            guard let roi = Self.regionOfInterest(
+                for: segment.mask, width: maskWidth, height: maskHeight
+            ) else { continue }
+            do {
+                guard let (label, confidence) = try foodClassifier.classify(
+                    pixelBuffer: frame, regionOfInterest: roi
+                ), confidence >= confidenceFloor else { continue }
+                updated[index] = SegmentationService.SegmentedObject(
+                    label: label,
+                    classIndex: segment.classIndex,
+                    mask: segment.mask,
+                    pixelCount: segment.pixelCount,
+                    centroid: segment.centroid,
+                    confidence: max(segment.confidence, confidence)
+                )
+                print("[Classifier] refined \(segment.label) → \(label) (\(String(format: "%.2f", confidence)))")
+            } catch {
+                print("[Classifier] classify failed: \(error)")
+                break // model trouble — stop refining this scan
+            }
+        }
+        return updated
+    }
+
+    /// Tight bounding box of a binary mask as a Vision region of interest
+    /// (normalised, bottom-left origin), padded ~8% for classifier context.
+    private static func regionOfInterest(
+        for mask: [[UInt8]], width: Int, height: Int
+    ) -> CGRect? {
+        guard width > 0, height > 0, mask.count == height else { return nil }
+        var minRow = height, maxRow = -1, minCol = width, maxCol = -1
+        for r in 0..<height {
+            let row = mask[r]
+            if row.count != width { continue }
+            for c in 0..<width where row[c] == 1 {
+                if r < minRow { minRow = r }
+                if r > maxRow { maxRow = r }
+                if c < minCol { minCol = c }
+                if c > maxCol { maxCol = c }
+            }
+        }
+        guard maxRow >= minRow, maxCol >= minCol else { return nil }
+        let padRow = Int(Double(maxRow - minRow + 1) * 0.08)
+        let padCol = Int(Double(maxCol - minCol + 1) * 0.08)
+        let r0 = max(0, minRow - padRow)
+        let r1 = min(height - 1, maxRow + padRow)
+        let c0 = max(0, minCol - padCol)
+        let c1 = min(width - 1, maxCol + padCol)
+        let w = Double(width)
+        let h = Double(height)
+        return CGRect(
+            x: Double(c0) / w,
+            y: 1.0 - Double(r1 + 1) / h, // flip to Vision's bottom-left origin
+            width: Double(c1 - c0 + 1) / w,
+            height: Double(r1 - r0 + 1) / h
+        )
     }
 
     private func estimateFoodHeightCmIfAvailable(
