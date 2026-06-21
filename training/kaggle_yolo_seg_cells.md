@@ -1,10 +1,12 @@
 # Kaggle Cells: FoodSeg → YOLO11-seg (Core ML) Training
 
-Set the Kaggle accelerator to **GPU T4 x2** (training uses one GPU by default).
+Set the Kaggle accelerator to **GPU T4** — a single T4 is enough for this run.
+(Dual-GPU DDP works in theory but is unreliable inside Kaggle notebooks, so the
+cells use one GPU; selecting "T4 x2" would just leave the second card idle.)
 
 This is the `upgraded`-branch path: a YOLO11-seg instance-segmentation model that
 trains far faster than SegFormer (COCO-pretrained) and exports straight to Core ML
-with `format=coreml nms=True`. It trains on the **same FoodSeg dataset** — there is
+with `format=coreml` (NMS runs on-device in Swift). It trains on the **same FoodSeg dataset** — there is
 no public "food-segmentation" checkpoint to download; the professional result comes
 from fine-tuning YOLO11-seg on FoodSeg.
 
@@ -73,7 +75,7 @@ results = model.train(
     epochs=100,
     imgsz=640,
     batch=16,          # drop to 8 if you hit CUDA OutOfMemory
-    device=0,          # single T4. For T4x2 DDP use device=[0, 1]
+    device=0,          # one T4 is enough; multi-GPU DDP is flaky in notebooks
     patience=25,       # early stop if val mAP plateaus
     cos_lr=True,
     close_mosaic=10,
