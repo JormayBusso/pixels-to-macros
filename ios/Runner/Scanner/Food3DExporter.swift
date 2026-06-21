@@ -210,6 +210,11 @@ final class Food3DExporter {
         // PhysicallyPlausible scattering keeps materials sensible in USD/USDZ.
         // One material per food object so per-instance edits stay isolated.
         let scatter = MDLPhysicallyPlausibleScatteringFunction()
+        // Food is matte-to-semi-glossy: a high roughness with zero metalness
+        // reads as natural and appetising instead of a shiny plastic surface,
+        // in both the SceneKit and RealityKit PBR viewers.
+        scatter.roughness.floatValue = 0.65
+        scatter.metallic.floatValue = 0.0
         let material = MDLMaterial(name: sanitised(label: label), scatteringFunction: scatter)
 
         // Bake the food photo onto the surface as the baseColor texture. This
