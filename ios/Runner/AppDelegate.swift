@@ -43,6 +43,13 @@ import Flutter
             withId: Scan3DViewerFactory.viewType
         )
 
+        // ── Premium RealityView food viewer (Step 3) ───────────────────────
+        let realityReg = flutterEngine.registrar(forPlugin: "Food3DRealityPlugin")!
+        realityReg.register(
+            Food3DRealityFactory(),
+            withId: Food3DRealityFactory.viewType
+        )
+
         return true
     }
 }
