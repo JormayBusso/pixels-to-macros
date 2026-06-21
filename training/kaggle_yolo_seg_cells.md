@@ -95,9 +95,11 @@ import yaml
 from ultralytics import YOLO
 
 best = YOLO(str(BEST))
-# nms=True bakes non-max-suppression into the model so iOS gets clean detections.
-mlpackage = best.export(format='coreml', nms=True, imgsz=640, half=True)
+# NOTE: nms=True is NOT supported for *segmentation* Core ML export, so NMS is
+# performed on-device in Swift (YOLOSegmentationService). Export raw outputs.
+mlpackage = best.export(format='coreml', nms=False, imgsz=640, half=True)
 print('Core ML ->', mlpackage)
+print('Rename the .mlpackage to FoodSegYolo.mlpackage before adding it to iOS.')
 
 # Write the class label map iOS reads (index -> name), matching the existing
 # FoodSegmentationLabels.json convention.
@@ -121,9 +123,16 @@ print('Download /kaggle/working/FoodSegYolo.zip from the Output tab.')
   a fraction of the epochs and runs much faster on-device. If you only need
   density-bucket accuracy for volume→calories, consider merging rare classes in
   `category_id.txt` before converting — that is the single biggest accuracy lever.
-- **iOS wiring (Phase 2):** the current Swift `SegmentationService` expects a dense
-  `[1, C, 512, 512]` semantic tensor. A YOLO-seg Core ML model outputs
-  detections + prototype masks instead, so `SegmentationService` and
-  `DepthFusion.assignLabels` need a one-time rewrite to composite YOLO instance
-  masks into the per-pixel label grid. Do that against the real exported
-  `.mlpackage` so the output tensor names/shapes match exactly.
+- **iOS wiring (done):** `ios/Runner/Scanner/YOLOSegmentationService.swift` already
+  decodes the raw outputs, runs manual class-aware NMS, assembles the prototype
+  masks, and emits the same `SegmentedObject` contract the depth/volume pipeline
+  uses — so `DepthFusion` turns the 2-D masks into 3-D volume unchanged. To
+  activate it: compile and bundle the trained export as `FoodSegYolo.mlmodelc`:
+
+  ```bash
+  xcrun coremlcompiler compile FoodSegYolo.mlpackage ios/Runner/
+  # then drag ios/Runner/FoodSegYolo.mlmodelc into the Runner target in Xcode
+  ```
+
+  `InferencePipeline` auto-selects the YOLO path when that model is present and
+  falls back to SegFormer otherwise.

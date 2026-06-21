@@ -12,6 +12,7 @@
 		24CBC83F2DA4A19876130207 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6CAAE6E0DFEB32AB337D33B7 /* CoreVideo.framework */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3325C11CF380F60DC2317633 /* SegmentationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753DB09FA42E27044AE313AF /* SegmentationService.swift */; };
+		354025B4414946373AE0E35E /* YOLOSegmentationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F457EE21D28F8991FB1794F2 /* YOLOSegmentationService.swift */; };
 		37D095512B3AB36EABD18AD9 /* BarcodeScannerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B31312A6A0EAC58E824D6DC /* BarcodeScannerPlugin.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		3D6F446E71D9A26DB407808E /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D713E30A5540B7F350AC47C2 /* AVFoundation.framework */; };
@@ -84,8 +85,8 @@
 		37F48EF5C5BB2FDE9E14640F /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		45253471A282FCFFF61F56CE /* ModelIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ModelIO.framework; path = System/Library/Frameworks/ModelIO.framework; sourceTree = SDKROOT; };
-		5E044877C9BA5C5BD6249387 /* DepthFusion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DepthFusion.swift; sourceTree = "<group>"; };
 		5D01C0FF0017F00000000000 /* MonocularVolumeEstimator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonocularVolumeEstimator.swift; sourceTree = "<group>"; };
+		5E044877C9BA5C5BD6249387 /* DepthFusion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DepthFusion.swift; sourceTree = "<group>"; };
 		6CAAE6E0DFEB32AB337D33B7 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -120,6 +121,7 @@
 		E94BBFB04F45F07C2C97BB54 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB40F0EA6B69F7366A4C0A6D /* Vision.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Vision.framework; path = System/Library/Frameworks/Vision.framework; sourceTree = SDKROOT; };
 		ECDA3130CA35D9F91C47196F /* FramePreprocessor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FramePreprocessor.swift; sourceTree = "<group>"; };
+		F457EE21D28F8991FB1794F2 /* YOLOSegmentationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = YOLOSegmentationService.swift; sourceTree = "<group>"; };
 		F484AD302BB78A36A902D2ED /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -178,6 +180,7 @@
 				140240A56278DC831D8F29B5 /* MLKitFoodValidator.swift */,
 				C1683C3A3958B6FE8DA56E51 /* Food3DExporter.swift */,
 				97D9CB2E74FBD4A952254CFF /* Scan3DViewerPlugin.swift */,
+				F457EE21D28F8991FB1794F2 /* YOLOSegmentationService.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -516,6 +519,7 @@
 				9067585C0B3681D95E7B0E7B /* MLKitFoodValidator.swift in Sources */,
 				5CAF5253687665D15E7C256E /* Food3DExporter.swift in Sources */,
 				95DB82C4E0F591668815CCC5 /* Scan3DViewerPlugin.swift in Sources */,
+				354025B4414946373AE0E35E /* YOLOSegmentationService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

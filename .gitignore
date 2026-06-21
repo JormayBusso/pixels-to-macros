@@ -70,5 +70,6 @@ logs/
 *.tflite
 training/output/last_checkpoint.pth
 *.pth
+*.pt
 *.mlpackage
 data/FoodSeg103.zip

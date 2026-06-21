@@ -17,6 +17,9 @@ final class InferencePipeline {
     private let plateDetector       = PlateDetector()
     private let preprocessor        = FramePreprocessor()
     private let segmentationService = SegmentationService()
+    /// YOLO*-seg instance-segmentation path (upgraded branch). Used when a
+    /// `*-seg.mlmodelc` is bundled; otherwise the dense SegFormer service runs.
+    private let yoloSegmentationService = YOLOSegmentationService()
     /// Generic Google ML Kit Image Labeler used as (1) a hard food-presence
     /// gate before we trust segmentation, and (2) a label-override hint that
     /// fixes mislabelled foods that the bundled 10-class mini segmentation
@@ -126,7 +129,11 @@ final class InferencePipeline {
         // ── 3. Segmentation ─────────────────────────────────────────────
         var segments: [SegmentationService.SegmentedObject]
         do {
-            segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
+            if yoloSegmentationService.isAvailable {
+                segments = try yoloSegmentationService.segment(pixelBuffer: preprocessedRGB)
+            } else {
+                segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
+            }
         } catch {
             print("[SCAN] segmentation THREW: \(error)")
             throw PipelineError.segmentationFailed(error)
