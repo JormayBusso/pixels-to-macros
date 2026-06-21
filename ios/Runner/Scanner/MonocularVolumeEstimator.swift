@@ -68,7 +68,13 @@ final class MonocularVolumeEstimator {
             let areaCm2 = Double(seg.pixelCount) / max(scale.pixelsPerCm * scale.pixelsPerCm, 0.0001)
             let widthCm = Double(max(1, footprint.maxCol - footprint.minCol + 1)) / scale.pixelsPerCm
             let depthCm = Double(max(1, footprint.maxRow - footprint.minRow + 1)) / scale.pixelsPerCm
-            let heightCm = prior.heightCm
+            // Conservative height bound: non-stacked plated food is rarely taller
+            // than its narrower measured footprint, so clamp the class height prior
+            // to that lateral extent. This only trims implausible over-estimates of
+            // small items (e.g. a single grape carrying a 5 cm fruit prior) and never
+            // inflates flat foods, keeping calorie estimates on the safe side.
+            let lateralBoundCm = max(0.8, min(widthCm, depthCm))
+            let heightCm = min(prior.heightCm, lateralBoundCm)
             let volumeCm3 = max(6.0, areaCm2 * heightCm * prior.shapeFactor)
             let confidence = confidenceForScale(scale, segmentConfidence: seg.confidence, sideFrame: sideFrame)
             let id = "\(sanitised(seg.label))_\(idx)"

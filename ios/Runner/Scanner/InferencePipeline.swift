@@ -132,9 +132,13 @@ final class InferencePipeline {
         }
 
         // ── 3. Segmentation ─────────────────────────────────────────────
+        // Observability: surface which backend actually ran. The YOLO path is
+        // only active when a *-seg.mlmodelc is bundled; otherwise SegFormer runs.
+        let useYolo = yoloSegmentationService.isAvailable
+        print("[PIPELINE] segmentation backend: \(useYolo ? "YOLO-seg" : "SegFormer")")
         var segments: [SegmentationService.SegmentedObject]
         do {
-            if yoloSegmentationService.isAvailable {
+            if useYolo {
                 segments = try yoloSegmentationService.segment(pixelBuffer: preprocessedRGB)
             } else {
                 segments = try segmentationService.segment(pixelBuffer: preprocessedRGB)
