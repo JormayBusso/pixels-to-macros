@@ -1,6 +1,10 @@
 # ── Node (leftover) ───────────────────────────────────────────────────────────
 node_modules/
 
+# ── Recipe scraper staging (review before merge-staging; never commit raw) ─────
+assets/scraped_staging.json
+assets/scraped_staging.tmp
+
 # ── Flutter / Dart ─────────────────────────────────────────────────────────────
 *.dart_tool/
 .dart_tool/

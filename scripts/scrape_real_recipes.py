@@ -14,6 +14,12 @@ Examples:
     python scripts/scrape_real_recipes.py crawl --target-per-language 800
     python scripts/scrape_real_recipes.py extract --max-recipes 3000
     python scripts/scrape_real_recipes.py all --target-per-language 800 --max-recipes 3000
+
+    # Balance the starved buckets WITHOUT touching the curated DB: scrape only
+    # breakfast/lunch/snack into a staging file, then review + merge:
+    python scripts/scrape_real_recipes.py extract-balanced --per-meal-target 140
+    python scripts/scrape_real_recipes.py merge-staging
+    python scripts/balance_recipe_database.py --write
 """
 
 from __future__ import annotations
@@ -1429,6 +1435,152 @@ def extract_focus_recipes(
     return recipes
 
 
+# ── Meal-balanced staging extraction (breakfast / lunch / snack) ──────────────
+# Unlike `extract`/`all` (which fall back to "dinner" and would re-skew the DB),
+# this keeps ONLY the starved buckets and writes to a SEPARATE staging file so
+# the curated assets/bundled_recipes.json is never mutated by a live crawl.
+BALANCE_MEALS = ("breakfast", "lunch", "snack")
+STAGING_JSON = ROOT / "assets" / "scraped_staging.json"
+
+SNACK_URL_TERMS = (
+    "snack", "smoothie", "shake", "energy-ball", "energy_balls", "energy-balls",
+    "bliss-ball", "granola-bar", "protein-bar", "popcorn", "hummus", "dip",
+    "trail-mix", "tussendoor", "przekaska", "merienda",
+)
+
+# Proteins / dinner words that disqualify a "snack" (mirror of balance script).
+SNACK_DISQUALIFIERS = (
+    "chicken", "beef", "steak", "lamb", "pork", "fish", "salmon", "shrimp",
+    "prawn", "meatball", "pastrami", "chorizo", "sausage", "skewer", "casserole",
+    "curry", "roast", "lasagne", "lasagna", "risotto",
+)
+
+
+def _is_simple_snack(recipe: dict) -> bool:
+    """Keep only grab-and-eat snacks; reject composed/cooked meals."""
+    title = str(recipe.get("title") or "").lower()
+    if any(term in title for term in SNACK_DISQUALIFIERS):
+        return False
+    if len(recipe.get("ingredients") or []) > 7:
+        return False
+    minutes = int(recipe.get("minutes") or recipe.get("time") or 0)
+    if minutes > 25:
+        return False
+    return True
+
+
+def load_recipes_from(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def save_recipes_to(path: Path, recipes: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(recipes, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
+
+
+def balance_url_score(url: str) -> int:
+    score = url_focus_score(url)
+    if any(term in url.lower() for term in SNACK_URL_TERMS):
+        score += 9
+    return score
+
+
+def extract_meal_balanced(
+    output_path: Path,
+    per_meal_target: int,
+    max_recipes: int,
+    delay_min: float,
+    delay_max: float,
+) -> list[dict]:
+    rows = sorted(read_urls(), key=lambda row: (-balance_url_score(row[1]), row[0], row[1]))
+    session = build_session()
+
+    recipes = load_recipes_from(output_path)
+    seen_ids = {r.get("id") for r in recipes}
+    seen_urls = {str(r.get("source_url") or "") for r in recipes if r.get("source_url")}
+    counts = Counter(str(r.get("meal_type") or "").lower() for r in recipes)
+    success_since_save = 0
+
+    def snapshot() -> dict:
+        return {meal: counts[meal] for meal in BALANCE_MEALS}
+
+    def target_reached() -> bool:
+        return all(counts[meal] >= per_meal_target for meal in BALANCE_MEALS)
+
+    print(
+        f"[balance-start] staging={output_path} existing={len(recipes)} "
+        f"per_meal_target={per_meal_target} counts={snapshot()}"
+    )
+
+    for idx, (language, url) in enumerate(rows, 1):
+        if len(recipes) >= max_recipes or target_reached():
+            break
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+
+        delay = random.uniform(delay_min, delay_max)
+        print(f"\n[balance {idx}/{len(rows)}] {language} score={balance_url_score(url)} {url} (sleep {delay:.1f}s)")
+        time.sleep(delay)
+
+        recipe = scrape_recipe(session, language, url)
+        if recipe is None:
+            continue
+        if recipe["id"] in seen_ids:
+            continue
+        meal = str(recipe.get("meal_type") or "").lower()
+        if meal not in BALANCE_MEALS:
+            print(f"[skip] non-target meal {meal}: {recipe['title']}")
+            continue
+        if counts[meal] >= per_meal_target:
+            print(f"[skip] {meal} quota full: {recipe['title']}")
+            continue
+        if meal == "snack" and not _is_simple_snack(recipe):
+            print(f"[skip] complex snack: {recipe['title']}")
+            continue
+
+        recipes.append(recipe)
+        seen_ids.add(recipe["id"])
+        counts[meal] += 1
+        success_since_save += 1
+        print(f"[balance-ok] {recipe['title']} meal={meal} counts={snapshot()}")
+
+        if success_since_save >= SAVE_EVERY:
+            save_recipes_to(output_path, recipes)
+            success_since_save = 0
+
+    save_recipes_to(output_path, recipes)
+    print(f"[balance-complete] {len(recipes)} saved to {output_path} counts={snapshot()}")
+    return recipes
+
+
+def merge_staging(staging_path: Path) -> bool:
+    """Append reviewed staging recipes into the curated DB (dedup by id)."""
+    staged = load_recipes_from(staging_path)
+    if not staged:
+        print(f"[merge] no staged recipes at {staging_path}")
+        return True
+    recipes = load_existing_recipes()
+    seen = {r.get("id") for r in recipes}
+    added = 0
+    for recipe in staged:
+        if recipe.get("id") in seen:
+            continue
+        recipes.append(recipe)
+        seen.add(recipe.get("id"))
+        added += 1
+    save_recipes(recipes)
+    print(f"[merge] added {added} new recipes from {staging_path} -> {OUTPUT_JSON} (total {len(recipes)})")
+    return validate_bundled_recipes()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build bundled real recipe database")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1460,6 +1612,22 @@ def main() -> int:
     focus_parser.add_argument("--delay-max", type=float, default=0.5)
     focus_parser.add_argument("--target-per-bucket", type=int, default=8)
 
+    balanced_parser = sub.add_parser(
+        "extract-balanced",
+        help="Scrape ONLY breakfast/lunch/snack into a staging file (no curated-DB mutation)",
+    )
+    balanced_parser.add_argument("--output", type=str, default=str(STAGING_JSON))
+    balanced_parser.add_argument("--per-meal-target", type=int, default=140)
+    balanced_parser.add_argument("--max-recipes", type=int, default=600)
+    balanced_parser.add_argument("--delay-min", type=float, default=1.0)
+    balanced_parser.add_argument("--delay-max", type=float, default=3.0)
+
+    merge_parser = sub.add_parser(
+        "merge-staging",
+        help="Merge reviewed staging recipes into the curated DB (dedup by id), then validate",
+    )
+    merge_parser.add_argument("--input", type=str, default=str(STAGING_JSON))
+
     sub.add_parser("validate", help="Audit assets/bundled_recipes.json")
     sub.add_parser("reclassify", help="Recompute meal and nutrition-goal labels for bundled recipes")
 
@@ -1490,6 +1658,17 @@ def main() -> int:
             args.target_per_bucket,
         )
         if not validate_bundled_recipes():
+            return 1
+    elif args.command == "extract-balanced":
+        extract_meal_balanced(
+            Path(args.output),
+            args.per_meal_target,
+            args.max_recipes,
+            args.delay_min,
+            args.delay_max,
+        )
+    elif args.command == "merge-staging":
+        if not merge_staging(Path(args.input)):
             return 1
     elif args.command == "validate":
         if not validate_bundled_recipes():
