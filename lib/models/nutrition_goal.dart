@@ -213,6 +213,10 @@ extension NutritionGoalTypeX on NutritionGoalType {
 abstract final class GoalDefaults {
   static const double minWeightKg = 40.0;
   static const double maxWeightKg = 180.0;
+
+  /// Granularity of the weight slider / +- steppers. Precise body weight (e.g.
+  /// 78.3 kg) is entered via the text field and preserved to 0.1 kg by
+  /// [snapWeightKg]; the slider stays at a comfortable 1 kg drag resolution.
   static const double weightStepKg = 1.0;
   static const double minHeightCm = 120.0;
   static const double maxHeightCm = 230.0;
@@ -221,11 +225,17 @@ abstract final class GoalDefaults {
   static double clampWeightKg(double weightKg) =>
       weightKg.clamp(minWeightKg, maxWeightKg).toDouble();
 
+  /// Snap to 0.1 kg so users can record an exact body weight such as 78.3 kg.
   static double snapWeightKg(double weightKg) =>
-      (clampWeightKg(weightKg) / weightStepKg).round() * weightStepKg;
+      (clampWeightKg(weightKg) * 10).round() / 10.0;
 
-  static String formatWeightKg(double weightKg) =>
-      snapWeightKg(weightKg).round().toString();
+  /// Show one decimal only when needed: "78.3", but "78" for whole values.
+  static String formatWeightKg(double weightKg) {
+    final snapped = snapWeightKg(weightKg);
+    return snapped == snapped.roundToDouble()
+        ? snapped.round().toString()
+        : snapped.toStringAsFixed(1);
+  }
 
   static double clampHeightCm(double heightCm) =>
       heightCm.clamp(minHeightCm, maxHeightCm).toDouble();

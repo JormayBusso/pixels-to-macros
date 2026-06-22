@@ -192,6 +192,11 @@ final class MonocularVolumeEstimator {
         let l = label.lowercased()
         if l.contains("rice") || l.contains("pasta") || l.contains("noodle") { return (3.2, 0.68) }
         if l.contains("salad") || l.contains("vegetable") { return (3.5, 0.48) }
+        // Bananas are almost always scanned as a piled bunch, which stacks far
+        // taller than a single plated fruit. A flat lateral-bound clamp in
+        // `estimate(...)` still trims a single banana lying flat, but the bunch
+        // keeps a realistic height instead of collapsing to the 3 cm default.
+        if l.contains("banana") { return (6.5, 0.88) }
         if l.contains("apple") || l.contains("orange") || l.contains("egg") { return (5.0, 0.58) }
         if l.contains("bread") || l.contains("toast") || l.contains("pizza") { return (2.2, 0.82) }
         if l.contains("chicken") || l.contains("beef") || l.contains("steak") || l.contains("fish") { return (2.8, 0.78) }
@@ -298,89 +303,148 @@ final class MonocularVolumeEstimator {
         // Guarantee at least one cell so the viewer always has geometry.
         if !on.contains(true) { on[cell(gr / 2, gc / 2)] = true }
 
-        // Domed height profile, peaking at the silhouette centroid.
-        let gCenR = (centroid.row - Double(footprint.minRow)) / Double(step)
-        let gCenC = (centroid.col - Double(footprint.minCol)) / Double(step)
-        var maxDist2 = 0.0001
-        for r in 0..<gr {
-            for c in 0..<gc where on[cell(r, c)] {
-                let d2 = (Double(r) - gCenR) * (Double(r) - gCenR) +
-                         (Double(c) - gCenC) * (Double(c) - gCenC)
-                if d2 > maxDist2 { maxDist2 = d2 }
-            }
-        }
-        @inline(__always) func cellHeight(_ r: Int, _ c: Int) -> Float {
-            let d2 = (Double(r) - gCenR) * (Double(r) - gCenR) +
-                     (Double(c) - gCenC) * (Double(c) - gCenC)
-            let rho = min(1.0, d2 / maxDist2)
-            return max(h * 0.18, h * Float(1.0 - rho))
-        }
-
-        // Half-cell extent and grid → world mapping (matches the bbox span).
-        let hx = rx / Float(gc)
-        let hz = rz / Float(gr)
-        @inline(__always) func worldX(_ c: Int) -> Float {
-            offsetX + ((Float(c) + 0.5) / Float(gc) - 0.5) * 2.0 * rx
-        }
-        @inline(__always) func worldZ(_ r: Int) -> Float {
-            offsetZ + ((Float(r) + 0.5) / Float(gr) - 0.5) * 2.0 * rz
-        }
         @inline(__always) func isOn(_ r: Int, _ c: Int) -> Bool {
             r >= 0 && r < gr && c >= 0 && c < gc && on[cell(r, c)]
         }
 
+        // Morphological close: fill single-cell pockets so a clustered item
+        // (e.g. a banana bunch the segmenter split) reads as one continuous
+        // surface instead of showing a hole or a gap straight down the middle.
+        if gr > 2 && gc > 2 {
+            var filled = on
+            for r in 0..<gr {
+                for c in 0..<gc where !on[cell(r, c)] {
+                    var n = 0
+                    if isOn(r - 1, c) { n += 1 }
+                    if isOn(r + 1, c) { n += 1 }
+                    if isOn(r, c - 1) { n += 1 }
+                    if isOn(r, c + 1) { n += 1 }
+                    if n >= 3 { filled[cell(r, c)] = true }
+                }
+            }
+            on = filled
+        }
+
+        // Smooth dome as a shared-corner height field. Heights live on the
+        // (gr+1)×(gc+1) lattice so neighbouring cells reuse identical corner
+        // heights — the top surface is therefore continuous, with no stair-step
+        // "cubes" between cells.
+        let cornerCols = gc + 1
+        @inline(__always) func corner(_ rr: Int, _ cc: Int) -> Int { rr * cornerCols + cc }
+        @inline(__always) func cornerCells(_ rr: Int, _ cc: Int) -> Int {
+            var n = 0
+            if isOn(rr - 1, cc - 1) { n += 1 }
+            if isOn(rr - 1, cc) { n += 1 }
+            if isOn(rr, cc - 1) { n += 1 }
+            if isOn(rr, cc) { n += 1 }
+            return n
+        }
+        // Centroid in corner coordinates (cell centre r sits at corner r + 0.5).
+        let cgR = Float((centroid.row - Double(footprint.minRow)) / Double(step)) + 0.5
+        let cgC = Float((centroid.col - Double(footprint.minCol)) / Double(step)) + 0.5
+        var maxR2: Float = 0.5
+        for rr in 0...gr {
+            for cc in 0...gc where cornerCells(rr, cc) > 0 {
+                let dr = Float(rr) - cgR, dc = Float(cc) - cgC
+                let d2 = dr * dr + dc * dc
+                if d2 > maxR2 { maxR2 = d2 }
+            }
+        }
+        let maxR = sqrt(maxR2)
+        var cornerH = [Float](repeating: 0, count: (gr + 1) * cornerCols)
+        for rr in 0...gr {
+            for cc in 0...gc {
+                let n = cornerCells(rr, cc)
+                if n == 0 { continue }
+                let dr = Float(rr) - cgR, dc = Float(cc) - cgC
+                let rho = min(1.0, sqrt(dr * dr + dc * dc) / maxR)
+                // Spherical-cap profile → a rounded top instead of a cone tip.
+                let dome = sqrt(max(0.0, 1.0 - rho * rho))
+                // Corners on the silhouette edge taper toward the plate so the
+                // rim rounds off rather than dropping as a vertical cliff.
+                let edge: Float = n >= 4 ? 1.0 : Float(n) / 4.0
+                cornerH[corner(rr, cc)] = max(0.0, h * dome * edge)
+            }
+        }
+
+        @inline(__always) func cornerX(_ cc: Int) -> Float {
+            offsetX + (Float(cc) / Float(gc) - 0.5) * 2.0 * rx
+        }
+        @inline(__always) func cornerZ(_ rr: Int) -> Float {
+            offsetZ + (Float(rr) / Float(gr) - 0.5) * 2.0 * rz
+        }
+
         var vertices: [SIMD3<Float>] = []
         var faces: [Int] = []
+        // Weld vertices by position so shared corners collapse to one vertex.
+        // The exporter then averages normals across them (creaseThreshold 0) for
+        // smooth Gouraud shading instead of a faceted low-poly look. Safe here:
+        // every vertex of a monocular object carries the same sampled colour.
+        var vmap: [Int64: Int] = [:]
+        @inline(__always) func vid(_ p: SIMD3<Float>) -> Int {
+            // Exact 21-bit-per-axis packing (0.1 mm grid) — collision-free for
+            // any food-scale coordinate, so distinct positions never merge.
+            @inline(__always) func q(_ v: Float) -> Int64 {
+                let scaled = Int64((v * 10000).rounded()) + 1_048_576
+                return min(2_097_151, max(0, scaled))
+            }
+            let key = (q(p.x) << 42) | (q(p.y) << 21) | q(p.z)
+            if let existing = vmap[key] { return existing }
+            let idx = vertices.count
+            vertices.append(p)
+            vmap[key] = idx
+            return idx
+        }
         @inline(__always) func addQuad(
             _ a: SIMD3<Float>, _ b: SIMD3<Float>,
             _ c: SIMD3<Float>, _ d: SIMD3<Float>
         ) {
-            let base = vertices.count
-            vertices.append(a); vertices.append(b)
-            vertices.append(c); vertices.append(d)
-            faces += [base, base + 1, base + 2, base, base + 2, base + 3]
+            let ia = vid(a), ib = vid(b), ic = vid(c), id2 = vid(d)
+            faces += [ia, ib, ic, ia, ic, id2]
         }
 
         for r in 0..<gr {
             for c in 0..<gc where on[cell(r, c)] {
-                let cx = worldX(c), cz = worldZ(r)
-                let y = cellHeight(r, c)
-                let x0 = cx - hx, x1 = cx + hx
-                let z0 = cz - hz, z1 = cz + hz
+                let x0 = cornerX(c), x1 = cornerX(c + 1)
+                let z0 = cornerZ(r), z1 = cornerZ(r + 1)
+                let yTL = cornerH[corner(r, c)]
+                let yTR = cornerH[corner(r, c + 1)]
+                let yBL = cornerH[corner(r + 1, c)]
+                let yBR = cornerH[corner(r + 1, c + 1)]
 
-                // Top face (normal +Y).
+                // Top surface (shared corner heights → smooth & watertight).
                 addQuad(
-                    SIMD3<Float>(x0, y, z0), SIMD3<Float>(x0, y, z1),
-                    SIMD3<Float>(x1, y, z1), SIMD3<Float>(x1, y, z0)
+                    SIMD3<Float>(x0, yTL, z0), SIMD3<Float>(x0, yBL, z1),
+                    SIMD3<Float>(x1, yBR, z1), SIMD3<Float>(x1, yTR, z0)
                 )
                 // Bottom face (normal -Y).
                 addQuad(
                     SIMD3<Float>(x0, 0, z0), SIMD3<Float>(x1, 0, z0),
                     SIMD3<Float>(x1, 0, z1), SIMD3<Float>(x0, 0, z1)
                 )
-                // Boundary walls only (interior faces are shared and skipped).
+                // Skirt walls only on silhouette edges, meeting the rounded top.
                 if !isOn(r - 1, c) {
                     addQuad(
-                        SIMD3<Float>(x0, 0, z0), SIMD3<Float>(x0, y, z0),
-                        SIMD3<Float>(x1, y, z0), SIMD3<Float>(x1, 0, z0)
+                        SIMD3<Float>(x0, 0, z0), SIMD3<Float>(x0, yTL, z0),
+                        SIMD3<Float>(x1, yTR, z0), SIMD3<Float>(x1, 0, z0)
                     )
                 }
                 if !isOn(r + 1, c) {
                     addQuad(
-                        SIMD3<Float>(x1, 0, z1), SIMD3<Float>(x1, y, z1),
-                        SIMD3<Float>(x0, y, z1), SIMD3<Float>(x0, 0, z1)
+                        SIMD3<Float>(x1, 0, z1), SIMD3<Float>(x1, yBR, z1),
+                        SIMD3<Float>(x0, yBL, z1), SIMD3<Float>(x0, 0, z1)
                     )
                 }
                 if !isOn(r, c - 1) {
                     addQuad(
-                        SIMD3<Float>(x0, 0, z1), SIMD3<Float>(x0, y, z1),
-                        SIMD3<Float>(x0, y, z0), SIMD3<Float>(x0, 0, z0)
+                        SIMD3<Float>(x0, 0, z1), SIMD3<Float>(x0, yBL, z1),
+                        SIMD3<Float>(x0, yTL, z0), SIMD3<Float>(x0, 0, z0)
                     )
                 }
                 if !isOn(r, c + 1) {
                     addQuad(
-                        SIMD3<Float>(x1, 0, z0), SIMD3<Float>(x1, y, z0),
-                        SIMD3<Float>(x1, y, z1), SIMD3<Float>(x1, 0, z1)
+                        SIMD3<Float>(x1, 0, z0), SIMD3<Float>(x1, yTR, z0),
+                        SIMD3<Float>(x1, yBR, z1), SIMD3<Float>(x1, 0, z1)
                     )
                 }
             }

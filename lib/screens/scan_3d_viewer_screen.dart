@@ -2,22 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
+import '../models/food_data.dart';
 import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
 import '../services/database_service.dart';
 import '../widgets/scan_3d_viewer.dart';
 import 'edit_food_screen.dart';
 
-/// Full-screen Stage 3 viewer. Hosts the native SceneKit scene plus a
-/// side panel of detected food objects, mode toggles (combined / isolated),
-/// and debug overlays (wireframe + floating volume labels).
-///
-/// Acceptance criteria mapping (Stage 3):
-///   • rotate 3D food model       → native `SCNCameraController` orbit gestures
-///   • tap individual food object → native tap hit-test → `onSelectionChanged`
-///   • selected object isolates   → mode toggle drives native `setViewMode`
-///   • per-object volume metadata → object list rows + floating native labels
-///   • Flutter list ↔ SCN nodes   → both keyed by stable cluster `id`
+/// Full-screen Stage 3 viewer. Hosts the native SceneKit scene with a clean,
+/// always-visible ingredient overview panel underneath: every detected food
+/// with its weight (g) and calories, plus tap-to-edit, swipe-to-delete and add.
 class Scan3DViewerScreen extends StatefulWidget {
   const Scan3DViewerScreen({
     super.key,
@@ -29,7 +23,7 @@ class Scan3DViewerScreen extends StatefulWidget {
   final String? modelPath;
   final List<Scan3DObject> objects;
 
-  /// Saved scan id. When non-null, an "Edit ingredients" action lets the user
+  /// Saved scan id. When non-null, the ingredient overview panel lets the user
   /// fix labels / weights and add or delete foods after the scan.
   final int? scanId;
 
@@ -38,33 +32,10 @@ class Scan3DViewerScreen extends StatefulWidget {
 }
 
 class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
-  Scan3DViewerController? _controller;
-  String? _selectedId;
-  Scan3DViewMode _mode = Scan3DViewMode.combined;
-  bool _wireframe = false;
-  bool _labels = false;
-  bool _debugPanelOpen = false;
   Map<String, dynamic>? _viewerError;
-
-  Future<void> _openIngredientEditor(int scanId) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => _EditIngredientsSheet(scanId: scanId),
-    );
-    if (!mounted) return;
-    ProviderScope.containerOf(context, listen: false)
-        .read(dailyIntakeProvider.notifier)
-        .load();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final hasModel = widget.modelPath != null && widget.modelPath!.isNotEmpty;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -84,28 +55,6 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
           '3D Scan',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
-        actions: [
-          if (widget.scanId != null)
-            IconButton(
-              tooltip: AppLocalizations.of(context).editIngredients,
-              icon: const Icon(Icons.edit_outlined),
-              onPressed: () => _openIngredientEditor(widget.scanId!),
-            ),
-          IconButton(
-            tooltip: 'Reset camera',
-            icon: const Icon(Icons.center_focus_strong_outlined),
-            onPressed: hasModel ? () => _controller?.resetCamera() : null,
-          ),
-          IconButton(
-            tooltip: 'Debug overlays',
-            icon: Icon(
-              _debugPanelOpen ? Icons.bug_report : Icons.bug_report_outlined,
-            ),
-            onPressed: hasModel
-                ? () => setState(() => _debugPanelOpen = !_debugPanelOpen)
-                : null,
-          ),
-        ],
       ),
       body: SafeArea(
         child: Column(
@@ -117,11 +66,6 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
                     child: Scan3DViewer(
                       modelPath: widget.modelPath,
                       objects: widget.objects,
-                      onControllerReady: (c) => _controller = c,
-                      onSelectionChanged: (id) {
-                        if (!mounted) return;
-                        setState(() => _selectedId = id);
-                      },
                       onError: (error) {
                         if (!mounted) return;
                         setState(() => _viewerError = error);
@@ -132,60 +76,10 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
                     const Positioned.fill(
                       child: _ViewerErrorOverlay(),
                     ),
-                  if (hasModel)
-                    Positioned(
-                      left: 12,
-                      right: 12,
-                      top: 12,
-                      child: _ModeToggle(
-                        mode: _mode,
-                        onChanged: (m) {
-                          setState(() => _mode = m);
-                          _controller?.setViewMode(m);
-                          // If entering isolated mode triggers auto-select
-                          // on the native side, it will push onSelectionChanged
-                          // — no local mutation needed here.
-                        },
-                      ),
-                    ),
-                  if (_debugPanelOpen && hasModel)
-                    Positioned(
-                      left: 12,
-                      right: 12,
-                      bottom: 12,
-                      child: _DebugPanel(
-                        wireframe: _wireframe,
-                        labels: _labels,
-                        onWireframe: (v) {
-                          setState(() => _wireframe = v);
-                          _controller?.setDebugOverlay(wireframe: v);
-                        },
-                        onLabels: (v) {
-                          setState(() => _labels = v);
-                          _controller?.setDebugOverlay(labels: v);
-                        },
-                      ),
-                    ),
                 ],
               ),
             ),
-            if (hasModel && widget.objects.isNotEmpty)
-              _ObjectList(
-                objects: widget.objects,
-                selectedId: _selectedId,
-                onTap: (o) {
-                  // Route through native — Flutter will reflect state via
-                  // onSelectionChanged callback (single source of truth).
-                  if (_selectedId == o.id) {
-                    _controller?.clearSelection();
-                  } else {
-                    _controller?.select(o.id);
-                  }
-                },
-                onFocus: (o) {
-                  _controller?.focus(o.id);
-                },
-              ),
+            if (widget.scanId != null) _IngredientPanel(scanId: widget.scanId!),
           ],
         ),
       ),
@@ -227,189 +121,26 @@ class _ViewerErrorOverlay extends StatelessWidget {
   }
 }
 
-class _ModeToggle extends StatelessWidget {
-  const _ModeToggle({required this.mode, required this.onChanged});
-
-  final Scan3DViewMode mode;
-  final ValueChanged<Scan3DViewMode> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.55),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white24),
-        ),
-        padding: const EdgeInsets.all(4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _segment('Combined', Scan3DViewMode.combined),
-            _segment('Isolated', Scan3DViewMode.isolated),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _segment(String label, Scan3DViewMode value) {
-    final selected = value == mode;
-    return GestureDetector(
-      onTap: () => onChanged(value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.black : Colors.white,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DebugPanel extends StatelessWidget {
-  const _DebugPanel({
-    required this.wireframe,
-    required this.labels,
-    required this.onWireframe,
-    required this.onLabels,
-  });
-
-  final bool wireframe;
-  final bool labels;
-  final ValueChanged<bool> onWireframe;
-  final ValueChanged<bool> onLabels;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white24),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SwitchListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Wireframe',
-                style: TextStyle(color: Colors.white, fontSize: 13)),
-            value: wireframe,
-            onChanged: onWireframe,
-          ),
-          SwitchListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Volume labels',
-                style: TextStyle(color: Colors.white, fontSize: 13)),
-            value: labels,
-            onChanged: onLabels,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ObjectList extends StatelessWidget {
-  const _ObjectList({
-    required this.objects,
-    required this.selectedId,
-    required this.onTap,
-    required this.onFocus,
-  });
-
-  final List<Scan3DObject> objects;
-  final String? selectedId;
-  final ValueChanged<Scan3DObject> onTap;
-  final ValueChanged<Scan3DObject> onFocus;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 220),
-      decoration: const BoxDecoration(
-        color: Color(0xFF111111),
-        border: Border(top: BorderSide(color: Colors.white12)),
-      ),
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        itemCount: objects.length,
-        separatorBuilder: (_, __) =>
-            const Divider(height: 1, color: Colors.white10),
-        itemBuilder: (_, i) {
-          final o = objects[i];
-          final selected = o.id == selectedId;
-          return ListTile(
-            dense: true,
-            selected: selected,
-            selectedTileColor: Colors.white.withValues(alpha: 0.06),
-            leading: CircleAvatar(
-              backgroundColor: selected ? Colors.white : Colors.white24,
-              radius: 14,
-              child: Text(
-                o.label.isNotEmpty ? o.label[0].toUpperCase() : '?',
-                style: TextStyle(
-                  color: selected ? Colors.black : Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-            title: Text(
-              o.label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-            subtitle: Text(
-              '${o.volumeCm3.toStringAsFixed(1)} cm³ · ${o.voxelCount} vx · id ${o.id}',
-              style: const TextStyle(color: Colors.white60, fontSize: 11),
-            ),
-            trailing: IconButton(
-              tooltip: 'Focus camera',
-              icon: const Icon(Icons.center_focus_weak, color: Colors.white70),
-              onPressed: () => onFocus(o),
-            ),
-            onTap: () => onTap(o),
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// Bottom sheet that edits the saved scan's foods: tap to edit a label/weight,
-/// delete an item, or add a missing one. All edits persist to the scan and
-/// refresh the daily intake totals.
-class _EditIngredientsSheet extends ConsumerStatefulWidget {
-  const _EditIngredientsSheet({required this.scanId});
+/// Always-visible panel under the 3D model: the full ingredient overview with
+/// each food's weight (g) and calories, plus tap-to-edit, swipe-to-delete and
+/// add. Edits persist to the scan and refresh the daily totals.
+class _IngredientPanel extends ConsumerStatefulWidget {
+  const _IngredientPanel({required this.scanId});
 
   final int scanId;
 
   @override
-  ConsumerState<_EditIngredientsSheet> createState() =>
-      _EditIngredientsSheetState();
+  ConsumerState<_IngredientPanel> createState() => _IngredientPanelState();
 }
 
-class _EditIngredientsSheetState extends ConsumerState<_EditIngredientsSheet> {
-  List<DetectedFood> _foods = const [];
+class _FoodRow {
+  const _FoodRow({required this.food, required this.grams});
+  final DetectedFood food;
+  final double grams;
+}
+
+class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
+  List<_FoodRow> _rows = const [];
   bool _loading = true;
 
   @override
@@ -421,19 +152,29 @@ class _EditIngredientsSheetState extends ConsumerState<_EditIngredientsSheet> {
   Future<void> _reload() async {
     final foods =
         await DatabaseService.instance.getDetectedFoodsForScan(widget.scanId);
+    final rows = <_FoodRow>[];
+    for (final f in foods) {
+      final FoodData? data =
+          await DatabaseService.instance.getFoodByLabel(f.label);
+      var density =
+          data == null ? 0.9 : (data.densityMin + data.densityMax) / 2;
+      if (density <= 0) density = 0.9;
+      rows.add(_FoodRow(food: f, grams: f.volumeCm3 * density));
+    }
     if (!mounted) return;
     setState(() {
-      _foods = foods;
+      _rows = rows;
       _loading = false;
     });
   }
 
-  Future<void> _openEditor(DetectedFood food) async {
+  Future<void> _edit(DetectedFood food) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => EditFoodScreen(scanId: widget.scanId, food: food),
       ),
     );
+    await ref.read(dailyIntakeProvider.notifier).load();
     await _reload();
   }
 
@@ -447,26 +188,51 @@ class _EditIngredientsSheetState extends ConsumerState<_EditIngredientsSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
+    final totalKcal = _rows.fold<double>(
+      0,
+      (sum, r) => sum + (r.food.caloriesMin + r.food.caloriesMax) / 2,
+    );
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.42,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFF141414),
+        border: Border(top: BorderSide(color: Colors.white12)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 6, 4),
+            child: Row(
               children: [
                 Expanded(
                   child: Text(
                     l10n.editIngredients,
                     style: const TextStyle(
-                      fontSize: 18,
+                      color: Colors.white,
+                      fontSize: 16,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: () => _openEditor(
+                if (!_loading && _rows.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Text(
+                      '≈ ${totalKcal.round()} kcal',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                IconButton(
+                  tooltip: l10n.addFood,
+                  icon: const Icon(Icons.add, color: Colors.white),
+                  onPressed: () => _edit(
                     const DetectedFood(
                       label: '',
                       volumeCm3: 0,
@@ -474,58 +240,69 @@ class _EditIngredientsSheetState extends ConsumerState<_EditIngredientsSheet> {
                       caloriesMax: 0,
                     ),
                   ),
-                  icon: const Icon(Icons.add),
-                  label: Text(l10n.addFood),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            if (_loading)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_foods.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(l10n.noIngredients, textAlign: TextAlign.center),
-              )
-            else
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: _foods.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
-                    final f = _foods[i];
-                    final avg = ((f.caloriesMin + f.caloriesMax) / 2).round();
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
+          ),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(),
+            )
+          else if (_rows.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text(
+                l10n.noIngredients,
+                style: const TextStyle(color: Colors.white60),
+                textAlign: TextAlign.center,
+              ),
+            )
+          else
+            Flexible(
+              child: ListView.separated(
+                padding: const EdgeInsets.only(bottom: 8),
+                itemCount: _rows.length,
+                separatorBuilder: (_, __) =>
+                    const Divider(height: 1, color: Colors.white10),
+                itemBuilder: (_, i) {
+                  final r = _rows[i];
+                  final kcal =
+                      ((r.food.caloriesMin + r.food.caloriesMax) / 2).round();
+                  final gramsText = r.grams >= 10
+                      ? r.grams.toStringAsFixed(0)
+                      : r.grams.toStringAsFixed(1);
+                  return Dismissible(
+                    key: ValueKey(r.food.id ?? 'row$i'),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      color: Colors.red.shade900,
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      child: const Icon(Icons.delete, color: Colors.white),
+                    ),
+                    onDismissed: (_) => _delete(r.food),
+                    child: ListTile(
                       title: Text(
-                        f.label.isEmpty ? '—' : f.label,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        r.food.label.isEmpty ? '—' : r.food.label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       subtitle: Text(
-                        '${f.volumeCm3.toStringAsFixed(0)} cm³ · ≈ $avg kcal',
+                        '$gramsText g · $kcal kcal',
+                        style: const TextStyle(color: Colors.white60),
                       ),
-                      onTap: () => _openEditor(f),
-                      trailing: IconButton(
-                        tooltip:
-                            MaterialLocalizations.of(context).deleteButtonTooltip,
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _delete(f),
-                      ),
-                    );
-                  },
-                ),
+                      trailing: const Icon(Icons.chevron_right,
+                          color: Colors.white38),
+                      onTap: () => _edit(r.food),
+                    ),
+                  );
+                },
               ),
-            const SizedBox(height: 8),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n.done),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
