@@ -104,8 +104,12 @@ final class InferencePipeline {
         }
 
         // ── 1. Plate detection ──────────────────────────────────────────
+        // When a plate is found, crop to it for a cleaner segmentation input.
+        // When it is NOT found, use the FULL frame instead of the old centre-60%
+        // fallback — plateless foods (a banana on a bare table) are often
+        // off-centre or small, and the tight crop used to clip them out entirely.
         let plate    = plateDetector.detect(in: topFrame.pixelBuffer)
-        let cropRect: CGRect? = plate.rect
+        let cropRect: CGRect? = plate.detected ? plate.rect : nil
         print("[SCAN] plate: detected=\(plate.detected), rect=\(plate.rect), diameterPx=\(Int(plate.diameterPx))")
         print("[SCAN] topFrame: pixelBuffer=\(CVPixelBufferGetWidth(topFrame.pixelBuffer))x\(CVPixelBufferGetHeight(topFrame.pixelBuffer)), depthBuffer=\(topFrame.depthBuffer != nil)")
 
@@ -122,15 +126,15 @@ final class InferencePipeline {
             throw PipelineError.model3DExportFailed("preprocessing_failed")
         }
 
-        // ── 2b. ML Kit food-presence gate ───────────────────────────────
+        // ── 2b. ML Kit food labels (hint, not a hard gate) ──────────────
+        // ML Kit's generic ~400-label model is weak on isolated produce: a
+        // lone banana on a bare table often scores "Banana"/"Food" below the
+        // 0.40 gate even though it clearly IS food. We therefore run it for its
+        // label-override hints but DEFER the food-presence decision until after
+        // our own (far more reliable) food-trained segmentation has run — see
+        // step 3a. A confident YOLO-seg result is allowed to overrule the veto.
         let mlKitResult = mlKitValidator.validate(pixelBuffer: topFrame.pixelBuffer)
         print("[SCAN] mlKit: hasFood=\(mlKitResult.hasFood), labels=\(mlKitResult.labels.map { "\($0.normalised)(\(String(format: "%.2f", $0.confidence)))" }.joined(separator: ", "))")
-        guard mlKitResult.hasFood else {
-            print("[PIPELINE] export success: false")
-            print("[PIPELINE] model3dPath: nil")
-            print("[PIPELINE] file exists: false")
-            throw PipelineError.noFoodDetected("mlkit_food_gate_rejected")
-        }
 
         // ── 3. Segmentation ─────────────────────────────────────────────
         // Observability: surface which backend actually ran. The YOLO path is
@@ -155,6 +159,25 @@ final class InferencePipeline {
             print("[PIPELINE] model3dPath: nil")
             print("[PIPELINE] file exists: false")
             throw PipelineError.noFoodDetected("segmentation_empty")
+        }
+
+        // ── 3a. Food-presence decision ──────────────────────────────────
+        // Trust a confident, food-trained YOLO-seg detection over ML Kit's
+        // generic veto. ML Kit can only abort the scan when the active backend
+        // is NOT our food model (legacy SegFormer, which over-classifies and
+        // genuinely needs the veto) OR when YOLO itself produced no confident
+        // food instance.
+        let yoloConfident = useYolo &&
+            (segments.map { $0.confidence }.max() ?? 0) >= 0.45
+        if !mlKitResult.hasFood && !yoloConfident {
+            print("[SCAN] food-presence: REJECT (mlKit veto, no confident YOLO segment)")
+            print("[PIPELINE] export success: false")
+            print("[PIPELINE] model3dPath: nil")
+            print("[PIPELINE] file exists: false")
+            throw PipelineError.noFoodDetected("mlkit_food_gate_rejected")
+        }
+        if !mlKitResult.hasFood {
+            print("[SCAN] food-presence: ML Kit veto OVERRULED by confident YOLO segment (\(segments.first?.label ?? "?"), conf \(String(format: "%.2f", segments.first?.confidence ?? 0)))")
         }
 
         // Override the largest segment's label with ML Kit's best specific
