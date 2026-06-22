@@ -307,8 +307,10 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         .replaceAll(RegExp(r'\bhand\s+fulls?\b'), 'handful')
         .replaceAll(RegExp(r'\bhand\s+fuls?\b'), 'handful');
 
-    // 1. Convert word-numbers to digits
-    final converted = _wordNumbersToDigits(lower);
+    // 1. Normalise spoken fractions/amounts, THEN word-numbers. Fractions must
+    //    run first so "two thirds" becomes "0.66" before "two" → "2".
+    final amounts = _spelledAmountsToNumbers(lower);
+    final converted = _wordNumbersToDigits(amounts);
 
     // 2. Strip speech boilerplate before segmentation.
     final defiltered = _stripSpeechFillers(converted);
@@ -405,8 +407,9 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       }
 
       // Handle bare "handful of ..." without a leading number
-      final handfulMatch = RegExp(r'^(?:an?\s+)?handfuls?\s+(?:of\s+)?(.+)$')
-          .firstMatch(foodQuery);
+      final handfulMatch =
+          RegExp(r'^(?:(?:an?|some)\s+)?handfuls?\s+(?:of\s+)?(.+)$')
+              .firstMatch(foodQuery);
       if (handfulMatch != null) {
         foodQuery = handfulMatch.group(1)!.trim();
         grams = 30;
@@ -623,7 +626,13 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   static String _normaliseFoodQuery(String query) {
     var out = query
         .replaceAll(RegExp(r'\s+'), ' ')
-        .replaceAll(RegExp(r'\b(?:some|the)\b'), ' ')
+        // Drop quantity / fraction residue that survives quantity extraction
+        // ("third of an apple", "piece of toast") so it can't block matching.
+        .replaceAll(
+            RegExp(r'\b(?:some|the|of|piece|pieces|bit|bits|third|thirds|'
+                r'quarter|quarters|fourth|fourths|fifth|fifths|half|halves|'
+                r'another|more|couple|few)\b'),
+            ' ')
         .trim();
     out = out
         .split(' ')
@@ -653,6 +662,38 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         .toList();
     if (words.isEmpty) return null;
     return words.join(' ');
+  }
+
+  /// Normalise spoken fractions and vague amounts to numeric quantities so the
+  /// quantity regex can consume them, e.g. "two thirds of an apple" →
+  /// "0.66 of an apple" (0.66 × one apple) instead of "2 … apple" (two apples).
+  /// Runs BEFORE [_wordNumbersToDigits] so compound phrases ("two thirds") are
+  /// matched before "two" is independently turned into "2".
+  static String _spelledAmountsToNumbers(String text) {
+    var out = text;
+    // Order matters: more specific (compound) phrases first.
+    const fractionPhrases = <String, String>{
+      r'\bthree\s+(?:quarters|fourths)\b': '0.75',
+      r'\btwo\s+thirds\b': '0.66',
+      r'\btwo\s+(?:quarters|fourths)\b': '0.5',
+      r'\bthree\s+fifths\b': '0.6',
+      r'\btwo\s+fifths\b': '0.4',
+      r'\bhalf\s+(?:a|an)\b': '0.5',
+      r'\b(?:a|one)\s+third\b': '0.33',
+      r'\b(?:a|one)\s+(?:quarter|fourth)\b': '0.25',
+      r'\b(?:a|one)\s+fifth\b': '0.2',
+      r'\b(?:a|one)\s+half\b': '0.5',
+      r'\bhalf\b': '0.5',
+      r'\b(?:a\s+)?couple\s+(?:of\s+)?': '2 ',
+      r'\ba\s+few\s+': '3 ',
+    };
+    fractionPhrases.forEach((pattern, value) {
+      out = out.replaceAll(RegExp(pattern), value);
+    });
+    // "another X" = one more X → count of 1 (also lets it merge with an earlier
+    // mention of the same food in the de-duplication pass).
+    out = out.replaceAll(RegExp(r'\banother\b'), '1');
+    return out;
   }
 
   /// Map spoken word-numbers to digits so the quantity regex can pick them up.
@@ -842,7 +883,8 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         child: SafeArea(
           child: Padding(
           padding: const EdgeInsets.all(20),
-          child: Column(
+          child: SingleChildScrollView(
+            child: Column(
             children: [
               // ── Instructions ──────────────────────────────────────
               Card(
@@ -954,8 +996,9 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
 
               // ── Parsed foods ────────────────────────────────────────
               if (_parsed.isNotEmpty) ...[
-                Expanded(
-                  child: ListView.builder(
+                ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
                     itemCount: _parsed.length,
                     itemBuilder: (_, i) {
                       final p = _parsed[i];
@@ -1010,7 +1053,6 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                       );
                     },
                   ),
-                ),
                 const SizedBox(height: 12),
 
                 // ── Save as meal toggle ───────────────────────────────
@@ -1116,6 +1158,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                 ),
               ],
             ],
+          ),
           ),
         ),
         ),
