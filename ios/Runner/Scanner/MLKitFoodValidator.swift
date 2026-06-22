@@ -52,6 +52,17 @@ final class MLKitFoodValidator {
         /// Aggregate "this is food" confidence (max of all category-level
         /// food labels). Used for telemetry and confidence display.
         let foodConfidence: Float
+
+        /// All specific-food hints confident enough to override a segmentation
+        /// label, highest confidence first. `bestSpecificFood` is the first of
+        /// these; the inference pipeline maps the rest onto smaller segments.
+        /// De-duplication by canonical name is the caller's responsibility.
+        var overrideCandidates: [LabeledHint] {
+            labels.filter {
+                $0.isSpecificFood &&
+                    $0.confidence >= MLKitFoodValidator.specificOverrideThreshold
+            }
+        }
     }
 
     struct LabeledHint {
@@ -68,14 +79,17 @@ final class MLKitFoodValidator {
 
     /// Minimum confidence for the food-presence gate to pass.
     /// Must be hit by *any* food-related label (category or specific).
-    /// Kept moderate because packaged food (e.g. bananas in a bag) often
-    /// scores lower than unpackaged items, but weak labels should not pass.
-    static let foodPresenceThreshold: Float = 0.45
+    /// Kept low because loose/plated food (e.g. a banana ML Kit only scores
+    /// ~0.4–0.6) often scores lower than packaged items, and a missed gate
+    /// aborts the entire scan before segmentation even runs.
+    static let foodPresenceThreshold: Float = 0.40
 
     /// Minimum confidence for a specific food label to override the
-    /// segmentation label. This is intentionally conservative: a lower value
-    /// made the scanner more eager, but also caused incorrect food guesses.
-    static let specificOverrideThreshold: Float = 0.68
+    /// segmentation label. Set to 0.55 to catch out-of-vocabulary foods the
+    /// bundled 10-class mini model cannot name (banana, tomato, …), which ML
+    /// Kit's generic labeler typically scores in the 0.5–0.7 range. Raising
+    /// this above ~0.6 silently drops those overrides (the banana regression).
+    static let specificOverrideThreshold: Float = 0.55
 
     // MARK: – Internal
 

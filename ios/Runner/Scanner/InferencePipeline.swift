@@ -437,38 +437,51 @@ final class InferencePipeline {
         return true
     }
 
-    /// Replace the label of the largest segment with ML Kit's best specific
-    /// food guess when one is available. We only override the *largest*
-    /// segment because that is overwhelmingly the foreground food on the
-    /// plate; lower-area segments may be sauces, garnish, or noise that the
-    /// generic ML Kit labeler does not score highly. This is the single
-    /// biggest fix for "my tomato got called chicken" hallucinations from the
-    /// 10-class mini model.
+    /// Replace low-trust segmentation labels with ML Kit's confident specific
+    /// foods. ML Kit returns whole-frame labels (not per-instance), so we map
+    /// its distinct specific foods onto the largest segments in confidence
+    /// order: the most-confident food to the largest segment, the next to the
+    /// second largest, and so on. This still fixes "my tomato got called
+    /// chicken" on the foreground item, but no longer drops a strong secondary
+    /// match (e.g. a banana beside a bigger plate of rice) just because it is
+    /// not the single largest object. A segment keeps its original label when
+    /// ML Kit has no confident specific food left for that slot.
     private func applyMlKitLabelOverride(
         segments: [SegmentationService.SegmentedObject],
         mlKit: MLKitFoodValidator.ValidationResult
     ) -> [SegmentationService.SegmentedObject] {
-        guard let best = mlKit.bestSpecificFood, !segments.isEmpty else {
-            return segments
+        guard !segments.isEmpty else { return segments }
+
+        // Distinct specific foods (by canonical name), highest confidence
+        // first, so two "banana" hints don't consume two segment slots.
+        var seen = Set<String>()
+        let candidates = mlKit.overrideCandidates.filter {
+            seen.insert($0.normalised).inserted
         }
-        let largest = segments[0]
-        // No-op when ML Kit and segmentation already agree.
-        if largest.label.lowercased() == best.normalised { return segments }
-        let overridden = SegmentationService.SegmentedObject(
-            label:      best.normalised,
-            classIndex: largest.classIndex,
-            mask:       largest.mask,
-            pixelCount: largest.pixelCount,
-            centroid:   largest.centroid,
-            // Keep the higher of the two confidences — the segmentation
-            // confidence is per-pixel softmax max over only 10 classes which
-            // is unreliable for label identity, so ML Kit's score is usually
-            // a better calibrated trust signal here.
-            confidence: max(largest.confidence, best.confidence)
-        )
+        guard !candidates.isEmpty else { return segments }
+
+        // Segments arrive largest-first; assign one distinct food per segment.
         var out = segments
-        out[0] = overridden
-        print("[InferencePipeline] ML Kit override: \(largest.label) → \(best.normalised) (conf \(best.confidence))")
+        let count = min(candidates.count, segments.count)
+        for i in 0..<count {
+            let food = candidates[i]
+            let seg = out[i]
+            // No-op when ML Kit and segmentation already agree.
+            if seg.label.lowercased() == food.normalised { continue }
+            out[i] = SegmentationService.SegmentedObject(
+                label:      food.normalised,
+                classIndex: seg.classIndex,
+                mask:       seg.mask,
+                pixelCount: seg.pixelCount,
+                centroid:   seg.centroid,
+                // Keep the higher of the two confidences — the segmentation
+                // confidence is a per-pixel softmax max over only 10 classes,
+                // unreliable for label identity, so ML Kit's score is usually a
+                // better calibrated trust signal here.
+                confidence: max(seg.confidence, food.confidence)
+            )
+            print("[InferencePipeline] ML Kit override [\(i)]: \(seg.label) → \(food.normalised) (conf \(food.confidence))")
+        }
         return out
     }
 
