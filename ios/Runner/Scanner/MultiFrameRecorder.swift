@@ -138,7 +138,9 @@ final class MultiFrameRecorder {
         if mag < 0.25 {
             currentRoll = 999
         } else {
-            currentRoll = atan2(rightY, upY)
+            // Negate so a clockwise physical turn maps to a clockwise overlay
+            // counter-rotation — otherwise landscape lands 180° off (upside-down).
+            currentRoll = -atan2(rightY, upY)
         }
     }
 
