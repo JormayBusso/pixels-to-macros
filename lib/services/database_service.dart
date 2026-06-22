@@ -3748,6 +3748,26 @@ class DatabaseService {
         .delete('detected_foods', where: 'id = ?', whereArgs: [detectedFoodId]);
   }
 
+  /// All detected foods belonging to a single scan.
+  Future<List<DetectedFood>> getDetectedFoodsForScan(int scanId) async {
+    final db = await database;
+    final rows = await db.query(
+      'detected_foods',
+      where: 'scan_id = ?',
+      whereArgs: [scanId],
+    );
+    return rows.map(DetectedFood.fromMap).toList();
+  }
+
+  /// Insert one detected food into an existing scan. Returns the new row id.
+  Future<int> insertDetectedFood(int scanId, DetectedFood food) async {
+    final db = await database;
+    return db.insert('detected_foods', {
+      ...food.toMap(),
+      'scan_id': scanId,
+    });
+  }
+
   // ── user_preferences CRUD ────────────────────────────────────────────────
 
   Future<UserPreferences> getUserPreferences() async {

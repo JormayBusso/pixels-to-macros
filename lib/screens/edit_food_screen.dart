@@ -82,6 +82,17 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
         caloriesMax: calMax,
         volumeCm3: volumeCm3,
       );
+    } else {
+      // No id yet — this is a newly added ingredient.
+      await DatabaseService.instance.insertDetectedFood(
+        widget.scanId,
+        DetectedFood(
+          label: label,
+          volumeCm3: volumeCm3,
+          caloriesMin: calMin,
+          caloriesMax: calMax,
+        ),
+      );
     }
 
     await ref.read(historyProvider.notifier).load();

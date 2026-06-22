@@ -549,6 +549,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         builder: (_) => Scan3DViewerScreen(
           modelPath: path,
           objects: objects,
+          scanId: _savedScanResult?.id,
         ),
       ),
     );

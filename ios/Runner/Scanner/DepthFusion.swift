@@ -480,11 +480,15 @@ final class DepthFusion {
 
         // Lock the top frame's BGRA buffer once for colour sampling.
         // Sampling source is locked to topFrame — see contract rule #4.
+        // ARKit's capturedImage is planar YCbCr, so reading it directly as BGRA
+        // returns a nil base address and every vertex falls back to grey. Decode
+        // to BGRA once so we sample the real food colour.
+        let colorBuffer = topPixelBuffer.flatMap { Food3DTextureBaker.bgraCopy(of: $0) }
         var bgraBase: UnsafePointer<UInt8>?
         var bgraWidth = 0
         var bgraHeight = 0
         var bgraRowBytes = 0
-        if let buffer = topPixelBuffer {
+        if let buffer = colorBuffer {
             CVPixelBufferLockBaseAddress(buffer, .readOnly)
             bgraWidth = CVPixelBufferGetWidth(buffer)
             bgraHeight = CVPixelBufferGetHeight(buffer)
@@ -494,7 +498,7 @@ final class DepthFusion {
             }
         }
         defer {
-            if let buffer = topPixelBuffer {
+            if let buffer = colorBuffer {
                 CVPixelBufferUnlockBaseAddress(buffer, .readOnly)
             }
         }

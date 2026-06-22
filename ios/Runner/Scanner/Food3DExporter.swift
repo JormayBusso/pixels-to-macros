@@ -178,12 +178,17 @@ final class Food3DExporter {
         }
         descriptor.layouts[0] = MDLVertexBufferLayout(stride: stride)
 
+        let averageColor = Self.averageColor(of: object.colors)
         let submesh = MDLSubmesh(
             indexBuffer: indexBuffer,
             indexCount: object.faces.count,
             indexType: .uInt32,
             geometryType: .triangles,
-            material: makeMaterial(label: object.id, textureURL: hasTexture ? textureURL : nil)
+            material: makeMaterial(
+                label: object.id,
+                textureURL: hasTexture ? textureURL : nil,
+                averageColor: averageColor
+            )
         )
 
         let mesh = MDLMesh(
@@ -206,7 +211,7 @@ final class Food3DExporter {
         return mesh
     }
 
-    private func makeMaterial(label: String, textureURL: URL?) -> MDLMaterial {
+    private func makeMaterial(label: String, textureURL: URL?, averageColor: SIMD3<Float>?) -> MDLMaterial {
         // PhysicallyPlausible scattering keeps materials sensible in USD/USDZ.
         // One material per food object so per-instance edits stay isolated.
         let scatter = MDLPhysicallyPlausibleScatteringFunction()
@@ -229,8 +234,34 @@ final class Food3DExporter {
             baseColor.type = .texture
             baseColor.textureSamplerValue = sampler
             material.setProperty(baseColor)
+        } else if let averageColor {
+            // No texture (e.g. the monocular path): use the food's average
+            // sampled colour as a solid baseColor so it renders in real colour
+            // rather than plain white/grey.
+            let baseColor = MDLMaterialProperty(name: "baseColor", semantic: .baseColor)
+            baseColor.type = .float3
+            baseColor.float3Value = averageColor
+            material.setProperty(baseColor)
         }
         return material
+    }
+
+    /// Mean of the per-vertex RGB triples (0–1 floats), or nil if absent.
+    private static func averageColor(of colors: [UInt8]) -> SIMD3<Float>? {
+        guard colors.count >= 3 else { return nil }
+        var r = 0, g = 0, b = 0, n = 0
+        var i = 0
+        while i + 2 < colors.count {
+            r += Int(colors[i]); g += Int(colors[i + 1]); b += Int(colors[i + 2])
+            n += 1
+            i += 3
+        }
+        guard n > 0 else { return nil }
+        return SIMD3<Float>(
+            Float(r) / Float(n) / 255.0,
+            Float(g) / Float(n) / 255.0,
+            Float(b) / Float(n) / 255.0
+        )
     }
 
     private func sanitised(label: String) -> String {

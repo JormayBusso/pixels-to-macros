@@ -415,7 +415,11 @@ final class MonocularVolumeEstimator {
         maskWidth: Int,
         maskHeight: Int
     ) -> [UInt8] {
-        let buffer = topFrame.pixelBuffer
+        // ARKit capturedImage is planar YCbCr; decode to BGRA so we sample the
+        // real food colour instead of hitting the grey/beige fallback.
+        guard let buffer = Food3DTextureBaker.bgraCopy(of: topFrame.pixelBuffer) else {
+            return [210, 170, 120]
+        }
         CVPixelBufferLockBaseAddress(buffer, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
 

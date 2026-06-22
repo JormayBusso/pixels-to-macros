@@ -3157,6 +3157,14 @@ class AppLocalizations {
         'de': 'Lebensmittel bearbeiten',
       });
 
+  String get editIngredients => _t({
+        'en': 'Edit ingredients',
+        'pl': 'Edytuj składniki',
+        'nl': 'Ingrediënten bewerken',
+        'es': 'Editar ingredientes',
+        'de': 'Zutaten bearbeiten',
+      });
+
   String get kcalPer100g => _t({
         'en': 'kcal/100g',
         'pl': 'kcal/100g',

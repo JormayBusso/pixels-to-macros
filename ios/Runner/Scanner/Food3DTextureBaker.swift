@@ -57,4 +57,24 @@ enum Food3DTextureBaker {
         if !ok { print("[Food3DTextureBaker] finalize failed") }
         return ok
     }
+
+    /// Decode any pixel buffer (notably ARKit's planar YCbCr `capturedImage`)
+    /// into a fresh **BGRA** buffer, so byte-level colour sampling reads real
+    /// pixels instead of failing on the planar layout (nil base address).
+    static func bgraCopy(of pixelBuffer: CVPixelBuffer) -> CVPixelBuffer? {
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
+        guard width > 0, height > 0 else { return nil }
+        var output: CVPixelBuffer?
+        let attrs: [CFString: Any] = [
+            kCVPixelBufferIOSurfacePropertiesKey: [:] as [String: Any],
+            kCVPixelBufferCGImageCompatibilityKey: true,
+        ]
+        guard CVPixelBufferCreate(
+            kCFAllocatorDefault, width, height,
+            kCVPixelFormatType_32BGRA, attrs as CFDictionary, &output
+        ) == kCVReturnSuccess, let dst = output else { return nil }
+        context.render(CIImage(cvPixelBuffer: pixelBuffer), to: dst)
+        return dst
+    }
 }
