@@ -67,11 +67,38 @@ SIMPLE_SNACK_TERMS = [
     "dark chocolate", "chia pudding", "overnight oats",
 ]
 
+# Strong breakfast / dessert signals that VETO a dinner demotion. A dinner
+# keyword inside one of these titles is incidental (e.g. "steak and eggs",
+# "honey-roasted apricots", "yogurt cheesecake").
+BREAKFAST_GUARD = [
+    "pancake", "pancakes", "waffle", "waffles", "omelet", "omelette", "omelett",
+    "scrambled egg", "scrambled eggs", "fried egg", "poached egg", "rührei",
+    "ruhrei", "frittata", "shakshuka", "porridge", "oatmeal", "oats", "muesli",
+    "granola", "french toast", "bircher", "haferflocken", "haferbrei",
+    "pfannkuchen", "eierkuchen", "ontbijt", "pannenkoek", "smoothie", "bagel",
+    "croissant", "crepe", "crêpe", "breakfast", "brunch", "frühstück",
+    "fruhstuck",
+]
+DESSERT_GUARD = [
+    "cake", "cheesecake", "cookie", "brownie", "pudding", "ice cream", "tart",
+    "pie", "muffin", "dessert", "kuchen", "torte", "ciasto", "deser", "postre",
+]
+
 # Cooking-process words that mark a "snack" as actually a real cooked dish.
 COOKED_PROCESS_TERMS = [
     "bake", "baked", "oven", "preheat", "roast", "simmer", "sauté", "saute",
     "fry", "deep fry", "boil", "braise", "grill", "broil", "knead", "marinate",
     "sear", "caramelize", "caramelise", "reduce the heat", "bring to a boil",
+]
+
+# Main-dish proteins. A snack whose TITLE names one of these is a composed meal,
+# never a simple snack — even if it also mentions a dip/hummus/nut component
+# (e.g. "Hummus with pistachio lamb meatballs", "Almond-crusted fish").
+SNACK_PROTEIN_TERMS = [
+    "chicken", "beef", "steak", "lamb", "pork", "bacon", "ham", "turkey",
+    "fish", "salmon", "tuna", "cod", "shrimp", "prawn", "meatball", "meatballs",
+    "pastrami", "chorizo", "sausage", "skewer", "skewers", "wings", "fillet",
+    "filet",
 ]
 
 
@@ -155,8 +182,14 @@ def cleanse_tags(recipes: list[dict]) -> collections.Counter:
         meal = (r.get("meal_type") or "dinner").lower()
         if meal not in ("breakfast", "lunch"):
             continue
-        blob = _title(r) + " " + _ingredient_blob(r)
-        if _has(blob, DINNER_TERMS):
+        title = _title(r)
+        # Veto: an incidental dinner word inside a clear breakfast/dessert title
+        # (e.g. "steak and eggs", "honey-roasted apricots") must not be demoted.
+        if _has(title, BREAKFAST_GUARD) or _has(title, DESSERT_GUARD):
+            continue
+        # Match the TITLE only. Ingredient-blob matching is too noisy — a
+        # breakfast hash listing "leftover roast" would be wrongly demoted.
+        if _has(title, DINNER_TERMS):
             _set_meal_type(r, "dinner")
             changes[f"{meal}->dinner"] += 1
     return changes
@@ -167,6 +200,9 @@ def cleanse_tags(recipes: list[dict]) -> collections.Counter:
 # --------------------------------------------------------------------------- #
 def is_complex_snack(r: dict) -> bool:
     title = _title(r)
+    # A named main-dish protein in the title -> always a meal, never a snack.
+    if _has(title, SNACK_PROTEIN_TERMS) or _has(title, DINNER_TERMS):
+        return True
     # A clearly simple snack stays a snack regardless of step count.
     if _has(title, SIMPLE_SNACK_TERMS) and _ingredient_count(r) <= 6:
         return False

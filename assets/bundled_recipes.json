@@ -333,7 +333,7 @@
     "title": "Loaded black bean dip with quick tortilla chips",
     "name": "Loaded black bean dip with quick tortilla chips",
     "image": "assets/images/recipes/en_loaded_black_bean_dip_with_quick_tortilla_chips_ab2852e837.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -444,7 +444,7 @@
     "glycemic_load": 0,
     "insulin_units": 10.4,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -2485,7 +2485,7 @@
     "title": "Gateau basque",
     "name": "Gateau basque",
     "image": "assets/images/recipes/en_gateau_basque_150d36bf8a.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian"
@@ -2585,7 +2585,7 @@
     "glycemic_load": 0,
     "insulin_units": 46.0,
     "tags": [
-      "snack",
+      "lunch",
       "en",
       "maintain",
       "vegetarian"
@@ -2867,7 +2867,7 @@
     "title": "Black bean sauce",
     "name": "Black bean sauce",
     "image": "assets/images/recipes/en_black_bean_sauce_d0ae41dd17.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -2955,7 +2955,7 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -3956,7 +3956,7 @@
     "title": "Schnelle Bolognese Sauce von Judith2108",
     "name": "Schnelle Bolognese Sauce von Judith2108",
     "image": "assets/images/recipes/de_schnelle_bolognese_sauce_von_judith2108_9f29d8b658.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "muscle",
@@ -4068,7 +4068,7 @@
     "glycemic_load": 0,
     "insulin_units": 17.2,
     "tags": [
-      "snack",
+      "dinner",
       "de",
       "maintain",
       "muscle",
@@ -5934,7 +5934,7 @@
     "title": "Paastrifle met leftover stol, fruit en popcorn",
     "name": "Paastrifle met leftover stol, fruit en popcorn",
     "image": "assets/images/recipes/nl_paastrifle_met_leftover_stol_fruit_en_popcorn_9c3aad6653.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian"
@@ -6021,7 +6021,7 @@
     "glycemic_load": 0,
     "insulin_units": 48.8,
     "tags": [
-      "snack",
+      "lunch",
       "maintain",
       "nl",
       "vegetarian"
@@ -6735,7 +6735,7 @@
     "title": "Sizzled chipotle steak sarnies",
     "name": "Sizzled chipotle steak sarnies",
     "image": "assets/images/recipes/en_sizzled_chipotle_steak_sarnies_7bd481a6fe.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "muscle",
@@ -6814,7 +6814,7 @@
     "glycemic_load": 0,
     "insulin_units": 16.0,
     "tags": [
-      "snack",
+      "dinner",
       "en",
       "maintain",
       "muscle",
@@ -17737,7 +17737,7 @@
     "title": "Stir-fried broccoli with cashews & oyster sauce",
     "name": "Stir-fried broccoli with cashews & oyster sauce",
     "image": "assets/images/recipes/en_stir_fried_broccoli_with_cashews_oyster_sauce_9c6033bcff.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "keto",
@@ -17791,7 +17791,7 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "snack",
+      "dinner",
       "diabetes",
       "en",
       "keto",
@@ -18841,7 +18841,7 @@
     "title": "American biscuits",
     "name": "American biscuits",
     "image": "assets/images/recipes/en_american_biscuits_6be059e687.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian"
@@ -18905,7 +18905,7 @@
     "glycemic_load": 0,
     "insulin_units": 16.4,
     "tags": [
-      "snack",
+      "lunch",
       "en",
       "maintain",
       "vegetarian"
@@ -20765,7 +20765,7 @@
     "title": "Slow-roast tomato, ricotta & prosciutto bruschetta",
     "name": "Slow-roast tomato, ricotta & prosciutto bruschetta",
     "image": "assets/images/recipes/en_slow_roast_tomato_ricotta_prosciutto_bruschetta_1e22243bf4.webp",
-    "meal_type": "lunch",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "weight_loss"
@@ -20838,7 +20838,7 @@
     "glycemic_load": 0,
     "insulin_units": 23.4,
     "tags": [
-      "lunch",
+      "dinner",
       "en",
       "maintain",
       "weight_loss"
@@ -20854,7 +20854,7 @@
     "title": "Bread sauce with flaked almonds & caramelised shallots",
     "name": "Bread sauce with flaked almonds & caramelised shallots",
     "image": "assets/images/recipes/en_bread_sauce_with_flaked_almonds_caramelised_shallots_acb73f0e9e.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -20953,7 +20953,7 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -21980,7 +21980,7 @@
     "title": "Pizzabrötchen-Aufstrich von atena",
     "name": "Pizzabrötchen-Aufstrich von atena",
     "image": "assets/images/recipes/de_pizzabr_tchen_aufstrich_von_atena_8243f40931.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -22049,7 +22049,7 @@
     "glycemic_load": 0,
     "insulin_units": 0.2,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "diabetes",
       "keto",
@@ -22153,7 +22153,7 @@
     "title": "Duck satay with peanut sauce",
     "name": "Duck satay with peanut sauce",
     "image": "assets/images/recipes/en_duck_satay_with_peanut_sauce_6ec0683a99.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -22233,7 +22233,7 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -23890,7 +23890,7 @@
     "title": "Smoky steak with Cajun potatoes & spicy slaw",
     "name": "Smoky steak with Cajun potatoes & spicy slaw",
     "image": "assets/images/recipes/en_smoky_steak_with_cajun_potatoes_spicy_slaw_b51331efb9.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "muscle"
@@ -23975,7 +23975,7 @@
     "glycemic_load": 0,
     "insulin_units": 6.8,
     "tags": [
-      "snack",
+      "dinner",
       "en",
       "maintain",
       "muscle"
@@ -25801,7 +25801,7 @@
     "title": "Chestnut & shallot tatins with mushroom & madeira sauce",
     "name": "Chestnut & shallot tatins with mushroom & madeira sauce",
     "image": "assets/images/recipes/en_chestnut_shallot_tatins_with_mushroom_madeira_sauce_9032811e00.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "vegetarian"
@@ -25917,7 +25917,7 @@
     "glycemic_load": 0,
     "insulin_units": 13.6,
     "tags": [
-      "snack",
+      "dinner",
       "en",
       "maintain",
       "vegetarian"
@@ -27220,7 +27220,7 @@
     "title": "Salmon with tahini sauce",
     "name": "Salmon with tahini sauce",
     "image": "assets/images/recipes/en_salmon_with_tahini_sauce_fe035c0c8f.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -27297,7 +27297,7 @@
     "glycemic_load": 0,
     "insulin_units": 10.0,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "maintain",
@@ -28679,7 +28679,7 @@
     "title": "Turkey breast fingers with avocado dip",
     "name": "Turkey breast fingers with avocado dip",
     "image": "assets/images/recipes/en_turkey_breast_fingers_with_avocado_dip_230fe3abbf.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -28779,7 +28779,7 @@
     "glycemic_load": 0,
     "insulin_units": 2.2,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "maintain",
@@ -31441,7 +31441,7 @@
     "title": "Hummus with pistachio lamb meatballs",
     "name": "Hummus with pistachio lamb meatballs",
     "image": "assets/images/recipes/en_hummus_with_pistachio_lamb_meatballs_b40cac1bbe.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "keto",
@@ -31511,7 +31511,7 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "snack",
+      "dinner",
       "diabetes",
       "en",
       "keto",
@@ -35974,7 +35974,7 @@
     "title": "Chicken skewers with satay dip",
     "name": "Chicken skewers with satay dip",
     "image": "assets/images/recipes/en_chicken_skewers_with_satay_dip_371d05926e.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain"
@@ -36041,7 +36041,7 @@
     "glycemic_load": 0,
     "insulin_units": 1.5,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "maintain"
@@ -37920,7 +37920,7 @@
     "title": "Chicken skewers with broad bean hummus",
     "name": "Chicken skewers with broad bean hummus",
     "image": "assets/images/recipes/en_chicken_skewers_with_broad_bean_hummus_616f97efb4.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -38036,7 +38036,7 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "maintain",
@@ -39187,7 +39187,7 @@
     "title": "Koolhydraatarme snack: komkommerrolletjes met roomkaas & tomatentapenade",
     "name": "Koolhydraatarme snack: komkommerrolletjes met roomkaas & tomatentapenade",
     "image": "assets/images/recipes/nl_koolhydraatarme_snack_komkommerrolletjes_met_roomkaas_to_a47e4f5003.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -39255,7 +39255,7 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "keto",
       "maintain",
@@ -40846,7 +40846,7 @@
     "title": "BBQ Garnelen in Honig-Senf-Sauce von asrasr",
     "name": "BBQ Garnelen in Honig-Senf-Sauce von asrasr",
     "image": "assets/images/recipes/de_bbq_garnelen_in_honig_senf_sauce_von_asrasr_bbc384bdf9.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle",
@@ -40942,7 +40942,7 @@
     "glycemic_load": 0,
     "insulin_units": 7.5,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "maintain",
       "muscle",
@@ -41059,7 +41059,7 @@
     "title": "Chickpea & roasted pepper salad",
     "name": "Chickpea & roasted pepper salad",
     "image": "assets/images/recipes/en_chickpea_roasted_pepper_salad_915d099209.webp",
-    "meal_type": "lunch",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "keto",
@@ -41130,7 +41130,7 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "lunch",
+      "dinner",
       "diabetes",
       "en",
       "keto",
@@ -41831,7 +41831,7 @@
     "title": "Paprika-Reis-Pfanne mit Joghurtsauce",
     "name": "Paprika-Reis-Pfanne mit Joghurtsauce",
     "image": "assets/images/recipes/de_paprika_reis_pfanne_mit_joghurtsauce_cc42627a17.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegan",
@@ -41936,7 +41936,7 @@
     "glycemic_load": 0,
     "insulin_units": 27.3,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "maintain",
       "vegan",
@@ -45204,7 +45204,7 @@
     "title": "Ravioli with walnuts, goat’s cheese & cavolo nero sauce",
     "name": "Ravioli with walnuts, goat’s cheese & cavolo nero sauce",
     "image": "assets/images/recipes/en_ravioli_with_walnuts_goat_s_cheese_cavolo_nero_sauce_e631af01ba.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "vegetarian"
@@ -45294,7 +45294,7 @@
     "glycemic_load": 0,
     "insulin_units": 16.4,
     "tags": [
-      "snack",
+      "dinner",
       "en",
       "maintain",
       "vegetarian"
@@ -49256,7 +49256,7 @@
     "title": "Tagliatelle mit Zitronen-Basilikum-Sauce von Happiness",
     "name": "Tagliatelle mit Zitronen-Basilikum-Sauce von Happiness",
     "image": "assets/images/recipes/de_tagliatelle_mit_zitronen_basilikum_sauce_von_happiness_5514b721d9.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle",
@@ -49334,7 +49334,7 @@
     "glycemic_load": 0,
     "insulin_units": 15.1,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "maintain",
       "muscle",
@@ -49997,7 +49997,7 @@
     "title": "Rib-eye steaks with chilli butter & homemade chips",
     "name": "Rib-eye steaks with chilli butter & homemade chips",
     "image": "assets/images/recipes/en_rib_eye_steaks_with_chilli_butter_homemade_chips_ac4f8ef8f9.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle",
@@ -50087,7 +50087,7 @@
     "glycemic_load": 0,
     "insulin_units": 7.2,
     "tags": [
-      "snack",
+      "lunch",
       "en",
       "maintain",
       "muscle",
@@ -50522,7 +50522,7 @@
     "title": "Sticky ribs with roast potato salad",
     "name": "Sticky ribs with roast potato salad",
     "image": "assets/images/recipes/en_sticky_ribs_with_roast_potato_salad_571c46802d.webp",
-    "meal_type": "lunch",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "weight_loss"
@@ -50626,7 +50626,7 @@
     "glycemic_load": 0,
     "insulin_units": 40.0,
     "tags": [
-      "lunch",
+      "dinner",
       "en",
       "maintain",
       "weight_loss"
@@ -51184,7 +51184,7 @@
     "title": "Turkey meatball caesar salad",
     "name": "Turkey meatball caesar salad",
     "image": "assets/images/recipes/en_turkey_meatball_caesar_salad_315e35c499.webp",
-    "meal_type": "lunch",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "maintain",
@@ -51274,7 +51274,7 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
-      "lunch",
+      "dinner",
       "diabetes",
       "en",
       "maintain",
@@ -52107,7 +52107,7 @@
     "title": "Currysauce zu Currywurst von Kochsozi",
     "name": "Currysauce zu Currywurst von Kochsozi",
     "image": "assets/images/recipes/de_currysauce_zu_currywurst_von_kochsozi_3db7de8d98.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegan",
@@ -52179,7 +52179,7 @@
     "glycemic_load": 0,
     "insulin_units": 21.1,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "maintain",
       "vegan",
@@ -52274,7 +52274,7 @@
     "title": "Smoked salmon pâté with tear & share brioche buns",
     "name": "Smoked salmon pâté with tear & share brioche buns",
     "image": "assets/images/recipes/en_smoked_salmon_p_t_with_tear_share_brioche_buns_e47a21e0a7.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle"
@@ -52385,7 +52385,7 @@
     "glycemic_load": 0,
     "insulin_units": 36.6,
     "tags": [
-      "snack",
+      "lunch",
       "en",
       "maintain",
       "muscle"
@@ -53426,7 +53426,7 @@
     "title": "Pittige ovenaardappelen met dips",
     "name": "Pittige ovenaardappelen met dips",
     "image": "assets/images/recipes/nl_pittige_ovenaardappelen_met_dips_fa81556f3a.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegan",
@@ -53498,7 +53498,7 @@
     "glycemic_load": 0,
     "insulin_units": 38.4,
     "tags": [
-      "snack",
+      "lunch",
       "maintain",
       "nl",
       "vegan",
@@ -54004,7 +54004,7 @@
     "title": "Crab doughnuts",
     "name": "Crab doughnuts",
     "image": "assets/images/recipes/en_crab_doughnuts_9c4d263d2c.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -54119,7 +54119,7 @@
     "glycemic_load": 0,
     "insulin_units": 26.0,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -54222,7 +54222,7 @@
     "title": "Muscheln in Tomatensauce von NatuerlichLecker",
     "name": "Muscheln in Tomatensauce von NatuerlichLecker",
     "image": "assets/images/recipes/de_muscheln_in_tomatensauce_von_natuerlichlecker_9e79cf9068.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle",
@@ -54322,7 +54322,7 @@
     "glycemic_load": 0,
     "insulin_units": 12.0,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "maintain",
       "muscle",
@@ -55323,7 +55323,7 @@
     "title": "Caramel soufflés with caramel sauce",
     "name": "Caramel soufflés with caramel sauce",
     "image": "assets/images/recipes/en_caramel_souffl_s_with_caramel_sauce_8f1efaa67e.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "keto",
       "maintain",
@@ -55392,7 +55392,7 @@
     "glycemic_load": 0,
     "insulin_units": 2.5,
     "tags": [
-      "snack",
+      "lunch",
       "en",
       "keto",
       "maintain",
@@ -55409,7 +55409,7 @@
     "title": "Galaxy donuts",
     "name": "Galaxy donuts",
     "image": "assets/images/recipes/nl_galaxy_donuts_01f37c35a0.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -55520,7 +55520,7 @@
     "glycemic_load": 0,
     "insulin_units": 44.0,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "maintain",
       "nl",
@@ -58010,7 +58010,7 @@
     "title": "Pork meatball bites",
     "name": "Pork meatball bites",
     "image": "assets/images/recipes/en_pork_meatball_bites_942a774b98.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "maintain"
@@ -58119,7 +58119,7 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
-      "snack",
+      "dinner",
       "diabetes",
       "en",
       "maintain"
@@ -60200,7 +60200,7 @@
     "title": "Chorizo hummus bowl",
     "name": "Chorizo hummus bowl",
     "image": "assets/images/recipes/en_chorizo_hummus_bowl_a8dc9e20a4.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle"
@@ -60264,7 +60264,7 @@
     "glycemic_load": 0,
     "insulin_units": 2.9,
     "tags": [
-      "snack",
+      "lunch",
       "en",
       "maintain",
       "muscle"
@@ -63077,7 +63077,7 @@
     "title": "Thyme roast cod & panzanella salad",
     "name": "Thyme roast cod & panzanella salad",
     "image": "assets/images/recipes/en_thyme_roast_cod_panzanella_salad_d139ff2528.webp",
-    "meal_type": "lunch",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "maintain",
@@ -63190,7 +63190,7 @@
     "glycemic_load": 0,
     "insulin_units": 11.4,
     "tags": [
-      "lunch",
+      "dinner",
       "diabetes",
       "en",
       "maintain",
@@ -63207,7 +63207,7 @@
     "title": "Absolut gelingsichere Sauce nach Art einer Béarnaise von julmul",
     "name": "Absolut gelingsichere Sauce nach Art einer Béarnaise von julmul",
     "image": "assets/images/recipes/de_absolut_gelingsichere_sauce_nach_art_einer_b_arnaise_von_9f3d5d96bb.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -63281,7 +63281,7 @@
     "glycemic_load": 0,
     "insulin_units": 1.0,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "diabetes",
       "keto",
@@ -67750,7 +67750,7 @@
     "title": "Lachsforelle mit Frankfurter Grüne Sauce und kleinen Schwenkkartoffeln von chefkoch",
     "name": "Lachsforelle mit Frankfurter Grüne Sauce und kleinen Schwenkkartoffeln von chefkoch",
     "image": "assets/images/recipes/de_lachsforelle_mit_frankfurter_gr_ne_sauce_und_kleinen_sch_9c2370effa.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -67850,7 +67850,7 @@
     "glycemic_load": 0,
     "insulin_units": 6.5,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "diabetes",
       "maintain",
@@ -68476,7 +68476,7 @@
     "title": "Lemon pepper steaks with hazelnut salsa verde",
     "name": "Lemon pepper steaks with hazelnut salsa verde",
     "image": "assets/images/recipes/en_lemon_pepper_steaks_with_hazelnut_salsa_verde_183ed71b9e.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -68565,7 +68565,7 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -69450,7 +69450,7 @@
     "title": "Easy prawn green curry rice bowl",
     "name": "Easy prawn green curry rice bowl",
     "image": "assets/images/recipes/en_easy_prawn_green_curry_rice_bowl_1d0858e97d.webp",
-    "meal_type": "lunch",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "weight_loss"
@@ -69519,7 +69519,7 @@
     "glycemic_load": 0,
     "insulin_units": 5.3,
     "tags": [
-      "lunch",
+      "dinner",
       "en",
       "maintain",
       "weight_loss"
@@ -72992,7 +72992,7 @@
     "title": "Air-fryer cauliflower popcorn with soured cream & herb dressing",
     "name": "Air-fryer cauliflower popcorn with soured cream & herb dressing",
     "image": "assets/images/recipes/en_air_fryer_cauliflower_popcorn_with_soured_cream_herb_dre_159fc5a393.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian",
@@ -73092,7 +73092,7 @@
     "glycemic_load": 0,
     "insulin_units": 16.8,
     "tags": [
-      "snack",
+      "lunch",
       "en",
       "maintain",
       "vegetarian",
@@ -76988,7 +76988,7 @@
     "title": "Herby baked lamb in tomato sauce",
     "name": "Herby baked lamb in tomato sauce",
     "image": "assets/images/recipes/en_herby_baked_lamb_in_tomato_sauce_730f87e125.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -77065,7 +77065,7 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -77573,7 +77573,7 @@
     "title": "Tikka cauliflower skewers with makhani sauce",
     "name": "Tikka cauliflower skewers with makhani sauce",
     "image": "assets/images/recipes/en_tikka_cauliflower_skewers_with_makhani_sauce_22760869cc.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -77684,7 +77684,7 @@
     "glycemic_load": 0,
     "insulin_units": 8.0,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -80892,7 +80892,7 @@
     "title": "Roast lamb with avgolemono sauce",
     "name": "Roast lamb with avgolemono sauce",
     "image": "assets/images/recipes/en_roast_lamb_with_avgolemono_sauce_d12a61398c.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "maintain",
@@ -80965,7 +80965,7 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "snack",
+      "dinner",
       "diabetes",
       "en",
       "maintain",
@@ -83962,7 +83962,7 @@
     "title": "Feta pâté platter",
     "name": "Feta pâté platter",
     "image": "assets/images/recipes/en_feta_p_t_platter_dc14de983d.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain"
     ],
@@ -84044,7 +84044,7 @@
     "glycemic_load": 0,
     "insulin_units": 5.2,
     "tags": [
-      "snack",
+      "lunch",
       "en",
       "maintain"
     ],
@@ -87964,7 +87964,7 @@
     "title": "Warm salad of asparagus, bacon, duck egg & hazelnuts",
     "name": "Warm salad of asparagus, bacon, duck egg & hazelnuts",
     "image": "assets/images/recipes/en_warm_salad_of_asparagus_bacon_duck_egg_hazelnuts_43f012247f.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -88039,7 +88039,7 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -89086,7 +89086,7 @@
     "title": "Vanilleaufstrich von Seelenschein",
     "name": "Vanilleaufstrich von Seelenschein",
     "image": "assets/images/recipes/de_vanilleaufstrich_von_seelenschein_b36dcc7c37.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -89140,7 +89140,7 @@
     "glycemic_load": 0,
     "insulin_units": 12.1,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "diabetes",
       "maintain",
@@ -89615,7 +89615,7 @@
     "title": "Amerikanische Bulls Eye Barbecue Sauce von sukeyhamburg17",
     "name": "Amerikanische Bulls Eye Barbecue Sauce von sukeyhamburg17",
     "image": "assets/images/recipes/de_amerikanische_bulls_eye_barbecue_sauce_von_sukeyhamburg1_6bf5f2b8a0.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian"
@@ -89706,7 +89706,7 @@
     "glycemic_load": 0,
     "insulin_units": 24.2,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "maintain",
       "vegetarian"
@@ -90630,7 +90630,7 @@
     "title": "Almond-crusted fish with saffron sauce",
     "name": "Almond-crusted fish with saffron sauce",
     "image": "assets/images/recipes/en_almond_crusted_fish_with_saffron_sauce_d36f879b07.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -90699,7 +90699,7 @@
     "glycemic_load": 0,
     "insulin_units": 0.2,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "maintain",
@@ -91864,7 +91864,7 @@
     "title": "Spicy red lentil chilli with guacamole & rice",
     "name": "Spicy red lentil chilli with guacamole & rice",
     "image": "assets/images/recipes/en_spicy_red_lentil_chilli_with_guacamole_rice_3d116c2921.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegan",
@@ -91989,7 +91989,7 @@
     "glycemic_load": 0,
     "insulin_units": 25.2,
     "tags": [
-      "snack",
+      "lunch",
       "en",
       "maintain",
       "vegan",
@@ -94844,7 +94844,7 @@
     "title": "Turkey salad with grapes & walnuts",
     "name": "Turkey salad with grapes & walnuts",
     "image": "assets/images/recipes/en_turkey_salad_with_grapes_walnuts_3301beeedc.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -94946,7 +94946,7 @@
     "glycemic_load": 0,
     "insulin_units": 8.8,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "maintain",
@@ -100145,7 +100145,7 @@
     "title": "Frühlings-Rösti mit Bärlauch-Dip von sramaravilla",
     "name": "Frühlings-Rösti mit Bärlauch-Dip von sramaravilla",
     "image": "assets/images/recipes/de_fr_hlings_r_sti_mit_b_rlauch_dip_von_sramaravilla_22e8219b98.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -100243,7 +100243,7 @@
     "glycemic_load": 0,
     "insulin_units": 12.8,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "diabetes",
       "maintain",
@@ -100666,7 +100666,7 @@
     "title": "Asparagus & prosciutto bundles with goat’s cheese & hazelnut dip",
     "name": "Asparagus & prosciutto bundles with goat’s cheese & hazelnut dip",
     "image": "assets/images/recipes/en_asparagus_prosciutto_bundles_with_goat_s_cheese_hazelnut_bc1149cdbb.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -100746,7 +100746,7 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -107822,7 +107822,7 @@
     "title": "Dippy eggs with Marmite soldiers",
     "name": "Dippy eggs with Marmite soldiers",
     "image": "assets/images/recipes/en_dippy_eggs_with_marmite_soldiers_7877f54777.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -107882,7 +107882,7 @@
     "glycemic_load": 0,
     "insulin_units": 5.4,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "maintain",
@@ -109396,7 +109396,7 @@
     "title": "Crisp chicken bites",
     "name": "Crisp chicken bites",
     "image": "assets/images/recipes/en_crisp_chicken_bites_9c67d5d1ab.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -109451,7 +109451,7 @@
     "glycemic_load": 0,
     "insulin_units": 22.8,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "maintain",
@@ -112638,7 +112638,7 @@
     "title": "Spargel in Basilikum-Spargel-Sauce von pauline-1953",
     "name": "Spargel in Basilikum-Spargel-Sauce von pauline-1953",
     "image": "assets/images/recipes/de_spargel_in_basilikum_spargel_sauce_von_pauline_1953_54170c3ce3.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -112725,7 +112725,7 @@
     "glycemic_load": 0,
     "insulin_units": 3.0,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "diabetes",
       "keto",
@@ -116874,7 +116874,7 @@
     "title": "Erwtenhummus met kruiden en limoen",
     "name": "Erwtenhummus met kruiden en limoen",
     "image": "assets/images/recipes/nl_erwtenhummus_met_kruiden_en_limoen_4bf80ea8fa.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -116936,7 +116936,7 @@
     "glycemic_load": 0,
     "insulin_units": 4.4,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "keto",
       "maintain",
@@ -118636,7 +118636,7 @@
     "title": "Tortellini alla panna - Schinken-Sahnesauce wie beim Italiener",
     "name": "Tortellini alla panna - Schinken-Sahnesauce wie beim Italiener",
     "image": "assets/images/recipes/de_tortellini_alla_panna_schinken_sahnesauce_wie_beim_itali_83c1632c8a.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle"
@@ -118709,7 +118709,7 @@
     "glycemic_load": 0,
     "insulin_units": 18.0,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "maintain",
       "muscle"
@@ -119821,7 +119821,7 @@
     "title": "Gefüllte Paprika mit Joghurtsauce von hershel",
     "name": "Gefüllte Paprika mit Joghurtsauce von hershel",
     "image": "assets/images/recipes/de_gef_llte_paprika_mit_joghurtsauce_von_hershel_eb32354524.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle",
@@ -119942,7 +119942,7 @@
     "glycemic_load": 0,
     "insulin_units": 32.9,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "maintain",
       "muscle",
@@ -120437,7 +120437,7 @@
     "title": "Steak de boeuf met een frisse lentepuree en groenten",
     "name": "Steak de boeuf met een frisse lentepuree en groenten",
     "image": "assets/images/recipes/nl_steak_de_boeuf_met_een_frisse_lentepuree_en_groenten_42cbe784da.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "muscle"
@@ -120536,7 +120536,7 @@
     "glycemic_load": 0,
     "insulin_units": 19.6,
     "tags": [
-      "snack",
+      "dinner",
       "maintain",
       "muscle",
       "nl"
@@ -120759,7 +120759,7 @@
     "title": "Steaks with goulash sauce & sweet potato fries",
     "name": "Steaks with goulash sauce & sweet potato fries",
     "image": "assets/images/recipes/en_steaks_with_goulash_sauce_sweet_potato_fries_73bf9fc0ef.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "muscle",
@@ -120858,7 +120858,7 @@
     "glycemic_load": 0,
     "insulin_units": 6.2,
     "tags": [
-      "snack",
+      "dinner",
       "en",
       "maintain",
       "muscle",
@@ -123244,7 +123244,7 @@
     "title": "Crispy thyme chicken with mushroom sauce",
     "name": "Crispy thyme chicken with mushroom sauce",
     "image": "assets/images/recipes/en_crispy_thyme_chicken_with_mushroom_sauce_83addb0163.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -123304,7 +123304,7 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "maintain",
@@ -123588,7 +123588,7 @@
     "title": "Roasted beetroot with za’atar, chickpeas & harissa yogurt",
     "name": "Roasted beetroot with za’atar, chickpeas & harissa yogurt",
     "image": "assets/images/recipes/en_roasted_beetroot_with_za_atar_chickpeas_harissa_yogurt_2adb3a5f35.webp",
-    "meal_type": "breakfast",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "vegetarian",
@@ -123682,7 +123682,7 @@
     "glycemic_load": 0,
     "insulin_units": 5.0,
     "tags": [
-      "breakfast",
+      "dinner",
       "en",
       "maintain",
       "vegetarian",
@@ -123772,7 +123772,7 @@
     "title": "Salad of roast carrots, apple & lentils with chilli & preserved lemons",
     "name": "Salad of roast carrots, apple & lentils with chilli & preserved lemons",
     "image": "assets/images/recipes/en_salad_of_roast_carrots_apple_lentils_with_chilli_preserv_cba92b6663.webp",
-    "meal_type": "lunch",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "keto",
@@ -123876,7 +123876,7 @@
     "glycemic_load": 0,
     "insulin_units": 8.0,
     "tags": [
-      "lunch",
+      "dinner",
       "diabetes",
       "en",
       "keto",
@@ -124206,7 +124206,7 @@
     "title": "Muscheln in Weißweinsauce von siloge3",
     "name": "Muscheln in Weißweinsauce von siloge3",
     "image": "assets/images/recipes/de_muscheln_in_wei_weinsauce_von_siloge3_bbce19570e.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle",
@@ -124300,7 +124300,7 @@
     "glycemic_load": 0,
     "insulin_units": 11.8,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "maintain",
       "muscle",
@@ -124616,7 +124616,7 @@
     "title": "Chimichurri steaks with sweet potato fries & onion rings",
     "name": "Chimichurri steaks with sweet potato fries & onion rings",
     "image": "assets/images/recipes/en_chimichurri_steaks_with_sweet_potato_fries_onion_rings_98ebcbc5c4.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle",
@@ -124703,7 +124703,7 @@
     "glycemic_load": 0,
     "insulin_units": 12.4,
     "tags": [
-      "snack",
+      "lunch",
       "en",
       "maintain",
       "muscle",
@@ -126713,7 +126713,7 @@
     "title": "Easy bread sauce",
     "name": "Easy bread sauce",
     "image": "assets/images/recipes/en_easy_bread_sauce_00e208251f.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -126798,7 +126798,7 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -127728,7 +127728,7 @@
     "title": "Lamb steaks with artichoke salad",
     "name": "Lamb steaks with artichoke salad",
     "image": "assets/images/recipes/en_lamb_steaks_with_artichoke_salad_19622d2a51.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -127805,7 +127805,7 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -130299,7 +130299,7 @@
     "title": "Zander im Kartoffelmantel auf Fenchelgemüse mit Senfsauce von chefkoch",
     "name": "Zander im Kartoffelmantel auf Fenchelgemüse mit Senfsauce von chefkoch",
     "image": "assets/images/recipes/de_zander_im_kartoffelmantel_auf_fenchelgem_se_mit_senfsauc_30d3eb6daf.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -130405,7 +130405,7 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
-      "snack",
+      "lunch",
       "de",
       "diabetes",
       "maintain",
@@ -131392,7 +131392,7 @@
     "title": "Barbecued fajita steak",
     "name": "Barbecued fajita steak",
     "image": "assets/images/recipes/en_barbecued_fajita_steak_b5a3dac519.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "maintain",
@@ -131477,7 +131477,7 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "snack",
+      "dinner",
       "diabetes",
       "en",
       "maintain",
@@ -132402,7 +132402,7 @@
     "title": "Falafel-quinoaburger met zuivelspread, slamelange, rode biet en komkommer",
     "name": "Falafel-quinoaburger met zuivelspread, slamelange, rode biet en komkommer",
     "image": "assets/images/recipes/nl_falafel_quinoaburger_met_zuivelspread_slamelange_rode_bi_46e0683796.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegan",
@@ -132467,7 +132467,7 @@
     "glycemic_load": 0,
     "insulin_units": 21.6,
     "tags": [
-      "snack",
+      "lunch",
       "maintain",
       "nl",
       "vegan",
@@ -133270,7 +133270,7 @@
     "title": "Ricotta & spinach filo bites",
     "name": "Ricotta & spinach filo bites",
     "image": "assets/images/recipes/en_ricotta_spinach_filo_bites_22e74c2ce4.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -133350,7 +133350,7 @@
     "glycemic_load": 0,
     "insulin_units": 7.2,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -134916,7 +134916,7 @@
     "title": "Prawns in Longjing tea",
     "name": "Prawns in Longjing tea",
     "image": "assets/images/recipes/en_prawns_in_longjing_tea_2668d6a354.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -135003,7 +135003,7 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
@@ -136362,7 +136362,7 @@
     "title": "Iced chai latte",
     "name": "Iced chai latte",
     "image": "assets/images/recipes/nl_iced_chai_latte_ab9ef55a6a.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -136420,7 +136420,7 @@
     "glycemic_load": 0,
     "insulin_units": 5.2,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "maintain",
       "nl",
@@ -136437,7 +136437,7 @@
     "title": "Dattel-Frischkäse-Aufstrich mit Curry von Patricia01",
     "name": "Dattel-Frischkäse-Aufstrich mit Curry von Patricia01",
     "image": "assets/images/recipes/de_dattel_frischk_se_aufstrich_mit_curry_von_patricia01_017a395422.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "muscle",
@@ -136506,7 +136506,7 @@
     "glycemic_load": 0,
     "insulin_units": 10.3,
     "tags": [
-      "snack",
+      "dinner",
       "de",
       "maintain",
       "muscle",
@@ -136764,7 +136764,7 @@
     "title": "Oesters met 3 dips",
     "name": "Oesters met 3 dips",
     "image": "assets/images/recipes/nl_oesters_met_3_dips_7daa13621a.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -136870,7 +136870,7 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "keto",
       "maintain",
@@ -138054,7 +138054,7 @@
     "title": "Slow cooker broccoli & cheese soup",
     "name": "Slow cooker broccoli & cheese soup",
     "image": "assets/images/recipes/en_slow_cooker_broccoli_cheese_soup_8c70faaed5.webp",
-    "meal_type": "lunch",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "keto",
@@ -138134,7 +138134,7 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "lunch",
+      "dinner",
       "diabetes",
       "en",
       "keto",
@@ -139993,7 +139993,7 @@
     "title": "Pastrami-style steak & mustard mayo",
     "name": "Pastrami-style steak & mustard mayo",
     "image": "assets/images/recipes/en_pastrami_style_steak_mustard_mayo_106d8bbeb0.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "keto",
@@ -140058,7 +140058,7 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
-      "snack",
+      "dinner",
       "diabetes",
       "en",
       "keto",
@@ -145234,7 +145234,7 @@
     "title": "Roast carrot soup with pancetta croutons",
     "name": "Roast carrot soup with pancetta croutons",
     "image": "assets/images/recipes/en_roast_carrot_soup_with_pancetta_croutons_ce50c3b73a.webp",
-    "meal_type": "lunch",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "muscle"
@@ -145324,7 +145324,7 @@
     "glycemic_load": 0,
     "insulin_units": 7.8,
     "tags": [
-      "lunch",
+      "dinner",
       "en",
       "maintain",
       "muscle"
@@ -146337,7 +146337,7 @@
     "title": "Roast Easter duck with raisin salad",
     "name": "Roast Easter duck with raisin salad",
     "image": "assets/images/recipes/en_roast_easter_duck_with_raisin_salad_c010aabee1.webp",
-    "meal_type": "lunch",
+    "meal_type": "dinner",
     "goals": [
       "keto",
       "maintain",
@@ -146447,7 +146447,7 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
-      "lunch",
+      "dinner",
       "en",
       "keto",
       "maintain",
@@ -146579,7 +146579,7 @@
     "title": "Nacho cheese sauce",
     "name": "Nacho cheese sauce",
     "image": "assets/images/recipes/en_nacho_cheese_sauce_f13995249b.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -146655,7 +146655,7 @@
     "glycemic_load": 0,
     "insulin_units": 4.6,
     "tags": [
-      "snack",
+      "lunch",
       "diabetes",
       "en",
       "keto",
