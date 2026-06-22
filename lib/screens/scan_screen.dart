@@ -81,6 +81,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   @override
   void initState() {
     super.initState();
+    // Lock the scan flow to portrait. The ARKit preview applies a hardcoded
+    // portrait transform, and the landscape side-view UX depends on the UI
+    // staying portrait while the user physically rotates the phone to
+    // landscape (the on-screen instruction is pre-rotated to compensate).
+    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
     // Reset any stale state from a previous scan session (the provider is
     // NOT autoDispose so depthFailed / modelFailed from earlier persists).
     // Defer both reset AND session start to post-frame callback so that
@@ -249,6 +254,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     try {
       _bridge.stopSession(generation: _sessionGeneration);
     } catch (_) {}
+    // Restore free orientation for the rest of the app.
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
   }
 

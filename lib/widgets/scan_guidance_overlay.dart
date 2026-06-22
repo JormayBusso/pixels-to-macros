@@ -51,15 +51,29 @@ class _ScanGuidanceOverlayState extends State<ScanGuidanceOverlay>
   Widget build(BuildContext context) {
     final state = widget.scanState;
 
+    // The "side view" is captured at the tail of the continuous tilt (monocular
+    // flow) or in the legacy discrete side step. As the phone approaches the
+    // side view we switch to a landscape-oriented treatment: horizontal framing
+    // guides + a 90°-rotated instruction that is only upright when the phone is
+    // physically held in landscape — giving the side photo a wider, less
+    // fisheye-distorted framing.
+    const sideApproachPitch = -0.7; // ≈ -40°: past the halfway tilt point
+    final sideViewStep = state == ScanState.moveSide ||
+        state == ScanState.captureSide ||
+        (state == ScanState.recording &&
+            widget.currentPitch > sideApproachPitch);
+
     return IgnorePointer(
       child: Stack(
         children: [
-          // Viewfinder reticle
+          // Viewfinder reticle (top-view framing only)
           if (state == ScanState.waitingForTopView ||
               state == ScanState.readyToRecord ||
-              state == ScanState.alignTop ||
-              state == ScanState.moveSide)
+              state == ScanState.alignTop)
             Center(child: _Reticle(pulse: _pulse, state: state)),
+
+          // Horizontal framing guides for the landscape side-view step
+          if (sideViewStep) Positioned.fill(child: _HorizontalGuides(pulse: _pulse)),
 
           // Tilt progress arc (shown during recording)
           if (state == ScanState.recording)
@@ -70,20 +84,46 @@ class _ScanGuidanceOverlayState extends State<ScanGuidanceOverlay>
               ),
             ),
 
-          // Top banner instruction
-          Positioned(
-            top: 60,
-            left: 24,
-            right: 24,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: _InstructionBanner(
-                key: ValueKey(state),
-                state: state,
-                scanMode: widget.scanMode,
+          // Instruction banner. During the side-view step it is rotated 90° and
+          // pinned to the right edge so it reads upright once the phone is
+          // turned into landscape (the right edge becomes the new top).
+          if (sideViewStep)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: RotatedBox(
+                  // quarterTurns: 1 → upright when the phone is rolled
+                  // counter-clockwise into landscape. Flip to 3 if users
+                  // naturally turn the other way.
+                  quarterTurns: 1,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.height * 0.6,
+                    ),
+                    child: _InstructionBanner(
+                      key: ValueKey(state),
+                      state: state,
+                      scanMode: widget.scanMode,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            Positioned(
+              top: 60,
+              left: 24,
+              right: 24,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _InstructionBanner(
+                  key: ValueKey(state),
+                  state: state,
+                  scanMode: widget.scanMode,
+                ),
               ),
             ),
-          ),
 
           // Distance hint (bottom)
           if (state == ScanState.waitingForTopView ||
@@ -107,15 +147,6 @@ class _ScanGuidanceOverlayState extends State<ScanGuidanceOverlay>
                   ),
                 ),
               ),
-            ),
-
-          // Side-move arrow hint
-          if (state == ScanState.moveSide)
-            Positioned(
-              bottom: 140,
-              left: 0,
-              right: 0,
-              child: _AnimatedArrow(pulse: _pulse),
             ),
         ],
       ),
@@ -331,6 +362,75 @@ class _TiltArcPainter extends CustomPainter {
   bool shouldRepaint(_TiltArcPainter old) => old.progress != progress || old.color != color;
 }
 
+// Horizontal framing guides (landscape side-view capture)
+
+class _HorizontalGuides extends StatelessWidget {
+  const _HorizontalGuides({required this.pulse});
+  final Animation<double> pulse;
+
+  @override
+  Widget build(BuildContext context) {
+    return _AnimBuilder(
+      listenable: pulse,
+      builder: (_, __) => CustomPaint(
+        painter: _HorizontalGuidesPainter(
+          color: AppTheme.amber500,
+          pulseValue: pulse.value,
+        ),
+      ),
+    );
+  }
+}
+
+class _HorizontalGuidesPainter extends CustomPainter {
+  _HorizontalGuidesPainter({required this.color, required this.pulseValue});
+  final Color color;
+  final double pulseValue;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    const inset = 28.0;
+
+    final linePaint = Paint()
+      ..color = color.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    final faintPaint = Paint()
+      ..color = color.withValues(alpha: 0.22 + pulseValue * 0.12)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    // Upper and lower framing lines — keep the food between them.
+    for (final y in [h * 0.26, h * 0.74]) {
+      canvas.drawLine(Offset(inset, y), Offset(w - inset, y), linePaint);
+      canvas.drawLine(Offset(inset, y - 8), Offset(inset, y + 8), linePaint);
+      canvas.drawLine(Offset(w - inset, y - 8), Offset(w - inset, y + 8), linePaint);
+    }
+
+    // Center horizon (dashed) — a level reference for a straight-on side view.
+    final midY = h * 0.5;
+    const dash = 14.0;
+    const gap = 10.0;
+    double x = inset;
+    while (x < w - inset) {
+      canvas.drawLine(
+        Offset(x, midY),
+        Offset(math.min(x + dash, w - inset), midY),
+        faintPaint,
+      );
+      x += dash + gap;
+    }
+    canvas.drawLine(Offset(w / 2, midY - 10), Offset(w / 2, midY + 10), linePaint);
+  }
+
+  @override
+  bool shouldRepaint(_HorizontalGuidesPainter old) =>
+      old.pulseValue != pulseValue || old.color != color;
+}
+
 // Instruction banner
 
 class _InstructionBanner extends StatelessWidget {
@@ -423,40 +523,6 @@ class _InstructionBanner extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-// Animated side-move arrow
-
-class _AnimatedArrow extends StatelessWidget {
-  const _AnimatedArrow({required this.pulse});
-  final Animation<double> pulse;
-
-  @override
-  Widget build(BuildContext context) {
-    return _AnimBuilder(
-      listenable: pulse,
-      builder: (_, __) {
-        final dx = pulse.value * 16 - 8;
-        return Transform.translate(
-          offset: Offset(dx, 0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Transform.rotate(
-                angle: -math.pi / 6,
-                child: const Icon(Icons.arrow_forward, size: 32, color: Colors.white70),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Tilt to the side',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white70),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
