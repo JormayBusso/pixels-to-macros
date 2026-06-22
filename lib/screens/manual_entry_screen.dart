@@ -556,23 +556,34 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     final prefs = ref.watch(userPrefsProvider);
     final restrictions = prefs.dietaryRestrictions;
     final l10n = AppLocalizations.of(context);
+    // "Actively editing" == keyboard visible. Drives the contextual Done
+    // button (AppBar) and the dismiss FAB, so neither is permanently shown.
+    final editing = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).logFoodManually),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.keyboard_hide),
-            tooltip: 'Dismiss keyboard',
-            onPressed: () => FocusScope.of(context).unfocus(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            tooltip: 'Scan barcode',
-            onPressed: _openBarcodeScanner,
-          ),
+          if (editing)
+            TextButton(
+              onPressed: () => FocusScope.of(context).unfocus(),
+              child: const Text('Done'),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.qr_code_scanner, size: 30),
+              tooltip: 'Scan barcode',
+              onPressed: _openBarcodeScanner,
+            ),
         ],
       ),
+      floatingActionButton: editing
+          ? FloatingActionButton.extended(
+              onPressed: () => FocusScope.of(context).unfocus(),
+              icon: const Icon(Icons.keyboard_arrow_down),
+              label: const Text('Done'),
+            )
+          : null,
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         behavior: HitTestBehavior.translucent,

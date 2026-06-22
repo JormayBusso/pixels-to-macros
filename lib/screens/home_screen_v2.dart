@@ -39,9 +39,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _lastHydrationTrigger = 0;
   int _lastRecommendationsTrigger = 0;
 
-  // Multi-select state for bulk deletes. Non-empty == selection mode active.
+  // Multi-select state for bulk deletes.
   final Set<int> _selectedFoodIds = <int>{};
   final Set<int> _selectedScanIds = <int>{};
+  // Selection MODE can be active with zero items selected — entered via the
+  // card's long-press or the section header's select affordance.
+  bool _foodSelectionMode = false;
+  bool _scanSelectionMode = false;
+
+  bool get _foodSelecting => _foodSelectionMode || _selectedFoodIds.isNotEmpty;
+  bool get _scanSelecting => _scanSelectionMode || _selectedScanIds.isNotEmpty;
+
+  void _enterFoodSelection() => setState(() => _foodSelectionMode = true);
+  void _exitFoodSelection() => setState(() {
+        _foodSelectionMode = false;
+        _selectedFoodIds.clear();
+      });
+  void _enterScanSelection() => setState(() => _scanSelectionMode = true);
+  void _exitScanSelection() => setState(() {
+        _scanSelectionMode = false;
+        _selectedScanIds.clear();
+      });
 
   void _toggleFoodSelected(int id) {
     setState(() {
@@ -87,14 +105,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await DatabaseService.instance.deleteDetectedFoods(ids);
     await ref.read(dailyIntakeProvider.notifier).load();
     await ref.read(historyProvider.notifier).load();
-    if (mounted) setState(_selectedFoodIds.clear);
+    if (mounted) {
+      setState(() {
+        _selectedFoodIds.clear();
+        _foodSelectionMode = false;
+      });
+    }
   }
 
   Future<void> _deleteSelectedScans() async {
     final ids = _selectedScanIds.toList();
     if (ids.isEmpty) return;
     await ref.read(historyProvider.notifier).deleteScans(ids);
-    if (mounted) setState(_selectedScanIds.clear);
+    if (mounted) {
+      setState(() {
+        _selectedScanIds.clear();
+        _scanSelectionMode = false;
+      });
+    }
   }
 
   @override
@@ -412,15 +440,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const WeeklyChallengesCard(),
                     const SizedBox(height: 16),
 
+                    // ── Recommendations (above Today's Foods) ────────────────
+                    Container(
+                      key: TourKeys.recommendationsCard,
+                      child: _RecommendationsCard(),
+                    ),
+                    const SizedBox(height: 16),
+
                     // ── Food breakdown ───────────────────────────────────────
                     _SelectableSectionHeader(
                       title: 'Today\'s Foods',
+                      selecting: _foodSelecting,
                       selectedCount: _selectedFoodIds.length,
+                      onEnterSelection: _enterFoodSelection,
                       onDelete: () => _confirmDeleteSelected(
                         count: _selectedFoodIds.length,
                         onConfirm: _deleteSelectedFoods,
                       ),
-                      onCancel: () => setState(_selectedFoodIds.clear),
+                      onCancel: _exitFoodSelection,
                     ),
                     const SizedBox(height: 8),
                     // ICR warning for diabetes users
@@ -507,14 +544,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       )
                     else
-                      Card(
+                      GestureDetector(
+                        onLongPress: _enterFoodSelection,
+                        child: Card(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 8),
                           child: Column(
                             children: intake.foods.map((f) {
                               final avg = (f.caloriesMin + f.caloriesMax) / 2;
-                              final selecting = _selectedFoodIds.isNotEmpty;
+                              final selecting = _foodSelecting;
                               final selected = f.id != null &&
                                   _selectedFoodIds.contains(f.id);
 
@@ -648,24 +687,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                       ),
-                    const SizedBox(height: 16),
-
-                    // ── Recommendations ───────────────────────────────────────
-                    Container(
-                      key: TourKeys.recommendationsCard,
-                      child: _RecommendationsCard(),
-                    ),
+                      ),
                     const SizedBox(height: 16),
 
                     // ── Scan history (full list) ───────────────────────────
                     _SelectableSectionHeader(
                       title: 'Scan History',
+                      selecting: _scanSelecting,
                       selectedCount: _selectedScanIds.length,
+                      onEnterSelection: _enterScanSelection,
                       onDelete: () => _confirmDeleteSelected(
                         count: _selectedScanIds.length,
                         onConfirm: _deleteSelectedScans,
                       ),
-                      onCancel: () => setState(_selectedScanIds.clear),
+                      onCancel: _exitScanSelection,
                     ),
                     const SizedBox(height: 8),
                     if (history.scans.isEmpty)
@@ -694,7 +729,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ...history.scans.map((scan) {
                         final avg =
                             (scan.totalCaloriesMin + scan.totalCaloriesMax) / 2;
-                        final selecting = _selectedScanIds.isNotEmpty;
+                        final selecting = _scanSelecting;
                         final selected = scan.id != null &&
                             _selectedScanIds.contains(scan.id);
 
@@ -1059,20 +1094,40 @@ class _SectionTitle extends StatelessWidget {
 class _SelectableSectionHeader extends StatelessWidget {
   const _SelectableSectionHeader({
     required this.title,
+    required this.selecting,
     required this.selectedCount,
+    required this.onEnterSelection,
     required this.onDelete,
     required this.onCancel,
   });
 
   final String title;
+  final bool selecting;
   final int selectedCount;
+  final VoidCallback onEnterSelection;
   final VoidCallback onDelete;
   final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
-    if (selectedCount == 0) return _SectionTitle(title);
     final l10n = AppLocalizations.of(context);
+    if (!selecting) {
+      return Row(
+        children: [
+          Expanded(child: _SectionTitle(title)),
+          // Discoverable multi-select affordance (no long-press required).
+          InkWell(
+            onTap: onEnterSelection,
+            borderRadius: BorderRadius.circular(20),
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.check_circle_outline,
+                  size: 20, color: AppTheme.gray400),
+            ),
+          ),
+        ],
+      );
+    }
     return Row(
       children: [
         Expanded(
@@ -1086,7 +1141,7 @@ class _SelectableSectionHeader extends StatelessWidget {
           ),
         ),
         TextButton.icon(
-          onPressed: onDelete,
+          onPressed: selectedCount == 0 ? null : onDelete,
           icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
           label: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
         ),

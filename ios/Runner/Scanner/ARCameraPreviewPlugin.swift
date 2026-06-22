@@ -47,7 +47,12 @@ private final class CameraHostView: UIView {
         super.init(frame: frame)
         backgroundColor = .black
         autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        displayLayer.videoGravity = .resizeAspectFill
+        // Aspect-FIT (not fill): show the full uncropped wide-angle frame so
+        // food never looks "zoomed in". The scan camera is ARKit (there is no
+        // AVCaptureDevice.videoZoomFactor here); the apparent zoom was this
+        // fill-crop. Letterbox bars are fine for a measurement scanner that
+        // needs to see the whole plate.
+        displayLayer.videoGravity = .resizeAspect
         displayLayer.backgroundColor = UIColor.black.cgColor
         layer.addSublayer(displayLayer)
         applyPortraitTransform(for: bounds)

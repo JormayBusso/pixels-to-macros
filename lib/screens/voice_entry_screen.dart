@@ -40,6 +40,23 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   bool _saveAsMeal = false;
   MealType _mealType = MealType.lunch;
 
+  // Persistent per-row controllers for the editable grams field. Recreating a
+  // controller every build reset the caret to the start mid-typing; caching
+  // them by row index keeps the cursor where the user left it.
+  final Map<int, TextEditingController> _gramControllers = {};
+
+  TextEditingController _gramController(int index, double grams) {
+    return _gramControllers[index] ??=
+        TextEditingController(text: grams.round().toString());
+  }
+
+  void _disposeGramControllers() {
+    for (final c in _gramControllers.values) {
+      c.dispose();
+    }
+    _gramControllers.clear();
+  }
+
   static const _foodAliases = {
     'nut': 'mixed nuts',
     'nuts': 'mixed nuts',
@@ -280,6 +297,8 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       _transcript = result.recognizedWords;
       if (result.finalResult) {
         try {
+          // New parse → row indices change; drop stale grams controllers.
+          _disposeGramControllers();
           _parsed = _parseTranscript(_transcript);
           if (_parsed.isEmpty) {
             _error = _transcript.trim().isEmpty
@@ -860,23 +879,34 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       _speech.stop();
     } catch (_) {}
     _mealNameCtrl.dispose();
+    _disposeGramControllers();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // "Actively editing" == keyboard visible; drives the contextual Done
+    // button + dismiss FAB so neither is permanently shown.
+    final editing = MediaQuery.of(context).viewInsets.bottom > 0;
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.aiSpeech),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.keyboard_hide),
-            tooltip: 'Dismiss keyboard',
-            onPressed: () => FocusScope.of(context).unfocus(),
-          ),
+          if (editing)
+            TextButton(
+              onPressed: () => FocusScope.of(context).unfocus(),
+              child: const Text('Done'),
+            ),
         ],
       ),
+      floatingActionButton: editing
+          ? FloatingActionButton.extended(
+              onPressed: () => FocusScope.of(context).unfocus(),
+              icon: const Icon(Icons.keyboard_arrow_down),
+              label: const Text('Done'),
+            )
+          : null,
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         behavior: HitTestBehavior.translucent,
@@ -1031,8 +1061,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                                   width: 60,
                                   child: TextField(
                                     keyboardType: TextInputType.number,
-                                    controller: TextEditingController(
-                                        text: p.grams.round().toString()),
+                                    controller: _gramController(i, p.grams),
                                     onChanged: (v) {
                                       final g = double.tryParse(v);
                                       if (g != null) {
