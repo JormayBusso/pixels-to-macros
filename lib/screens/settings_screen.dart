@@ -727,42 +727,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SizedBox(height: 12),
         const _RemindersCard(),
 
-        _SectionHeader(l10n.database),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _InfoRow(
-                  icon: Icons.restaurant_menu,
-                  label: l10n.foodDatabaseEntries,
-                  value: '$_foodCount',
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.list_alt),
-                    label: Text(l10n.browseFoodDatabase),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const FoodDatabaseScreen(),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 24),
-        _SectionHeader(l10n.cloudSync),
-        const SizedBox(height: 12),
-        const _CloudSyncCard(),
-
         const SizedBox(height: 24),
         _SectionHeader(l10n.aboutSection),
         const SizedBox(height: 12),
@@ -1067,6 +1031,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 24),
+        _SectionHeader(l10n.database),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _InfoRow(
+                  icon: Icons.restaurant_menu,
+                  label: l10n.foodDatabaseEntries,
+                  value: '$_foodCount',
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.list_alt),
+                    label: Text(l10n.browseFoodDatabase),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const FoodDatabaseScreen(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _SectionHeader(l10n.cloudSync),
+        const SizedBox(height: 12),
+        const _CloudSyncCard(),
         const SizedBox(height: 24),
         _SectionHeader(l10n.aboutSection),
         const SizedBox(height: 12),

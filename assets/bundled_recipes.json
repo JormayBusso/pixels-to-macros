@@ -444,11 +444,11 @@
     "glycemic_load": 0,
     "insulin_units": 10.4,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 78,
@@ -542,8 +542,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -802,9 +802,9 @@
     "glycemic_load": 0,
     "insulin_units": 6.4,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "muscle"
     ],
@@ -888,8 +888,8 @@
     "glycemic_load": 0,
     "insulin_units": 42.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -999,8 +999,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -1214,10 +1214,10 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegetarian"
     ],
@@ -1416,8 +1416,8 @@
     "glycemic_load": 0,
     "insulin_units": 24.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "weight_loss"
     ],
@@ -1530,8 +1530,8 @@
     "glycemic_load": 0,
     "insulin_units": 25.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -1606,8 +1606,8 @@
     "glycemic_load": 0,
     "insulin_units": 51.7,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -1679,8 +1679,8 @@
     "glycemic_load": 0,
     "insulin_units": 24.0,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -1777,8 +1777,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -1864,8 +1864,8 @@
     "glycemic_load": 0,
     "insulin_units": 37.0,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle"
     ],
@@ -1880,7 +1880,7 @@
     "title": "Bulgur & veg soup with sizzled mint oil & potato flatbreads",
     "name": "Bulgur & veg soup with sizzled mint oil & potato flatbreads",
     "image": "assets/images/recipes/en_bulgur_veg_soup_with_sizzled_mint_oil_potato_flatbreads_4556a4036b.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian",
@@ -2002,7 +2002,7 @@
     "glycemic_load": 0,
     "insulin_units": 60.0,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "vegetarian",
@@ -2468,9 +2468,9 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
+      "lunch",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "muscle"
     ],
@@ -2585,9 +2585,9 @@
     "glycemic_load": 0,
     "insulin_units": 46.0,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 51,
@@ -2696,8 +2696,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.0,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -2955,11 +2955,11 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -3028,9 +3028,9 @@
     "glycemic_load": 0,
     "insulin_units": 3.1,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian",
@@ -3129,10 +3129,10 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegan",
       "vegetarian"
@@ -3424,8 +3424,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -3527,8 +3527,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.3,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -3742,8 +3742,8 @@
     "glycemic_load": 0,
     "insulin_units": 22.8,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -3938,8 +3938,8 @@
     "glycemic_load": 0,
     "insulin_units": 18.8,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -4068,10 +4068,10 @@
     "glycemic_load": 0,
     "insulin_units": 17.2,
     "tags": [
+      "snack",
       "de",
       "maintain",
       "muscle",
-      "snack",
       "vegetarian"
     ],
     "health_score": 51,
@@ -4159,8 +4159,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.0,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -4275,9 +4275,9 @@
     "glycemic_load": 0,
     "insulin_units": 10.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -4377,9 +4377,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.3,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian",
@@ -4453,8 +4453,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.7,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -4524,9 +4524,9 @@
     "glycemic_load": 0,
     "insulin_units": 25.8,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 51,
@@ -4765,8 +4765,8 @@
     "glycemic_load": 0,
     "insulin_units": 17.1,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -4873,10 +4873,10 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -4963,8 +4963,8 @@
     "glycemic_load": 0,
     "insulin_units": 38.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -5059,8 +5059,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.0,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle"
     ],
@@ -5389,8 +5389,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -5554,8 +5554,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -5664,7 +5664,7 @@
     "title": "Gezonde tosti met 4 kazen en rode ui",
     "name": "Gezonde tosti met 4 kazen en rode ui",
     "image": "assets/images/recipes/nl_gezonde_tosti_met_4_kazen_en_rode_ui_caf72a2088.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian",
@@ -5745,7 +5745,7 @@
     "glycemic_load": 0,
     "insulin_units": 14.4,
     "tags": [
-      "dinner",
+      "lunch",
       "maintain",
       "nl",
       "vegetarian",
@@ -5817,8 +5817,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -6021,9 +6021,9 @@
     "glycemic_load": 0,
     "insulin_units": 48.8,
     "tags": [
+      "snack",
       "maintain",
       "nl",
-      "snack",
       "vegetarian"
     ],
     "health_score": 63,
@@ -6127,8 +6127,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl"
@@ -6227,8 +6227,8 @@
     "glycemic_load": 0,
     "insulin_units": 17.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -6430,7 +6430,7 @@
     "title": "Quiche spinazie geitenkaas",
     "name": "Quiche spinazie geitenkaas",
     "image": "assets/images/recipes/nl_quiche_spinazie_geitenkaas_cb9fe9d815.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -6511,8 +6511,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.2,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "maintain",
       "nl",
       "vegetarian",
@@ -6621,9 +6621,9 @@
     "glycemic_load": 0,
     "insulin_units": 8.0,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "muscle",
       "vegetarian"
@@ -6814,10 +6814,10 @@
     "glycemic_load": 0,
     "insulin_units": 16.0,
     "tags": [
+      "snack",
       "en",
       "maintain",
       "muscle",
-      "snack",
       "weight_loss"
     ],
     "health_score": 92,
@@ -6957,9 +6957,9 @@
     "glycemic_load": 0,
     "insulin_units": 10.7,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "muscle"
     ],
@@ -7073,9 +7073,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.8,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain"
     ],
@@ -7384,8 +7384,8 @@
     "glycemic_load": 0,
     "insulin_units": 22.3,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -7790,10 +7790,10 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegetarian"
     ],
@@ -7879,9 +7879,9 @@
     "glycemic_load": 0,
     "insulin_units": 15.6,
     "tags": [
+      "lunch",
       "diabetes",
       "keto",
-      "lunch",
       "maintain",
       "nl",
       "vegan",
@@ -7972,8 +7972,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -8477,8 +8477,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -8794,9 +8794,9 @@
     "glycemic_load": 0,
     "insulin_units": 15.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain"
     ],
@@ -9099,8 +9099,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl"
@@ -9400,9 +9400,9 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -9512,8 +9512,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.8,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "weight_loss"
     ],
@@ -9727,8 +9727,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "muscle"
@@ -10083,8 +10083,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.1,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegetarian"
@@ -10169,8 +10169,8 @@
     "glycemic_load": 0,
     "insulin_units": 33.8,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -10368,7 +10368,7 @@
     "title": "Smoked mackerel chowder with hedgehog garlic bread",
     "name": "Smoked mackerel chowder with hedgehog garlic bread",
     "image": "assets/images/recipes/en_smoked_mackerel_chowder_with_hedgehog_garlic_bread_45318f1b32.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle"
@@ -10457,7 +10457,7 @@
     "glycemic_load": 0,
     "insulin_units": 35.2,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "muscle"
@@ -10777,8 +10777,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -10948,8 +10948,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -11049,8 +11049,8 @@
     "glycemic_load": 0,
     "insulin_units": 24.8,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "vegan",
       "vegetarian",
@@ -11144,8 +11144,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -11254,7 +11254,7 @@
     "title": "Chicken matzo ball soup",
     "name": "Chicken matzo ball soup",
     "image": "assets/images/recipes/en_chicken_matzo_ball_soup_ca2245ff64.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -11358,8 +11358,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.2,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain",
@@ -11485,8 +11485,8 @@
     "glycemic_load": 0,
     "insulin_units": 39.3,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -11837,9 +11837,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.7,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "muscle",
@@ -12006,8 +12006,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -12081,8 +12081,8 @@
     "glycemic_load": 0,
     "insulin_units": 26.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -12151,8 +12151,8 @@
     "glycemic_load": 0,
     "insulin_units": 23.8,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -12275,8 +12275,8 @@
     "glycemic_load": 0,
     "insulin_units": 80.1,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -12470,8 +12470,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain"
     ],
@@ -12558,8 +12558,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -12755,8 +12755,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -13039,8 +13039,8 @@
     "glycemic_load": 0,
     "insulin_units": 22.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegetarian"
@@ -13288,8 +13288,8 @@
     "glycemic_load": 0,
     "insulin_units": 18.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -13420,8 +13420,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -13669,8 +13669,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -14150,8 +14150,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -14466,8 +14466,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -14773,8 +14773,8 @@
     "glycemic_load": 0,
     "insulin_units": 39.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -14857,8 +14857,8 @@
     "glycemic_load": 0,
     "insulin_units": 31.3,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -14954,8 +14954,8 @@
     "glycemic_load": 0,
     "insulin_units": 39.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegetarian"
@@ -15149,8 +15149,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -15627,8 +15627,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -15705,8 +15705,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -15968,9 +15968,9 @@
     "glycemic_load": 0,
     "insulin_units": 9.4,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain"
     ],
     "health_score": 63,
@@ -16599,8 +16599,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -16955,8 +16955,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -17158,8 +17158,8 @@
     "glycemic_load": 0,
     "insulin_units": 32.3,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -17344,8 +17344,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -17550,9 +17550,9 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -17632,8 +17632,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.5,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -17720,8 +17720,8 @@
     "glycemic_load": 0,
     "insulin_units": 22.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegetarian"
@@ -17791,11 +17791,11 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
-      "maintain",
-      "snack"
+      "maintain"
     ],
     "health_score": 68,
     "health_score_reason": "Recipe checked from scraped nutrition data: balanced everyday macros.",
@@ -17907,8 +17907,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -18587,10 +18587,10 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -18824,9 +18824,9 @@
     "glycemic_load": 0,
     "insulin_units": 6.1,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain"
     ],
@@ -18905,9 +18905,9 @@
     "glycemic_load": 0,
     "insulin_units": 16.4,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 57,
@@ -19286,9 +19286,9 @@
     "glycemic_load": 0,
     "insulin_units": 37.2,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "vegetarian"
     ],
@@ -19384,9 +19384,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.2,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "weight_loss"
@@ -19488,8 +19488,8 @@
     "glycemic_load": 0,
     "insulin_units": 17.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain"
     ],
@@ -19573,8 +19573,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.0,
     "tags": [
-      "diabetes",
       "lunch",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -19687,8 +19687,8 @@
     "glycemic_load": 0,
     "insulin_units": 25.0,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -19790,8 +19790,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -19973,9 +19973,9 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian",
@@ -20178,7 +20178,7 @@
     "title": "Salat mit Honigchampignons von fearingwolf",
     "name": "Salat mit Honigchampignons von fearingwolf",
     "image": "assets/images/recipes/de_salat_mit_honigchampignons_von_fearingwolf_68ecae5439.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -20292,9 +20292,9 @@
     "glycemic_load": 0,
     "insulin_units": 7.5,
     "tags": [
+      "lunch",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian",
@@ -20451,8 +20451,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain"
     ],
@@ -20643,8 +20643,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegetarian"
@@ -20765,7 +20765,7 @@
     "title": "Slow-roast tomato, ricotta & prosciutto bruschetta",
     "name": "Slow-roast tomato, ricotta & prosciutto bruschetta",
     "image": "assets/images/recipes/en_slow_roast_tomato_ricotta_prosciutto_bruschetta_1e22243bf4.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "weight_loss"
@@ -20838,7 +20838,7 @@
     "glycemic_load": 0,
     "insulin_units": 23.4,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "weight_loss"
@@ -20953,11 +20953,11 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -21520,8 +21520,8 @@
     "glycemic_load": 0,
     "insulin_units": 20.3,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian"
@@ -21739,8 +21739,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -22049,11 +22049,11 @@
     "glycemic_load": 0,
     "insulin_units": 0.2,
     "tags": [
+      "snack",
       "de",
       "diabetes",
       "keto",
-      "maintain",
-      "snack"
+      "maintain"
     ],
     "health_score": 68,
     "health_score_reason": "Recipe checked from scraped nutrition data: balanced everyday macros.",
@@ -22136,8 +22136,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -22233,11 +22233,11 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
-      "maintain",
-      "snack"
+      "maintain"
     ],
     "health_score": 68,
     "health_score_reason": "Recipe checked from scraped nutrition data: balanced everyday macros.",
@@ -22350,8 +22350,8 @@
     "glycemic_load": 0,
     "insulin_units": 21.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -22789,8 +22789,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -22883,8 +22883,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -22901,7 +22901,7 @@
     "title": "Pumpkin & bacon soup",
     "name": "Pumpkin & bacon soup",
     "image": "assets/images/recipes/en_pumpkin_bacon_soup_618501face.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -22981,8 +22981,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain",
@@ -23193,8 +23193,8 @@
     "glycemic_load": 0,
     "insulin_units": 34.1,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -23288,9 +23288,9 @@
     "glycemic_load": 0,
     "insulin_units": 6.2,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "muscle",
       "vegetarian"
@@ -23752,9 +23752,9 @@
     "glycemic_load": 0,
     "insulin_units": 11.8,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "weight_loss"
@@ -23975,10 +23975,10 @@
     "glycemic_load": 0,
     "insulin_units": 6.8,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "muscle",
-      "snack"
+      "muscle"
     ],
     "health_score": 74,
     "health_score_reason": "Recipe checked from scraped nutrition data: high protein, high fiber, muscle-friendly macros.",
@@ -24088,8 +24088,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -24497,8 +24497,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -25039,7 +25039,7 @@
     "title": "2-persoons shakshuka",
     "name": "2-persoons shakshuka",
     "image": "assets/images/recipes/nl_2_persoons_shakshuka_866dd5e2fd.webp",
-    "meal_type": "dinner",
+    "meal_type": "breakfast",
     "goals": [
       "maintain",
       "vegan",
@@ -25127,7 +25127,7 @@
     "glycemic_load": 0,
     "insulin_units": 10.8,
     "tags": [
-      "dinner",
+      "breakfast",
       "maintain",
       "nl",
       "vegan",
@@ -25641,8 +25641,8 @@
     "glycemic_load": 0,
     "insulin_units": 18.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -25783,8 +25783,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -25917,9 +25917,9 @@
     "glycemic_load": 0,
     "insulin_units": 13.6,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 63,
@@ -26027,8 +26027,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -26163,9 +26163,9 @@
     "glycemic_load": 0,
     "insulin_units": 7.7,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian",
@@ -26283,9 +26283,9 @@
     "glycemic_load": 0,
     "insulin_units": 6.8,
     "tags": [
+      "lunch",
       "diabetes",
       "keto",
-      "lunch",
       "maintain",
       "muscle",
       "nl",
@@ -26498,11 +26498,11 @@
     "glycemic_load": 0,
     "insulin_units": 0.2,
     "tags": [
+      "snack",
       "de",
       "diabetes",
       "keto",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -26689,8 +26689,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -26909,8 +26909,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -27297,11 +27297,11 @@
     "glycemic_load": 0,
     "insulin_units": 10.0,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "maintain",
       "muscle",
-      "snack",
       "weight_loss"
     ],
     "health_score": 92,
@@ -27657,8 +27657,8 @@
     "glycemic_load": 0,
     "insulin_units": 15.7,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -27811,8 +27811,8 @@
     "glycemic_load": 0,
     "insulin_units": 24.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -27996,8 +27996,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "muscle"
@@ -28013,7 +28013,7 @@
     "title": "Carrot & cheddar soup with toast soldiers",
     "name": "Carrot & cheddar soup with toast soldiers",
     "image": "assets/images/recipes/en_carrot_cheddar_soup_with_toast_soldiers_d5a4bd9326.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -28087,8 +28087,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.0,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain"
@@ -28195,8 +28195,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -28663,9 +28663,9 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 51,
@@ -28779,11 +28779,11 @@
     "glycemic_load": 0,
     "insulin_units": 2.2,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "maintain",
       "muscle",
-      "snack",
       "weight_loss"
     ],
     "health_score": 92,
@@ -29081,8 +29081,8 @@
     "glycemic_load": 0,
     "insulin_units": 23.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle"
     ],
@@ -29181,9 +29181,9 @@
     "glycemic_load": 0,
     "insulin_units": 11.2,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian"
@@ -29379,8 +29379,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -29585,8 +29585,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.8,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -30476,8 +30476,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -30556,9 +30556,9 @@
     "glycemic_load": 0,
     "insulin_units": 4.5,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -30644,8 +30644,8 @@
     "glycemic_load": 0,
     "insulin_units": 25.5,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -30721,8 +30721,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -30838,7 +30838,7 @@
     "title": "Green gazpacho",
     "name": "Green gazpacho",
     "image": "assets/images/recipes/en_green_gazpacho_828d64bf16.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -30943,8 +30943,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.6,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain",
@@ -31150,9 +31150,9 @@
     "glycemic_load": 0,
     "insulin_units": 7.0,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian"
@@ -31316,11 +31316,11 @@
     "glycemic_load": 0,
     "insulin_units": 1.4,
     "tags": [
+      "snack",
       "de",
       "diabetes",
       "keto",
       "maintain",
-      "snack",
       "vegan",
       "vegetarian",
       "weight_loss"
@@ -31511,12 +31511,12 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
-      "muscle",
-      "snack"
+      "muscle"
     ],
     "health_score": 79,
     "health_score_reason": "Recipe checked from scraped nutrition data: high protein, high fiber, muscle-friendly macros.",
@@ -31788,8 +31788,8 @@
     "glycemic_load": 0,
     "insulin_units": 28.4,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -31908,8 +31908,8 @@
     "glycemic_load": 0,
     "insulin_units": 40.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -32146,8 +32146,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -32580,9 +32580,9 @@
     "glycemic_load": 0,
     "insulin_units": 5.5,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "weight_loss"
@@ -32688,9 +32688,9 @@
     "glycemic_load": 0,
     "insulin_units": 4.4,
     "tags": [
+      "lunch",
       "diabetes",
       "keto",
-      "lunch",
       "maintain",
       "nl",
       "weight_loss"
@@ -32815,8 +32815,8 @@
     "glycemic_load": 0,
     "insulin_units": 64.4,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -33236,8 +33236,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "muscle"
@@ -33342,8 +33342,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -33359,7 +33359,7 @@
     "title": "Green shakshuka with harissa & crispy shallots",
     "name": "Green shakshuka with harissa & crispy shallots",
     "image": "assets/images/recipes/en_green_shakshuka_with_harissa_crispy_shallots_705697473a.webp",
-    "meal_type": "dinner",
+    "meal_type": "breakfast",
     "goals": [
       "diabetes",
       "keto",
@@ -33477,8 +33477,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
+      "breakfast",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain",
@@ -33590,8 +33590,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian"
@@ -33973,8 +33973,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -34084,8 +34084,8 @@
     "glycemic_load": 0,
     "insulin_units": 17.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -34288,8 +34288,8 @@
     "glycemic_load": 0,
     "insulin_units": 34.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -34671,8 +34671,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -34955,8 +34955,8 @@
     "glycemic_load": 0,
     "insulin_units": 35.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -35259,8 +35259,8 @@
     "glycemic_load": 0,
     "insulin_units": 19.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl"
@@ -35342,8 +35342,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegetarian"
@@ -35419,8 +35419,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.3,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -35527,8 +35527,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -35619,8 +35619,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -35734,8 +35734,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -36041,10 +36041,10 @@
     "glycemic_load": 0,
     "insulin_units": 1.5,
     "tags": [
+      "snack",
       "diabetes",
       "en",
-      "maintain",
-      "snack"
+      "maintain"
     ],
     "health_score": 68,
     "health_score_reason": "Recipe checked from scraped nutrition data: balanced everyday macros.",
@@ -36233,8 +36233,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -36343,8 +36343,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -36890,8 +36890,8 @@
     "glycemic_load": 0,
     "insulin_units": 29.5,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -36988,9 +36988,9 @@
     "glycemic_load": 0,
     "insulin_units": 3.7,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "muscle",
@@ -37317,7 +37317,7 @@
     "title": "Rote Linsen-Salat mit Roter Bete von SessM",
     "name": "Rote Linsen-Salat mit Roter Bete von SessM",
     "image": "assets/images/recipes/de_rote_linsen_salat_mit_roter_bete_von_sessm_0112587e2a.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegan",
@@ -37412,8 +37412,8 @@
     "glycemic_load": 0,
     "insulin_units": 17.2,
     "tags": [
+      "lunch",
       "de",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian",
@@ -37510,8 +37510,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
-      "diabetes",
       "lunch",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -37609,8 +37609,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -37700,8 +37700,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -37780,8 +37780,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -38036,11 +38036,11 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "maintain",
       "muscle",
-      "snack",
       "weight_loss"
     ],
     "health_score": 92,
@@ -38204,8 +38204,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -38296,8 +38296,8 @@
     "glycemic_load": 0,
     "insulin_units": 37.7,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -38577,8 +38577,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -38865,9 +38865,9 @@
     "glycemic_load": 0,
     "insulin_units": 3.8,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian",
@@ -39066,8 +39066,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegetarian"
@@ -39169,8 +39169,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -39255,11 +39255,11 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
+      "snack",
       "diabetes",
       "keto",
       "maintain",
       "nl",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -39337,8 +39337,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -39458,8 +39458,8 @@
     "glycemic_load": 0,
     "insulin_units": 21.6,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "weight_loss"
     ],
@@ -39474,7 +39474,7 @@
     "title": "Leckere Kartoffel-Möhren-Suppe von Würmschen08",
     "name": "Leckere Kartoffel-Möhren-Suppe von Würmschen08",
     "image": "assets/images/recipes/de_leckere_kartoffel_m_hren_suppe_von_w_rmschen08_4c21a6345b.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian",
@@ -39557,8 +39557,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.8,
     "tags": [
+      "lunch",
       "de",
-      "dinner",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -39690,9 +39690,9 @@
     "glycemic_load": 0,
     "insulin_units": 10.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "muscle",
       "vegan",
@@ -39774,8 +39774,8 @@
     "glycemic_load": 0,
     "insulin_units": 67.1,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -39891,8 +39891,8 @@
     "glycemic_load": 0,
     "insulin_units": 48.4,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -39964,8 +39964,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl"
@@ -40222,8 +40222,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -40364,8 +40364,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -40448,8 +40448,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -40544,9 +40544,9 @@
     "glycemic_load": 0,
     "insulin_units": 1.4,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "weight_loss"
@@ -40648,10 +40648,10 @@
     "glycemic_load": 0,
     "insulin_units": 0.6,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -40830,9 +40830,9 @@
     "glycemic_load": 0,
     "insulin_units": 10.8,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 51,
@@ -40942,10 +40942,10 @@
     "glycemic_load": 0,
     "insulin_units": 7.5,
     "tags": [
+      "snack",
       "de",
       "maintain",
       "muscle",
-      "snack",
       "vegan",
       "vegetarian",
       "weight_loss"
@@ -41130,10 +41130,10 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegan",
       "vegetarian"
@@ -41936,9 +41936,9 @@
     "glycemic_load": 0,
     "insulin_units": 27.3,
     "tags": [
+      "snack",
       "de",
       "maintain",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -42042,8 +42042,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.6,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "muscle"
     ],
@@ -42288,8 +42288,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -42305,7 +42305,7 @@
     "title": "Creamy celeriac, mustard & ham hock soup",
     "name": "Creamy celeriac, mustard & ham hock soup",
     "image": "assets/images/recipes/en_creamy_celeriac_mustard_ham_hock_soup_3744db3a23.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -42387,8 +42387,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain",
@@ -42490,8 +42490,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain"
     ],
@@ -42620,8 +42620,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -42637,7 +42637,7 @@
     "title": "Flash-fried smoked salmon & egg bagel",
     "name": "Flash-fried smoked salmon & egg bagel",
     "image": "assets/images/recipes/en_flash_fried_smoked_salmon_egg_bagel_971ffcdf56.webp",
-    "meal_type": "dinner",
+    "meal_type": "breakfast",
     "goals": [
       "diabetes",
       "maintain",
@@ -42700,8 +42700,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.7,
     "tags": [
+      "breakfast",
       "diabetes",
-      "dinner",
       "en",
       "maintain",
       "weight_loss"
@@ -42717,7 +42717,7 @@
     "title": "Rührei mit Sahne von CookingChris",
     "name": "Rührei mit Sahne von CookingChris",
     "image": "assets/images/recipes/de_r_hrei_mit_sahne_von_cookingchris_cea871c759.webp",
-    "meal_type": "dinner",
+    "meal_type": "breakfast",
     "goals": [
       "diabetes",
       "keto",
@@ -42780,9 +42780,9 @@
     "glycemic_load": 0,
     "insulin_units": 0.6,
     "tags": [
+      "breakfast",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian",
@@ -42865,8 +42865,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -43265,8 +43265,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -43455,8 +43455,8 @@
     "glycemic_load": 0,
     "insulin_units": 19.6,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -43663,8 +43663,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.7,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -43981,9 +43981,9 @@
     "glycemic_load": 0,
     "insulin_units": 7.0,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -44193,9 +44193,9 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -44280,8 +44280,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.1,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -44460,8 +44460,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -44561,8 +44561,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -44685,8 +44685,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "muscle",
       "nl",
@@ -44800,7 +44800,7 @@
     "title": "Griechischer Kritharaki-Salat von familykitchen",
     "name": "Griechischer Kritharaki-Salat von familykitchen",
     "image": "assets/images/recipes/de_griechischer_kritharaki_salat_von_familykitchen_302f166c92.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle",
@@ -44914,8 +44914,8 @@
     "glycemic_load": 0,
     "insulin_units": 37.9,
     "tags": [
+      "lunch",
       "de",
-      "dinner",
       "maintain",
       "muscle",
       "vegetarian"
@@ -45020,8 +45020,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -45187,9 +45187,9 @@
     "glycemic_load": 0,
     "insulin_units": 7.2,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "muscle"
     ],
@@ -45294,9 +45294,9 @@
     "glycemic_load": 0,
     "insulin_units": 16.4,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -45411,8 +45411,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "muscle",
       "nl"
@@ -45499,8 +45499,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -45714,9 +45714,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.5,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "muscle",
@@ -45783,10 +45783,10 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -46298,8 +46298,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -46400,8 +46400,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.5,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -46719,9 +46719,9 @@
     "glycemic_load": 0,
     "insulin_units": 8.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegan",
@@ -47038,10 +47038,10 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -47950,8 +47950,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -48030,8 +48030,8 @@
     "glycemic_load": 0,
     "insulin_units": 21.6,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -48125,8 +48125,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "muscle"
@@ -48500,10 +48500,10 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegetarian"
     ],
@@ -48855,9 +48855,9 @@
     "glycemic_load": 0,
     "insulin_units": 4.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "muscle",
@@ -49074,8 +49074,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.0,
     "tags": [
-      "diabetes",
       "lunch",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -49239,9 +49239,9 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
+      "snack",
       "maintain",
       "nl",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -49334,10 +49334,10 @@
     "glycemic_load": 0,
     "insulin_units": 15.1,
     "tags": [
+      "snack",
       "de",
       "maintain",
       "muscle",
-      "snack",
       "vegetarian"
     ],
     "health_score": 58,
@@ -49435,8 +49435,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -49614,9 +49614,9 @@
     "glycemic_load": 0,
     "insulin_units": 25.2,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegetarian"
     ],
@@ -49703,8 +49703,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -50087,10 +50087,10 @@
     "glycemic_load": 0,
     "insulin_units": 7.2,
     "tags": [
+      "snack",
       "en",
       "maintain",
       "muscle",
-      "snack",
       "vegetarian"
     ],
     "health_score": 64,
@@ -50185,8 +50185,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -50626,8 +50626,8 @@
     "glycemic_load": 0,
     "insulin_units": 40.0,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "weight_loss"
     ],
@@ -50753,7 +50753,7 @@
     "title": "Smoked haddock & cumin chowder",
     "name": "Smoked haddock & cumin chowder",
     "image": "assets/images/recipes/en_smoked_haddock_cumin_chowder_d53f75f7f2.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -50832,8 +50832,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.8,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "maintain",
       "weight_loss"
@@ -50919,8 +50919,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -51167,9 +51167,9 @@
     "glycemic_load": 0,
     "insulin_units": 1.3,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegetarian"
     ],
@@ -51274,9 +51274,9 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -51351,8 +51351,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -51716,8 +51716,8 @@
     "glycemic_load": 0,
     "insulin_units": 18.4,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -51897,8 +51897,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -52090,8 +52090,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.5,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -52179,9 +52179,9 @@
     "glycemic_load": 0,
     "insulin_units": 21.1,
     "tags": [
+      "snack",
       "de",
       "maintain",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -52256,8 +52256,8 @@
     "glycemic_load": 0,
     "insulin_units": 17.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -52385,10 +52385,10 @@
     "glycemic_load": 0,
     "insulin_units": 36.6,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "muscle",
-      "snack"
+      "muscle"
     ],
     "health_score": 69,
     "health_score_reason": "Recipe checked from scraped nutrition data: high protein, muscle-friendly macros.",
@@ -52561,8 +52561,8 @@
     "glycemic_load": 0,
     "insulin_units": 21.8,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -52641,8 +52641,8 @@
     "glycemic_load": 0,
     "insulin_units": 37.0,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -52742,9 +52742,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "weight_loss"
@@ -52920,8 +52920,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegetarian"
@@ -53310,8 +53310,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -53408,9 +53408,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.5,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -53498,9 +53498,9 @@
     "glycemic_load": 0,
     "insulin_units": 38.4,
     "tags": [
+      "snack",
       "maintain",
       "nl",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -53595,9 +53595,9 @@
     "glycemic_load": 0,
     "insulin_units": 11.6,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -53679,8 +53679,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -54119,11 +54119,11 @@
     "glycemic_load": 0,
     "insulin_units": 26.0,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
-      "maintain",
-      "snack"
+      "maintain"
     ],
     "health_score": 68,
     "health_score_reason": "Recipe checked from scraped nutrition data: balanced everyday macros.",
@@ -54205,8 +54205,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -54322,10 +54322,10 @@
     "glycemic_load": 0,
     "insulin_units": 12.0,
     "tags": [
+      "snack",
       "de",
       "maintain",
       "muscle",
-      "snack",
       "vegetarian"
     ],
     "health_score": 57,
@@ -54411,8 +54411,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -55200,8 +55200,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -55392,10 +55392,10 @@
     "glycemic_load": 0,
     "insulin_units": 2.5,
     "tags": [
+      "snack",
       "en",
       "keto",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 56,
@@ -55520,10 +55520,10 @@
     "glycemic_load": 0,
     "insulin_units": 44.0,
     "tags": [
+      "snack",
       "diabetes",
       "maintain",
       "nl",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -55676,8 +55676,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain"
     ],
@@ -55761,8 +55761,8 @@
     "glycemic_load": 0,
     "insulin_units": 40.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -56169,8 +56169,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -56364,8 +56364,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -56483,8 +56483,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.8,
     "tags": [
-      "de",
       "lunch",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -56788,8 +56788,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -57025,7 +57025,7 @@
     "title": "Rührei aus dem Backofen von kiria001",
     "name": "Rührei aus dem Backofen von kiria001",
     "image": "assets/images/recipes/de_r_hrei_aus_dem_backofen_von_kiria001_1ca9b4af1b.webp",
-    "meal_type": "dinner",
+    "meal_type": "breakfast",
     "goals": [
       "diabetes",
       "keto",
@@ -57090,9 +57090,9 @@
     "glycemic_load": 0,
     "insulin_units": 0.3,
     "tags": [
+      "breakfast",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian",
@@ -57547,8 +57547,8 @@
     "glycemic_load": 0,
     "insulin_units": 31.5,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -57898,8 +57898,8 @@
     "glycemic_load": 0,
     "insulin_units": 19.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -57992,8 +57992,8 @@
     "glycemic_load": 0,
     "insulin_units": 31.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -58119,10 +58119,10 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
+      "snack",
       "diabetes",
       "en",
-      "maintain",
-      "snack"
+      "maintain"
     ],
     "health_score": 68,
     "health_score_reason": "Recipe checked from scraped nutrition data: balanced everyday macros.",
@@ -58223,7 +58223,7 @@
     "title": "Hearty winter veg soup",
     "name": "Hearty winter veg soup",
     "image": "assets/images/recipes/en_hearty_winter_veg_soup_11c367378c.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian",
@@ -58297,7 +58297,7 @@
     "glycemic_load": 0,
     "insulin_units": 13.2,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "vegetarian",
@@ -58511,8 +58511,8 @@
     "glycemic_load": 0,
     "insulin_units": 17.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -58651,8 +58651,8 @@
     "glycemic_load": 0,
     "insulin_units": 133.9,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -58870,8 +58870,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.0,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian"
@@ -58964,8 +58964,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -59136,8 +59136,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl"
@@ -59225,8 +59225,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -59438,9 +59438,9 @@
     "glycemic_load": 0,
     "insulin_units": 4.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegan",
@@ -59646,9 +59646,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.1,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "muscle",
       "vegetarian"
@@ -59962,8 +59962,8 @@
     "glycemic_load": 0,
     "insulin_units": 46.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -60264,10 +60264,10 @@
     "glycemic_load": 0,
     "insulin_units": 2.9,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "muscle",
-      "snack"
+      "muscle"
     ],
     "health_score": 74,
     "health_score_reason": "Recipe checked from scraped nutrition data: high protein, high fiber, muscle-friendly macros.",
@@ -60359,9 +60359,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.1,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain"
     ],
@@ -60590,9 +60590,9 @@
     "glycemic_load": 0,
     "insulin_units": 6.4,
     "tags": [
+      "lunch",
       "diabetes",
       "keto",
-      "lunch",
       "maintain",
       "nl",
       "vegan",
@@ -60818,8 +60818,8 @@
     "glycemic_load": 0,
     "insulin_units": 19.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegan",
@@ -60927,8 +60927,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -61030,8 +61030,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -61219,8 +61219,8 @@
     "glycemic_load": 0,
     "insulin_units": 19.0,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "weight_loss"
     ],
@@ -61505,9 +61505,9 @@
     "glycemic_load": 0,
     "insulin_units": 7.2,
     "tags": [
+      "snack",
       "maintain",
       "nl",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -62371,8 +62371,8 @@
     "glycemic_load": 0,
     "insulin_units": 31.5,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -62686,8 +62686,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain"
     ],
@@ -62760,8 +62760,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -63062,8 +63062,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.7,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain"
     ],
     "health_score": 63,
@@ -63190,9 +63190,9 @@
     "glycemic_load": 0,
     "insulin_units": 11.4,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -63281,11 +63281,11 @@
     "glycemic_load": 0,
     "insulin_units": 1.0,
     "tags": [
+      "snack",
       "de",
       "diabetes",
       "keto",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 63,
@@ -63539,8 +63539,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain"
     ],
@@ -63657,8 +63657,8 @@
     "glycemic_load": 0,
     "insulin_units": 48.5,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle"
     ],
@@ -63767,8 +63767,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -63854,8 +63854,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -63946,8 +63946,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -64326,10 +64326,10 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -64545,9 +64545,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.6,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -64623,8 +64623,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -65113,8 +65113,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -65422,8 +65422,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -65441,7 +65441,7 @@
     "title": "Cauliflower & chestnut soup",
     "name": "Cauliflower & chestnut soup",
     "image": "assets/images/recipes/en_cauliflower_chestnut_soup_58f7b4e936.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -65515,8 +65515,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.6,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "maintain",
       "vegetarian"
@@ -65622,8 +65622,8 @@
     "glycemic_load": 0,
     "insulin_units": 19.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "weight_loss"
     ],
@@ -65699,8 +65699,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -65796,9 +65796,9 @@
     "glycemic_load": 0,
     "insulin_units": 3.1,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "muscle",
       "vegetarian"
@@ -65899,8 +65899,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -66399,8 +66399,8 @@
     "glycemic_load": 0,
     "insulin_units": 17.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain"
     ],
@@ -66813,8 +66813,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -67000,8 +67000,8 @@
     "glycemic_load": 0,
     "insulin_units": 21.1,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -67357,9 +67357,9 @@
     "glycemic_load": 0,
     "insulin_units": 0.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -67552,8 +67552,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -67663,8 +67663,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -67733,8 +67733,8 @@
     "glycemic_load": 0,
     "insulin_units": 20.3,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -67850,11 +67850,11 @@
     "glycemic_load": 0,
     "insulin_units": 6.5,
     "tags": [
+      "snack",
       "de",
       "diabetes",
       "maintain",
       "muscle",
-      "snack",
       "vegetarian"
     ],
     "health_score": 57,
@@ -68175,8 +68175,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.2,
     "tags": [
-      "diabetes",
       "lunch",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -68264,8 +68264,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl"
     ],
@@ -68459,8 +68459,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.1,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "diabetes",
       "keto",
       "maintain"
@@ -68565,12 +68565,12 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
       "muscle",
-      "snack",
       "vegan",
       "vegetarian",
       "weight_loss"
@@ -68885,9 +68885,9 @@
     "glycemic_load": 0,
     "insulin_units": 7.1,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian",
@@ -68972,8 +68972,8 @@
     "glycemic_load": 0,
     "insulin_units": 24.0,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "weight_loss"
     ],
@@ -69061,9 +69061,9 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "muscle",
@@ -69130,8 +69130,8 @@
     "glycemic_load": 0,
     "insulin_units": 22.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian"
@@ -69519,8 +69519,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.3,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "weight_loss"
     ],
@@ -69610,8 +69610,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -69724,8 +69724,8 @@
     "glycemic_load": 0,
     "insulin_units": 29.9,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle"
     ],
@@ -69811,8 +69811,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -69908,8 +69908,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.4,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -70329,9 +70329,9 @@
     "glycemic_load": 0,
     "insulin_units": 1.3,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegan",
@@ -70618,8 +70618,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -70896,7 +70896,7 @@
     "title": "Wassermelonen-Feta-Salat - schnell & einfach",
     "name": "Wassermelonen-Feta-Salat - schnell & einfach",
     "image": "assets/images/recipes/de_wassermelonen_feta_salat_schnell_einfach_7da8fe4c49.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian",
@@ -70973,8 +70973,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.8,
     "tags": [
+      "lunch",
       "de",
-      "dinner",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -70990,7 +70990,7 @@
     "title": "Watercress & celeriac soup with goat's cheese croutons",
     "name": "Watercress & celeriac soup with goat's cheese croutons",
     "image": "assets/images/recipes/en_watercress_celeriac_soup_with_goat_s_cheese_croutons_6b4eec26d6.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -71071,8 +71071,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain",
@@ -71149,8 +71149,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -71429,8 +71429,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -71712,9 +71712,9 @@
     "glycemic_load": 0,
     "insulin_units": 7.2,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -71942,8 +71942,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -72057,8 +72057,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -72143,8 +72143,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -72500,8 +72500,8 @@
     "glycemic_load": 0,
     "insulin_units": 35.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -72518,7 +72518,7 @@
     "title": "Leek, fennel & potato soup with cashel blue cheese",
     "name": "Leek, fennel & potato soup with cashel blue cheese",
     "image": "assets/images/recipes/en_leek_fennel_potato_soup_with_cashel_blue_cheese_eae55da9d5.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -72598,8 +72598,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.0,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain"
@@ -72615,7 +72615,7 @@
     "title": "Red lentil, chickpea & chilli soup",
     "name": "Red lentil, chickpea & chilli soup",
     "image": "assets/images/recipes/en_red_lentil_chickpea_chilli_soup_cf96e124c5.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -72703,8 +72703,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.4,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "maintain",
       "vegetarian",
@@ -72890,8 +72890,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -72974,8 +72974,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -73092,9 +73092,9 @@
     "glycemic_load": 0,
     "insulin_units": 16.8,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "snack",
       "vegetarian",
       "weight_loss"
     ],
@@ -73362,7 +73362,7 @@
     "title": "Shakshuka von stockmogul",
     "name": "Shakshuka von stockmogul",
     "image": "assets/images/recipes/de_shakshuka_von_stockmogul_2696ce6bd3.webp",
-    "meal_type": "dinner",
+    "meal_type": "breakfast",
     "goals": [
       "diabetes",
       "keto",
@@ -73473,9 +73473,9 @@
     "glycemic_load": 0,
     "insulin_units": 3.4,
     "tags": [
+      "breakfast",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian",
@@ -73559,8 +73559,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -73796,8 +73796,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -73814,7 +73814,7 @@
     "title": "Pepper & tuna panini pizzas",
     "name": "Pepper & tuna panini pizzas",
     "image": "assets/images/recipes/en_pepper_tuna_panini_pizzas_111062c306.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "weight_loss"
@@ -73877,7 +73877,7 @@
     "glycemic_load": 0,
     "insulin_units": 14.0,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "weight_loss"
@@ -74530,8 +74530,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -74903,8 +74903,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.8,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "muscle",
       "vegetarian"
@@ -75352,8 +75352,8 @@
     "glycemic_load": 0,
     "insulin_units": 26.2,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "vegan",
       "vegetarian",
@@ -75470,8 +75470,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.6,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -75666,9 +75666,9 @@
     "glycemic_load": 0,
     "insulin_units": 4.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegan",
@@ -75777,8 +75777,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -75902,8 +75902,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -76195,8 +76195,8 @@
     "glycemic_load": 0,
     "insulin_units": 28.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain"
     ],
     "health_score": 71,
@@ -76414,8 +76414,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -76512,8 +76512,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -76581,8 +76581,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -76856,8 +76856,8 @@
     "glycemic_load": 0,
     "insulin_units": 18.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -77065,12 +77065,12 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
       "muscle",
-      "snack",
       "weight_loss"
     ],
     "health_score": 82,
@@ -77148,9 +77148,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.0,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -77452,10 +77452,10 @@
     "glycemic_load": 0,
     "insulin_units": 7.6,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegetarian"
     ],
@@ -77684,11 +77684,11 @@
     "glycemic_load": 0,
     "insulin_units": 8.0,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -77893,8 +77893,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -78000,8 +78000,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -78098,8 +78098,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegetarian"
@@ -78402,8 +78402,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -78866,9 +78866,9 @@
     "glycemic_load": 0,
     "insulin_units": 11.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -79370,8 +79370,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -79492,7 +79492,7 @@
     "title": "Sherried squash soup",
     "name": "Sherried squash soup",
     "image": "assets/images/recipes/en_sherried_squash_soup_9e3ea69c2d.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -79557,8 +79557,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "maintain",
       "vegan",
@@ -79644,8 +79644,8 @@
     "glycemic_load": 0,
     "insulin_units": 15.6,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "vegetarian"
     ],
@@ -79856,9 +79856,9 @@
     "glycemic_load": 0,
     "insulin_units": 20.3,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "weight_loss"
     ],
@@ -80034,9 +80034,9 @@
     "glycemic_load": 0,
     "insulin_units": 1.6,
     "tags": [
+      "lunch",
       "diabetes",
       "keto",
-      "lunch",
       "maintain",
       "nl",
       "vegetarian"
@@ -80256,8 +80256,8 @@
     "glycemic_load": 0,
     "insulin_units": 15.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -80407,8 +80407,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -80600,8 +80600,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -80685,8 +80685,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -80874,9 +80874,9 @@
     "glycemic_load": 0,
     "insulin_units": 4.7,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -80965,11 +80965,11 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "maintain",
       "muscle",
-      "snack",
       "weight_loss"
     ],
     "health_score": 82,
@@ -81071,8 +81071,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.8,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian"
@@ -81152,8 +81152,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -81299,8 +81299,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -81390,8 +81390,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -81547,8 +81547,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.2,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "muscle"
     ],
@@ -81634,8 +81634,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -81710,8 +81710,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -81817,8 +81817,8 @@
     "glycemic_load": 0,
     "insulin_units": 22.7,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -82181,8 +82181,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.6,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "weight_loss"
     ],
@@ -82397,8 +82397,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -82499,8 +82499,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -82609,8 +82609,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -83097,8 +83097,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.4,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -83311,8 +83311,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -83592,8 +83592,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.8,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -83761,8 +83761,8 @@
     "glycemic_load": 0,
     "insulin_units": 21.3,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -83833,8 +83833,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -83943,9 +83943,9 @@
     "glycemic_load": 0,
     "insulin_units": 7.1,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian",
@@ -84044,9 +84044,9 @@
     "glycemic_load": 0,
     "insulin_units": 5.2,
     "tags": [
+      "snack",
       "en",
-      "maintain",
-      "snack"
+      "maintain"
     ],
     "health_score": 73,
     "health_score_reason": "Recipe checked from scraped nutrition data: high fiber.",
@@ -84152,8 +84152,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -84352,8 +84352,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -84476,8 +84476,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -84772,8 +84772,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -84995,8 +84995,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -85089,10 +85089,10 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -85107,7 +85107,7 @@
     "title": "Chicken, sweetcorn & noodle soup",
     "name": "Chicken, sweetcorn & noodle soup",
     "image": "assets/images/recipes/en_chicken_sweetcorn_noodle_soup_2776a3a1b4.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -85212,8 +85212,8 @@
     "glycemic_load": 0,
     "insulin_units": 20.8,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "maintain",
       "weight_loss"
@@ -85523,7 +85523,7 @@
     "title": "Easy soup maker lentil soup",
     "name": "Easy soup maker lentil soup",
     "image": "assets/images/recipes/en_easy_soup_maker_lentil_soup_68396f35c7.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain"
@@ -85581,8 +85581,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "maintain"
     ],
@@ -85759,9 +85759,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.8,
     "tags": [
+      "lunch",
       "diabetes",
       "keto",
-      "lunch",
       "maintain",
       "nl",
       "vegan",
@@ -85985,8 +85985,8 @@
     "glycemic_load": 0,
     "insulin_units": 20.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -86071,9 +86071,9 @@
     "glycemic_load": 0,
     "insulin_units": 13.5,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegetarian"
     ],
@@ -86154,8 +86154,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -86338,8 +86338,8 @@
     "glycemic_load": 0,
     "insulin_units": 22.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -86445,9 +86445,9 @@
     "glycemic_load": 0,
     "insulin_units": 11.4,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "vegan",
       "vegetarian"
@@ -86698,9 +86698,9 @@
     "glycemic_load": 0,
     "insulin_units": 4.7,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "muscle",
@@ -86816,9 +86816,9 @@
     "glycemic_load": 0,
     "insulin_units": 0.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "muscle"
@@ -86940,7 +86940,7 @@
     "title": "Next level quiche Lorraine",
     "name": "Next level quiche Lorraine",
     "image": "assets/images/recipes/en_next_level_quiche_lorraine_2cd299e549.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -87042,8 +87042,8 @@
     "glycemic_load": 0,
     "insulin_units": 15.6,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain"
@@ -87851,8 +87851,8 @@
     "glycemic_load": 0,
     "insulin_units": 18.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -87947,8 +87947,8 @@
     "glycemic_load": 0,
     "insulin_units": 25.9,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -88039,11 +88039,11 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
-      "maintain",
-      "snack"
+      "maintain"
     ],
     "health_score": 68,
     "health_score_reason": "Recipe checked from scraped nutrition data: balanced everyday macros.",
@@ -88146,8 +88146,8 @@
     "glycemic_load": 0,
     "insulin_units": 94.4,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -88263,8 +88263,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -88280,7 +88280,7 @@
     "title": "Gebackene Auberginen mit Bulgur-Salat von Chefkoch-Video",
     "name": "Gebackene Auberginen mit Bulgur-Salat von Chefkoch-Video",
     "image": "assets/images/recipes/de_gebackene_auberginen_mit_bulgur_salat_von_chefkoch_video_c682c8d2dc.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegan",
@@ -88405,8 +88405,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.9,
     "tags": [
+      "lunch",
       "de",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian"
@@ -89068,8 +89068,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -89140,10 +89140,10 @@
     "glycemic_load": 0,
     "insulin_units": 12.1,
     "tags": [
+      "snack",
       "de",
       "diabetes",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -89431,8 +89431,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -89500,8 +89500,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl"
     ],
@@ -89706,9 +89706,9 @@
     "glycemic_load": 0,
     "insulin_units": 24.2,
     "tags": [
+      "snack",
       "de",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 32,
@@ -90423,8 +90423,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -90509,8 +90509,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -90528,7 +90528,7 @@
     "title": "Smoky chorizo & manchego quiche",
     "name": "Smoky chorizo & manchego quiche",
     "image": "assets/images/recipes/en_smoky_chorizo_manchego_quiche_d8f0d2b857.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -90613,8 +90613,8 @@
     "glycemic_load": 0,
     "insulin_units": 18.0,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain"
@@ -90699,11 +90699,11 @@
     "glycemic_load": 0,
     "insulin_units": 0.2,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "maintain",
       "muscle",
-      "snack",
       "weight_loss"
     ],
     "health_score": 82,
@@ -90895,8 +90895,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -91196,8 +91196,8 @@
     "glycemic_load": 0,
     "insulin_units": 26.4,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -91213,7 +91213,7 @@
     "title": "Mum's leek & potato soup with mustard toasts",
     "name": "Mum's leek & potato soup with mustard toasts",
     "image": "assets/images/recipes/en_mum_s_leek_potato_soup_with_mustard_toasts_486bfe471d.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain"
@@ -91301,8 +91301,8 @@
     "glycemic_load": 0,
     "insulin_units": 21.6,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "maintain"
     ],
@@ -91436,8 +91436,8 @@
     "glycemic_load": 0,
     "insulin_units": 26.0,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -91526,8 +91526,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl"
     ],
@@ -91776,8 +91776,8 @@
     "glycemic_load": 0,
     "insulin_units": 62.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -91847,8 +91847,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -91989,9 +91989,9 @@
     "glycemic_load": 0,
     "insulin_units": 25.2,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "snack",
       "vegan",
       "vegetarian",
       "weight_loss"
@@ -92100,7 +92100,7 @@
     "title": "Quiche uit de airfryer",
     "name": "Quiche uit de airfryer",
     "image": "assets/images/recipes/nl_quiche_uit_de_airfryer_eee570f118.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle",
@@ -92192,7 +92192,7 @@
     "glycemic_load": 0,
     "insulin_units": 9.2,
     "tags": [
-      "dinner",
+      "lunch",
       "maintain",
       "muscle",
       "nl",
@@ -92296,8 +92296,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -92386,8 +92386,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -92478,9 +92478,9 @@
     "glycemic_load": 0,
     "insulin_units": 8.3,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian"
@@ -92666,10 +92666,10 @@
     "glycemic_load": 0,
     "insulin_units": 0.9,
     "tags": [
+      "lunch",
       "de",
       "diabetes",
       "keto",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -92856,8 +92856,8 @@
     "glycemic_load": 0,
     "insulin_units": 30.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -93188,8 +93188,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -93206,7 +93206,7 @@
     "title": "Haferflocken-Käse-Bratlinge von verdandi",
     "name": "Haferflocken-Käse-Bratlinge von verdandi",
     "image": "assets/images/recipes/de_haferflocken_k_se_bratlinge_von_verdandi_5c0a63c517.webp",
-    "meal_type": "dinner",
+    "meal_type": "breakfast",
     "goals": [
       "diabetes",
       "maintain",
@@ -93279,9 +93279,9 @@
     "glycemic_load": 0,
     "insulin_units": 16.7,
     "tags": [
+      "breakfast",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -93462,8 +93462,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.6,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "muscle",
       "vegetarian"
@@ -93892,9 +93892,9 @@
     "glycemic_load": 0,
     "insulin_units": 11.4,
     "tags": [
+      "snack",
       "en",
       "maintain",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -94316,10 +94316,10 @@
     "glycemic_load": 0,
     "insulin_units": 3.8,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -94520,8 +94520,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -94617,8 +94617,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -94697,8 +94697,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl"
@@ -94828,8 +94828,8 @@
     "glycemic_load": 0,
     "insulin_units": 15.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -94946,11 +94946,11 @@
     "glycemic_load": 0,
     "insulin_units": 8.8,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "maintain",
       "muscle",
-      "snack",
       "weight_loss"
     ],
     "health_score": 92,
@@ -95023,8 +95023,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -95278,7 +95278,7 @@
     "title": "Quesadilla's met kip",
     "name": "Quesadilla's met kip",
     "image": "assets/images/recipes/nl_quesadilla_s_met_kip_d87000654f.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "weight_loss"
@@ -95354,7 +95354,7 @@
     "glycemic_load": 0,
     "insulin_units": 17.2,
     "tags": [
-      "dinner",
+      "lunch",
       "maintain",
       "nl",
       "weight_loss"
@@ -95553,8 +95553,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.3,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "diabetes",
       "keto",
       "maintain",
@@ -95656,10 +95656,10 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegetarian"
     ],
@@ -95859,8 +95859,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -96257,8 +96257,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -96435,9 +96435,9 @@
     "glycemic_load": 0,
     "insulin_units": 19.3,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian"
@@ -96634,8 +96634,8 @@
     "glycemic_load": 0,
     "insulin_units": 33.9,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -96784,9 +96784,9 @@
     "glycemic_load": 0,
     "insulin_units": 9.3,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "muscle"
@@ -97247,8 +97247,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -97332,8 +97332,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -97429,9 +97429,9 @@
     "glycemic_load": 0,
     "insulin_units": 4.4,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -97599,8 +97599,8 @@
     "glycemic_load": 0,
     "insulin_units": 70.4,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian"
@@ -97767,8 +97767,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -98065,7 +98065,7 @@
     "title": "Rührei à la Slonski von hullabaloo",
     "name": "Rührei à la Slonski von hullabaloo",
     "image": "assets/images/recipes/de_r_hrei_la_slonski_von_hullabaloo_00536ef416.webp",
-    "meal_type": "dinner",
+    "meal_type": "breakfast",
     "goals": [
       "diabetes",
       "keto",
@@ -98114,9 +98114,9 @@
     "glycemic_load": 0,
     "insulin_units": 0.2,
     "tags": [
+      "breakfast",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian",
@@ -98332,10 +98332,10 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain"
     ],
     "health_score": 68,
@@ -98610,8 +98610,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegetarian"
@@ -98826,8 +98826,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -98904,8 +98904,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -98985,8 +98985,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl"
@@ -99098,8 +99098,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "muscle",
@@ -99281,8 +99281,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -99653,8 +99653,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -99931,8 +99931,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegetarian",
@@ -100042,8 +100042,8 @@
     "glycemic_load": 0,
     "insulin_units": 39.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -100243,10 +100243,10 @@
     "glycemic_load": 0,
     "insulin_units": 12.8,
     "tags": [
+      "snack",
       "de",
       "diabetes",
       "maintain",
-      "snack",
       "vegetarian",
       "weight_loss"
     ],
@@ -100455,8 +100455,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -100574,7 +100574,7 @@
     "title": "Chunky Mediterranean fish soup",
     "name": "Chunky Mediterranean fish soup",
     "image": "assets/images/recipes/en_chunky_mediterranean_fish_soup_a08ed2ffac.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -100649,8 +100649,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "maintain",
       "weight_loss"
@@ -100746,11 +100746,11 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
-      "maintain",
-      "snack"
+      "maintain"
     ],
     "health_score": 68,
     "health_score_reason": "Recipe checked from scraped nutrition data: balanced everyday macros.",
@@ -100972,8 +100972,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.7,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -101482,9 +101482,9 @@
     "glycemic_load": 0,
     "insulin_units": 5.0,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "muscle"
@@ -101579,9 +101579,9 @@
     "glycemic_load": 0,
     "insulin_units": 5.1,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -101665,8 +101665,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -101764,8 +101764,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -102083,8 +102083,8 @@
     "glycemic_load": 0,
     "insulin_units": 23.4,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -102507,8 +102507,8 @@
     "glycemic_load": 0,
     "insulin_units": 36.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -102727,8 +102727,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.1,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle"
     ],
@@ -102804,8 +102804,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -102924,9 +102924,9 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "weight_loss"
@@ -103099,8 +103099,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.7,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -103303,8 +103303,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.3,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegan",
@@ -103378,9 +103378,9 @@
     "glycemic_load": 0,
     "insulin_units": 13.1,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain"
     ],
     "health_score": 63,
@@ -103703,8 +103703,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -103913,9 +103913,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
+      "lunch",
       "diabetes",
       "keto",
-      "lunch",
       "maintain",
       "nl",
       "weight_loss"
@@ -104020,8 +104020,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -104335,8 +104335,8 @@
     "glycemic_load": 0,
     "insulin_units": 18.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -104424,8 +104424,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.6,
     "tags": [
-      "diabetes",
       "lunch",
+      "diabetes",
       "maintain",
       "muscle",
       "nl",
@@ -104520,8 +104520,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -104659,9 +104659,9 @@
     "glycemic_load": 0,
     "insulin_units": 15.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian",
@@ -104817,8 +104817,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -104931,8 +104931,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -105018,8 +105018,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -105202,9 +105202,9 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -105288,8 +105288,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -105518,9 +105518,9 @@
     "glycemic_load": 0,
     "insulin_units": 5.0,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain"
     ],
@@ -105639,8 +105639,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -105735,8 +105735,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.2,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "vegetarian"
     ],
@@ -105850,9 +105850,9 @@
     "glycemic_load": 0,
     "insulin_units": 4.7,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "muscle"
     ],
@@ -105957,8 +105957,8 @@
     "glycemic_load": 0,
     "insulin_units": 36.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian"
@@ -106111,8 +106111,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -106130,7 +106130,7 @@
     "title": "Corn, coconut & lentil chowder",
     "name": "Corn, coconut & lentil chowder",
     "image": "assets/images/recipes/en_corn_coconut_lentil_chowder_fafd54e4a9.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian",
@@ -106230,7 +106230,7 @@
     "glycemic_load": 0,
     "insulin_units": 24.0,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "vegetarian",
@@ -106395,9 +106395,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.8,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "weight_loss"
@@ -106596,8 +106596,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "weight_loss"
     ],
@@ -106681,9 +106681,9 @@
     "glycemic_load": 0,
     "insulin_units": 1.5,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -106867,8 +106867,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -106996,8 +106996,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -107130,8 +107130,8 @@
     "glycemic_load": 0,
     "insulin_units": 48.4,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -107204,8 +107204,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -107379,8 +107379,8 @@
     "glycemic_load": 0,
     "insulin_units": 19.0,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -107481,8 +107481,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.5,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian"
@@ -107882,10 +107882,10 @@
     "glycemic_load": 0,
     "insulin_units": 5.4,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "maintain",
-      "snack",
       "vegetarian",
       "weight_loss"
     ],
@@ -108096,8 +108096,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -108187,8 +108187,8 @@
     "glycemic_load": 0,
     "insulin_units": 26.7,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -108263,8 +108263,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.1,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "muscle",
       "vegetarian",
@@ -108441,8 +108441,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -108459,7 +108459,7 @@
     "title": "Smoked haddock & sweetcorn chowder with herby garlic bread",
     "name": "Smoked haddock & sweetcorn chowder with herby garlic bread",
     "image": "assets/images/recipes/en_smoked_haddock_sweetcorn_chowder_with_herby_garlic_bread_effff99a17.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle"
@@ -108558,7 +108558,7 @@
     "glycemic_load": 0,
     "insulin_units": 26.0,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "muscle"
@@ -108652,8 +108652,8 @@
     "glycemic_load": 0,
     "insulin_units": 37.0,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -108855,8 +108855,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -109281,8 +109281,8 @@
     "glycemic_load": 0,
     "insulin_units": 25.4,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -109378,8 +109378,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -109451,10 +109451,10 @@
     "glycemic_load": 0,
     "insulin_units": 22.8,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "maintain",
-      "snack",
       "weight_loss"
     ],
     "health_score": 76,
@@ -109567,8 +109567,8 @@
     "glycemic_load": 0,
     "insulin_units": 27.4,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -109860,8 +109860,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.2,
     "tags": [
-      "diabetes",
       "lunch",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -109936,8 +109936,8 @@
     "glycemic_load": 0,
     "insulin_units": 32.1,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -110118,9 +110118,9 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian",
@@ -110505,8 +110505,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegan",
@@ -110618,8 +110618,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.3,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -110815,8 +110815,8 @@
     "glycemic_load": 0,
     "insulin_units": 61.5,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -110917,9 +110917,9 @@
     "glycemic_load": 0,
     "insulin_units": 3.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegan",
@@ -111035,8 +111035,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -111669,8 +111669,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -112075,8 +112075,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -112093,7 +112093,7 @@
     "title": "Truffled Jerusalem artichoke soup",
     "name": "Truffled Jerusalem artichoke soup",
     "image": "assets/images/recipes/en_truffled_jerusalem_artichoke_soup_a31fbc4a5a.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "weight_loss"
@@ -112168,7 +112168,7 @@
     "glycemic_load": 0,
     "insulin_units": 15.2,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "weight_loss"
@@ -112241,8 +112241,8 @@
     "glycemic_load": 0,
     "insulin_units": 45.5,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian"
@@ -112324,8 +112324,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -112725,11 +112725,11 @@
     "glycemic_load": 0,
     "insulin_units": 3.0,
     "tags": [
+      "snack",
       "de",
       "diabetes",
       "keto",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -112992,8 +112992,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -113083,8 +113083,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -113331,8 +113331,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -113414,8 +113414,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -113433,7 +113433,7 @@
     "title": "Easy Beetroot soup",
     "name": "Easy Beetroot soup",
     "image": "assets/images/recipes/en_easy_beetroot_soup_b24e7bf061.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian",
@@ -113509,7 +113509,7 @@
     "glycemic_load": 0,
     "insulin_units": 16.4,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "vegetarian",
@@ -113737,8 +113737,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -113843,8 +113843,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.8,
     "tags": [
-      "diabetes",
       "lunch",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -114117,9 +114117,9 @@
     "glycemic_load": 0,
     "insulin_units": 10.2,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "muscle"
     ],
@@ -114384,9 +114384,9 @@
     "glycemic_load": 0,
     "insulin_units": 12.2,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian",
@@ -114647,8 +114647,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -114827,8 +114827,8 @@
     "glycemic_load": 0,
     "insulin_units": 139.9,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -115085,8 +115085,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -115157,8 +115157,8 @@
     "glycemic_load": 0,
     "insulin_units": 25.7,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian"
@@ -115253,8 +115253,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -115352,8 +115352,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.1,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegan",
@@ -115711,8 +115711,8 @@
     "glycemic_load": 0,
     "insulin_units": 26.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -115983,8 +115983,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -116092,8 +116092,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -116241,10 +116241,10 @@
     "glycemic_load": 0,
     "insulin_units": 6.6,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegetarian"
     ],
@@ -116375,8 +116375,8 @@
     "glycemic_load": 0,
     "insulin_units": 15.9,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -116473,7 +116473,7 @@
     "title": "Couscous-Salat – einfach lecker und würzig",
     "name": "Couscous-Salat – einfach lecker und würzig",
     "image": "assets/images/recipes/de_couscous_salat_einfach_lecker_und_w_rzig_cd0251d29d.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegan",
@@ -116591,8 +116591,8 @@
     "glycemic_load": 0,
     "insulin_units": 23.5,
     "tags": [
+      "lunch",
       "de",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian"
@@ -116751,8 +116751,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -116936,11 +116936,11 @@
     "glycemic_load": 0,
     "insulin_units": 4.4,
     "tags": [
+      "snack",
       "diabetes",
       "keto",
       "maintain",
       "nl",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -117060,8 +117060,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -117270,8 +117270,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -117574,8 +117574,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -117782,8 +117782,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -117867,8 +117867,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -118056,8 +118056,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -118135,11 +118135,11 @@
     "glycemic_load": 0,
     "insulin_units": 2.0,
     "tags": [
+      "snack",
       "diabetes",
       "keto",
       "maintain",
       "nl",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -118431,9 +118431,9 @@
     "glycemic_load": 0,
     "insulin_units": 17.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegetarian"
     ],
@@ -118513,10 +118513,10 @@
     "glycemic_load": 0,
     "insulin_units": 6.4,
     "tags": [
+      "snack",
       "diabetes",
       "maintain",
       "nl",
-      "snack",
       "vegetarian",
       "weight_loss"
     ],
@@ -118709,10 +118709,10 @@
     "glycemic_load": 0,
     "insulin_units": 18.0,
     "tags": [
+      "snack",
       "de",
       "maintain",
-      "muscle",
-      "snack"
+      "muscle"
     ],
     "health_score": 57,
     "health_score_reason": "Recipe checked from scraped nutrition data: high protein, muscle-friendly macros.",
@@ -118928,8 +118928,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -119007,8 +119007,8 @@
     "glycemic_load": 0,
     "insulin_units": 31.4,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -119235,8 +119235,8 @@
     "glycemic_load": 0,
     "insulin_units": 88.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -119331,9 +119331,9 @@
     "glycemic_load": 0,
     "insulin_units": 1.5,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "muscle",
@@ -119500,8 +119500,8 @@
     "glycemic_load": 0,
     "insulin_units": 32.1,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -119597,8 +119597,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian"
@@ -119805,8 +119805,8 @@
     "glycemic_load": 0,
     "insulin_units": 22.8,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "muscle"
     ],
@@ -119942,10 +119942,10 @@
     "glycemic_load": 0,
     "insulin_units": 32.9,
     "tags": [
+      "snack",
       "de",
       "maintain",
       "muscle",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -120117,8 +120117,8 @@
     "glycemic_load": 0,
     "insulin_units": 19.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -120218,7 +120218,7 @@
     "title": "Eggs benedict",
     "name": "Eggs benedict",
     "image": "assets/images/recipes/en_eggs_benedict_9ccc0a03d9.webp",
-    "meal_type": "dinner",
+    "meal_type": "breakfast",
     "goals": [
       "diabetes",
       "keto",
@@ -120306,8 +120306,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
+      "breakfast",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain",
@@ -120536,10 +120536,10 @@
     "glycemic_load": 0,
     "insulin_units": 19.6,
     "tags": [
+      "snack",
       "maintain",
       "muscle",
-      "nl",
-      "snack"
+      "nl"
     ],
     "health_score": 77,
     "health_score_reason": "Recipe checked from scraped nutrition data: high protein, muscle-friendly macros.",
@@ -120552,7 +120552,7 @@
     "title": "Shakshuka",
     "name": "Shakshuka",
     "image": "assets/images/recipes/nl_shakshuka_4ab6736d79.webp",
-    "meal_type": "dinner",
+    "meal_type": "breakfast",
     "goals": [
       "maintain",
       "vegetarian",
@@ -120648,7 +120648,7 @@
     "glycemic_load": 0,
     "insulin_units": 18.0,
     "tags": [
-      "dinner",
+      "breakfast",
       "maintain",
       "nl",
       "vegetarian",
@@ -120858,10 +120858,10 @@
     "glycemic_load": 0,
     "insulin_units": 6.2,
     "tags": [
+      "snack",
       "en",
       "maintain",
       "muscle",
-      "snack",
       "vegan",
       "vegetarian",
       "weight_loss"
@@ -120950,9 +120950,9 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -121039,8 +121039,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -121455,9 +121455,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.8,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegan",
@@ -121660,8 +121660,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -121774,8 +121774,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -121880,9 +121880,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.2,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegan",
@@ -122309,8 +122309,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -122439,8 +122439,8 @@
     "glycemic_load": 0,
     "insulin_units": 21.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl"
     ],
@@ -122525,8 +122525,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -122639,8 +122639,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.3,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "muscle"
@@ -122937,8 +122937,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.3,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -123016,8 +123016,8 @@
     "glycemic_load": 0,
     "insulin_units": 30.5,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian"
@@ -123304,11 +123304,11 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "maintain",
       "muscle",
-      "snack",
       "weight_loss"
     ],
     "health_score": 82,
@@ -123413,8 +123413,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -123569,9 +123569,9 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegan",
@@ -123876,10 +123876,10 @@
     "glycemic_load": 0,
     "insulin_units": 8.0,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain"
     ],
     "health_score": 78,
@@ -124300,10 +124300,10 @@
     "glycemic_load": 0,
     "insulin_units": 11.8,
     "tags": [
+      "snack",
       "de",
       "maintain",
       "muscle",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -124318,7 +124318,7 @@
     "title": "Shakshuka – orientalischer Gemüseeintopf mit Ei",
     "name": "Shakshuka – orientalischer Gemüseeintopf mit Ei",
     "image": "assets/images/recipes/de_shakshuka_orientalischer_gem_seeintopf_mit_ei_ddec7aa75f.webp",
-    "meal_type": "dinner",
+    "meal_type": "breakfast",
     "goals": [
       "diabetes",
       "keto",
@@ -124397,9 +124397,9 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
+      "breakfast",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -124597,8 +124597,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -124703,10 +124703,10 @@
     "glycemic_load": 0,
     "insulin_units": 12.4,
     "tags": [
+      "snack",
       "en",
       "maintain",
       "muscle",
-      "snack",
       "vegan",
       "vegetarian",
       "weight_loss"
@@ -124785,10 +124785,10 @@
     "glycemic_load": 0,
     "insulin_units": 9.7,
     "tags": [
+      "snack",
       "de",
       "maintain",
       "muscle",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -124874,8 +124874,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -124994,8 +124994,8 @@
     "glycemic_load": 0,
     "insulin_units": 37.7,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle"
     ],
@@ -125071,8 +125071,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -125155,8 +125155,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -125291,9 +125291,9 @@
     "glycemic_load": 0,
     "insulin_units": 5.4,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "muscle",
@@ -125465,10 +125465,10 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegan",
       "vegetarian"
@@ -125574,8 +125574,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -125741,8 +125741,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -125828,9 +125828,9 @@
     "glycemic_load": 0,
     "insulin_units": 7.4,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -125935,8 +125935,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -126363,7 +126363,7 @@
     "title": "Shellfish soup",
     "name": "Shellfish soup",
     "image": "assets/images/recipes/en_shellfish_soup_c5b6b59d44.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian"
@@ -126516,7 +126516,7 @@
     "glycemic_load": 0,
     "insulin_units": 8.6,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "vegetarian"
@@ -126616,9 +126616,9 @@
     "glycemic_load": 0,
     "insulin_units": 6.8,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -126694,10 +126694,10 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegan",
       "vegetarian"
@@ -126798,11 +126798,11 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -127069,8 +127069,8 @@
     "glycemic_load": 0,
     "insulin_units": 33.6,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "muscle",
       "weight_loss"
@@ -127167,8 +127167,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -127486,8 +127486,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -127628,8 +127628,8 @@
     "glycemic_load": 0,
     "insulin_units": 26.5,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle"
     ],
@@ -127805,12 +127805,12 @@
     "glycemic_load": 0,
     "insulin_units": 0.4,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
       "muscle",
-      "snack",
       "weight_loss"
     ],
     "health_score": 82,
@@ -127903,8 +127903,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -128062,8 +128062,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -128262,7 +128262,7 @@
     "title": "Chicken kyiv quesadilla",
     "name": "Chicken kyiv quesadilla",
     "image": "assets/images/recipes/en_chicken_kyiv_quesadilla_a91fb2f2d1.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -128337,8 +128337,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.8,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain",
@@ -128460,8 +128460,8 @@
     "glycemic_load": 0,
     "insulin_units": 31.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -128728,8 +128728,8 @@
     "glycemic_load": 0,
     "insulin_units": 27.6,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle"
     ],
@@ -128832,8 +128832,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian",
@@ -129271,8 +129271,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegan",
@@ -129465,9 +129465,9 @@
     "glycemic_load": 0,
     "insulin_units": 11.6,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -129552,9 +129552,9 @@
     "glycemic_load": 0,
     "insulin_units": 7.2,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
-      "lunch",
       "maintain",
       "weight_loss"
     ],
@@ -129644,8 +129644,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain"
     ],
@@ -129751,8 +129751,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -130280,8 +130280,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -130405,11 +130405,11 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
+      "snack",
       "de",
       "diabetes",
       "maintain",
       "muscle",
-      "snack",
       "vegetarian",
       "weight_loss"
     ],
@@ -130636,8 +130636,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -131011,9 +131011,9 @@
     "glycemic_load": 0,
     "insulin_units": 10.1,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian"
@@ -131100,9 +131100,9 @@
     "glycemic_load": 0,
     "insulin_units": 10.9,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian"
@@ -131182,8 +131182,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -131289,8 +131289,8 @@
     "glycemic_load": 0,
     "insulin_units": 37.4,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "weight_loss"
     ],
@@ -131477,11 +131477,11 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "maintain",
       "muscle",
-      "snack",
       "weight_loss"
     ],
     "health_score": 82,
@@ -131708,8 +131708,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -131804,8 +131804,8 @@
     "glycemic_load": 0,
     "insulin_units": 53.3,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -132188,8 +132188,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "muscle"
@@ -132386,8 +132386,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.0,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -132467,9 +132467,9 @@
     "glycemic_load": 0,
     "insulin_units": 21.6,
     "tags": [
+      "snack",
       "maintain",
       "nl",
-      "snack",
       "vegan",
       "vegetarian",
       "weight_loss"
@@ -132717,8 +132717,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.5,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -133000,9 +133000,9 @@
     "glycemic_load": 0,
     "insulin_units": 0.2,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "weight_loss"
@@ -133089,8 +133089,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.9,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegan",
       "vegetarian",
@@ -133254,8 +133254,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.4,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -133350,11 +133350,11 @@
     "glycemic_load": 0,
     "insulin_units": 7.2,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -133552,8 +133552,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -133986,9 +133986,9 @@
     "glycemic_load": 0,
     "insulin_units": 11.1,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "muscle",
       "vegan",
@@ -134214,8 +134214,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -134606,8 +134606,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -135003,11 +135003,11 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -135610,8 +135610,8 @@
     "glycemic_load": 0,
     "insulin_units": 18.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -135627,7 +135627,7 @@
     "title": "Lachs-Quiche von elijot324",
     "name": "Lachs-Quiche von elijot324",
     "image": "assets/images/recipes/de_lachs_quiche_von_elijot324_aa2d7b4134.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -135732,9 +135732,9 @@
     "glycemic_load": 0,
     "insulin_units": 1.5,
     "tags": [
+      "lunch",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain"
     ],
@@ -135749,7 +135749,7 @@
     "title": "Watercress soup with bacon dumplings",
     "name": "Watercress soup with bacon dumplings",
     "image": "assets/images/recipes/en_watercress_soup_with_bacon_dumplings_27a3c58341.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain"
@@ -135839,8 +135839,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.8,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "maintain"
     ],
@@ -135954,7 +135954,7 @@
     "title": "Sweet potato & lentil soup",
     "name": "Sweet potato & lentil soup",
     "image": "assets/images/recipes/en_sweet_potato_lentil_soup_1f172dd3ab.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian"
@@ -136047,7 +136047,7 @@
     "glycemic_load": 0,
     "insulin_units": 20.4,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "vegetarian"
@@ -136132,8 +136132,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -136224,8 +136224,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -136420,10 +136420,10 @@
     "glycemic_load": 0,
     "insulin_units": 5.2,
     "tags": [
+      "snack",
       "diabetes",
       "maintain",
       "nl",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -136506,10 +136506,10 @@
     "glycemic_load": 0,
     "insulin_units": 10.3,
     "tags": [
+      "snack",
       "de",
       "maintain",
       "muscle",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -136636,8 +136636,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "muscle"
@@ -136747,8 +136747,8 @@
     "glycemic_load": 0,
     "insulin_units": 22.2,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -136870,11 +136870,11 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
+      "snack",
       "diabetes",
       "keto",
       "maintain",
       "nl",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -136960,10 +136960,10 @@
     "glycemic_load": 0,
     "insulin_units": 1.2,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain"
     ],
     "health_score": 68,
@@ -137353,10 +137353,10 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain"
     ],
     "health_score": 68,
@@ -137735,8 +137735,8 @@
     "glycemic_load": 0,
     "insulin_units": 13.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -137943,8 +137943,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -138035,8 +138035,8 @@
     "glycemic_load": 0,
     "insulin_units": 10.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -138054,7 +138054,7 @@
     "title": "Slow cooker broccoli & cheese soup",
     "name": "Slow cooker broccoli & cheese soup",
     "image": "assets/images/recipes/en_slow_cooker_broccoli_cheese_soup_8c70faaed5.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -138134,8 +138134,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain"
@@ -138216,8 +138216,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -138344,8 +138344,8 @@
     "glycemic_load": 0,
     "insulin_units": 8.4,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle"
     ],
@@ -138425,9 +138425,9 @@
     "glycemic_load": 0,
     "insulin_units": 0.8,
     "tags": [
+      "lunch",
       "diabetes",
       "keto",
-      "lunch",
       "maintain",
       "nl",
       "vegan",
@@ -138509,8 +138509,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -138696,8 +138696,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.7,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegan",
@@ -138818,7 +138818,7 @@
     "title": "Smoked haddock & white bean soup",
     "name": "Smoked haddock & white bean soup",
     "image": "assets/images/recipes/en_smoked_haddock_white_bean_soup_9a413c2fc1.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -138895,8 +138895,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.6,
     "tags": [
+      "lunch",
       "diabetes",
-      "dinner",
       "en",
       "keto",
       "maintain",
@@ -139153,9 +139153,9 @@
     "glycemic_load": 0,
     "insulin_units": 1.0,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -139284,8 +139284,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.9,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -139384,8 +139384,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -139494,8 +139494,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -139638,8 +139638,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -139734,8 +139734,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain"
     ],
@@ -139857,8 +139857,8 @@
     "glycemic_load": 0,
     "insulin_units": 18.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "muscle"
@@ -139975,8 +139975,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -140058,12 +140058,12 @@
     "glycemic_load": 0,
     "insulin_units": 0.0,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
-      "muscle",
-      "snack"
+      "muscle"
     ],
     "health_score": 69,
     "health_score_reason": "Recipe checked from scraped nutrition data: high protein, muscle-friendly macros.",
@@ -140141,8 +140141,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -140322,8 +140322,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegan",
@@ -140562,8 +140562,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.8,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -140775,11 +140775,11 @@
     "glycemic_load": 0,
     "insulin_units": 5.4,
     "tags": [
+      "snack",
       "diabetes",
       "keto",
       "maintain",
       "nl",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -140855,8 +140855,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -140937,9 +140937,9 @@
     "glycemic_load": 0,
     "insulin_units": 0.6,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "weight_loss"
@@ -141456,8 +141456,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.0,
     "tags": [
-      "diabetes",
       "lunch",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -141679,9 +141679,9 @@
     "glycemic_load": 0,
     "insulin_units": 8.5,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "weight_loss"
     ],
@@ -141876,8 +141876,8 @@
     "glycemic_load": 0,
     "insulin_units": 11.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -141986,9 +141986,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.1,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "muscle"
@@ -142059,8 +142059,8 @@
     "glycemic_load": 0,
     "insulin_units": 2.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "vegetarian"
@@ -142998,9 +142998,9 @@
     "glycemic_load": 0,
     "insulin_units": 3.4,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegetarian"
     ],
@@ -143330,8 +143330,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.5,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -143423,8 +143423,8 @@
     "glycemic_load": 0,
     "insulin_units": 19.9,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian"
     ],
@@ -143714,8 +143714,8 @@
     "glycemic_load": 0,
     "insulin_units": 0.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "weight_loss"
@@ -143931,8 +143931,8 @@
     "glycemic_load": 0,
     "insulin_units": 53.0,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -144001,8 +144001,8 @@
     "glycemic_load": 0,
     "insulin_units": 54.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "maintain",
       "nl",
       "vegetarian"
@@ -144125,8 +144125,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -144252,8 +144252,8 @@
     "glycemic_load": 0,
     "insulin_units": 28.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -144327,8 +144327,8 @@
     "glycemic_load": 0,
     "insulin_units": 29.9,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle",
       "vegetarian"
@@ -144402,8 +144402,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -144589,8 +144589,8 @@
     "glycemic_load": 0,
     "insulin_units": 14.0,
     "tags": [
-      "diabetes",
       "lunch",
+      "diabetes",
       "maintain",
       "nl",
       "weight_loss"
@@ -144666,8 +144666,8 @@
     "glycemic_load": 0,
     "insulin_units": 37.0,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -144759,8 +144759,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -145015,8 +145015,8 @@
     "glycemic_load": 0,
     "insulin_units": 12.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "muscle"
@@ -145217,9 +145217,9 @@
     "glycemic_load": 0,
     "insulin_units": 4.5,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain"
     ],
@@ -145234,7 +145234,7 @@
     "title": "Roast carrot soup with pancetta croutons",
     "name": "Roast carrot soup with pancetta croutons",
     "image": "assets/images/recipes/en_roast_carrot_soup_with_pancetta_croutons_ce50c3b73a.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "muscle"
@@ -145324,7 +145324,7 @@
     "glycemic_load": 0,
     "insulin_units": 7.8,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "muscle"
@@ -145441,9 +145441,9 @@
     "glycemic_load": 0,
     "insulin_units": 2.3,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian",
@@ -145891,9 +145891,9 @@
     "glycemic_load": 0,
     "insulin_units": 5.2,
     "tags": [
+      "lunch",
       "diabetes",
       "keto",
-      "lunch",
       "maintain",
       "nl",
       "vegan",
@@ -145910,7 +145910,7 @@
     "title": "Shakshuka von jofloaction",
     "name": "Shakshuka von jofloaction",
     "image": "assets/images/recipes/de_shakshuka_von_jofloaction_1a5c8ba9cd.webp",
-    "meal_type": "dinner",
+    "meal_type": "breakfast",
     "goals": [
       "diabetes",
       "keto",
@@ -146003,9 +146003,9 @@
     "glycemic_load": 0,
     "insulin_units": 3.5,
     "tags": [
+      "breakfast",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -146447,9 +146447,9 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
+      "lunch",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "muscle"
     ],
@@ -146562,8 +146562,8 @@
     "glycemic_load": 0,
     "insulin_units": 4.8,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -146655,11 +146655,11 @@
     "glycemic_load": 0,
     "insulin_units": 4.6,
     "tags": [
+      "snack",
       "diabetes",
       "en",
       "keto",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 68,
@@ -146728,8 +146728,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -146841,8 +146841,8 @@
     "glycemic_load": 0,
     "insulin_units": 9.2,
     "tags": [
-      "diabetes",
       "lunch",
+      "diabetes",
       "maintain",
       "nl",
       "vegan",
@@ -146952,8 +146952,8 @@
     "glycemic_load": 0,
     "insulin_units": 16.3,
     "tags": [
-      "de",
       "dinner",
+      "de",
       "maintain",
       "muscle"
     ],
@@ -147156,7 +147156,7 @@
     "title": "Chunky root vegetable soup with cheesy pesto toasts",
     "name": "Chunky root vegetable soup with cheesy pesto toasts",
     "image": "assets/images/recipes/en_chunky_root_vegetable_soup_with_cheesy_pesto_toasts_0dfb943164.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegetarian",
@@ -147277,7 +147277,7 @@
     "glycemic_load": 0,
     "insulin_units": 13.6,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "vegetarian",
@@ -147294,7 +147294,7 @@
     "title": "Lentil & bacon soup",
     "name": "Lentil & bacon soup",
     "image": "assets/images/recipes/en_lentil_bacon_soup_cbd71d2be7.webp",
-    "meal_type": "dinner",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "weight_loss"
@@ -147380,7 +147380,7 @@
     "glycemic_load": 0,
     "insulin_units": 13.8,
     "tags": [
-      "dinner",
+      "lunch",
       "en",
       "maintain",
       "weight_loss"
@@ -147662,8 +147662,8 @@
     "glycemic_load": 0,
     "insulin_units": 6.0,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -147753,8 +147753,8 @@
     "glycemic_load": 0,
     "insulin_units": 3.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain"
@@ -147848,8 +147848,8 @@
     "glycemic_load": 0,
     "insulin_units": 26.8,
     "tags": [
-      "en",
       "lunch",
+      "en",
       "maintain",
       "muscle"
     ],
@@ -148009,8 +148009,8 @@
     "glycemic_load": 0,
     "insulin_units": 17.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain",
       "muscle"
@@ -148098,8 +148098,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.5,
     "tags": [
-      "de",
       "dessert",
+      "de",
       "diabetes",
       "keto",
       "maintain"
@@ -148393,8 +148393,8 @@
     "glycemic_load": 0,
     "insulin_units": 5.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "maintain"
     ],
@@ -148477,8 +148477,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.6,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "keto",
       "maintain",
       "nl",
@@ -148582,8 +148582,8 @@
     "glycemic_load": 0,
     "insulin_units": 7.2,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -148783,9 +148783,9 @@
     "glycemic_load": 0,
     "insulin_units": 0.7,
     "tags": [
+      "dinner",
       "de",
       "diabetes",
-      "dinner",
       "keto",
       "maintain",
       "vegetarian"
@@ -148883,10 +148883,10 @@
     "glycemic_load": 0,
     "insulin_units": 5.6,
     "tags": [
+      "lunch",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -148963,8 +148963,8 @@
     "glycemic_load": 0,
     "insulin_units": 1.4,
     "tags": [
-      "diabetes",
       "dinner",
+      "diabetes",
       "en",
       "keto",
       "maintain",
@@ -149286,11 +149286,11 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
+      "breakfast",
       "diabetes",
       "en",
       "keto",
       "maintain",
-      "snack",
       "vegan",
       "vegetarian"
     ],
@@ -149359,9 +149359,9 @@
     "glycemic_load": 0,
     "insulin_units": 3.1,
     "tags": [
+      "breakfast",
       "de",
       "diabetes",
-      "dinner",
       "maintain",
       "vegan",
       "vegetarian",
@@ -149460,10 +149460,10 @@
     "glycemic_load": 0,
     "insulin_units": 2.4,
     "tags": [
+      "breakfast",
       "diabetes",
       "en",
       "keto",
-      "lunch",
       "maintain",
       "vegan",
       "vegetarian"
@@ -149562,8 +149562,8 @@
     "glycemic_load": 0,
     "insulin_units": 18.8,
     "tags": [
+      "breakfast",
       "de",
-      "dinner",
       "maintain",
       "muscle",
       "vegan",

@@ -3715,6 +3715,19 @@ class DatabaseService {
     await db.delete('scan_results', where: 'id = ?', whereArgs: [scanId]);
   }
 
+  /// Bulk-delete several scans (and their detected foods) in one transaction.
+  Future<void> deleteScanResults(List<int> scanIds) async {
+    if (scanIds.isEmpty) return;
+    final db = await database;
+    final placeholders = List.filled(scanIds.length, '?').join(', ');
+    await db.transaction((txn) async {
+      await txn.delete('detected_foods',
+          where: 'scan_id IN ($placeholders)', whereArgs: scanIds);
+      await txn.delete('scan_results',
+          where: 'id IN ($placeholders)', whereArgs: scanIds);
+    });
+  }
+
   Future<void> updateDetectedFood(
     int foodId, {
     required String label,
@@ -3746,6 +3759,18 @@ class DatabaseService {
     final db = await database;
     await db
         .delete('detected_foods', where: 'id = ?', whereArgs: [detectedFoodId]);
+  }
+
+  /// Bulk-delete several detected foods in one statement.
+  Future<void> deleteDetectedFoods(List<int> ids) async {
+    if (ids.isEmpty) return;
+    final db = await database;
+    final placeholders = List.filled(ids.length, '?').join(', ');
+    await db.delete(
+      'detected_foods',
+      where: 'id IN ($placeholders)',
+      whereArgs: ids,
+    );
   }
 
   /// All detected foods belonging to a single scan.

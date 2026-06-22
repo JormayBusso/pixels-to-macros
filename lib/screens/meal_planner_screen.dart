@@ -501,8 +501,40 @@ class _PlannerActionBar extends ConsumerWidget {
               ),
               selected: pantryMode,
               selectedColor: context.primary100,
-              onSelected: (value) =>
-                  ref.read(pantryModeProvider.notifier).state = value,
+              onSelected: (value) async {
+                ref.read(pantryModeProvider.notifier).state = value;
+                if (!value) return;
+                final pantryState = ref.read(pantryProvider);
+                final messenger = ScaffoldMessenger.of(context);
+                if (pantryState.availableItems.isEmpty) {
+                  // Turning Pantry Mode on with an empty pantry would otherwise
+                  // do nothing — open the manager so the user can add items.
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(l10n.pantryModeEmptyHint)),
+                  );
+                  await showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const _PantrySheet(),
+                  );
+                } else {
+                  // Make the effect visible: offer to re-run Autopilot so the
+                  // plan actually shifts toward the user's ingredients.
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        l10n.pantryModeReadyHint(
+                            pantryState.availableItems.length),
+                      ),
+                      action: SnackBarAction(
+                        label: l10n.mealPlanAutopilot,
+                        onPressed: onAutopilot,
+                      ),
+                    ),
+                  );
+                }
+              },
             ),
           ),
           IconButton.filledTonal(

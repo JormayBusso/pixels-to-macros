@@ -221,7 +221,7 @@ class RecipeRepository {
             mealType == RecipeMealType.lunch);
   }
 
-  static const int _focusBucketFallbackLimit = 16;
+  static const int _focusBucketFallbackLimit = 40;
 
   bool _isRecipeEligibleForGoal(Recipe recipe, NutritionGoalType goal) {
     final carbsPerServing = recipe.carbsPerServing(recipe.servings);

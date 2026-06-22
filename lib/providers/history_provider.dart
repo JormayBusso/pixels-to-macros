@@ -37,6 +37,13 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
     await load();
   }
 
+  /// Delete several scans at once, then refresh.
+  Future<void> deleteScans(List<int> scanIds) async {
+    if (scanIds.isEmpty) return;
+    await DatabaseService.instance.deleteScanResults(scanIds);
+    await load();
+  }
+
   /// Delete a single detected food from a scan and refresh.
   Future<void> deleteDetectedFood(int detectedFoodId) async {
     await DatabaseService.instance.deleteDetectedFood(detectedFoodId);

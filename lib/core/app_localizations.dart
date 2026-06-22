@@ -57,6 +57,27 @@ class AppLocalizations {
         'de': 'Löschen',
       });
 
+  String selectedCount(int count) => _t({
+        'en': '$count selected',
+        'pl': 'Zaznaczono: $count',
+        'nl': '$count geselecteerd',
+        'es': '$count seleccionados',
+        'de': '$count ausgewählt',
+      });
+
+  String deleteSelectedQuestion(int count) => _t({
+        'en':
+            'Delete $count selected ${count == 1 ? 'item' : 'items'}? This cannot be undone.',
+        'pl':
+            'Usunąć $count zaznaczonych elementów? Tej operacji nie można cofnąć.',
+        'nl':
+            '$count geselecteerde ${count == 1 ? 'item' : 'items'} verwijderen? Dit kan niet ongedaan worden gemaakt.',
+        'es':
+            '¿Eliminar $count ${count == 1 ? 'elemento' : 'elementos'} seleccionados? No se puede deshacer.',
+        'de':
+            '$count ausgewählte ${count == 1 ? 'Element' : 'Elemente'} löschen? Dies kann nicht rückgängig gemacht werden.',
+      });
+
   String get back => _t({
         'en': 'Back',
         'pl': 'Wstecz',
@@ -1492,6 +1513,32 @@ class AppLocalizations {
         'nl': 'Voeg ingrediënt toe dat je hebt',
         'es': 'Añade un ingrediente que tienes',
         'de': 'Vorhandene Zutat hinzufügen',
+      });
+
+  String pantryModeReadyHint(int count) => _t({
+        'en':
+            'Pantry Mode on — Autopilot will prioritise the $count ${count == 1 ? 'ingredient' : 'ingredients'} you have.',
+        'pl':
+            'Tryb spiżarni włączony — Autopilot będzie preferować $count ${count == 1 ? 'składnik' : 'składniki'}, które masz.',
+        'nl':
+            'Voorraadmodus aan — Autopilot geeft voorrang aan je $count ${count == 1 ? 'ingrediënt' : 'ingrediënten'}.',
+        'es':
+            'Modo despensa activado: el piloto automático priorizará los $count ${count == 1 ? 'ingrediente' : 'ingredientes'} que tienes.',
+        'de':
+            'Vorratsmodus an — Autopilot bevorzugt deine $count ${count == 1 ? 'Zutat' : 'Zutaten'}.',
+      });
+
+  String get pantryModeEmptyHint => _t({
+        'en':
+            'Add a few ingredients you already have so Autopilot can prioritise recipes that use them.',
+        'pl':
+            'Dodaj kilka składników, które już masz, aby Autopilot mógł preferować przepisy z nimi.',
+        'nl':
+            'Voeg een paar ingrediënten toe die je al hebt, zodat Autopilot recepten daarmee voorrang kan geven.',
+        'es':
+            'Añade algunos ingredientes que ya tienes para que el piloto automático priorice recetas que los usen.',
+        'de':
+            'Füge ein paar vorhandene Zutaten hinzu, damit der Autopilot Rezepte damit bevorzugen kann.',
       });
 
   String get emptyPantry => _t({

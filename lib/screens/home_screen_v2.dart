@@ -39,6 +39,64 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _lastHydrationTrigger = 0;
   int _lastRecommendationsTrigger = 0;
 
+  // Multi-select state for bulk deletes. Non-empty == selection mode active.
+  final Set<int> _selectedFoodIds = <int>{};
+  final Set<int> _selectedScanIds = <int>{};
+
+  void _toggleFoodSelected(int id) {
+    setState(() {
+      if (!_selectedFoodIds.add(id)) _selectedFoodIds.remove(id);
+    });
+  }
+
+  void _toggleScanSelected(int id) {
+    setState(() {
+      if (!_selectedScanIds.add(id)) _selectedScanIds.remove(id);
+    });
+  }
+
+  Future<void> _confirmDeleteSelected({
+    required int count,
+    required Future<void> Function() onConfirm,
+  }) async {
+    final l10n = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.delete),
+        content: Text(l10n.deleteSelectedQuestion(count)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await onConfirm();
+  }
+
+  Future<void> _deleteSelectedFoods() async {
+    final ids = _selectedFoodIds.toList();
+    if (ids.isEmpty) return;
+    await DatabaseService.instance.deleteDetectedFoods(ids);
+    await ref.read(dailyIntakeProvider.notifier).load();
+    await ref.read(historyProvider.notifier).load();
+    if (mounted) setState(_selectedFoodIds.clear);
+  }
+
+  Future<void> _deleteSelectedScans() async {
+    final ids = _selectedScanIds.toList();
+    if (ids.isEmpty) return;
+    await ref.read(historyProvider.notifier).deleteScans(ids);
+    if (mounted) setState(_selectedScanIds.clear);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -355,7 +413,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 16),
 
                     // ── Food breakdown ───────────────────────────────────────
-                    _SectionTitle('Today\'s Foods'),
+                    _SelectableSectionHeader(
+                      title: 'Today\'s Foods',
+                      selectedCount: _selectedFoodIds.length,
+                      onDelete: () => _confirmDeleteSelected(
+                        count: _selectedFoodIds.length,
+                        onConfirm: _deleteSelectedFoods,
+                      ),
+                      onCancel: () => setState(_selectedFoodIds.clear),
+                    ),
                     const SizedBox(height: 8),
                     // ICR warning for diabetes users
                     if (prefs.nutritionGoal == NutritionGoalType.diabetes &&
@@ -448,8 +514,89 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: Column(
                             children: intake.foods.map((f) {
                               final avg = (f.caloriesMin + f.caloriesMax) / 2;
+                              final selecting = _selectedFoodIds.isNotEmpty;
+                              final selected = f.id != null &&
+                                  _selectedFoodIds.contains(f.id);
+
+                              final row = InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: () {
+                                  if (selecting) {
+                                    if (f.id != null) {
+                                      _toggleFoodSelected(f.id!);
+                                    }
+                                  } else {
+                                    _showEditFoodSheet(context, f);
+                                  }
+                                },
+                                onLongPress: f.id == null
+                                    ? null
+                                    : () => _toggleFoodSelected(f.id!),
+                                child: Container(
+                                  decoration: selected
+                                      ? BoxDecoration(
+                                          color: context.primary50,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        )
+                                      : null,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 10, horizontal: 4),
+                                    child: Row(
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                              right: 10),
+                                          child: selecting
+                                              ? Icon(
+                                                  selected
+                                                      ? Icons.check_circle
+                                                      : Icons.circle_outlined,
+                                                  size: 20,
+                                                  color: selected
+                                                      ? context.primary600
+                                                      : AppTheme.gray300,
+                                                )
+                                              : Icon(Icons.restaurant,
+                                                  size: 16,
+                                                  color: context.primary500),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            f.label,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          '${avg.round()} kcal',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: context.primary700,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          selecting
+                                              ? Icons.drag_handle
+                                              : Icons.edit_outlined,
+                                          size: 14,
+                                          color: AppTheme.gray300,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+
+                              // Swipe-to-delete only when not multi-selecting.
+                              if (selecting || f.id == null) return row;
                               return Dismissible(
-                                key: ValueKey(f.id ?? f.label),
+                                key: ValueKey(f.id),
                                 direction: DismissDirection.endToStart,
                                 background: Container(
                                   alignment: Alignment.centerRight,
@@ -486,53 +633,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   );
                                 },
                                 onDismissed: (_) async {
-                                  if (f.id != null) {
-                                    await DatabaseService.instance
-                                        .deleteDetectedFood(f.id!);
-                                    await ref
-                                        .read(dailyIntakeProvider.notifier)
-                                        .load();
-                                    await ref
-                                        .read(historyProvider.notifier)
-                                        .load();
-                                  }
+                                  await DatabaseService.instance
+                                      .deleteDetectedFood(f.id!);
+                                  await ref
+                                      .read(dailyIntakeProvider.notifier)
+                                      .load();
+                                  await ref
+                                      .read(historyProvider.notifier)
+                                      .load();
                                 },
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(8),
-                                  onTap: () => _showEditFoodSheet(context, f),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 10, horizontal: 4),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.restaurant,
-                                            size: 16,
-                                            color: context.primary500),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            f.label,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                        Text(
-                                          '${avg.round()} kcal',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: context.primary700,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Icon(Icons.edit_outlined,
-                                            size: 14, color: AppTheme.gray300),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                                child: row,
                               );
                             }).toList(),
                           ),
@@ -548,7 +658,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 16),
 
                     // ── Scan history (full list) ───────────────────────────
-                    _SectionTitle('Scan History'),
+                    _SelectableSectionHeader(
+                      title: 'Scan History',
+                      selectedCount: _selectedScanIds.length,
+                      onDelete: () => _confirmDeleteSelected(
+                        count: _selectedScanIds.length,
+                        onConfirm: _deleteSelectedScans,
+                      ),
+                      onCancel: () => setState(_selectedScanIds.clear),
+                    ),
                     const SizedBox(height: 8),
                     if (history.scans.isEmpty)
                       Card(
@@ -576,51 +694,131 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ...history.scans.map((scan) {
                         final avg =
                             (scan.totalCaloriesMin + scan.totalCaloriesMax) / 2;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: GestureDetector(
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => ScanDetailScreen(scan: scan),
-                              ),
-                            ),
-                            child: Card(
-                              child: ListTile(
-                                leading: Hero(
-                                  tag: 'scan_icon_${scan.id}',
-                                  child: Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: context.primary100,
-                                      borderRadius: BorderRadius.circular(10),
+                        final selecting = _selectedScanIds.isNotEmpty;
+                        final selected = scan.id != null &&
+                            _selectedScanIds.contains(scan.id);
+
+                        final card = GestureDetector(
+                          onTap: () {
+                            if (selecting) {
+                              if (scan.id != null) {
+                                _toggleScanSelected(scan.id!);
+                              }
+                            } else {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ScanDetailScreen(scan: scan),
+                                ),
+                              );
+                            }
+                          },
+                          onLongPress: scan.id == null
+                              ? null
+                              : () => _toggleScanSelected(scan.id!),
+                          child: Card(
+                            color: selected ? context.primary50 : null,
+                            child: ListTile(
+                              leading: selecting
+                                  ? Icon(
+                                      selected
+                                          ? Icons.check_circle
+                                          : Icons.circle_outlined,
+                                      color: selected
+                                          ? context.primary600
+                                          : AppTheme.gray300,
+                                    )
+                                  : Hero(
+                                      tag: 'scan_icon_${scan.id}',
+                                      child: Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: context.primary100,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: Icon(Icons.fastfood,
+                                            color: context.primary600,
+                                            size: 20),
+                                      ),
                                     ),
-                                    child: Icon(Icons.fastfood,
-                                        color: context.primary600, size: 20),
-                                  ),
+                              title: Text(
+                                '${scan.foods.length} item${scan.foods.length == 1 ? '' : 's'}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600),
+                              ),
+                              subtitle: Text(
+                                _timeAgo(scan.timestamp),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.gray400,
                                 ),
-                                title: Text(
-                                  '${scan.foods.length} item${scan.foods.length == 1 ? '' : 's'}',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600),
-                                ),
-                                subtitle: Text(
-                                  _timeAgo(scan.timestamp),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.gray400,
-                                  ),
-                                ),
-                                trailing: Text(
-                                  '${avg.round()} kcal',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: context.primary700,
-                                  ),
+                              ),
+                              trailing: Text(
+                                '${avg.round()} kcal',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: context.primary700,
                                 ),
                               ),
                             ),
                           ),
+                        );
+
+                        // Swipe-to-delete only when not multi-selecting.
+                        final Widget content =
+                            (selecting || scan.id == null)
+                                ? card
+                                : Dismissible(
+                                    key: ValueKey('scan_${scan.id}'),
+                                    direction: DismissDirection.endToStart,
+                                    background: Container(
+                                      alignment: Alignment.centerRight,
+                                      padding:
+                                          const EdgeInsets.only(right: 20),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade400,
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(Icons.delete_outline,
+                                          color: Colors.white),
+                                    ),
+                                    confirmDismiss: (_) async {
+                                      return await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: const Text('Delete Scan'),
+                                          content: const Text(
+                                              'Delete this scan from history?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, false),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, true),
+                                              child: const Text('Delete',
+                                                  style: TextStyle(
+                                                      color: Colors.red)),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                    onDismissed: (_) async {
+                                      await ref
+                                          .read(historyProvider.notifier)
+                                          .deleteScan(scan.id!);
+                                    },
+                                    child: card,
+                                  );
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: content,
                         );
                       }),
 
@@ -852,6 +1050,48 @@ class _SectionTitle extends StatelessWidget {
         fontWeight: FontWeight.w700,
         color: AppTheme.gray700,
       ),
+    );
+  }
+}
+
+/// Section header that turns into a selection toolbar (N selected · Delete ·
+/// Cancel) while the user is multi-selecting rows for a bulk delete.
+class _SelectableSectionHeader extends StatelessWidget {
+  const _SelectableSectionHeader({
+    required this.title,
+    required this.selectedCount,
+    required this.onDelete,
+    required this.onCancel,
+  });
+
+  final String title;
+  final int selectedCount;
+  final VoidCallback onDelete;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    if (selectedCount == 0) return _SectionTitle(title);
+    final l10n = AppLocalizations.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            l10n.selectedCount(selectedCount),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.gray700,
+            ),
+          ),
+        ),
+        TextButton.icon(
+          onPressed: onDelete,
+          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+          label: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
+        ),
+        TextButton(onPressed: onCancel, child: Text(l10n.cancel)),
+      ],
     );
   }
 }
