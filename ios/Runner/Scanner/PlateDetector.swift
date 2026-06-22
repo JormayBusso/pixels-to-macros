@@ -219,12 +219,22 @@ final class PlateDetector {
     // MARK: – Fallback
 
     private func centerFallback(width: Int, height: Int) -> PlateResult {
-        // Assume plate occupies the center 60% of the frame
-        let fraction: CGFloat = 0.60
-        let inset = (1.0 - fraction) / 2.0
+        // No plate found: crop to the largest CENTRED SQUARE (full short side).
+        // A square crop resizes to the square model input with no aspect
+        // distortion (YOLO is trained on aspect-preserved images), and keeps the
+        // whole frame height so off-centre / plateless foods aren't clipped the
+        // way the old centre-60% box clipped them.
+        let sidePx = CGFloat(min(width, height))
+        let wNorm = sidePx / CGFloat(width)
+        let hNorm = sidePx / CGFloat(height)
         return PlateResult(
-            rect: CGRect(x: inset, y: inset, width: fraction, height: fraction),
-            diameterPx: CGFloat(width) * fraction,
+            rect: CGRect(
+                x: (1.0 - wNorm) / 2.0,
+                y: (1.0 - hNorm) / 2.0,
+                width: wNorm,
+                height: hNorm
+            ),
+            diameterPx: sidePx,
             detected: false
         )
     }

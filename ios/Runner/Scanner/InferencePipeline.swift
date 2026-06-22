@@ -104,12 +104,15 @@ final class InferencePipeline {
         }
 
         // ── 1. Plate detection ──────────────────────────────────────────
-        // When a plate is found, crop to it for a cleaner segmentation input.
-        // When it is NOT found, use the FULL frame instead of the old centre-60%
-        // fallback — plateless foods (a banana on a bare table) are often
-        // off-centre or small, and the tight crop used to clip them out entirely.
+        // `plate.rect` is the crop fed to segmentation AND the rect every
+        // downstream consumer (assignLabels, monocular scale) uses to map masks
+        // back to the image, so it must stay the single source of truth. When no
+        // plate is found, `centerFallback` now returns a centred SQUARE region
+        // (full short side) — no aspect distortion when resized to the square
+        // model input, and it captures the whole frame height for off-centre or
+        // plateless foods (e.g. a banana on a bare table).
         let plate    = plateDetector.detect(in: topFrame.pixelBuffer)
-        let cropRect: CGRect? = plate.detected ? plate.rect : nil
+        let cropRect: CGRect? = plate.rect
         print("[SCAN] plate: detected=\(plate.detected), rect=\(plate.rect), diameterPx=\(Int(plate.diameterPx))")
         print("[SCAN] topFrame: pixelBuffer=\(CVPixelBufferGetWidth(topFrame.pixelBuffer))x\(CVPixelBufferGetHeight(topFrame.pixelBuffer)), depthBuffer=\(topFrame.depthBuffer != nil)")
 
