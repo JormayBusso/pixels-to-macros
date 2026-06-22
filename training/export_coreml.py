@@ -1,22 +1,29 @@
 """
-Export a trained PyTorch model to CoreML (.mlpackage) via TorchScript tracing.
+Export a trained food-segmentation model to CoreML (.mlpackage) for iOS.
 
-Modern coremltools (7+) dropped ONNX as a source; we trace the model with
-torch.jit.trace and convert directly from the TorchScript graph.
+Two checkpoint types are auto-detected:
+  * Ultralytics YOLO-seg (.pt, e.g. best.pt) -> exported via ultralytics'
+    native Core ML exporter (raw outputs; NMS runs on-device in Swift).
+  * Legacy SegFormer (.pth from training/train.py) -> traced with
+    torch.jit.trace and converted directly from the TorchScript graph.
 
-Usage:
+Usage (YOLO, the current `upgraded`-branch path):
+    python training/export_coreml.py --checkpoint best.pt --compile_ios
+
+Usage (legacy SegFormer):
     python training/export_coreml.py \
         --checkpoint training/output/best.pth \
         --img_size 512
 
 Outputs:
-    training/output/FoodSegmentation.mlpackage
+    training/output/FoodSegYolo.mlpackage         (YOLO)
+    training/output/FoodSegmentation.mlpackage    (SegFormer)
+    training/output/FoodSegmentationLabels.json   (index -> class name)
 
-Then compile to .mlmodelc with:
-    xcrun coremlcompiler compile training/output/FoodSegmentation.mlpackage ios/Runner/
-
-The exporter also writes FoodSegmentationLabels.json so Swift uses the exact
-class labels from the checkpoint instead of a hard-coded label map.
+With --compile_ios on macOS, the .mlpackage is compiled to .mlmodelc and copied
+into ios/Runner/ (FoodSegYolo.mlmodelc is what YOLOSegmentationService loads).
+Otherwise compile manually with:
+    xcrun coremlcompiler compile training/output/FoodSegYolo.mlpackage ios/Runner/
 """
 
 from __future__ import annotations
@@ -30,8 +37,6 @@ from pathlib import Path
 import coremltools as ct
 import torch
 import torch.nn.functional as F
-
-from train import SegFormerFoodModel
 
 
 class _SegmentationWrapper(torch.nn.Module):
@@ -101,6 +106,8 @@ def load_model(checkpoint: Path, num_classes: int | None = None) -> tuple[torch.
     id2label = _normalise_id2label(raw_id2label, num_classes)
     label2id = {label: idx for idx, label in id2label.items()}
     model_name = str(args_map.get("model_name") or "nvidia/segformer-b2-finetuned-ade-512-512")
+
+    from train import SegFormerFoodModel  # lazy: SegFormer-only deps
 
     model = SegFormerFoodModel(model_name, num_classes, id2label, label2id)
     missing, unexpected = model.load_state_dict(payload["model_state_dict"], strict=False)
@@ -184,7 +191,7 @@ def compile_for_ios(mlpackage_path: Path, ios_runner_dir: Path) -> Path:
         raise RuntimeError("xcrun not found. Install Xcode command line tools.")
 
     ios_runner_dir.mkdir(parents=True, exist_ok=True)
-    compiled_path = ios_runner_dir / "FoodSegmentation.mlmodelc"
+    compiled_path = ios_runner_dir / f"{mlpackage_path.stem}.mlmodelc"
     if compiled_path.exists():
         shutil.rmtree(compiled_path)
 
@@ -217,29 +224,125 @@ def copy_labels_for_ios(labels_path: Path, ios_runner_dir: Path) -> Path:
     return dst
 
 
+def is_yolo_checkpoint(checkpoint: Path) -> bool:
+    """Detect an Ultralytics YOLO checkpoint (.pt) vs a SegFormer .pth.
+
+    YOLO checkpoints store the model object plus 'train_args'/'date' and have no
+    'model_state_dict'; the SegFormer trainer writes 'model_state_dict'.
+    """
+    if checkpoint.suffix.lower() != ".pt":
+        # SegFormer checkpoints are saved as .pth; only sniff .pt files.
+        try:
+            payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+        except Exception:
+            return False
+        return isinstance(payload, dict) and "model_state_dict" not in payload
+    try:
+        payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    except Exception:
+        # An unpicklable .pt almost certainly needs the ultralytics loader.
+        return True
+    if not isinstance(payload, dict):
+        return True
+    return "model_state_dict" not in payload
+
+
+def export_yolo(
+    checkpoint: Path,
+    img_size: int,
+    output: Path,
+    *,
+    compile_ios: bool,
+    ios_runner_dir: Path,
+    model_basename: str = "FoodSegYolo",
+) -> Path:
+    """Export an Ultralytics YOLO-seg checkpoint to Core ML for iOS.
+
+    NMS is unsupported for *segmentation* Core ML export, so raw outputs are
+    emitted and NMS runs on-device in Swift (YOLOSegmentationService).
+    """
+    from ultralytics import YOLO
+
+    yolo = YOLO(str(checkpoint))
+    if getattr(yolo, "task", None) != "segment":
+        print(f"[export] WARNING: model task is '{getattr(yolo, 'task', None)}', expected 'segment'.")
+
+    exported = Path(
+        yolo.export(format="coreml", nms=False, imgsz=img_size, half=True)
+    )
+
+    mlpackage_path = output / f"{model_basename}.mlpackage"
+    if mlpackage_path.exists():
+        shutil.rmtree(mlpackage_path)
+    shutil.move(str(exported), str(mlpackage_path))
+
+    size_mb = sum(
+        f.stat().st_size for f in mlpackage_path.rglob("*") if f.is_file()
+    ) / 1e6
+    print(f"CoreML exported: {mlpackage_path} ({size_mb:.1f} MB)")
+    if size_mb > 30:
+        print("WARNING: Model exceeds 30 MB. Consider a smaller backbone (yolo11n-seg).")
+
+    id2label = {int(k): str(v) for k, v in yolo.names.items()}
+    labels_path = write_labels(id2label, output)
+
+    if compile_ios:
+        compile_for_ios(mlpackage_path, ios_runner_dir)
+        copy_labels_for_ios(labels_path, ios_runner_dir)
+
+    return mlpackage_path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export model to CoreML")
     parser.add_argument("--checkpoint", type=str, required=True)
     parser.add_argument("--num_classes", type=int, default=0, help="Optional override; checkpoint labels win when present.")
-    parser.add_argument("--img_size", type=int, default=512)
+    parser.add_argument(
+        "--img_size",
+        type=int,
+        default=0,
+        help="Inference size. Default: 640 for YOLO, 512 for SegFormer.",
+    )
     parser.add_argument("--output_dir", type=str, default="training/output")
     parser.add_argument(
         "--compile_ios",
         action="store_true",
-        help="On macOS, compile and place FoodSegmentation.mlmodelc into ios/Runner.",
+        help="On macOS, compile and place the .mlmodelc into ios/Runner.",
     )
     parser.add_argument("--ios_runner_dir", type=str, default="ios/Runner")
+    parser.add_argument(
+        "--model_basename",
+        type=str,
+        default="FoodSegYolo",
+        help="Output name for the YOLO export (iOS loads FoodSegYolo.mlmodelc).",
+    )
     args = parser.parse_args()
 
     output = Path(args.output_dir)
     output.mkdir(parents=True, exist_ok=True)
+    checkpoint = Path(args.checkpoint)
+    ios_runner_dir = Path(args.ios_runner_dir)
 
-    model, num_classes, id2label = load_model(Path(args.checkpoint), args.num_classes)
-    mlpackage_path = convert_coreml(model, num_classes, args.img_size, output)
-    labels_path = write_labels(id2label, output)
-    if args.compile_ios:
-        compile_for_ios(mlpackage_path, Path(args.ios_runner_dir))
-        copy_labels_for_ios(labels_path, Path(args.ios_runner_dir))
+    if is_yolo_checkpoint(checkpoint):
+        img_size = args.img_size or 640
+        print(f"[export] Detected Ultralytics YOLO checkpoint -> Core ML (imgsz={img_size}).")
+        export_yolo(
+            checkpoint,
+            img_size,
+            output,
+            compile_ios=args.compile_ios,
+            ios_runner_dir=ios_runner_dir,
+            model_basename=args.model_basename,
+        )
+    else:
+        img_size = args.img_size or 512
+        print(f"[export] Detected SegFormer checkpoint -> Core ML (imgsz={img_size}).")
+        model, num_classes, id2label = load_model(checkpoint, args.num_classes)
+        mlpackage_path = convert_coreml(model, num_classes, img_size, output)
+        labels_path = write_labels(id2label, output)
+        if args.compile_ios:
+            compile_for_ios(mlpackage_path, ios_runner_dir)
+            copy_labels_for_ios(labels_path, ios_runner_dir)
 
     print("\nDone.")
 

@@ -52,6 +52,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   DateTime? _recordStartedAt;
   Timer? _pitchTimer; // polls phone orientation at ~15 fps
   double _currentPitch = 0.0; // radians: -π/2 = top, 0 = horizontal
+  double _currentRoll = 0.0; // radians: 0 = portrait, ±π/2 = landscape
+  int _quarterTurns = 0; // overlay counter-rotation (0..3) to stay world-upright
   String _detectedDepthMode = 'unknown';
   ScanResult? _savedScanResult;
   List<DetectedFood> _buildPreviewFoods = const [];
@@ -276,6 +278,25 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     );
   }
 
+  /// Snap a continuous device [roll] (radians) to one of four quarter-turn
+  /// orientations (0..3) for the overlay, with hysteresis so it does not flicker
+  /// at the 45° boundaries. The overlay is counter-rotated clockwise by the
+  /// returned number of quarter turns to stay upright relative to the world.
+  int _snapQuarterTurns(double roll, int current) {
+    // Roll at the centre of the current quadrant (q maps to roll ≈ -q·π/2).
+    final double currentCentre = -current * (math.pi / 2);
+    double delta = roll - currentCentre;
+    while (delta > math.pi) {
+      delta -= 2 * math.pi;
+    }
+    while (delta < -math.pi) {
+      delta += 2 * math.pi;
+    }
+    // Stay in the current quadrant until clearly past 45° (+10° hysteresis).
+    if (delta.abs() < (math.pi / 4) + 0.18) return current;
+    return ((-roll / (math.pi / 2)).round() % 4 + 4) % 4;
+  }
+
   Future<void> _pollPitch() async {
     if (!mounted || !_sessionStarted) return;
     double pitch;
@@ -285,7 +306,24 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       return;
     }
     if (!mounted) return;
-    setState(() => _currentPitch = pitch);
+
+    // Track device roll so the guidance overlay can rotate to stay upright when
+    // the phone is physically held in landscape — independent of scan state.
+    double roll = 999.0;
+    try {
+      roll = await _bridge.getPhoneRoll();
+    } catch (_) {
+      roll = 999.0;
+    }
+    if (!mounted) return;
+    final int quarterTurns =
+        roll > 100 ? _quarterTurns : _snapQuarterTurns(roll, _quarterTurns);
+
+    setState(() {
+      _currentPitch = pitch;
+      if (roll <= 100) _currentRoll = roll;
+      _quarterTurns = quarterTurns;
+    });
 
     // Sample ambient light every ~5 ticks (~3 Hz) — cheap.
     _pitchTickCounter++;
@@ -610,6 +648,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           ScanGuidanceOverlay(
               scanState: scanState,
               currentPitch: _currentPitch,
+              quarterTurns: _quarterTurns,
               scanMode: _detectedDepthMode),
 
           if (scanState == ScanState.calculating)

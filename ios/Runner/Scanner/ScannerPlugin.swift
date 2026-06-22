@@ -174,6 +174,13 @@ final class ScannerPlugin {
             recorder.updatePitch(from: sessionManager)
             result(Double(recorder.currentPitch))
 
+        case "getPhoneRoll":
+            // Return device roll about the viewing axis in radians, or 999 when
+            // the phone is flat (orientation ambiguous). 0 ≈ portrait,
+            // ±π/2 ≈ landscape, ±π ≈ upside-down.
+            recorder.updateRoll(from: sessionManager)
+            result(Double(recorder.currentRoll))
+
         case "getMemoryUsage":
             result(getResidentMemory())
 

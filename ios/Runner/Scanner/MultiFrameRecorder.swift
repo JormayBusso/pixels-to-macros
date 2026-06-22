@@ -47,6 +47,11 @@ final class MultiFrameRecorder {
     /// -π/2 = pointing straight down (top-view), 0 = horizontal (side-view).
     private(set) var currentPitch: Float = 0
 
+    /// Device roll about the camera viewing axis, in radians, or the sentinel
+    /// 999 when the camera points (near-)straight down/up and roll is
+    /// ambiguous. 0 ≈ portrait-upright, ±π/2 ≈ landscape, ±π ≈ upside-down.
+    private(set) var currentRoll: Float = 999
+
     // MARK: – Private
 
     private var timer:    Timer?
@@ -105,6 +110,29 @@ final class MultiFrameRecorder {
     func updatePitch(from sessionManager: ARSessionManager) {
         guard let frame = sessionManager.latestFrame else { return }
         currentPitch = frame.camera.eulerAngles.x
+    }
+
+    /// Read the device's roll about its viewing axis from the latest AR frame.
+    ///
+    /// ARKit's world is gravity-aligned (world up = +Y), so projecting world-up
+    /// onto the camera's image plane (right = column 0, up = column 1) yields the
+    /// screen rotation directly: roll = atan2(rightY, upY). This stays
+    /// well-defined across the full top-view↔side-view tilt, unlike
+    /// `eulerAngles` which is unstable near pitch = ±90°. When the camera is
+    /// near-vertical (phone flat) the in-plane gravity component vanishes and
+    /// orientation is ambiguous, so the sentinel 999 is returned and callers
+    /// hold the last known orientation.
+    func updateRoll(from sessionManager: ARSessionManager) {
+        guard let frame = sessionManager.latestFrame else { currentRoll = 999; return }
+        let t = frame.camera.transform
+        let ux = t.columns.0.y // dot(worldUp(0,1,0), cameraRight)
+        let uy = t.columns.1.y // dot(worldUp(0,1,0), cameraUp)
+        let mag = (ux * ux + uy * uy).squareRoot()
+        if mag < 0.25 {
+            currentRoll = 999
+        } else {
+            currentRoll = atan2(ux, uy)
+        }
     }
 
     // MARK: – Private

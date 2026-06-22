@@ -119,6 +119,20 @@ class NativeBridge {
     }
   }
 
+  /// Get the device roll about its viewing axis, in radians, from ARKit.
+  ///
+  /// 0 ≈ portrait-upright, ±π/2 ≈ landscape, ±π ≈ upside-down. Returns the
+  /// sentinel `999` when the phone is held (near-)flat and the orientation is
+  /// ambiguous — callers should keep the last known orientation in that case.
+  Future<double> getPhoneRoll() async {
+    try {
+      final result = await _channel.invokeMethod<double>('getPhoneRoll');
+      return result ?? 999.0;
+    } catch (_) {
+      return 999.0;
+    }
+  }
+
   /// Export the current scan's depth data as a PLY point cloud string.
   /// Must be called while the AR session is still active (before stopSession).
   /// Returns the PLY file content, or null if depth data is unavailable.

@@ -14,6 +14,7 @@ class ScanGuidanceOverlay extends StatefulWidget {
     super.key,
     required this.scanState,
     this.currentPitch = 0.0,
+    this.quarterTurns = 0,
     this.scanMode = 'unknown',
   });
   final ScanState scanState;
@@ -23,6 +24,11 @@ class ScanGuidanceOverlay extends StatefulWidget {
 
   /// Current device pitch in radians: -pi/2 = pointing straight down, 0 = horizontal.
   final double currentPitch;
+
+  /// Clockwise quarter-turns (0..3) used to counter-rotate the whole overlay so
+  /// its text and guides stay upright when the phone is physically held in
+  /// landscape — independent of scan state or whether recording has started.
+  final int quarterTurns;
 
   @override
   State<ScanGuidanceOverlay> createState() => _ScanGuidanceOverlayState();
@@ -51,66 +57,33 @@ class _ScanGuidanceOverlayState extends State<ScanGuidanceOverlay>
   Widget build(BuildContext context) {
     final state = widget.scanState;
 
-    // The "side view" is captured at the tail of the continuous tilt (monocular
-    // flow) or in the legacy discrete side step. As the phone approaches the
-    // side view we switch to a landscape-oriented treatment: horizontal framing
-    // guides + a 90°-rotated instruction that is only upright when the phone is
-    // physically held in landscape — giving the side photo a wider, less
-    // fisheye-distorted framing.
-    const sideApproachPitch = -0.7; // ≈ -40°: past the halfway tilt point
-    final sideViewStep = state == ScanState.moveSide ||
-        state == ScanState.captureSide ||
-        (state == ScanState.recording &&
-            widget.currentPitch > sideApproachPitch);
+    // The entire overlay is counter-rotated by [quarterTurns] so every element
+    // — the viewfinder, the tilt-progress arc and its percentage text, the
+    // instruction banner and the distance hint — stays upright relative to the
+    // world the moment the phone is turned to landscape. RotatedBox re-lays-out
+    // its child, so a portrait layout becomes a correct landscape layout (the
+    // banner stays at the physical top) regardless of scan state.
+    return RotatedBox(
+      quarterTurns: widget.quarterTurns,
+      child: IgnorePointer(
+        child: Stack(
+          children: [
+            // Viewfinder reticle (top-view framing only)
+            if (state == ScanState.waitingForTopView ||
+                state == ScanState.readyToRecord ||
+                state == ScanState.alignTop)
+              Center(child: _Reticle(pulse: _pulse, state: state)),
 
-    return IgnorePointer(
-      child: Stack(
-        children: [
-          // Viewfinder reticle (top-view framing only)
-          if (state == ScanState.waitingForTopView ||
-              state == ScanState.readyToRecord ||
-              state == ScanState.alignTop)
-            Center(child: _Reticle(pulse: _pulse, state: state)),
-
-          // Horizontal framing guides for the landscape side-view step
-          if (sideViewStep) Positioned.fill(child: _HorizontalGuides(pulse: _pulse)),
-
-          // Tilt progress arc (shown during recording)
-          if (state == ScanState.recording)
-            Center(
-              child: _TiltProgressArc(
-                pitch: widget.currentPitch,
-                pulse: _pulse,
-              ),
-            ),
-
-          // Instruction banner. During the side-view step it is rotated 90° and
-          // pinned to the right edge so it reads upright once the phone is
-          // turned into landscape (the right edge becomes the new top).
-          if (sideViewStep)
-            Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: RotatedBox(
-                  // quarterTurns: 1 → upright when the phone is rolled
-                  // counter-clockwise into landscape. Flip to 3 if users
-                  // naturally turn the other way.
-                  quarterTurns: 1,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.height * 0.6,
-                    ),
-                    child: _InstructionBanner(
-                      key: ValueKey(state),
-                      state: state,
-                      scanMode: widget.scanMode,
-                    ),
-                  ),
+            // Tilt progress arc (shown during recording)
+            if (state == ScanState.recording)
+              Center(
+                child: _TiltProgressArc(
+                  pitch: widget.currentPitch,
+                  pulse: _pulse,
                 ),
               ),
-            )
-          else
+
+            // Instruction banner pinned to the top of the (rotated) frame.
             Positioned(
               top: 60,
               left: 24,
@@ -125,30 +98,31 @@ class _ScanGuidanceOverlayState extends State<ScanGuidanceOverlay>
               ),
             ),
 
-          // Distance hint (bottom)
-          if (state == ScanState.waitingForTopView ||
-              state == ScanState.readyToRecord ||
-              state == ScanState.alignTop)
-            Positioned(
-              bottom: 140,
-              left: 0,
-              right: 0,
-              child: FadeTransition(
-                opacity: _pulse,
-                child: Text(
-                  widget.scanMode == 'monocular_scale'
-                      ? 'Hold about 30 cm above the plate; keep plate or utensils visible'
-                      : 'Hold about 30 cm above the plate for best LiDAR detail',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white70,
+            // Distance hint (bottom)
+            if (state == ScanState.waitingForTopView ||
+                state == ScanState.readyToRecord ||
+                state == ScanState.alignTop)
+              Positioned(
+                bottom: 140,
+                left: 0,
+                right: 0,
+                child: FadeTransition(
+                  opacity: _pulse,
+                  child: Text(
+                    widget.scanMode == 'monocular_scale'
+                        ? 'Hold about 30 cm above the plate; keep plate or utensils visible'
+                        : 'Hold about 30 cm above the plate for best LiDAR detail',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white70,
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -360,75 +334,6 @@ class _TiltArcPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_TiltArcPainter old) => old.progress != progress || old.color != color;
-}
-
-// Horizontal framing guides (landscape side-view capture)
-
-class _HorizontalGuides extends StatelessWidget {
-  const _HorizontalGuides({required this.pulse});
-  final Animation<double> pulse;
-
-  @override
-  Widget build(BuildContext context) {
-    return _AnimBuilder(
-      listenable: pulse,
-      builder: (_, __) => CustomPaint(
-        painter: _HorizontalGuidesPainter(
-          color: AppTheme.amber500,
-          pulseValue: pulse.value,
-        ),
-      ),
-    );
-  }
-}
-
-class _HorizontalGuidesPainter extends CustomPainter {
-  _HorizontalGuidesPainter({required this.color, required this.pulseValue});
-  final Color color;
-  final double pulseValue;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    const inset = 28.0;
-
-    final linePaint = Paint()
-      ..color = color.withValues(alpha: 0.55)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    final faintPaint = Paint()
-      ..color = color.withValues(alpha: 0.22 + pulseValue * 0.12)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    // Upper and lower framing lines — keep the food between them.
-    for (final y in [h * 0.26, h * 0.74]) {
-      canvas.drawLine(Offset(inset, y), Offset(w - inset, y), linePaint);
-      canvas.drawLine(Offset(inset, y - 8), Offset(inset, y + 8), linePaint);
-      canvas.drawLine(Offset(w - inset, y - 8), Offset(w - inset, y + 8), linePaint);
-    }
-
-    // Center horizon (dashed) — a level reference for a straight-on side view.
-    final midY = h * 0.5;
-    const dash = 14.0;
-    const gap = 10.0;
-    double x = inset;
-    while (x < w - inset) {
-      canvas.drawLine(
-        Offset(x, midY),
-        Offset(math.min(x + dash, w - inset), midY),
-        faintPaint,
-      );
-      x += dash + gap;
-    }
-    canvas.drawLine(Offset(w / 2, midY - 10), Offset(w / 2, midY + 10), linePaint);
-  }
-
-  @override
-  bool shouldRepaint(_HorizontalGuidesPainter old) =>
-      old.pulseValue != pulseValue || old.color != color;
 }
 
 // Instruction banner
