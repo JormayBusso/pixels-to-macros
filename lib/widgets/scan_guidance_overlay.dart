@@ -321,19 +321,51 @@ class _TiltArcPainter extends CustomPainter {
     )..layout();
     tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2 - 6));
 
-    // Sub-label
+    // Sub-label — progressive coaching through the tilt to the side view.
+    final String subLabel = progress >= 1.0
+        ? 'Hold steady'
+        : progress > 0.8
+            ? 'Almost there'
+            : progress > 0.33
+                ? 'Keep tilting up'
+                : 'Tilt up to the side';
     final lp = TextPainter(
       text: TextSpan(
-        text: progress < 1.0 ? 'Tilt upright...' : 'Done!',
+        text: subLabel,
         style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.w500),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
     lp.paint(canvas, Offset(cx - lp.width / 2, cy + tp.height / 2 - 4));
+
+    // Directional tilt cue: upward chevrons that pulse to show which way to
+    // rotate the phone toward the side view. Hidden once the tilt is complete.
+    if (progress < 1.0) {
+      final chevPaint = Paint()
+        ..color = color.withValues(alpha: 0.3 + pulseValue * 0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+      const chevW = 18.0;
+      const chevH = 10.0;
+      final baseY = cy - r * 0.52 + pulseValue * 4.0;
+      for (int i = 0; i < 2; i++) {
+        final yy = baseY + i * 12.0;
+        final path = Path()
+          ..moveTo(cx - chevW / 2, yy + chevH)
+          ..lineTo(cx, yy)
+          ..lineTo(cx + chevW / 2, yy + chevH);
+        canvas.drawPath(path, chevPaint);
+      }
+    }
   }
 
   @override
-  bool shouldRepaint(_TiltArcPainter old) => old.progress != progress || old.color != color;
+  bool shouldRepaint(_TiltArcPainter old) =>
+      old.progress != progress ||
+      old.color != color ||
+      old.pulseValue != pulseValue;
 }
 
 // Instruction banner
@@ -360,8 +392,8 @@ class _InstructionBanner extends StatelessWidget {
         ),
       ScanState.recording => (
           scanMode == 'monocular_scale'
-            ? 'Rotate the phone 90° down: top view → straight-on side view'
-            : 'Move in one straight line; LiDAR measures the 3-D food shape',
+            ? 'Slowly tilt the phone up to a straight-on side view — keep the food centred'
+            : 'Sweep in one smooth line to the side — keep the food centred',
           Icons.videocam,
           AppTheme.amber600,
         ),

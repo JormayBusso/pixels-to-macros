@@ -125,13 +125,20 @@ final class MultiFrameRecorder {
     func updateRoll(from sessionManager: ARSessionManager) {
         guard let frame = sessionManager.latestFrame else { currentRoll = 999; return }
         let t = frame.camera.transform
-        let ux = t.columns.0.y // dot(worldUp(0,1,0), cameraRight)
-        let uy = t.columns.1.y // dot(worldUp(0,1,0), cameraUp)
-        let mag = (ux * ux + uy * uy).squareRoot()
+        // ARKit camera space is LANDSCAPE-native (Apple docs): +x runs along the
+        // device long axis from the front camera toward the home button (= the
+        // device's DOWN edge in portrait), and +y is "up" relative to
+        // landscapeRight (= the device's portrait LEFT edge). So the portrait
+        // device-up axis is -column0 and device-right is -column1. Projecting
+        // both onto world-up (+y) yields the screen roll directly — without this
+        // landscape offset the overlay rotates 90° the wrong way.
+        let upY = -t.columns.0.y    // deviceUp · worldUp
+        let rightY = -t.columns.1.y // deviceRight · worldUp
+        let mag = (upY * upY + rightY * rightY).squareRoot()
         if mag < 0.25 {
             currentRoll = 999
         } else {
-            currentRoll = atan2(ux, uy)
+            currentRoll = atan2(rightY, upY)
         }
     }
 

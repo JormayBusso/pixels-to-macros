@@ -283,8 +283,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   /// at the 45° boundaries. The overlay is counter-rotated clockwise by the
   /// returned number of quarter turns to stay upright relative to the world.
   int _snapQuarterTurns(double roll, int current) {
-    // Roll at the centre of the current quadrant (q maps to roll ≈ -q·π/2).
-    final double currentCentre = -current * (math.pi / 2);
+    // Roll at the centre of the current quadrant (q maps to roll ≈ q·π/2).
+    final double currentCentre = current * (math.pi / 2);
     double delta = roll - currentCentre;
     while (delta > math.pi) {
       delta -= 2 * math.pi;
@@ -294,7 +294,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     }
     // Stay in the current quadrant until clearly past 45° (+10° hysteresis).
     if (delta.abs() < (math.pi / 4) + 0.18) return current;
-    return ((-roll / (math.pi / 2)).round() % 4 + 4) % 4;
+    return ((roll / (math.pi / 2)).round() % 4 + 4) % 4;
   }
 
   Future<void> _pollPitch() async {
