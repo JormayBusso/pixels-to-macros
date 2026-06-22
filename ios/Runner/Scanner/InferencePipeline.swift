@@ -1,6 +1,7 @@
 import CoreVideo
 import CoreImage
 import Foundation
+import simd
 import UIKit
 
 /// Orchestrates the full 3-D scan pipeline:
@@ -194,12 +195,19 @@ final class InferencePipeline {
         // through DepthFusion. Generate an estimated 3-D object from the
         // segmentation mask, plate/intrinsics scale, and food shape priors.
         if !recorder.hasDepthData {
+            // Real side-view height (Task 1.2): when the user tilted to a side
+            // view, segment that frame and measure the dominant food's true
+            // vertical extent via the pinhole model, replacing the height prior.
+            let measuredHeightCm = recorder.sideFrame.flatMap {
+                frame in autoreleasepool { measureSideHeightCm(frame) }
+            }
             let estimate = try monocularEstimator.estimate(
                 segments: segments,
                 topFrame: topFrame,
                 sideFrame: recorder.sideFrame,
                 maskWidth: preprocessor.modelInputWidth,
-                maskHeight: preprocessor.modelInputHeight
+                maskHeight: preprocessor.modelInputHeight,
+                measuredHeightCm: measuredHeightCm
             )
             lastModel3DPath = estimate.modelPath
             lastModel3DObjects = estimate.objects
@@ -435,6 +443,91 @@ final class InferencePipeline {
         }
 
         return true
+    }
+
+    /// Measure the dominant food's true vertical height (cm) from the side
+    /// view. Segments the side frame, takes the largest food mask, measures its
+    /// extent along the gravity-aligned image axis (robust to portrait OR
+    /// landscape via the camera transform), and converts pixels → cm with the
+    /// pinhole model (focal length × assumed 30 cm hold distance). Returns nil
+    /// when there is no side frame / food, or the result is implausible — the
+    /// estimator then falls back to the class height prior. Purely additive: it
+    /// can never make the estimate worse than the prior-only path.
+    private func measureSideHeightCm(
+        _ sideFrame: FrameCaptureService.CapturedFrame
+    ) -> Double? {
+        guard let pre = preprocessor.preprocess(
+            pixelBuffer: sideFrame.pixelBuffer, plateRect: nil
+        ) else { return nil }
+
+        let sideSegments: [SegmentationService.SegmentedObject]
+        do {
+            sideSegments = yoloSegmentationService.isAvailable
+                ? try yoloSegmentationService.segment(pixelBuffer: pre)
+                : try segmentationService.segment(pixelBuffer: pre)
+        } catch {
+            print("[PIPELINE] side-height: segmentation failed: \(error)")
+            return nil
+        }
+        guard let largest = sideSegments.first, !largest.mask.isEmpty else {
+            return nil
+        }
+
+        // Which image axis runs vertically? Project world-up onto the camera
+        // basis: whichever of the camera's right/up vectors aligns more with
+        // gravity tells us whether image columns or rows are the vertical axis.
+        let t = sideFrame.cameraTransform
+        let camRight = simd_normalize(
+            simd_float3(t.columns.0.x, t.columns.0.y, t.columns.0.z))
+        let camUp = simd_normalize(
+            simd_float3(t.columns.1.x, t.columns.1.y, t.columns.1.z))
+        let worldUp = simd_float3(0, 1, 0)
+        let useColumns =
+            abs(simd_dot(camRight, worldUp)) >= abs(simd_dot(camUp, worldUp))
+
+        // Food mask extent along the chosen (vertical) axis, in mask pixels.
+        let maskH = largest.mask.count
+        let maskW = largest.mask.first?.count ?? 0
+        guard maskH > 0, maskW > 0 else { return nil }
+        var minIdx = Int.max
+        var maxIdx = -1
+        if useColumns {
+            for r in 0..<maskH {
+                let row = largest.mask[r]
+                for c in 0..<maskW where row[c] == 1 {
+                    if c < minIdx { minIdx = c }
+                    if c > maxIdx { maxIdx = c }
+                }
+            }
+        } else {
+            for r in 0..<maskH where largest.mask[r].contains(1) {
+                if r < minIdx { minIdx = r }
+                if r > maxIdx { maxIdx = r }
+            }
+        }
+        guard maxIdx >= minIdx else { return nil }
+
+        // Mask extent → full-frame pixels → cm via the pinhole model.
+        let maskExtent = Double(maxIdx - minIdx + 1)
+        let maskDim = Double(useColumns ? maskW : maskH)
+        let fullDim = Double(useColumns
+            ? CVPixelBufferGetWidth(sideFrame.pixelBuffer)
+            : CVPixelBufferGetHeight(sideFrame.pixelBuffer))
+        let pixelExtentFull = maskExtent * (fullDim / maskDim)
+
+        let k = sideFrame.cameraIntrinsics
+        let focal = Double(useColumns ? k.columns.0.x : k.columns.1.y)
+        guard focal > 1 else { return nil }
+
+        let distanceCm = 30.0 // guided hold distance (matches scan guidance)
+        let heightCm = pixelExtentFull * distanceCm / focal
+
+        guard heightCm >= 0.5, heightCm <= 25.0 else {
+            print("[PIPELINE] side-height: \(String(format: "%.1f", heightCm)) cm out of range — ignoring")
+            return nil
+        }
+        print("[PIPELINE] side-view measured height: \(String(format: "%.1f", heightCm)) cm (axis=\(useColumns ? "cols" : "rows"))")
+        return heightCm
     }
 
     /// Replace low-trust segmentation labels with ML Kit's confident specific

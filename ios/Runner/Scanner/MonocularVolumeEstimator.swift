@@ -47,7 +47,8 @@ final class MonocularVolumeEstimator {
         topFrame: FrameCaptureService.CapturedFrame,
         sideFrame: FrameCaptureService.CapturedFrame?,
         maskWidth: Int,
-        maskHeight: Int
+        maskHeight: Int,
+        measuredHeightCm: Double? = nil
     ) throws -> Result {
         let scale = estimateScale(
             topFrame: topFrame,
@@ -68,14 +69,11 @@ final class MonocularVolumeEstimator {
             let areaCm2 = Double(seg.pixelCount) / max(scale.pixelsPerCm * scale.pixelsPerCm, 0.0001)
             let widthCm = Double(max(1, footprint.maxCol - footprint.minCol + 1)) / scale.pixelsPerCm
             let depthCm = Double(max(1, footprint.maxRow - footprint.minRow + 1)) / scale.pixelsPerCm
-            // Conservative height bound: clamp the class height prior to the
-            // *larger* lateral extent so it only trims items that are genuinely
-            // small in BOTH dimensions (e.g. a single grape carrying a 5 cm fruit
-            // prior). Bounding by the larger extent — not the narrower one — keeps
-            // long, irregular foods (a banana or a bunch) from collapsing to their
-            // narrow width, while `min(prior, …)` still caps volume on the safe side.
             let lateralBoundCm = max(0.8, max(widthCm, depthCm))
-            let heightCm = min(prior.heightCm, lateralBoundCm)
+            let priorBoundCm = min(prior.heightCm, lateralBoundCm)
+            // Real side-view measurement for the dominant (largest) food when
+            // available; the prior-bound covers the rest / no side frame.
+            let heightCm = (idx == 0 ? measuredHeightCm : nil) ?? priorBoundCm
             let volumeCm3 = max(6.0, areaCm2 * heightCm * prior.shapeFactor)
             let confidence = confidenceForScale(scale, segmentConfidence: seg.confidence, sideFrame: sideFrame)
             let id = "\(sanitised(seg.label))_\(idx)"

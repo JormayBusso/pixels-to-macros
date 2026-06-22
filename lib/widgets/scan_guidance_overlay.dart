@@ -343,7 +343,7 @@ class _InstructionBanner extends StatelessWidget {
     final (String text, IconData icon, Color bg) = switch (state) {
       ScanState.waitingForTopView => (
           scanMode == 'monocular_scale'
-              ? 'Camera estimate: keep plate or utensils visible'
+              ? 'Hold the phone flat, directly above the food (top view)'
               : 'LiDAR precision: lock the plate from top view',
           Icons.phone_android,
           context.primary600,
@@ -355,7 +355,7 @@ class _InstructionBanner extends StatelessWidget {
         ),
       ScanState.recording => (
           scanMode == 'monocular_scale'
-            ? 'Move in one straight line: top view to side view'
+            ? 'Rotate the phone 90° down: top view → straight-on side view'
             : 'Move in one straight line; LiDAR measures the 3-D food shape',
           Icons.videocam,
           AppTheme.amber600,
@@ -371,7 +371,7 @@ class _InstructionBanner extends StatelessWidget {
           context.primary500,
         ),
       ScanState.moveSide => (
-          'Slowly tilt to a 45 degree side angle',
+          'Rotate 90° to a straight-on side view of the food',
           Icons.rotate_90_degrees_cw,
           AppTheme.amber600,
         ),
