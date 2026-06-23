@@ -113,15 +113,25 @@ final class MonocularVolumeEstimator {
             let heightCm: Double
             let volumeCm3: Double
             let scanMode: String
+            var debugInfo: String? = nil
             if let dr = depthResult {
                 heightCm = dr.meanHeightCm
                 volumeCm3 = max(6.0, dr.volumeCm3)
                 scanMode = "monocular_depth"
+                debugInfo = String(
+                    format: "depth: table=%.0fcm food=%.0fcm h=%.1fcm cov=%.0f%% vol=%.0fcm³",
+                    dr.tableDepthM * 100, dr.foodDepthM * 100,
+                    dr.meanHeightCm, dr.coverage * 100, dr.volumeCm3
+                )
                 print("[MonocularEstimator] depth food#\(idx) \(seg.label): meanH=\(String(format: "%.2f", dr.meanHeightCm))cm peakH=\(String(format: "%.2f", dr.peakHeightCm))cm cov=\(String(format: "%.2f", dr.coverage)) vol=\(String(format: "%.1f", dr.volumeCm3))cm3")
             } else {
                 heightCm = (idx == 0 ? measuredHeightCm : nil) ?? priorBoundCm
                 volumeCm3 = max(6.0, areaCm2 * heightCm * prior.shapeFactor)
                 scanMode = "monocular_scale"
+                debugInfo = String(
+                    format: "prism: scale=%@ %.1fpx/cm h=%.1fcm vol=%.0fcm³",
+                    scale.source, scale.pixelsPerCm, heightCm, volumeCm3
+                )
             }
             let confidence = confidenceForScale(scale, segmentConfidence: seg.confidence, sideFrame: sideFrame)
             let id = "\(sanitised(seg.label))_\(idx)"
@@ -145,7 +155,7 @@ final class MonocularVolumeEstimator {
 
             let roundedVolume = round(volumeCm3 * 10) / 10
             let roundedConfidence = round(confidence * 1000) / 1000
-            let row: [String: Any] = [
+            var row: [String: Any] = [
                 "id": id,
                 "label": seg.label,
                 "volume_cm3": roundedVolume,
@@ -157,6 +167,7 @@ final class MonocularVolumeEstimator {
                 "scale_source": scale.source,
                 "estimated": true,
             ]
+            if let debugInfo { row["debug"] = debugInfo }
             // [EVAL] one line per food for known-weight calibration (#3).
             print("[EVAL] label=\(seg.label) volume_cm3=\(String(format: "%.1f", roundedVolume)) height_cm=\(String(format: "%.2f", heightCm)) mode=\(scanMode) scale=\(scale.source) px/cm=\(String(format: "%.2f", scale.pixelsPerCm))")
             payload.append(row)

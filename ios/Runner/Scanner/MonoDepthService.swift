@@ -43,6 +43,9 @@ final class MonoDepthService {
         let peakHeightCm: Double
         /// Fraction of food pixels with a valid (positive) height. Low = unreliable.
         let coverage: Double
+        /// Raw metric depths (metres) for on-screen diagnostics / calibration.
+        let tableDepthM: Double
+        let foodDepthM: Double
     }
 
     // MARK: – Tunables
@@ -274,7 +277,9 @@ final class MonoDepthService {
             volumeCm3: volume,
             meanHeightCm: meanHeight,
             peakHeightCm: peak,
-            coverage: coverage
+            coverage: coverage,
+            tableDepthM: tableDepth,
+            foodDepthM: medianFoodDepth
         )
     }
 

@@ -15,6 +15,7 @@ class Scan3DObject {
     required this.volumeCm3,
     required this.voxelCount,
     required this.confidence,
+    this.debug,
   });
 
   factory Scan3DObject.fromMap(Map<String, dynamic> m) {
@@ -24,6 +25,7 @@ class Scan3DObject {
       volumeCm3: (m['volume_cm3'] as num?)?.toDouble() ?? 0.0,
       voxelCount: (m['voxel_count'] as num?)?.toInt() ?? 0,
       confidence: (m['confidence'] as num?)?.toDouble() ?? 1.0,
+      debug: m['debug'] as String?,
     );
   }
 
@@ -34,12 +36,17 @@ class Scan3DObject {
   final int voxelCount;
   final double confidence;
 
+  /// Optional one-line diagnostic from the native estimator (depth/scale
+  /// numbers). Shown as an on-screen debug readout when present.
+  final String? debug;
+
   Map<String, dynamic> toMap() => <String, dynamic>{
         'id': id,
         'label': label,
         'volume_cm3': volumeCm3,
         'voxel_count': voxelCount,
         'confidence': confidence,
+        if (debug != null) 'debug': debug,
       };
 }
 

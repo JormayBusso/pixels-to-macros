@@ -76,11 +76,87 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
                     const Positioned.fill(
                       child: _ViewerErrorOverlay(),
                     ),
+                  _DepthDebugOverlay(objects: widget.objects),
                 ],
               ),
             ),
             if (widget.scanId != null) _IngredientPanel(scanId: widget.scanId!),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// On-screen depth/scale diagnostics so the numbers can be read directly off
+/// the phone (no Xcode console). Only shows objects that carry a `debug` line.
+class _DepthDebugOverlay extends StatefulWidget {
+  const _DepthDebugOverlay({required this.objects});
+
+  final List<Scan3DObject> objects;
+
+  @override
+  State<_DepthDebugOverlay> createState() => _DepthDebugOverlayState();
+}
+
+class _DepthDebugOverlayState extends State<_DepthDebugOverlay> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = widget.objects.where((o) => o.debug != null).toList();
+    if (rows.isEmpty) return const SizedBox.shrink();
+    return Positioned(
+      top: 8,
+      left: 8,
+      right: 8,
+      child: GestureDetector(
+        onTap: () => setState(() => _expanded = !_expanded),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.5)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.bug_report,
+                      color: Colors.tealAccent, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    'DEPTH DEBUG (tap to ${_expanded ? 'hide' : 'show'})',
+                    style: const TextStyle(
+                      color: Colors.tealAccent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              if (_expanded) ...[
+                const SizedBox(height: 6),
+                for (final o in rows)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '${o.label}\n${o.debug}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        height: 1.3,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
         ),
       ),
     );
