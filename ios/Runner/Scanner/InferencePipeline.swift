@@ -18,6 +18,12 @@ final class InferencePipeline {
     private let plateDetector       = PlateDetector()
     private let preprocessor        = FramePreprocessor()
     private let segmentationService = SegmentationService()
+    /// EXPERIMENTAL (#4): when true, compute ARKit scene-mesh volumes and log
+    /// them next to the live voxel volumes for comparison. DEFAULT OFF — the
+    /// mesh path is untested (needs a LiDAR device) and never replaces the
+    /// shipping voxel-fusion output while this is false.
+    static var compareSceneMesh = false
+    private let meshVolumeEstimator = ARMeshVolumeEstimator()
     /// YOLO*-seg instance-segmentation path (upgraded branch). Used when a
     /// `*-seg.mlmodelc` is bundled; otherwise the dense SegFormer service runs.
     private let yoloSegmentationService = YOLOSegmentationService()
@@ -233,7 +239,8 @@ final class InferencePipeline {
                 sideFrame: recorder.sideFrame,
                 maskWidth: preprocessor.modelInputWidth,
                 maskHeight: preprocessor.modelInputHeight,
-                measuredHeightCm: measuredHeightCm
+                measuredHeightCm: measuredHeightCm,
+                preprocessedRGB: preprocessedRGB
             )
             lastModel3DPath = estimate.modelPath
             lastModel3DObjects = estimate.objects
@@ -336,6 +343,26 @@ final class InferencePipeline {
             throw PipelineError.model3DExportFailed("mesh_reconstruction_empty")
         }
 
+        // EXPERIMENTAL (#4, default-off): compare scene-mesh volumes vs the live
+        // voxel volumes. Pure telemetry — does not affect the exported result.
+        if Self.compareSceneMesh, !recorder.meshAnchors.isEmpty {
+            let meshVols = meshVolumeEstimator.computeVolumes(
+                meshAnchors:  recorder.meshAnchors,
+                segments:     segments,
+                topTransform: topFrame.cameraTransform,
+                topIntrinsics: topFrame.cameraIntrinsics,
+                imageWidth:   CVPixelBufferGetWidth(topFrame.pixelBuffer),
+                imageHeight:  CVPixelBufferGetHeight(topFrame.pixelBuffer),
+                maskWidth:    preprocessor.modelInputWidth,
+                maskHeight:   preprocessor.modelInputHeight,
+                plateRect:    plate.rect
+            )
+            for obj in foodObjects {
+                let m = meshVols[obj.label]
+                print("[EVAL] mesh-compare label=\(obj.label) voxel_cm3=\(String(format: "%.1f", obj.volumeCm3)) mesh_cm3=\(m.map { String(format: "%.1f", $0) } ?? "nil")")
+            }
+        }
+
         let baseName = "scan3d_\(Int(Date().timeIntervalSince1970 * 1000))"
         guard let url = exporter.export(
             objects: foodObjects,
@@ -392,6 +419,8 @@ final class InferencePipeline {
             d["depth_min_m"] = 0.0
             d["depth_max_m"] = 0.0
             d["depth_avg_m"] = 0.0
+            // [EVAL] one line per food for known-weight calibration (#3).
+            print("[EVAL] label=\(obj.label) volume_cm3=\(String(format: "%.1f", obj.volumeCm3)) voxels=\(obj.voxelCount) mode=lidar_mesh")
             payload.append(d)
         }
 

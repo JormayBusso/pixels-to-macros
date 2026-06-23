@@ -40,6 +40,7 @@ final class MonocularVolumeEstimator {
 
     private let plateDetector = PlateDetector()
     private let exporter = Food3DExporter()
+    private let monoDepth = MonoDepthService()
     private let guidedDistanceCm: Double = 30.0
 
     func estimate(
@@ -48,13 +49,26 @@ final class MonocularVolumeEstimator {
         sideFrame: FrameCaptureService.CapturedFrame?,
         maskWidth: Int,
         maskHeight: Int,
-        measuredHeightCm: Double? = nil
+        measuredHeightCm: Double? = nil,
+        preprocessedRGB: CVPixelBuffer? = nil
     ) throws -> Result {
         let scale = estimateScale(
             topFrame: topFrame,
             maskWidth: maskWidth,
             maskHeight: maskHeight
         )
+
+        // Metric monocular depth (gated): when `MonoDepth.mlmodelc` is bundled
+        // and we have the preprocessed RGB the segmenter used, predict a depth
+        // grid aligned to the mask so each food's height above the table can be
+        // MEASURED instead of taken from a fixed class prior.
+        let depthGrid: MonoDepthService.DepthGrid? = {
+            guard let rgb = preprocessedRGB, monoDepth.isAvailable else { return nil }
+            return autoreleasepool {
+                monoDepth.depthGrid(pixelBuffer: rgb, targetW: maskWidth, targetH: maskHeight)
+            }
+        }()
+        if depthGrid != nil { print("[MonocularEstimator] metric depth available — measuring heights") }
 
         var objects: [DepthFusion.Food3DObject] = []
         var payload: [[String: Any]] = []
@@ -71,10 +85,30 @@ final class MonocularVolumeEstimator {
             let depthCm = Double(max(1, footprint.maxRow - footprint.minRow + 1)) / scale.pixelsPerCm
             let lateralBoundCm = max(0.8, max(widthCm, depthCm))
             let priorBoundCm = min(prior.heightCm, lateralBoundCm)
-            // Real side-view measurement for the dominant (largest) food when
-            // available; the prior-bound covers the rest / no side frame.
-            let heightCm = (idx == 0 ? measuredHeightCm : nil) ?? priorBoundCm
-            let volumeCm3 = max(6.0, areaCm2 * heightCm * prior.shapeFactor)
+
+            // 1) Metric depth integral (best). 2) Real side-view height for the
+            // dominant food. 3) Class height prior bounded by lateral size.
+            let depthResult = depthGrid.flatMap { grid in
+                monoDepth.foodVolume(
+                    depth: grid, mask: seg.mask,
+                    maskWidth: maskWidth, maskHeight: maskHeight,
+                    pixelsPerCm: scale.pixelsPerCm
+                )
+            }
+
+            let heightCm: Double
+            let volumeCm3: Double
+            let scanMode: String
+            if let dr = depthResult {
+                heightCm = dr.meanHeightCm
+                volumeCm3 = max(6.0, dr.volumeCm3)
+                scanMode = "monocular_depth"
+                print("[MonocularEstimator] depth food#\(idx) \(seg.label): meanH=\(String(format: "%.2f", dr.meanHeightCm))cm peakH=\(String(format: "%.2f", dr.peakHeightCm))cm cov=\(String(format: "%.2f", dr.coverage)) vol=\(String(format: "%.1f", dr.volumeCm3))cm3")
+            } else {
+                heightCm = (idx == 0 ? measuredHeightCm : nil) ?? priorBoundCm
+                volumeCm3 = max(6.0, areaCm2 * heightCm * prior.shapeFactor)
+                scanMode = "monocular_scale"
+            }
             let confidence = confidenceForScale(scale, segmentConfidence: seg.confidence, sideFrame: sideFrame)
             let id = "\(sanitised(seg.label))_\(idx)"
 
@@ -105,10 +139,12 @@ final class MonocularVolumeEstimator {
                 "pixel_count": seg.pixelCount,
                 "confidence": roundedConfidence,
                 "frames_used": sideFrame == nil ? 1 : 2,
-                "scan_mode": "monocular_scale",
+                "scan_mode": scanMode,
                 "scale_source": scale.source,
                 "estimated": true,
             ]
+            // [EVAL] one line per food for known-weight calibration (#3).
+            print("[EVAL] label=\(seg.label) volume_cm3=\(String(format: "%.1f", roundedVolume)) height_cm=\(String(format: "%.2f", heightCm)) mode=\(scanMode) scale=\(scale.source) px/cm=\(String(format: "%.2f", scale.pixelsPerCm))")
             payload.append(row)
             metadata.append(row)
         }
