@@ -313,7 +313,12 @@ final class DepthFusion {
     /// voxels than this are almost always mis-segmentation or sensor noise.
     /// The reported `volumeCm3` is derived AFTER column solidification, so it
     /// is typically much larger than this count.
-    static let defaultMinVoxelsPerCluster = 200
+    ///
+    /// Lowered 200 → 80 (#3): at 1 cm voxel resolution ~200 skin voxels means a
+    /// ~14 cm footprint, which silently dropped small/medium foods (an egg is
+    /// only ~20–40 skin voxels). 80 keeps real noise out while letting small
+    /// items through. TUNE against known-weight eval scans (watch `[EVAL]` logs).
+    static let defaultMinVoxelsPerCluster = 80
 
     /// Stable, post-plate-subtraction voxel cluster — one per food instance.
     /// A label like `"rice"` that appears as two physically separated piles
