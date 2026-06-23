@@ -55,29 +55,53 @@ private final class CameraHostView: UIView {
         displayLayer.videoGravity = .resizeAspect
         displayLayer.backgroundColor = UIColor.black.cgColor
         layer.addSublayer(displayLayer)
-        applyPortraitTransform(for: bounds)
+        applyOrientationTransform(for: bounds)
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        applyPortraitTransform(for: bounds)
+        applyOrientationTransform(for: bounds)
     }
 
-    /// ARKit captures in landscape (width > height).
-    /// For a portrait-only app we rotate the display layer 90° CW so the
-    /// camera fill covers the portrait viewport correctly.
-    func applyPortraitTransform(for rect: CGRect) {
+    /// ARKit captures in the camera sensor's native landscape orientation
+    /// (landscapeRight). Rotate the display layer to match the current UI
+    /// orientation so the preview is always upright — 0° in landscapeRight,
+    /// 180° in landscapeLeft, and 90° CW in portrait. The scan flow forces
+    /// landscape, but this keeps the preview correct in every orientation.
+    func applyOrientationTransform(for rect: CGRect) {
         guard rect.width > 0, rect.height > 0 else { return }
+
+        let orientation: UIInterfaceOrientation =
+            window?.windowScene?.interfaceOrientation
+            ?? UIApplication.shared.connectedScenes
+                .compactMap { ($0 as? UIWindowScene)?.interfaceOrientation }
+                .first
+            ?? .portrait
+
+        let angle: CGFloat
+        let layerSize: CGSize
+        switch orientation {
+        case .landscapeRight:
+            angle = 0
+            layerSize = rect.size
+        case .landscapeLeft:
+            angle = .pi
+            layerSize = rect.size
+        case .portraitUpsideDown:
+            angle = -.pi / 2
+            layerSize = CGSize(width: rect.height, height: rect.width)
+        default: // portrait
+            angle = .pi / 2
+            layerSize = CGSize(width: rect.height, height: rect.width)
+        }
+
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        // Layer occupies landscape-shaped bounds; the rotation maps it to portrait.
-        displayLayer.bounds    = CGRect(origin: .zero,
-                                        size:   CGSize(width: rect.height,
-                                                       height: rect.width))
+        displayLayer.bounds    = CGRect(origin: .zero, size: layerSize)
         displayLayer.position  = CGPoint(x: rect.midX, y: rect.midY)
-        displayLayer.transform = CATransform3DMakeRotation(.pi / 2, 0, 0, 1)
+        displayLayer.transform = CATransform3DMakeRotation(angle, 0, 0, 1)
         CATransaction.commit()
     }
 }

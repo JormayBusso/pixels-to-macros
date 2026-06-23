@@ -38,7 +38,7 @@ final class YOLOSegmentationService {
     // MARK: – Tunables
 
     /// Minimum class confidence to keep a raw detection.
-    private let confThreshold: Float = 0.25
+    private let confThreshold: Float = 0.20
     /// IoU above which a lower-scoring same-class box is suppressed.
     private let iouThreshold: Float = 0.45
     /// Sigmoid threshold that turns a mask logit into a solid pixel.

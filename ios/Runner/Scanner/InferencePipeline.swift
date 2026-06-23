@@ -177,7 +177,7 @@ final class InferencePipeline {
         // genuinely needs the veto) OR when YOLO itself produced no confident
         // food instance.
         let yoloConfident = useYolo &&
-            (segments.map { $0.confidence }.max() ?? 0) >= 0.45
+            (segments.map { $0.confidence }.max() ?? 0) >= 0.35
         if !mlKitResult.hasFood && !yoloConfident {
             print("[SCAN] food-presence: REJECT (mlKit veto, no confident YOLO segment)")
             print("[PIPELINE] export success: false")
@@ -240,7 +240,8 @@ final class InferencePipeline {
                 maskWidth: preprocessor.modelInputWidth,
                 maskHeight: preprocessor.modelInputHeight,
                 measuredHeightCm: measuredHeightCm,
-                preprocessedRGB: preprocessedRGB
+                preprocessedRGB: preprocessedRGB,
+                tableDistanceCm: recorder.tableDistanceCm
             )
             lastModel3DPath = estimate.modelPath
             lastModel3DObjects = estimate.objects
@@ -473,8 +474,8 @@ final class InferencePipeline {
             print("[SCAN] foodPresenceGate: REJECT speckled (3+ segs, largest too small)")
             return false
         }
-        if avgConfidence < 0.45 {
-            print("[SCAN] foodPresenceGate: REJECT avgConfidence < 0.45")
+        if avgConfidence < 0.35 {
+            print("[SCAN] foodPresenceGate: REJECT avgConfidence < 0.35")
             return false
         }
         if segments.count >= 4 && largestFraction < 0.05 {

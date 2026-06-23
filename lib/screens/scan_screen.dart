@@ -83,11 +83,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   @override
   void initState() {
     super.initState();
-    // Lock the scan flow to portrait. The ARKit preview applies a hardcoded
-    // portrait transform, and the landscape side-view UX depends on the UI
-    // staying portrait while the user physically rotates the phone to
-    // landscape (the on-screen instruction is pre-rotated to compensate).
-    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+    // The scan is performed in LANDSCAPE: the moment the scan screen opens we
+    // force the app to landscape so it is obvious the phone must be held
+    // sideways for the top→side sweep. Portrait is restored the instant the
+    // sweep finishes (see [_stopRecording]) and on leaving the screen. The
+    // landscape lock itself is applied in [_startSession] so it also re-applies
+    // after a retry. The ARKit preview transform is orientation-aware.
     // Reset any stale state from a previous scan session (the provider is
     // NOT autoDispose so depthFailed / modelFailed from earlier persists).
     // Defer both reset AND session start to post-frame callback so that
@@ -134,7 +135,24 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   String? _sessionErrorDetail; // actual error text for UI
 
+  /// Force the app into landscape for the duration of the scan sweep so the
+  /// user clearly knows to hold the phone sideways.
+  void _lockLandscape() {
+    SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  /// Restore portrait the moment the sweep finishes / the screen is left.
+  void _restorePortrait() {
+    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+  }
+
   Future<void> _startSession() async {
+    // The scan runs in landscape — (re)apply the lock on every session start
+    // (initial open and retry).
+    _lockLandscape();
     // Stop any previous session, using the generation counter so only
     // the correct session is stopped.
     try {
@@ -256,8 +274,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     try {
       _bridge.stopSession(generation: _sessionGeneration);
     } catch (_) {}
-    // Restore free orientation for the rest of the app.
-    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    // Restore portrait for the rest of the app after leaving the scan flow.
+    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
     super.dispose();
   }
 
@@ -382,9 +400,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       return;
     }
 
-    // Recording stops automatically when the phone reaches vertical (side-view)
-    // or at the 4-second native frame budget. The user should move in one
-    // smooth line from top view to side view during this window.
+    // Recording ends ONLY when the user completes the top→side arc (pitch >
+    // side-view threshold, handled in [_pollPitch]) after [_minRecordDuration].
+    // The timer below is a REFERENCE indicator only — it fills toward 1.0 over
+    // the nominal sweep window and then holds; it never stops the recording.
     final totalTicks =
         _maxRecordDuration.inMilliseconds ~/ _timerInterval.inMilliseconds;
     var tick = 0;
@@ -394,11 +413,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         return;
       }
       tick++;
-      if (mounted) setState(() => _recordProgress = tick / totalTicks);
-      if (tick >= totalTicks) {
-        t.cancel();
-        if (mounted) _stopRecording();
-      }
+      final double progress = (tick / totalTicks).clamp(0.0, 1.0);
+      if (mounted) setState(() => _recordProgress = progress);
     });
   }
 
@@ -411,6 +427,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _recordTimer?.cancel();
     _recordTimer = null;
     if (!mounted) return;
+    // The sweep is complete — snap the app back to portrait immediately while
+    // the (hidden-preview) inference runs, per the scan UX contract.
+    _restorePortrait();
     setState(() {
       _isRecording = false;
       _isInferenceRunning = true;

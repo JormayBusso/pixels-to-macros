@@ -40,6 +40,11 @@ final class MultiFrameRecorder {
     /// First few top-view depth frames, captured before the phone moves to a side view.
     private(set) var topViewFrames: [LightFrame] = []
 
+    /// Metric camera-to-table distance (cm) captured from ARKit horizontal
+    /// plane tracking during the top-view phase, or `nil` if no plane was
+    /// detected. Used by the non-LiDAR estimator as the primary volume scale.
+    private(set) var tableDistanceCm: Double?
+
     var frameCount: Int { topViewFrames.count + lightFrames.count }
     var hasDepthData: Bool { !topViewFrames.isEmpty || !lightFrames.isEmpty }
 
@@ -84,6 +89,7 @@ final class MultiFrameRecorder {
         topViewFrames = []
         lightFrames = []
         meshAnchors = []
+        tableDistanceCm = nil
         isActive    = true
 
         timer = Timer.scheduledTimer(
@@ -109,6 +115,7 @@ final class MultiFrameRecorder {
         topViewFrames = []
         lightFrames = []
         meshAnchors = []
+        tableDistanceCm = nil
     }
 
     // MARK: – Orientation query
@@ -164,6 +171,16 @@ final class MultiFrameRecorder {
         let meshes = arFrame.anchors.compactMap { $0 as? ARMeshAnchor }
         if !meshes.isEmpty { meshAnchors = meshes }
 
+        // Lock the metric camera-to-table distance the first time a horizontal
+        // plane is detected while still in the top-view phase — this matches the
+        // top frame used for the footprint area, giving a consistent scale.
+        if tableDistanceCm == nil,
+           MultiFrameRecorder.isLikelyTopView(pitch: currentPitch),
+           let d = sessionManager.cameraToTableDistanceMeters() {
+            tableDistanceCm = Double(d) * 100.0
+            print("[SCAN] ARKit table distance locked: \(String(format: "%.1f", tableDistanceCm ?? 0)) cm")
+        }
+
         autoreleasepool {
             let pixBuf    = arFrame.capturedImage
             let depthBuf  = FrameCaptureService.preferredDepthMap(from: arFrame)
@@ -186,10 +203,11 @@ final class MultiFrameRecorder {
                 )
             }
 
-            // Keep one RGB side/reference frame for non-LiDAR volume fallback.
-            // We do not need every RGB frame; one frame is enough for future
-            // side-height refinement while keeping memory bounded.
-            if topFrame != nil && sideFrame == nil && !isTopView {
+            // Keep ONE RGB side/reference frame, refreshed to the LATEST
+            // non-top frame so it captures the true side view at the end of the
+            // mandatory top→side arc (not the first slightly-tilted frame).
+            // Memory stays bounded: only a single side frame is ever retained.
+            if topFrame != nil && !isTopView {
                 sideFrame = FrameCaptureService.CapturedFrame(
                     pixelBuffer:     MultiFrameRecorder.copyPixelBuffer(pixBuf),
                     depthBuffer:     depthBuf.flatMap { MultiFrameRecorder.copyPixelBuffer($0) },

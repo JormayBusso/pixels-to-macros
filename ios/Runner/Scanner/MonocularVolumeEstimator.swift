@@ -43,6 +43,14 @@ final class MonocularVolumeEstimator {
     private let monoDepth = MonoDepthService()
     private let guidedDistanceCm: Double = 30.0
 
+    /// Metric-depth (Depth Anything V2 metric-indoor) is OUT-OF-DOMAIN at the
+    /// 10–30 cm hold distance used for plated food: device testing showed 4–9×
+    /// absolute scale error and ~3× height overestimation (the "everything looks
+    /// like a cucumber" tall-dome bug). It is therefore disabled as a volume
+    /// source. The reliable metric signal on non-LiDAR devices is the ARKit
+    /// tracked camera-to-table distance (see `tableDistanceCm`).
+    static var useMetricDepthVolume = false
+
     func estimate(
         segments: [SegmentationService.SegmentedObject],
         topFrame: FrameCaptureService.CapturedFrame,
@@ -50,12 +58,14 @@ final class MonocularVolumeEstimator {
         maskWidth: Int,
         maskHeight: Int,
         measuredHeightCm: Double? = nil,
-        preprocessedRGB: CVPixelBuffer? = nil
+        preprocessedRGB: CVPixelBuffer? = nil,
+        tableDistanceCm: Double? = nil
     ) throws -> Result {
         let scale = estimateScale(
             topFrame: topFrame,
             maskWidth: maskWidth,
-            maskHeight: maskHeight
+            maskHeight: maskHeight,
+            tableDistanceCm: tableDistanceCm
         )
 
         // Effective focal lengths in MASK-pixel units, used to back-project each
@@ -77,7 +87,8 @@ final class MonocularVolumeEstimator {
         // grid aligned to the mask so each food's height above the table can be
         // MEASURED instead of taken from a fixed class prior.
         let depthGrid: MonoDepthService.DepthGrid? = {
-            guard let rgb = preprocessedRGB, monoDepth.isAvailable else { return nil }
+            guard MonocularVolumeEstimator.useMetricDepthVolume,
+                  let rgb = preprocessedRGB, monoDepth.isAvailable else { return nil }
             return autoreleasepool {
                 monoDepth.depthGrid(pixelBuffer: rgb, targetW: maskWidth, targetH: maskHeight)
             }
@@ -203,7 +214,8 @@ final class MonocularVolumeEstimator {
     private func estimateScale(
         topFrame: FrameCaptureService.CapturedFrame,
         maskWidth: Int,
-        maskHeight: Int
+        maskHeight: Int,
+        tableDistanceCm: Double? = nil
     ) -> ScaleEstimate {
         let plate = plateDetector.detect(in: topFrame.pixelBuffer)
         if plate.detected {
@@ -217,11 +229,15 @@ final class MonocularVolumeEstimator {
         let cropWidthPx = max(1.0, Double(plate.rect.width) * Double(imageWidth))
         let fx = Double(topFrame.cameraIntrinsics.columns.0.x)
         if fx > 1 {
-            // cm per full-image pixel at 30 cm = D / fx. Scale to mask pixels
-            // through the crop width represented by the segmentation mask.
-            let cmPerImagePx = guidedDistanceCm / fx
+            // cm per full-image pixel at the camera-to-table distance = D / fx.
+            // D comes from ARKit horizontal-plane tracking when available (works
+            // at any hold distance on non-LiDAR); otherwise we fall back to the
+            // 30 cm guided-distance assumption.
+            let distanceCm = tableDistanceCm ?? guidedDistanceCm
+            let cmPerImagePx = distanceCm / fx
             let cmPerMaskPx = cmPerImagePx * cropWidthPx / Double(maskWidth)
-            return ScaleEstimate(pixelsPerCm: max(1.0 / max(cmPerMaskPx, 0.0001), 1.0), source: "30cm_intrinsics")
+            let source = tableDistanceCm != nil ? "arkit_plane" : "30cm_intrinsics"
+            return ScaleEstimate(pixelsPerCm: max(1.0 / max(cmPerMaskPx, 0.0001), 1.0), source: source)
         }
 
         // Last resort: assume the crop covers a default dinner plate.
@@ -238,6 +254,7 @@ final class MonocularVolumeEstimator {
     ) -> Double {
         let scaleConfidence: Double
         switch scale.source {
+        case "arkit_plane": scaleConfidence = 0.80
         case "plate": scaleConfidence = 0.78
         case "30cm_intrinsics": scaleConfidence = 0.66
         default: scaleConfidence = 0.58
@@ -257,7 +274,9 @@ final class MonocularVolumeEstimator {
         // `estimate(...)` still trims a single banana lying flat, but the bunch
         // keeps a realistic height instead of collapsing to the 3 cm default.
         if l.contains("banana") { return (6.5, 0.88) }
-        if l.contains("apple") || l.contains("orange") || l.contains("egg") { return (5.0, 0.58) }
+        if l.contains("apple") || l.contains("orange") || l.contains("egg") ||
+           l.contains("tomato") || l.contains("onion") || l.contains("potato") ||
+           l.contains("peach") || l.contains("plum") { return (5.0, 0.58) }
         if l.contains("bread") || l.contains("toast") || l.contains("pizza") { return (2.2, 0.82) }
         if l.contains("chicken") || l.contains("beef") || l.contains("steak") || l.contains("fish") { return (2.8, 0.78) }
         if l.contains("soup") || l.contains("sauce") || l.contains("yogurt") { return (1.8, 0.90) }

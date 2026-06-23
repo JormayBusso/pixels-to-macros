@@ -111,6 +111,7 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
         guard let session else { return }
 
         let config = ARWorldTrackingConfiguration()
+        config.planeDetection = [.horizontal]
 
         // Log what the static capability checks say — on iOS 26 these
         // return false even on LiDAR-equipped devices (iPhone Pro).
@@ -146,6 +147,32 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
         print("[ARSession] Upgraded config: mesh=\(config.sceneReconstruction), semantics=\(config.frameSemantics)")
     }
 
+    /// Vertical distance (meters) from the camera down to the nearest detected
+    /// horizontal plane below it (the table / plate surface), or `nil` if no
+    /// usable plane has been found yet. ARKit's world is gravity-aligned
+    /// (+Y up), so the distance is simply `cameraY - planeY` for the highest
+    /// horizontal plane below the camera. This is the most reliable metric
+    /// scale source on non-LiDAR devices and works at any hold distance.
+    func cameraToTableDistanceMeters() -> Float? {
+        guard let frame = session?.currentFrame else { return nil }
+        let cameraY = frame.camera.transform.columns.3.y
+        var bestY: Float?
+        for anchor in frame.anchors {
+            guard let plane = anchor as? ARPlaneAnchor,
+                  plane.alignment == .horizontal else { continue }
+            let planeY = plane.transform.columns.3.y
+            // Only consider surfaces below the camera (where the food sits).
+            guard planeY < cameraY - 0.02 else { continue }
+            // Prefer the highest such plane (table top, not the floor below it).
+            if bestY == nil || planeY > bestY! { bestY = planeY }
+        }
+        guard let y = bestY else { return nil }
+        let d = cameraY - y
+        // Sanity clamp: plated food is scanned at ~8–80 cm.
+        guard d > 0.05, d < 1.0 else { return nil }
+        return d
+    }
+
     // MARK: – Private: session lifecycle
 
     /// Actually create and run the ARSession (called after auth check).
@@ -172,7 +199,10 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
         // ── Create a fresh session with the simplest possible config ────
         let config = ARWorldTrackingConfiguration()
         // No depth, no mesh, no custom video format — this must work on
-        // every ARKit-capable device.
+        // every ARKit-capable device. Horizontal plane detection is cheap and
+        // works on every device; it provides the gravity-aligned table surface
+        // used to derive a metric camera-to-table distance for volume scale.
+        config.planeDetection = [.horizontal]
 
         let s = ARSession()
         s.delegate = self
