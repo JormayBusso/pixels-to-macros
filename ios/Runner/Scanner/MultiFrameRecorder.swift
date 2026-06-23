@@ -52,6 +52,12 @@ final class MultiFrameRecorder {
     /// ambiguous. 0 ≈ portrait-upright, ±π/2 ≈ landscape, ±π ≈ upside-down.
     private(set) var currentRoll: Float = 999
 
+    /// Latest LiDAR scene-reconstruction mesh anchors (empty on non-LiDAR
+    /// devices). Refreshed each sample so the most complete reconstruction is
+    /// available after the sweep. Consumed by the experimental, default-off
+    /// `ARMeshVolumeEstimator` (#4); the live volume path does not use it.
+    private(set) var meshAnchors: [ARMeshAnchor] = []
+
     // MARK: – Private
 
     private var timer:    Timer?
@@ -77,6 +83,7 @@ final class MultiFrameRecorder {
         sideFrame   = nil
         topViewFrames = []
         lightFrames = []
+        meshAnchors = []
         isActive    = true
 
         timer = Timer.scheduledTimer(
@@ -101,6 +108,7 @@ final class MultiFrameRecorder {
         sideFrame   = nil
         topViewFrames = []
         lightFrames = []
+        meshAnchors = []
     }
 
     // MARK: – Orientation query
@@ -151,6 +159,10 @@ final class MultiFrameRecorder {
 
         // Always update pitch for orientation tracking.
         currentPitch = arFrame.camera.eulerAngles.x
+
+        // Refresh LiDAR mesh anchors if present (experimental #4 path).
+        let meshes = arFrame.anchors.compactMap { $0 as? ARMeshAnchor }
+        if !meshes.isEmpty { meshAnchors = meshes }
 
         autoreleasepool {
             let pixBuf    = arFrame.capturedImage
