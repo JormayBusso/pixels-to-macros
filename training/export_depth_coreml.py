@@ -39,6 +39,43 @@ from pathlib import Path
 import coremltools as ct
 import numpy as np
 import torch
+from coremltools.converters.mil import Builder as mb
+from coremltools.converters.mil.frontend.torch.ops import _get_inputs
+from coremltools.converters.mil.frontend.torch.torch_op_registry import (
+    register_torch_op,
+)
+
+
+@register_torch_op(override=True)
+def upsample_bicubic2d(context, node):
+    """Map PyTorch ``upsample_bicubic2d`` to a bilinear resize.
+
+    coremltools has no bicubic op. Depth Anything only uses bicubic to resize
+    the positional-encoding grid and the DPT depth map; both are smooth fields
+    and we consume relative heights, so bilinear is visually and numerically
+    indistinguishable for our purpose.
+    """
+    inputs = _get_inputs(context, node)
+    x = inputs[0]
+    output_size = inputs[1]
+    align_corners = bool(inputs[2].val) if inputs[2] is not None and inputs[2].val is not None else False
+    mode = "ALIGN_CORNERS" if align_corners else "DEFAULT"
+
+    if output_size is not None and output_size.val is not None:
+        oh, ow = (int(v) for v in output_size.val)
+        out = mb.resize_bilinear(
+            x=x, target_size_height=oh, target_size_width=ow,
+            sampling_mode=mode, name=node.name,
+        )
+    else:
+        scales_h = inputs[3].val if len(inputs) > 3 and inputs[3] is not None else 1.0
+        scales_w = inputs[4].val if len(inputs) > 4 and inputs[4] is not None else 1.0
+        out = mb.upsample_bilinear(
+            x=x, scale_factor_height=scales_h, scale_factor_width=scales_w,
+            align_corners=align_corners, name=node.name,
+        )
+    context.add(out)
+
 
 # ImageNet statistics used by Depth Anything V2.
 _MEAN = [0.485, 0.456, 0.406]

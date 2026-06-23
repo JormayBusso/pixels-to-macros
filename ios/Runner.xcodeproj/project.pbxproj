@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		00F929A0E1900BAC819B1489 /* CoreML.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 106E69CAAEAFA6A5B66AD4AC /* CoreML.framework */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		1B6DD6317DD3145FB6028C45 /* MonoDepth.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 514F71439B0203B75E0C0B36 /* MonoDepth.mlmodelc */; };
 		24CBC83F2DA4A19876130207 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6CAAE6E0DFEB32AB337D33B7 /* CoreVideo.framework */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3325C11CF380F60DC2317633 /* SegmentationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753DB09FA42E27044AE313AF /* SegmentationService.swift */; };
@@ -91,6 +92,7 @@
 		37F48EF5C5BB2FDE9E14640F /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		45253471A282FCFFF61F56CE /* ModelIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ModelIO.framework; path = System/Library/Frameworks/ModelIO.framework; sourceTree = SDKROOT; };
+		514F71439B0203B75E0C0B36 /* MonoDepth.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = MonoDepth.mlmodelc; sourceTree = "<group>"; };
 		5D01C0FF0017F00000000000 /* MonocularVolumeEstimator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonocularVolumeEstimator.swift; sourceTree = "<group>"; };
 		5E044877C9BA5C5BD6249387 /* DepthFusion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DepthFusion.swift; sourceTree = "<group>"; };
 		6A247DD49A22C552B3A3F825 /* MonoDepthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonoDepthService.swift; sourceTree = "<group>"; };
@@ -266,6 +268,7 @@
 				10DECEA94831997726B8E2B6 /* FoodSegmentation.mlmodelc */,
 				10DECEA94831997726B8E2B7 /* FoodSegmentationLabels.json */,
 				B50E4E3D0C9A5B0F8F413A1D /* FoodSegYolo.mlmodelc */,
+				514F71439B0203B75E0C0B36 /* MonoDepth.mlmodelc */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -386,6 +389,7 @@
 				DA7869F3377AA0498695AD5C /* FoodSegmentation.mlmodelc in Resources */,
 				DA7869F3377AA0498695AD5D /* FoodSegmentationLabels.json in Resources */,
 				EE30AF551432D7698D48F2B4 /* FoodSegYolo.mlmodelc in Resources */,
+				1B6DD6317DD3145FB6028C45 /* MonoDepth.mlmodelc in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

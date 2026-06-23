@@ -1,14 +1,18 @@
 #!/usr/bin/env ruby
 # scripts/add_yolo_model.rb
 #
-# Adds the exported FoodSegYolo.mlmodelc to the Runner target's resources so the
-# trained YOLO11-seg model is bundled and YOLOSegmentationService can load it.
-# Idempotent: safe to re-run after every export.
+# Adds an exported .mlmodelc to the Runner target's resources so the model is
+# bundled and the matching Swift service can load it. Idempotent: safe to re-run
+# after every export.
+#
+# Usage:
+#   ruby scripts/add_yolo_model.rb                 # FoodSegYolo.mlmodelc (default)
+#   ruby scripts/add_yolo_model.rb MonoDepth.mlmodelc
 
 require 'xcodeproj'
 
 PROJECT_PATH = 'ios/Runner.xcodeproj'
-RESOURCE     = 'FoodSegYolo.mlmodelc'
+RESOURCE     = ARGV[0] || 'FoodSegYolo.mlmodelc'
 
 project = Xcodeproj::Project.open(PROJECT_PATH)
 target  = project.targets.find { |t| t.name == 'Runner' }
