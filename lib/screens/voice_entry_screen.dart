@@ -13,6 +13,7 @@ import '../providers/history_provider.dart';
 import '../providers/locale_provider.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/premium_theme_effects.dart';
 
 /// Voice-powered food logging.
 ///
@@ -199,17 +200,73 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
 
   /// Single words that speech recognition captures but are not food items.
   static const _nonFoodWords = {
-    'it', 'is', 'was', 'were', 'be', 'been', 'am', 'are',
-    'so', 'no', 'yes', 'not', 'but', 'or', 'if', 'at',
-    'in', 'on', 'to', 'up', 'me', 'he', 'she', 'they',
-    'what', 'when', 'how', 'much', 'many', 'very', 'really',
-    'thing', 'stuff', 'lot', 'good', 'bad', 'nice',
-    'big', 'small', 'more', 'less', 'enough', 'too',
-    'well', 'pretty', 'kind', 'type', 'sort', 'way',
-    'something', 'anything', 'nothing', 'everything',
-    'maybe', 'actually', 'basically', 'literally',
-    'ok', 'okay', 'yeah', 'yep', 'nope', 'um', 'uh',
-    'hmm', 'ah', 'oh',
+    'it',
+    'is',
+    'was',
+    'were',
+    'be',
+    'been',
+    'am',
+    'are',
+    'so',
+    'no',
+    'yes',
+    'not',
+    'but',
+    'or',
+    'if',
+    'at',
+    'in',
+    'on',
+    'to',
+    'up',
+    'me',
+    'he',
+    'she',
+    'they',
+    'what',
+    'when',
+    'how',
+    'much',
+    'many',
+    'very',
+    'really',
+    'thing',
+    'stuff',
+    'lot',
+    'good',
+    'bad',
+    'nice',
+    'big',
+    'small',
+    'more',
+    'less',
+    'enough',
+    'too',
+    'well',
+    'pretty',
+    'kind',
+    'type',
+    'sort',
+    'way',
+    'something',
+    'anything',
+    'nothing',
+    'everything',
+    'maybe',
+    'actually',
+    'basically',
+    'literally',
+    'ok',
+    'okay',
+    'yeah',
+    'yep',
+    'nope',
+    'um',
+    'uh',
+    'hmm',
+    'ah',
+    'oh',
   };
 
   @override
@@ -364,9 +421,18 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
 
       // 4. Convert word numbers to digits
       const wordNumbers = {
-        'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
-        'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
-        'half': '0.5', 'quarter': '0.25',
+        'one': '1',
+        'two': '2',
+        'three': '3',
+        'four': '4',
+        'five': '5',
+        'six': '6',
+        'seven': '7',
+        'eight': '8',
+        'nine': '9',
+        'ten': '10',
+        'half': '0.5',
+        'quarter': '0.25',
       };
       for (final entry in wordNumbers.entries) {
         if (seg.startsWith('${entry.key} ')) {
@@ -886,6 +952,8 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final visualTheme = context.visualTheme;
+    final premium = visualTheme.premium;
     // "Actively editing" == keyboard visible; drives the contextual Done
     // button + dismiss FAB so neither is permanently shown.
     final editing = MediaQuery.of(context).viewInsets.bottom > 0;
@@ -912,284 +980,350 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         behavior: HitTestBehavior.translucent,
         child: SafeArea(
           child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            child: Column(
-            children: [
-              // ── Instructions ──────────────────────────────────────
-              Card(
-                color: context.primary50,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(Icons.mic, color: context.primary600, size: 24),
-                      const SizedBox(width: 12),
-                      Expanded(
+            padding: const EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  // ── Instructions ──────────────────────────────────────
+                  Card(
+                    color: premium ? visualTheme.cardColor : context.primary50,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.mic,
+                              color: premium
+                                  ? visualTheme.primaryAccent
+                                  : context.primary600,
+                              size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Tell me what you ate',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Say naturally, e.g.:\n'
+                                  '• "200 grams of chicken and a banana"\n'
+                                  '• "2 eggs, toast with peanut butter"\n'
+                                  '• "a bowl of oatmeal and a coffee"\n'
+                                  '• "150g salmon with rice and broccoli"',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: context.appMutedTextColor,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Mic button ─────────────────────────────────────────
+                  GestureDetector(
+                    onTap: _listening ? _stopListening : _startListening,
+                    child: PremiumMotionSurface(
+                      enabled: premium,
+                      borderRadius: BorderRadius.circular(_listening ? 58 : 48),
+                      padding: const EdgeInsets.all(5),
+                      borderWidth: _listening ? 4.2 : 3.4,
+                      glow: true,
+                      animate: premium,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: _listening ? 100 : 80,
+                        height: _listening ? 100 : 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: premium
+                              ? visualTheme.surface
+                              : (_listening
+                                  ? Colors.red.shade400
+                                  : context.primary600),
+                          boxShadow: _listening
+                              ? [
+                                  BoxShadow(
+                                    color: (premium
+                                            ? visualTheme.secondaryAccent
+                                            : Colors.red)
+                                        .withValues(alpha: 0.44),
+                                    blurRadius: premium ? 34 : 24,
+                                    spreadRadius: premium ? 10 : 8,
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        child: Icon(
+                          _listening ? Icons.stop : Icons.mic,
+                          color: premium
+                              ? (_listening
+                                  ? visualTheme.secondaryAccent
+                                  : visualTheme.primaryAccent)
+                              : Colors.white,
+                          size: 36,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _listening
+                        ? 'Listening… speak naturally'
+                        : (_available
+                            ? 'Tap to speak'
+                            : 'Initialising speech…'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight:
+                          _listening ? FontWeight.w600 : FontWeight.w400,
+                      color: premium
+                          ? (_listening
+                              ? visualTheme.secondaryAccent
+                              : visualTheme.onMuted)
+                          : (_listening
+                              ? Colors.red.shade400
+                              : AppTheme.gray400),
+                    ),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 8),
+                    _ErrorBox(error: _error!),
+                  ],
+                  const SizedBox(height: 20),
+
+                  // ── Transcript ──────────────────────────────────────────
+                  if (_transcript.isNotEmpty) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color:
+                            premium ? visualTheme.cardColor : AppTheme.gray100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: premium
+                              ? visualTheme.borderColor
+                              : AppTheme.gray100,
+                          width: premium ? 1.8 : 1,
+                        ),
+                      ),
+                      child: Text(
+                        '"$_transcript"',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontStyle: FontStyle.italic,
+                          color: context.appTextColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // ── Parsed foods ────────────────────────────────────────
+                  if (_parsed.isNotEmpty) ...[
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _parsed.length,
+                      itemBuilder: (_, i) {
+                        final p = _parsed[i];
+                        final matched = p.food != null;
+                        return PremiumMotionSurface(
+                          enabled: premium && matched,
+                          borderRadius: BorderRadius.circular(14),
+                          padding: const EdgeInsets.all(2),
+                          borderWidth: 2.8,
+                          glow: false,
+                          child: Card(
+                            color: matched
+                                ? (premium
+                                    ? visualTheme.cardColor
+                                    : Colors.white)
+                                : AppTheme.red100,
+                            child: ListTile(
+                              leading: Icon(
+                                matched
+                                    ? Icons.check_circle
+                                    : Icons.help_outline,
+                                color: matched
+                                    ? (premium
+                                        ? visualTheme.primaryAccent
+                                        : context.primary600)
+                                    : Colors.red.shade400,
+                              ),
+                              title: Text(
+                                matched
+                                    ? p.food!.label
+                                    : 'Unknown: "${p.query}"',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: matched
+                                      ? context.appTextColor
+                                      : AppTheme.red700,
+                                ),
+                              ),
+                              subtitle: Text(
+                                matched
+                                    ? '${p.grams.round()} g  •  ${(p.food!.kcalPer100g * p.grams / 100).round()} kcal'
+                                    : 'Not found in database',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              trailing: matched
+                                  ? SizedBox(
+                                      width: 60,
+                                      child: TextField(
+                                        keyboardType: TextInputType.number,
+                                        controller: _gramController(i, p.grams),
+                                        onChanged: (v) {
+                                          final g = double.tryParse(v);
+                                          if (g != null) {
+                                            setState(() => _parsed[i] =
+                                                _ParsedFood(
+                                                    food: p.food, grams: g));
+                                          }
+                                        },
+                                        decoration: const InputDecoration(
+                                          isDense: true,
+                                          suffixText: 'g',
+                                          border: OutlineInputBorder(),
+                                        ),
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ── Save as meal toggle ───────────────────────────────
+                    Card(
+                      color: premium
+                          ? visualTheme.cardColor
+                          : (_saveAsMeal ? context.primary50 : null),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: premium
+                              ? visualTheme.borderColor
+                              : (_saveAsMeal
+                                  ? context.primary400
+                                  : AppTheme.gray200),
+                          width: premium ? 1.8 : 1,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              'Tell me what you ate',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                              ),
+                          children: [
+                            // Toggle row
+                            Row(
+                              children: [
+                                Icon(Icons.bookmark_add_outlined,
+                                    color: _saveAsMeal
+                                        ? context.primary600
+                                        : context.appMutedTextColor,
+                                    size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Save as a meal',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      color: _saveAsMeal
+                                          ? context.primary700
+                                          : AppTheme.gray700,
+                                    ),
+                                  ),
+                                ),
+                                Switch(
+                                  value: _saveAsMeal,
+                                  onChanged: (v) =>
+                                      setState(() => _saveAsMeal = v),
+                                ),
+                              ],
                             ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Say naturally, e.g.:\n'
-                              '• "200 grams of chicken and a banana"\n'
-                              '• "2 eggs, toast with peanut butter"\n'
-                              '• "a bowl of oatmeal and a coffee"\n'
-                              '• "150g salmon with rice and broccoli"',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.gray600,
-                                height: 1.4,
+                            // Name + meal type fields (only when toggled on)
+                            if (_saveAsMeal) ...[
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _mealNameCtrl,
+                                textCapitalization:
+                                    TextCapitalization.sentences,
+                                decoration: const InputDecoration(
+                                  labelText: 'Meal name',
+                                  hintText: 'e.g. My post-workout lunch',
+                                  prefixIcon: Icon(Icons.restaurant_menu),
+                                  isDense: true,
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 10),
+                              // Meal type chip row
+                              Row(
+                                children: MealType.values.map((t) {
+                                  final selected = t == _mealType;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: ChoiceChip(
+                                      label: Text(t.displayName),
+                                      selected: selected,
+                                      onSelected: (_) =>
+                                          setState(() => _mealType = t),
+                                      selectedColor: context.primary200,
+                                      labelStyle: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: selected
+                                            ? context.primary700
+                                            : AppTheme.gray600,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // ── Mic button ─────────────────────────────────────────
-              GestureDetector(
-                onTap: _listening ? _stopListening : _startListening,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: _listening ? 100 : 80,
-                  height: _listening ? 100 : 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color:
-                        _listening ? Colors.red.shade400 : context.primary600,
-                    boxShadow: _listening
-                        ? [
-                            BoxShadow(
-                              color: Colors.red.withValues(alpha: 0.4),
-                              blurRadius: 24,
-                              spreadRadius: 8,
-                            ),
-                          ]
-                        : [],
-                  ),
-                  child: Icon(
-                    _listening ? Icons.stop : Icons.mic,
-                    color: Colors.white,
-                    size: 36,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _listening
-                    ? 'Listening… speak naturally'
-                    : (_available ? 'Tap to speak' : 'Initialising speech…'),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: _listening ? FontWeight.w600 : FontWeight.w400,
-                  color: _listening ? Colors.red.shade400 : AppTheme.gray400,
-                ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                _ErrorBox(error: _error!),
-              ],
-              const SizedBox(height: 20),
-
-              // ── Transcript ──────────────────────────────────────────
-              if (_transcript.isNotEmpty) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.gray100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '"$_transcript"',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontStyle: FontStyle.italic,
-                      color: AppTheme.gray700,
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                    const SizedBox(height: 8),
 
-              // ── Parsed foods ────────────────────────────────────────
-              if (_parsed.isNotEmpty) ...[
-                ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _parsed.length,
-                    itemBuilder: (_, i) {
-                      final p = _parsed[i];
-                      final matched = p.food != null;
-                      return Card(
-                        color: matched ? Colors.white : AppTheme.red100,
-                        child: ListTile(
-                          leading: Icon(
-                            matched ? Icons.check_circle : Icons.help_outline,
-                            color: matched
-                                ? context.primary600
-                                : Colors.red.shade400,
-                          ),
-                          title: Text(
-                            matched ? p.food!.label : 'Unknown: "${p.query}"',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color:
-                                  matched ? AppTheme.gray900 : AppTheme.red700,
-                            ),
-                          ),
-                          subtitle: Text(
-                            matched
-                                ? '${p.grams.round()} g  •  ${(p.food!.kcalPer100g * p.grams / 100).round()} kcal'
-                                : 'Not found in database',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          trailing: matched
-                              ? SizedBox(
-                                  width: 60,
-                                  child: TextField(
-                                    keyboardType: TextInputType.number,
-                                    controller: _gramController(i, p.grams),
-                                    onChanged: (v) {
-                                      final g = double.tryParse(v);
-                                      if (g != null) {
-                                        setState(() => _parsed[i] = _ParsedFood(
-                                            food: p.food, grams: g));
-                                      }
-                                    },
-                                    decoration: const InputDecoration(
-                                      isDense: true,
-                                      suffixText: 'g',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                )
-                              : null,
+                    // ── Log button ──────────────────────────────────────
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed:
+                            _parsed.any((p) => p.food != null) ? _logAll : null,
+                        icon: Icon(_saveAsMeal
+                            ? Icons.bookmark_added
+                            : Icons.add_task),
+                        label: Text(
+                          _saveAsMeal
+                              ? 'Log & Save as Meal'
+                              : 'Log ${_parsed.where((p) => p.food != null).length} food(s)',
                         ),
-                      );
-                    },
-                  ),
-                const SizedBox(height: 12),
-
-                // ── Save as meal toggle ───────────────────────────────
-                Card(
-                  color: _saveAsMeal ? context.primary50 : null,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color:
-                          _saveAsMeal ? context.primary400 : AppTheme.gray200,
+                      ),
                     ),
-                  ),
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Column(
-                      children: [
-                        // Toggle row
-                        Row(
-                          children: [
-                            Icon(Icons.bookmark_add_outlined,
-                                color: _saveAsMeal
-                                    ? context.primary600
-                                    : AppTheme.gray400,
-                                size: 20),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Save as a meal',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: _saveAsMeal
-                                      ? context.primary700
-                                      : AppTheme.gray700,
-                                ),
-                              ),
-                            ),
-                            Switch(
-                              value: _saveAsMeal,
-                              onChanged: (v) => setState(() => _saveAsMeal = v),
-                            ),
-                          ],
-                        ),
-                        // Name + meal type fields (only when toggled on)
-                        if (_saveAsMeal) ...[
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _mealNameCtrl,
-                            textCapitalization: TextCapitalization.sentences,
-                            decoration: const InputDecoration(
-                              labelText: 'Meal name',
-                              hintText: 'e.g. My post-workout lunch',
-                              prefixIcon: Icon(Icons.restaurant_menu),
-                              isDense: true,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          // Meal type chip row
-                          Row(
-                            children: MealType.values.map((t) {
-                              final selected = t == _mealType;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ChoiceChip(
-                                  label: Text(t.displayName),
-                                  selected: selected,
-                                  onSelected: (_) =>
-                                      setState(() => _mealType = t),
-                                  selectedColor: context.primary200,
-                                  labelStyle: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: selected
-                                        ? context.primary700
-                                        : AppTheme.gray600,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // ── Log button ──────────────────────────────────────
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed:
-                        _parsed.any((p) => p.food != null) ? _logAll : null,
-                    icon: Icon(
-                        _saveAsMeal ? Icons.bookmark_added : Icons.add_task),
-                    label: Text(
-                      _saveAsMeal
-                          ? 'Log & Save as Meal'
-                          : 'Log ${_parsed.where((p) => p.food != null).length} food(s)',
-                    ),
-                  ),
-                ),
-              ],
-            ],
+                  ],
+                ],
+              ),
+            ),
           ),
-          ),
-        ),
         ),
       ),
     );

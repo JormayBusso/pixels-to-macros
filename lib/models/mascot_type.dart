@@ -70,7 +70,9 @@ enum AppColorSeed {
   yellow,
   aiAurora,
   liquidGlass,
-  midnightPulse,
+  geminiAI,
+  midnightNeon,
+  solarFlare,
 }
 
 extension AppColorSeedX on AppColorSeed {
@@ -93,22 +95,30 @@ extension AppColorSeedX on AppColorSeed {
       case AppColorSeed.yellow:
         return 'Yellow';
       case AppColorSeed.aiAurora:
-        return 'AI Aurora';
+        return 'Premium Aurora';
       case AppColorSeed.liquidGlass:
-        return 'Liquid Glass';
-      case AppColorSeed.midnightPulse:
-        return 'Midnight Pulse';
+        return 'Premium Glass';
+      case AppColorSeed.geminiAI:
+        return 'Premium Gemini';
+      case AppColorSeed.midnightNeon:
+        return 'Premium Midnight';
+      case AppColorSeed.solarFlare:
+        return 'Premium Solar';
     }
   }
 
   String get shortDescription {
     switch (this) {
       case AppColorSeed.aiAurora:
-        return 'Intelligent and futuristic';
+        return 'Soft, fluid, polished';
       case AppColorSeed.liquidGlass:
-        return 'Clean and luxurious';
-      case AppColorSeed.midnightPulse:
-        return 'Powerful and precise';
+        return 'Graphite and silver glass';
+      case AppColorSeed.geminiAI:
+        return 'Clean and professional';
+      case AppColorSeed.midnightNeon:
+        return 'Deep and electric';
+      case AppColorSeed.solarFlare:
+        return 'Warm and cinematic';
       default:
         return 'Classic ${label.replaceAll(' (default)', '').toLowerCase()} accent';
     }
@@ -118,7 +128,9 @@ extension AppColorSeedX on AppColorSeed {
     switch (this) {
       case AppColorSeed.aiAurora:
       case AppColorSeed.liquidGlass:
-      case AppColorSeed.midnightPulse:
+      case AppColorSeed.geminiAI:
+      case AppColorSeed.midnightNeon:
+      case AppColorSeed.solarFlare:
         return true;
       default:
         return false;
@@ -142,11 +154,15 @@ extension AppColorSeedX on AppColorSeed {
       case AppColorSeed.yellow:
         return const Color(0xFFEAB308); // yellow-500
       case AppColorSeed.aiAurora:
-        return const Color(0xFF22D3EE); // aurora cyan
+        return const Color(0xFF74A9FF); // premium aurora blue
       case AppColorSeed.liquidGlass:
-        return const Color(0xFFEAF2FF); // glass highlight
-      case AppColorSeed.midnightPulse:
-        return const Color(0xFF2563EB); // precise electric blue
+        return const Color(0xFFCDD5DF); // premium graphite glass
+      case AppColorSeed.geminiAI:
+        return const Color(0xFF4F8CFF); // Gemini blue
+      case AppColorSeed.midnightNeon:
+        return const Color(0xFF00E5FF); // midnight neon cyan
+      case AppColorSeed.solarFlare:
+        return const Color(0xFFFF7A45); // premium solar orange
     }
   }
 
@@ -154,24 +170,42 @@ extension AppColorSeedX on AppColorSeed {
     switch (this) {
       case AppColorSeed.aiAurora:
         return const [
-          Color(0xFF22D3EE),
-          Color(0xFF45F2D1),
+          Color(0xFF74A9FF),
+          Color(0xFF9BC8FF),
           Color(0xFFA78BFA),
-          Color(0xFFF0ABFC),
+          Color(0xFFFF8BD2),
+          Color(0xFF9EE7FF),
+          Color(0xFFB8D8FF),
         ];
       case AppColorSeed.liquidGlass:
         return const [
+          Color(0xFFEEF2F7),
+          Color(0xFFB8C0CC),
+          Color(0xFF6B7280),
           Color(0xFFFFFFFF),
-          Color(0xFFDDE7F3),
-          Color(0xFFB7D8FF),
-          Color(0xFFF8FAFC),
         ];
-      case AppColorSeed.midnightPulse:
+      case AppColorSeed.geminiAI:
         return const [
-          Color(0xFF1D4ED8),
-          Color(0xFF4F46E5),
-          Color(0xFF7C3AED),
+          Color(0xFF4F8CFF),
           Color(0xFF38BDF8),
+          Color(0xFF22D3EE),
+          Color(0xFF60A5FA),
+          Color(0xFF7C3AED),
+          Color(0xFFB8C7FF),
+        ];
+      case AppColorSeed.midnightNeon:
+        return const [
+          Color(0xFF00E5FF),
+          Color(0xFF2563EB),
+          Color(0xFFFF2BD6),
+          Color(0xFF7C3AED),
+        ];
+      case AppColorSeed.solarFlare:
+        return const [
+          Color(0xFFFF7A45),
+          Color(0xFFFACC15),
+          Color(0xFFFF4F8B),
+          Color(0xFF7C3AED),
         ];
       default:
         return [color, color.withValues(alpha: 0.72)];
@@ -196,22 +230,30 @@ extension AppColorSeedX on AppColorSeed {
       case AppColorSeed.yellow:
         return const Color(0xFFFEFCE8);
       case AppColorSeed.aiAurora:
-        return const Color(0xFF0B0F17);
+        return const Color(0xFF0C111D);
       case AppColorSeed.liquidGlass:
-        return const Color(0xFF101114);
-      case AppColorSeed.midnightPulse:
-        return const Color(0xFF030712);
+        return const Color(0xFF0D0F12);
+      case AppColorSeed.geminiAI:
+        return const Color(0xFF0A1020);
+      case AppColorSeed.midnightNeon:
+        return const Color(0xFF020617);
+      case AppColorSeed.solarFlare:
+        return const Color(0xFF171008);
     }
   }
 
   Color get premiumSurfaceColor {
     switch (this) {
       case AppColorSeed.aiAurora:
-        return const Color(0xFF111821);
+        return const Color(0xFF151B2A);
       case AppColorSeed.liquidGlass:
-        return const Color(0xFF1A1D22);
-      case AppColorSeed.midnightPulse:
-        return const Color(0xFF080D1A);
+        return const Color(0xFF181B20);
+      case AppColorSeed.geminiAI:
+        return const Color(0xFF101A2F);
+      case AppColorSeed.midnightNeon:
+        return const Color(0xFF071126);
+      case AppColorSeed.solarFlare:
+        return const Color(0xFF24170C);
       default:
         return Colors.white;
     }
@@ -239,7 +281,29 @@ extension AppColorSeedX on AppColorSeed {
         return AppColorSeed.liquidGlass;
       case 'midnightPulse':
       case 'midnight_pulse':
-        return AppColorSeed.midnightPulse;
+        return AppColorSeed.midnightNeon;
+      case 'geminiAI':
+      case 'gemini_ai':
+        return AppColorSeed.geminiAI;
+      case 'cosmicPlasma':
+      case 'cosmic_plasma':
+        return AppColorSeed.aiAurora;
+      case 'neuralLime':
+      case 'neural_lime':
+      case 'emeraldAI':
+      case 'emerald_ai':
+        return AppColorSeed.aiAurora;
+      case 'titaniumGlass':
+      case 'titanium_glass':
+        return AppColorSeed.liquidGlass;
+      case 'midnightNeon':
+      case 'midnight_neon':
+        return AppColorSeed.midnightNeon;
+      case 'solarFlare':
+      case 'solar_flare':
+      case 'sunsetIntelligence':
+      case 'sunset_intelligence':
+        return AppColorSeed.solarFlare;
       default:
         return AppColorSeed.green;
     }

@@ -141,9 +141,10 @@ class _DualPhotoCaptureOverlayState extends State<DualPhotoCaptureOverlay>
           child: IgnorePointer(
             child: PremiumMotionSurface(
               enabled: visualTheme.premium,
-              borderRadius: BorderRadius.circular(34),
-              padding: const EdgeInsets.all(4),
-              borderWidth: widget.aligned ? 1.6 : 1.1,
+              borderRadius: BorderRadius.circular(top ? 130 : 44),
+              padding: const EdgeInsets.all(5),
+              borderWidth: widget.aligned ? 3.4 : 2.4,
+              animate: true,
               child: _AlignmentFrame(
                 pulse: _pulse,
                 color: frameColor,
@@ -229,7 +230,8 @@ class _StepPill extends StatelessWidget {
     return PremiumMotionSurface(
       enabled: visualTheme.premium && active,
       borderRadius: BorderRadius.circular(20),
-      borderWidth: 1.1,
+      borderWidth: 2.8,
+      animate: active,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
@@ -300,7 +302,7 @@ class _AlignmentFrame extends StatelessWidget {
                   Icon(
                     isTop ? Icons.arrow_downward : Icons.arrow_upward,
                     size: 48,
-                    color: Colors.white.withValues(alpha: 0.85),
+                    color: color.withValues(alpha: 0.88),
                   ),
               ],
             ),
@@ -322,27 +324,27 @@ class _FramePainter extends CustomPainter {
     final cy = size.height / 2;
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
 
-    // Corner brackets.
-    const len = 34.0;
-    final bracket = Paint()
-      ..color = color.withValues(alpha: 0.95)
+    final guide = Paint()
+      ..color = color.withValues(alpha: 0.62)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5
+      ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round;
-    final corners = [
-      (rect.topLeft, const Offset(1, 0), const Offset(0, 1)),
-      (rect.topRight, const Offset(-1, 0), const Offset(0, 1)),
-      (rect.bottomLeft, const Offset(1, 0), const Offset(0, -1)),
-      (rect.bottomRight, const Offset(-1, 0), const Offset(0, -1)),
-    ];
-    for (final (corner, dx, dy) in corners) {
-      canvas.drawLine(corner, corner + dx * len, bracket);
-      canvas.drawLine(corner, corner + dy * len, bracket);
+
+    if (isTop) {
+      canvas.drawCircle(Offset(cx, cy), size.width * 0.43, guide);
+    } else {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          rect.deflate(18),
+          const Radius.circular(38),
+        ),
+        guide,
+      );
     }
 
     // Ghost guide: dashed plate circle (top) or horizon line (side).
     final ghost = Paint()
-      ..color = color.withValues(alpha: 0.30)
+      ..color = color.withValues(alpha: 0.34)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     if (isTop) {
@@ -431,7 +433,8 @@ class _GuidancePanel extends StatelessWidget {
         child: PremiumMotionSurface(
           enabled: visualTheme.premium,
           borderRadius: BorderRadius.circular(22),
-          borderWidth: 1.2,
+          borderWidth: 3.0,
+          animate: aligned && !confirming,
           child: Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             decoration: BoxDecoration(
@@ -445,8 +448,9 @@ class _GuidancePanel extends StatelessWidget {
                   onTap: confirming ? null : onManualCapture,
                   child: PremiumFocusRing(
                     enabled: visualTheme.premium,
+                    animate: visualTheme.premium && !confirming,
                     radius: 36,
-                    padding: const EdgeInsets.all(2),
+                    padding: const EdgeInsets.all(3),
                     child: SizedBox(
                       width: 64,
                       height: 64,

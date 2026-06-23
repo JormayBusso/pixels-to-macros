@@ -39,6 +39,10 @@ class _DrinkSheetState extends State<DrinkSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final visualTheme = context.visualTheme;
+    final accent = visualTheme.premium
+        ? visualTheme.primaryAccent
+        : const Color(0xFF1976D2);
     return Padding(
       padding: EdgeInsets.fromLTRB(
         20,
@@ -61,11 +65,11 @@ class _DrinkSheetState extends State<DrinkSheet> {
             ),
           ),
           const SizedBox(height: 14),
-          const Row(
+          Row(
             children: [
-              Icon(Icons.local_drink_outlined, color: Color(0xFF1976D2)),
-              SizedBox(width: 8),
-              Text(
+              Icon(Icons.local_drink_outlined, color: accent),
+              const SizedBox(width: 8),
+              const Text(
                 'Quick Drink',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
               ),
@@ -103,14 +107,14 @@ class _DrinkSheetState extends State<DrinkSheet> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.gray100,
+                    color: context.appSubtleFillColor,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.gray200),
+                    border: Border.all(color: context.appBorderColor),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(size.$3, size: 28, color: const Color(0xFF1976D2)),
+                      Icon(size.$3, size: 28, color: accent),
                       const SizedBox(height: 4),
                       Text(
                         size.$2,
@@ -124,9 +128,9 @@ class _DrinkSheetState extends State<DrinkSheet> {
             }).toList(),
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'Or enter amount:',
-            style: TextStyle(fontSize: 12, color: AppTheme.gray600),
+            style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
           ),
           const SizedBox(height: 6),
           Row(

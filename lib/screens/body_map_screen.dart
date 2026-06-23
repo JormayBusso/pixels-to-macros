@@ -11,6 +11,7 @@ import '../providers/user_prefs_provider.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/interactive_body_map_svg.dart';
+import '../widgets/premium_theme_effects.dart';
 
 /// Anatomy-style body map.
 ///
@@ -179,138 +180,172 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
       body: Column(
         children: [
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final cw = constraints.maxWidth;
-                final ch = constraints.maxHeight;
-                final img = _imageRect(cw, ch);
-                final organScores100 = <String, int>{
-                  for (final e in scores.entries)
-                    e.key.svgId: _scoreToSvgHealthPercent(e.value.score),
-                };
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: PremiumMotionSurface(
+                enabled: context.isPremiumTheme,
+                borderRadius: BorderRadius.circular(22),
+                padding: const EdgeInsets.all(3),
+                borderWidth: 3,
+                fillColor: context.appSubtleFillColor,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(19),
+                  child: DecoratedBox(
+                    decoration:
+                        BoxDecoration(color: context.appSubtleFillColor),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final cw = constraints.maxWidth;
+                        final ch = constraints.maxHeight;
+                        final img = _imageRect(cw, ch);
+                        final organScores100 = <String, int>{
+                          for (final e in scores.entries)
+                            e.key.svgId:
+                                _scoreToSvgHealthPercent(e.value.score),
+                        };
 
-                return Stack(
-                  children: [
-                    // Inline/raw SVG with ID-targeted path highlighting.
-                    Positioned.fill(
-                      child: FutureBuilder<String>(
-                        future: _rawSvgFuture,
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) {
-                            return const Center(
-                                child: CircularProgressIndicator());
-                          }
-                          final rawSvg = snapshot.data!;
-                          final hasOrganPaths = _hasOrganPathIds(rawSvg);
-                          if (rawSvg.trim().isEmpty) {
-                            return const Center(
-                              child: Text('SVG source is empty.'),
-                            );
-                          }
-                          return Stack(
-                            children: [
-                              Positioned.fill(
-                                child: Image.asset(
-                                  'assets/E25E5E96-362D-4B79-9469-6128EBAF2201_1_102_a.jpeg',
-                                  fit: BoxFit.contain,
-                                  alignment: Alignment.center,
-                                ),
-                              ),
-                              Positioned.fill(
-                                child: Opacity(
-                                  opacity: 0.45,
-                                  child: InteractiveBodyMapSvg(
-                                    rawSvg: rawSvg,
-                                    organScores: organScores100,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              ),
-                              if (!hasOrganPaths)
-                                Positioned(
-                                  left: 16,
-                                  right: 16,
-                                  top: 12,
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFFF3CD),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: const Color(0xFFFFD166),
-                                      ),
-                                    ),
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 8,
-                                      ),
-                                      child: Text(
-                                        'Current SVG has no organ path IDs (brain/liver/etc). Replace assets/body_map_svg.svg with a true path-based SVG to enable direct organ highlighting.',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF7A5A00),
-                                          fontWeight: FontWeight.w600,
+                        return Stack(
+                          children: [
+                            // Inline/raw SVG with ID-targeted path highlighting.
+                            Positioned.fill(
+                              child: FutureBuilder<String>(
+                                future: _rawSvgFuture,
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData) {
+                                    return const Center(
+                                        child: CircularProgressIndicator());
+                                  }
+                                  final rawSvg = snapshot.data!;
+                                  final hasOrganPaths =
+                                      _hasOrganPathIds(rawSvg);
+                                  if (rawSvg.trim().isEmpty) {
+                                    return const Center(
+                                      child: Text('SVG source is empty.'),
+                                    );
+                                  }
+                                  return Stack(
+                                    children: [
+                                      Positioned.fill(
+                                        child: Image.asset(
+                                          'assets/E25E5E96-362D-4B79-9469-6128EBAF2201_1_102_a.jpeg',
+                                          fit: BoxFit.contain,
+                                          alignment: Alignment.center,
+                                          color: context.appSubtleFillColor,
+                                          colorBlendMode: BlendMode.multiply,
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                ),
-                              // Fallback visual hotspots if SVG has no organ IDs.
-                              if (!hasOrganPaths)
-                                ..._organLayout.entries.map((e) {
-                                  final region = e.key;
-                                  final layout = e.value;
-                                  final score = scores[region]?.score ?? 0;
-                                  final color = _scoreColor(score);
-                                  final cx = img.left + layout.cx * img.width;
-                                  final cy = img.top + layout.cy * img.height;
-                                  final d = layout.size;
-                                  return Positioned(
-                                    left: cx - d / 2,
-                                    top: cy - d / 2,
-                                    child: IgnorePointer(
-                                      child: Container(
-                                        width: d,
-                                        height: d,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: color.withOpacity(0.45),
-                                          border: Border.all(
-                                            color: color.withOpacity(0.45),
-                                            width: 1.5,
+                                      Positioned.fill(
+                                        child: Opacity(
+                                          opacity: 0.45,
+                                          child: InteractiveBodyMapSvg(
+                                            rawSvg: rawSvg,
+                                            organScores: organScores100,
+                                            fit: BoxFit.contain,
                                           ),
                                         ),
                                       ),
-                                    ),
+                                      if (!hasOrganPaths)
+                                        Positioned(
+                                          left: 16,
+                                          right: 16,
+                                          top: 12,
+                                          child: DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  AppTheme.amber100.withValues(
+                                                alpha: context.isPremiumTheme
+                                                    ? 0.18
+                                                    : 1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              border: Border.all(
+                                                color: AppTheme.amber500
+                                                    .withValues(alpha: 0.42),
+                                              ),
+                                            ),
+                                            child: const Padding(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                                vertical: 8,
+                                              ),
+                                              child: Text(
+                                                'Current SVG has no organ path IDs (brain/liver/etc). Replace assets/body_map_svg.svg with a true path-based SVG to enable direct organ highlighting.',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppTheme.amber700,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      // Fallback visual hotspots if SVG has no organ IDs.
+                                      if (!hasOrganPaths)
+                                        ..._organLayout.entries.map((e) {
+                                          final region = e.key;
+                                          final layout = e.value;
+                                          final score =
+                                              scores[region]?.score ?? 0;
+                                          final color = _scoreColor(score);
+                                          final cx =
+                                              img.left + layout.cx * img.width;
+                                          final cy =
+                                              img.top + layout.cy * img.height;
+                                          final d = layout.size;
+                                          return Positioned(
+                                            left: cx - d / 2,
+                                            top: cy - d / 2,
+                                            child: IgnorePointer(
+                                              child: Container(
+                                                width: d,
+                                                height: d,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color:
+                                                      color.withOpacity(0.45),
+                                                  border: Border.all(
+                                                    color:
+                                                        color.withOpacity(0.45),
+                                                    width: 1.5,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                    ],
                                   );
-                                }),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                    // Gesture layer aligned to the SVG coordinate system.
-                    ..._svgHitOrder.expand((region) {
-                      final areas =
-                          _organHitAreas[region] ?? const <_SvgHitArea>[];
-                      return areas.map((area) {
-                        final rect = area.toScreenRect(img);
-                        return Positioned.fromRect(
-                          rect: rect,
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() => _selected = region);
-                              _showDetail(region, scores[region]!, foods, drv);
-                            },
-                            behavior: HitTestBehavior.translucent,
-                            child: const SizedBox.expand(),
-                          ),
+                                },
+                              ),
+                            ),
+                            // Gesture layer aligned to the SVG coordinate system.
+                            ..._svgHitOrder.expand((region) {
+                              final areas = _organHitAreas[region] ??
+                                  const <_SvgHitArea>[];
+                              return areas.map((area) {
+                                final rect = area.toScreenRect(img);
+                                return Positioned.fromRect(
+                                  rect: rect,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() => _selected = region);
+                                      _showDetail(
+                                          region, scores[region]!, foods, drv);
+                                    },
+                                    behavior: HitTestBehavior.translucent,
+                                    child: const SizedBox.expand(),
+                                  ),
+                                );
+                              });
+                            }),
+                          ],
                         );
-                      });
-                    }),
-                  ],
-                );
-              },
+                      },
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
           _Legend(),
@@ -585,9 +620,9 @@ class _BodyMapInsightCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.gray50,
+        color: context.appSubtleFillColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.gray100),
+        border: Border.all(color: context.appBorderColor),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1180,9 +1215,9 @@ class _Legend extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.gray50,
+        color: context.appSurfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.gray100),
+        border: Border.all(color: context.appBorderColor),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1220,7 +1255,7 @@ class _LegendDot extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(fontSize: 11, color: AppTheme.gray600),
+          style: TextStyle(fontSize: 11, color: context.appMutedTextColor),
         ),
       ],
     );

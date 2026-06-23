@@ -127,7 +127,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     final prefs = ref.watch(userPrefsProvider);
 
     return Scaffold(
-      backgroundColor: AppTheme.gray50,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,7 +169,9 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: prefs.nutritionGoal.lightColor,
+                    color: context.isPremiumTheme
+                        ? context.primary50
+                        : prefs.nutritionGoal.lightColor,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                         color:
@@ -679,12 +681,12 @@ class _MealSlotRow extends ConsumerWidget {
         decoration: BoxDecoration(
           color: isEnabled
               ? context.primary500.withValues(alpha: 0.06)
-              : AppTheme.gray100,
+              : context.appSubtleFillColor,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isEnabled
                 ? context.primary500.withValues(alpha: 0.25)
-                : AppTheme.gray200,
+                : context.appBorderColor,
           ),
         ),
         child: Column(
@@ -755,7 +757,7 @@ class _MealSlotRow extends ConsumerWidget {
                 onTap: () => _openDetail(context, recipe),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: context.appSurfaceColor.withValues(alpha: 0.92),
                     borderRadius: const BorderRadius.vertical(
                         bottom: Radius.circular(10)),
                   ),
@@ -776,7 +778,7 @@ class _MealSlotRow extends ConsumerWidget {
                                     errorBuilder: (_, __, ___) => Container(
                                         width: 60,
                                         height: 60,
-                                        color: AppTheme.gray100,
+                                        color: context.appSubtleFillColor,
                                         child: Center(
                                           child: Text(mealType.emoji,
                                               style: const TextStyle(
@@ -791,11 +793,11 @@ class _MealSlotRow extends ConsumerWidget {
                                     placeholder: (_, __) => Container(
                                         width: 60,
                                         height: 60,
-                                        color: AppTheme.gray100),
+                                        color: context.appSubtleFillColor),
                                     errorWidget: (_, __, ___) => Container(
                                         width: 60,
                                         height: 60,
-                                        color: AppTheme.gray100,
+                                        color: context.appSubtleFillColor,
                                         child: Center(
                                           child: Text(mealType.emoji,
                                               style: const TextStyle(
@@ -805,7 +807,7 @@ class _MealSlotRow extends ConsumerWidget {
                             : Container(
                                 width: 60,
                                 height: 60,
-                                color: AppTheme.gray100,
+                                color: context.appSubtleFillColor,
                                 child: Center(
                                   child: Text(mealType.emoji,
                                       style: const TextStyle(fontSize: 22)),
@@ -1012,7 +1014,7 @@ class _SmartSwapSheet extends StatelessWidget {
         margin: const EdgeInsets.all(12),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.appSurfaceColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -1131,9 +1133,9 @@ class _PantrySheetState extends ConsumerState<_PantrySheet> {
       maxChildSize: 0.92,
       minChildSize: 0.42,
       builder: (_, scrollController) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: context.appSurfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           children: [
@@ -1185,7 +1187,7 @@ class _PantrySheetState extends ConsumerState<_PantrySheet> {
                             hintText: l10n.addPantryItem,
                             prefixIcon: const Icon(Icons.add_outlined),
                             filled: true,
-                            fillColor: AppTheme.gray100,
+                            fillColor: context.appSubtleFillColor,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
@@ -1306,9 +1308,9 @@ class _GroceryPreviewSheet extends StatelessWidget {
       maxChildSize: 0.92,
       minChildSize: 0.4,
       builder: (_, ctrl) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: context.appSurfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           children: [
@@ -1351,12 +1353,14 @@ class _GroceryPreviewSheet extends StatelessWidget {
                 itemBuilder: (_, i) {
                   final agg = sorted[i];
                   return ListTile(
-                    dense: true,
+                    minVerticalPadding: 8,
                     leading: Container(
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: AppTheme.green100,
+                        color: AppTheme.green100.withValues(
+                          alpha: context.isPremiumTheme ? 0.18 : 1,
+                        ),
                         shape: BoxShape.circle,
                       ),
                       child: Center(
@@ -1459,9 +1463,9 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
       maxChildSize: 0.95,
       minChildSize: 0.4,
       builder: (_, ctrl) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: context.appSurfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           children: [
@@ -1499,7 +1503,7 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                   hintText: l10n.searchRecipes,
                   prefixIcon: const Icon(Icons.search, size: 18),
                   filled: true,
-                  fillColor: AppTheme.gray100,
+                  fillColor: context.appSubtleFillColor,
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   border: OutlineInputBorder(
@@ -1532,7 +1536,7 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                                   errorBuilder: (_, __, ___) => Container(
                                     width: 52,
                                     height: 52,
-                                    color: AppTheme.gray100,
+                                    color: context.appSubtleFillColor,
                                     child: Center(
                                         child: Text(widget.mealType.emoji,
                                             style:
@@ -1547,11 +1551,11 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                                   placeholder: (_, __) => Container(
                                       width: 52,
                                       height: 52,
-                                      color: AppTheme.gray100),
+                                      color: context.appSubtleFillColor),
                                   errorWidget: (_, __, ___) => Container(
                                     width: 52,
                                     height: 52,
-                                    color: AppTheme.gray100,
+                                    color: context.appSubtleFillColor,
                                     child: Center(
                                         child: Text(widget.mealType.emoji,
                                             style:
@@ -1561,7 +1565,7 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                           : Container(
                               width: 52,
                               height: 52,
-                              color: AppTheme.gray100,
+                              color: context.appSubtleFillColor,
                               child: Center(
                                   child: Text(widget.mealType.emoji,
                                       style: const TextStyle(fontSize: 20))),

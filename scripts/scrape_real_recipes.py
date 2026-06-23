@@ -958,7 +958,7 @@ def split_steps(instructions: str) -> list[str]:
         return lines
     return [
         part.strip()
-        for part in re.split(r"(?<=\.)\s+(?=(?:Step\s+)?\d+\b|[A-ZÁÉÍÓÚÄÖÜÑ]))", instructions)
+        for part in re.split(r"(?<=\.)\s+(?=(?:Step\s+)?\d+\b|[A-ZÁÉÍÓÚÄÖÜÑ])", instructions)
         if part.strip()
     ]
 
@@ -1102,8 +1102,10 @@ def validate_bundled_recipes() -> bool:
             if not isinstance(grams, (int, float)) or grams < 0:
                 errors.append(f"{prefix}: ingredient invalid grams {grams!r}")
 
-        image = recipe.get("image", "")
-        if image:
+        image = str(recipe.get("image") or "").strip()
+        if not image:
+            errors.append(f"{prefix}: missing local image")
+        else:
             image_path = ROOT / image
             if not image_path.exists():
                 errors.append(f"{prefix}: missing local image {image}")
@@ -1199,6 +1201,9 @@ def scrape_recipe(session: requests.Session, language: str, url: str) -> dict | 
                 image_asset = download_and_compress_image(session, image_url, recipe_id)
         except Exception as exc:
             print(f"[image URL failed] {url}: {exc}")
+        if not image_asset:
+            print(f"[skip] missing downloadable image: {url}")
+            return None
 
         steps = split_steps(instructions)
         tags = sorted({language.lower(), meal_type, *goals})
@@ -1435,10 +1440,10 @@ def extract_focus_recipes(
     return recipes
 
 
-# ── Meal-balanced staging extraction (breakfast / lunch / snack) ──────────────
+# ── Meal-balanced staging extraction (breakfast / lunch / optional snack) ─────
 # Unlike `extract`/`all` (which fall back to "dinner" and would re-skew the DB),
-# this keeps ONLY the starved buckets and writes to a SEPARATE staging file so
-# the curated assets/bundled_recipes.json is never mutated by a live crawl.
+# this keeps ONLY the requested starved buckets and writes to a SEPARATE staging
+# file so assets/bundled_recipes.json is never mutated by a live crawl.
 BALANCE_MEALS = ("breakfast", "lunch", "snack")
 STAGING_JSON = ROOT / "assets" / "scraped_staging.json"
 
@@ -1496,27 +1501,48 @@ def extract_meal_balanced(
     output_path: Path,
     per_meal_target: int,
     max_recipes: int,
+    max_urls: int,
     delay_min: float,
     delay_max: float,
+    allowed_meals: tuple[str, ...],
+    allowed_hosts: tuple[str, ...] = (),
 ) -> list[dict]:
-    rows = sorted(read_urls(), key=lambda row: (-balance_url_score(row[1]), row[0], row[1]))
+    rows = read_urls()
+    if allowed_hosts:
+        rows = [
+            row
+            for row in rows
+            if any(host in urlparse(row[1]).netloc.lower() for host in allowed_hosts)
+        ]
+    rows = sorted(rows, key=lambda row: (-balance_url_score(row[1]), row[0], row[1]))
+    if max_urls > 0:
+        rows = rows[:max_urls]
     session = build_session()
 
     recipes = load_recipes_from(output_path)
+    existing_recipes = load_existing_recipes()
     seen_ids = {r.get("id") for r in recipes}
+    seen_ids.update(r.get("id") for r in existing_recipes)
     seen_urls = {str(r.get("source_url") or "") for r in recipes if r.get("source_url")}
+    seen_urls.update(
+        str(r.get("source_url") or "")
+        for r in existing_recipes
+        if r.get("source_url")
+    )
     counts = Counter(str(r.get("meal_type") or "").lower() for r in recipes)
     success_since_save = 0
 
     def snapshot() -> dict:
-        return {meal: counts[meal] for meal in BALANCE_MEALS}
+        return {meal: counts[meal] for meal in allowed_meals}
 
     def target_reached() -> bool:
-        return all(counts[meal] >= per_meal_target for meal in BALANCE_MEALS)
+        return all(counts[meal] >= per_meal_target for meal in allowed_meals)
 
     print(
         f"[balance-start] staging={output_path} existing={len(recipes)} "
-        f"per_meal_target={per_meal_target} counts={snapshot()}"
+        f"meals={allowed_meals} hosts={allowed_hosts or 'all'} "
+        f"per_meal_target={per_meal_target} max_urls={max_urls or 'all'} "
+        f"counts={snapshot()}"
     )
 
     for idx, (language, url) in enumerate(rows, 1):
@@ -1536,7 +1562,7 @@ def extract_meal_balanced(
         if recipe["id"] in seen_ids:
             continue
         meal = str(recipe.get("meal_type") or "").lower()
-        if meal not in BALANCE_MEALS:
+        if meal not in allowed_meals:
             print(f"[skip] non-target meal {meal}: {recipe['title']}")
             continue
         if counts[meal] >= per_meal_target:
@@ -1559,6 +1585,24 @@ def extract_meal_balanced(
     save_recipes_to(output_path, recipes)
     print(f"[balance-complete] {len(recipes)} saved to {output_path} counts={snapshot()}")
     return recipes
+
+
+def parse_meal_filter(raw: str) -> tuple[str, ...]:
+    meals = tuple(dict.fromkeys(part.strip().lower() for part in raw.split(",") if part.strip()))
+    invalid = [meal for meal in meals if meal not in BALANCE_MEALS]
+    if invalid:
+        raise argparse.ArgumentTypeError(
+            f"Invalid meal(s): {', '.join(invalid)}. Allowed: {', '.join(BALANCE_MEALS)}"
+        )
+    if not meals:
+        raise argparse.ArgumentTypeError("At least one meal must be provided")
+    return meals
+
+
+def parse_host_filter(raw: str) -> tuple[str, ...]:
+    return tuple(
+        dict.fromkeys(part.strip().lower() for part in raw.split(",") if part.strip())
+    )
 
 
 def merge_staging(staging_path: Path) -> bool:
@@ -1614,13 +1658,31 @@ def main() -> int:
 
     balanced_parser = sub.add_parser(
         "extract-balanced",
-        help="Scrape ONLY breakfast/lunch/snack into a staging file (no curated-DB mutation)",
+        help="Scrape selected breakfast/lunch/snack meals into staging only",
     )
     balanced_parser.add_argument("--output", type=str, default=str(STAGING_JSON))
     balanced_parser.add_argument("--per-meal-target", type=int, default=140)
     balanced_parser.add_argument("--max-recipes", type=int, default=600)
+    balanced_parser.add_argument(
+        "--max-urls",
+        type=int,
+        default=0,
+        help="Maximum sorted URLs to attempt; 0 means all matching URLs",
+    )
     balanced_parser.add_argument("--delay-min", type=float, default=1.0)
     balanced_parser.add_argument("--delay-max", type=float, default=3.0)
+    balanced_parser.add_argument(
+        "--meals",
+        type=parse_meal_filter,
+        default=BALANCE_MEALS,
+        help="Comma-separated target meals, e.g. breakfast,lunch",
+    )
+    balanced_parser.add_argument(
+        "--hosts",
+        type=parse_host_filter,
+        default=(),
+        help="Optional comma-separated host filter, e.g. www.ah.nl,www.bbcgoodfood.com",
+    )
 
     merge_parser = sub.add_parser(
         "merge-staging",
@@ -1664,8 +1726,11 @@ def main() -> int:
             Path(args.output),
             args.per_meal_target,
             args.max_recipes,
+            args.max_urls,
             args.delay_min,
             args.delay_max,
+            args.meals,
+            args.hosts,
         )
     elif args.command == "merge-staging":
         if not merge_staging(Path(args.input)):

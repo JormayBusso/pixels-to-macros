@@ -7,7 +7,6 @@ import '../../core/diabetes/glucose_conversion.dart';
 import '../../models/insulin_settings.dart';
 import '../../providers/diabetes_provider.dart';
 import '../../services/diabetes/diabetes_safety_validator.dart';
-import '../../theme/app_theme.dart';
 import 'bolus_setup_screen.dart' show kDiabetesBlue;
 
 /// Diabetes Insulin Settings Survey.
@@ -39,9 +38,7 @@ class _InsulinSettingsSurveyScreenState
 
   BgUnit _unit = BgUnit.mgdl;
   DiabetesType _type = DiabetesType.preferNotToSay;
-  InsulinDeliveryMethod _delivery = InsulinDeliveryMethod.pen;
   bool _usesCgm = false;
-  bool _usesPump = false;
   bool _correctionEnabled = true;
   bool _mealBolusEnabled = true;
   bool _iobEnabled = false;
@@ -54,8 +51,6 @@ class _InsulinSettingsSurveyScreenState
   final _hyperCtrl = TextEditingController();
   final _diaCtrl = TextEditingController();
   final _maxBolusCtrl = TextEditingController();
-  final _insulinNameCtrl = TextEditingController();
-  final _tddCtrl = TextEditingController();
   double _increment = 0.5;
 
   @override
@@ -64,9 +59,7 @@ class _InsulinSettingsSurveyScreenState
     final s = ref.read(insulinSettingsProvider);
     _unit = s.glucoseUnit;
     _type = s.diabetesType;
-    _delivery = s.insulinDeliveryMethod;
     _usesCgm = s.usesCgm;
-    _usesPump = s.usesPump;
     _correctionEnabled = s.correctionEnabled;
     _mealBolusEnabled = s.mealBolusEnabled;
     _iobEnabled = s.iobEnabled;
@@ -98,10 +91,6 @@ class _InsulinSettingsSurveyScreenState
     if (s.maxSingleBolusUnits != null) {
       _maxBolusCtrl.text = _fmt(s.maxSingleBolusUnits!);
     }
-    _insulinNameCtrl.text = s.insulinName ?? '';
-    if (s.totalDailyInsulinDoseOptional != null) {
-      _tddCtrl.text = _fmt(s.totalDailyInsulinDoseOptional!);
-    }
   }
 
   @override
@@ -115,8 +104,6 @@ class _InsulinSettingsSurveyScreenState
       _hyperCtrl,
       _diaCtrl,
       _maxBolusCtrl,
-      _insulinNameCtrl,
-      _tddCtrl,
     ]) {
       c.dispose();
     }
@@ -160,14 +147,6 @@ class _InsulinSettingsSurveyScreenState
             labelOf: (t) => t.label,
             onChanged: (v) => setState(() => _type = v),
           ),
-          const SizedBox(height: 12),
-          _enumDropdown<InsulinDeliveryMethod>(
-            label: 'Insulin delivery method',
-            value: _delivery,
-            values: InsulinDeliveryMethod.values,
-            labelOf: (t) => t.label,
-            onChanged: (v) => setState(() => _delivery = v),
-          ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             activeThumbColor: kDiabetesBlue,
@@ -175,41 +154,21 @@ class _InsulinSettingsSurveyScreenState
             onChanged: (v) => setState(() => _usesCgm = v),
             title: const Text('I use a continuous glucose monitor (CGM)'),
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            activeThumbColor: kDiabetesBlue,
-            value: _usesPump,
-            onChanged: (v) => setState(() => _usesPump = v),
-            title: const Text('I use an insulin pump'),
-          ),
-
           _section('Glucose targets (${_unit.label})'),
           _numField(_targetCtrl, 'Target glucose'),
           _numField(_hypoCtrl, 'Low (hypo) threshold'),
           _numField(_hyperCtrl, 'High (hyper) threshold — optional'),
-
           _section('Insulin-to-carb ratios (g carb per unit)'),
           for (var i = 0; i < _windows.length; i++)
             _numField(_icrCtrls[i], _windows[i].label),
-
           _section('Correction factors / ISF (${_unit.label} per unit)'),
           for (var i = 0; i < _windows.length; i++)
             _numField(_isfCtrls[i], _windows[i].label),
-
           _section('Insulin action & limits'),
           _numField(_diaCtrl, 'Insulin action duration (hours)'),
           _numField(_maxBolusCtrl, 'Maximum single bolus (units)'),
           const SizedBox(height: 8),
           _incrementPicker(),
-          TextField(
-            controller: _insulinNameCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Insulin name (optional)',
-              isDense: true,
-              border: OutlineInputBorder(),
-            ),
-          ),
-
           _section('Calculator components'),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -234,19 +193,6 @@ class _InsulinSettingsSurveyScreenState
             subtitle: const Text(
                 'Uses your logged insulin doses and action duration.'),
           ),
-
-          _section('Reference only'),
-          _numField(_tddCtrl, 'Total daily insulin dose (optional)'),
-          const Padding(
-            padding: EdgeInsets.only(top: 4, bottom: 4),
-            child: Text(
-              'Stored for your reference only. This app never uses your total '
-              'daily dose to calculate your insulin-to-carb ratio or correction '
-              'factor.',
-              style: TextStyle(fontSize: 11, color: AppTheme.gray500),
-            ),
-          ),
-
           const SizedBox(height: 16),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
@@ -301,22 +247,17 @@ class _InsulinSettingsSurveyScreenState
       diabetesType: _type,
       glucoseUnit: _unit,
       usesCgm: _usesCgm,
-      usesPump: _usesPump,
-      insulinDeliveryMethod: _delivery,
       targetGlucoseMgdl: _glucoseToMgdl(_targetCtrl),
       hypoThresholdMgdl: _glucoseToMgdl(_hypoCtrl),
       hyperThresholdMgdl: _glucoseToMgdl(_hyperCtrl),
       icrBlocks: blocks(_icrCtrls, false),
       isfBlocks: blocks(_isfCtrls, true),
       insulinActionDurationHours: _parse(_diaCtrl),
-      insulinName:
-          _insulinNameCtrl.text.trim().isEmpty ? null : _insulinNameCtrl.text.trim(),
       maxSingleBolusUnits: _parse(_maxBolusCtrl),
       minBolusIncrement: _increment,
       correctionEnabled: _correctionEnabled,
       mealBolusEnabled: _mealBolusEnabled,
       iobEnabled: _iobEnabled,
-      totalDailyInsulinDoseOptional: _parse(_tddCtrl),
     );
 
     // Validate before saving.
@@ -404,8 +345,7 @@ class _InsulinSettingsSurveyScreenState
         padding: const EdgeInsets.only(bottom: 10),
         child: TextField(
           controller: c,
-          keyboardType:
-              const TextInputType.numberWithOptions(decimal: true),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
           ],

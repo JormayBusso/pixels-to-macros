@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,7 @@ import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/drink_sheet.dart';
 import '../widgets/goal_mascot_widget.dart';
+import '../widgets/premium_theme_effects.dart';
 import '../widgets/tour_keys.dart';
 import '../widgets/weekly_challenges_card.dart';
 import 'body_map_screen.dart';
@@ -289,6 +291,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     final greeting = prefs.name.isNotEmpty ? 'Hi, ${prefs.name}!' : 'Hi there!';
+    final visualTheme = context.visualTheme;
 
     final l10n = AppLocalizations.of(context);
 
@@ -303,14 +306,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const BodyMapScreen()),
               ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: context.primary600,
-                  borderRadius: BorderRadius.circular(8),
+              child: PremiumMotionSurface(
+                enabled: visualTheme.premium,
+                borderRadius: BorderRadius.circular(10),
+                padding: const EdgeInsets.all(2),
+                borderWidth: 2.4,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: visualTheme.premium
+                        ? visualTheme.cardColor
+                        : context.primary600,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.all(6),
+                  child: Icon(
+                    Icons.accessibility_new,
+                    color: visualTheme.premium
+                        ? visualTheme.primaryAccent
+                        : Colors.white,
+                    size: 20,
+                  ),
                 ),
-                padding: const EdgeInsets.all(6),
-                child: const Icon(Icons.accessibility_new,
-                    color: Colors.white, size: 20),
               ),
             ),
           ),
@@ -322,13 +338,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 MaterialPageRoute(
                     builder: (_) => const NutritionDashboardScreen()),
               ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: context.primary600,
-                  borderRadius: BorderRadius.circular(8),
+              child: PremiumMotionSurface(
+                enabled: visualTheme.premium,
+                borderRadius: BorderRadius.circular(10),
+                padding: const EdgeInsets.all(2),
+                borderWidth: 2.4,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: visualTheme.premium
+                        ? visualTheme.cardColor
+                        : context.primary600,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.all(6),
+                  child: Icon(
+                    Icons.eco,
+                    color: visualTheme.premium
+                        ? visualTheme.primaryAccent
+                        : Colors.white,
+                    size: 20,
+                  ),
                 ),
-                padding: const EdgeInsets.all(6),
-                child: const Icon(Icons.eco, color: Colors.white, size: 20),
               ),
             ),
           ),
@@ -358,52 +388,79 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     // ── Greeting + streak badge ────────────────────────────
                     Row(
                       children: [
-                        Text(
-                          greeting,
-                          style: const TextStyle(
+                        PremiumGradientText(
+                          text: greeting,
+                          enabled: visualTheme.premium,
+                          style: TextStyle(
                             fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.gray900,
+                            fontWeight: FontWeight.w900,
+                            color: visualTheme.premium
+                                ? visualTheme.primaryAccent
+                                : AppTheme.gray900,
                           ),
                         ),
                         const Spacer(),
                         if (streak.currentStreak > 0) ...[
-                          Container(
+                          PremiumMotionSurface(
                             key: TourKeys.streakBadge,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 10),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFFF5A00), Color(0xFFFFA000)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                            enabled: visualTheme.premium,
+                            borderRadius: BorderRadius.circular(24),
+                            padding: const EdgeInsets.all(2),
+                            borderWidth: 2.8,
+                            fillColor: visualTheme.cardColor,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: visualTheme.premium
+                                    ? visualTheme.cardColor
+                                    : null,
+                                gradient: visualTheme.premium
+                                    ? null
+                                    : const LinearGradient(
+                                        colors: [
+                                          Color(0xFFFF5A00),
+                                          Color(0xFFFFA000),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                borderRadius: BorderRadius.circular(22),
+                                boxShadow: visualTheme.premium
+                                    ? null
+                                    : [
+                                        BoxShadow(
+                                          color: const Color(0xFFFF8C00)
+                                              .withValues(alpha: 0.45),
+                                          blurRadius: 16,
+                                          offset: const Offset(0, 6),
+                                        ),
+                                      ],
                               ),
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFFF8C00)
-                                      .withValues(alpha: 0.45),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text('🔥',
-                                    style: TextStyle(fontSize: 20, height: 1)),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${streak.currentStreak} day streak',
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                    height: 1,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('🔥',
+                                      style: TextStyle(
+                                          fontSize: 20,
+                                          height: 1,
+                                          color: visualTheme.premium
+                                              ? visualTheme.primaryAccent
+                                              : Colors.white)),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${streak.currentStreak} day streak',
+                                    style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w900,
+                                      color: visualTheme.premium
+                                          ? visualTheme.primaryAccent
+                                          : Colors.white,
+                                      height: 1,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -549,146 +606,146 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       GestureDetector(
                         onLongPress: _enterFoodSelection,
                         child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          child: Column(
-                            children: intake.foods.map((f) {
-                              final avg = (f.caloriesMin + f.caloriesMax) / 2;
-                              final selecting = _foodSelecting;
-                              final selected = f.id != null &&
-                                  _selectedFoodIds.contains(f.id);
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            child: Column(
+                              children: intake.foods.map((f) {
+                                final avg = (f.caloriesMin + f.caloriesMax) / 2;
+                                final selecting = _foodSelecting;
+                                final selected = f.id != null &&
+                                    _selectedFoodIds.contains(f.id);
 
-                              final row = InkWell(
-                                borderRadius: BorderRadius.circular(8),
-                                onTap: () {
-                                  if (selecting) {
-                                    if (f.id != null) {
-                                      _toggleFoodSelected(f.id!);
+                                final row = InkWell(
+                                  borderRadius: BorderRadius.circular(8),
+                                  onTap: () {
+                                    if (selecting) {
+                                      if (f.id != null) {
+                                        _toggleFoodSelected(f.id!);
+                                      }
+                                    } else {
+                                      _showEditFoodSheet(context, f);
                                     }
-                                  } else {
-                                    _showEditFoodSheet(context, f);
-                                  }
-                                },
-                                onLongPress: f.id == null
-                                    ? null
-                                    : () => _toggleFoodSelected(f.id!),
-                                child: Container(
-                                  decoration: selected
-                                      ? BoxDecoration(
-                                          color: context.primary50,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        )
-                                      : null,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 10, horizontal: 4),
-                                    child: Row(
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                              right: 10),
-                                          child: selecting
-                                              ? Icon(
-                                                  selected
-                                                      ? Icons.check_circle
-                                                      : Icons.circle_outlined,
-                                                  size: 20,
-                                                  color: selected
-                                                      ? context.primary600
-                                                      : AppTheme.gray300,
-                                                )
-                                              : Icon(Icons.restaurant,
-                                                  size: 16,
-                                                  color: context.primary500),
-                                        ),
-                                        Expanded(
-                                          child: Text(
-                                            f.label,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
+                                  },
+                                  onLongPress: f.id == null
+                                      ? null
+                                      : () => _toggleFoodSelected(f.id!),
+                                  child: Container(
+                                    decoration: selected
+                                        ? BoxDecoration(
+                                            color: context.primary50,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          )
+                                        : null,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 10, horizontal: 4),
+                                      child: Row(
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                right: 10),
+                                            child: selecting
+                                                ? Icon(
+                                                    selected
+                                                        ? Icons.check_circle
+                                                        : Icons.circle_outlined,
+                                                    size: 20,
+                                                    color: selected
+                                                        ? context.primary600
+                                                        : AppTheme.gray300,
+                                                  )
+                                                : Icon(Icons.restaurant,
+                                                    size: 16,
+                                                    color: context.primary500),
+                                          ),
+                                          Expanded(
+                                            child: Text(
+                                              f.label,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        Text(
-                                          '${avg.round()} kcal',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: context.primary700,
+                                          Text(
+                                            '${avg.round()} kcal',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: context.primary700,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Icon(
-                                          selecting
-                                              ? Icons.drag_handle
-                                              : Icons.edit_outlined,
-                                          size: 14,
-                                          color: AppTheme.gray300,
-                                        ),
-                                      ],
+                                          const SizedBox(width: 4),
+                                          Icon(
+                                            selecting
+                                                ? Icons.drag_handle
+                                                : Icons.edit_outlined,
+                                            size: 14,
+                                            color: AppTheme.gray300,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              );
+                                );
 
-                              // Swipe-to-delete only when not multi-selecting.
-                              if (selecting || f.id == null) return row;
-                              return Dismissible(
-                                key: ValueKey(f.id),
-                                direction: DismissDirection.endToStart,
-                                background: Container(
-                                  alignment: Alignment.centerRight,
-                                  padding: const EdgeInsets.only(right: 20),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade400,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(Icons.delete_outline,
-                                      color: Colors.white),
-                                ),
-                                confirmDismiss: (_) async {
-                                  return await showDialog<bool>(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      title: const Text('Remove Food'),
-                                      content: Text(
-                                          'Remove "${f.label}" from today\'s intake?'),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, false),
-                                          child: const Text('Cancel'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, true),
-                                          child: const Text('Remove',
-                                              style:
-                                                  TextStyle(color: Colors.red)),
-                                        ),
-                                      ],
+                                // Swipe-to-delete only when not multi-selecting.
+                                if (selecting || f.id == null) return row;
+                                return Dismissible(
+                                  key: ValueKey(f.id),
+                                  direction: DismissDirection.endToStart,
+                                  background: Container(
+                                    alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.only(right: 20),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade400,
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                  );
-                                },
-                                onDismissed: (_) async {
-                                  await DatabaseService.instance
-                                      .deleteDetectedFood(f.id!);
-                                  await ref
-                                      .read(dailyIntakeProvider.notifier)
-                                      .load();
-                                  await ref
-                                      .read(historyProvider.notifier)
-                                      .load();
-                                },
-                                child: row,
-                              );
-                            }).toList(),
+                                    child: const Icon(Icons.delete_outline,
+                                        color: Colors.white),
+                                  ),
+                                  confirmDismiss: (_) async {
+                                    return await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: const Text('Remove Food'),
+                                        content: Text(
+                                            'Remove "${f.label}" from today\'s intake?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, false),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, true),
+                                            child: const Text('Remove',
+                                                style: TextStyle(
+                                                    color: Colors.red)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  onDismissed: (_) async {
+                                    await DatabaseService.instance
+                                        .deleteDetectedFood(f.id!);
+                                    await ref
+                                        .read(dailyIntakeProvider.notifier)
+                                        .load();
+                                    await ref
+                                        .read(historyProvider.notifier)
+                                        .load();
+                                  },
+                                  child: row,
+                                );
+                              }).toList(),
+                            ),
                           ),
                         ),
-                      ),
                       ),
                     const SizedBox(height: 16),
 
@@ -736,7 +793,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             _selectedScanIds.contains(scan.id);
 
                         final thumbPath = scan.topImagePath ?? scan.imagePath;
-                        final hasThumb = thumbPath != null && File(thumbPath).existsSync();
+                        final hasThumb =
+                            thumbPath != null && File(thumbPath).existsSync();
 
                         final card = GestureDetector(
                           onTap: () {
@@ -812,55 +870,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         );
 
                         // Swipe-to-delete only when not multi-selecting.
-                        final Widget content =
-                            (selecting || scan.id == null)
-                                ? card
-                                : Dismissible(
-                                    key: ValueKey('scan_${scan.id}'),
-                                    direction: DismissDirection.endToStart,
-                                    background: Container(
-                                      alignment: Alignment.centerRight,
-                                      padding:
-                                          const EdgeInsets.only(right: 20),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.shade400,
-                                        borderRadius:
-                                            BorderRadius.circular(12),
-                                      ),
-                                      child: const Icon(Icons.delete_outline,
-                                          color: Colors.white),
-                                    ),
-                                    confirmDismiss: (_) async {
-                                      return await showDialog<bool>(
-                                        context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          title: const Text('Delete Scan'),
-                                          content: const Text(
-                                              'Delete this scan from history?'),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, false),
-                                              child: const Text('Cancel'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, true),
-                                              child: const Text('Delete',
-                                                  style: TextStyle(
-                                                      color: Colors.red)),
-                                            ),
-                                          ],
+                        final Widget content = (selecting || scan.id == null)
+                            ? card
+                            : Dismissible(
+                                key: ValueKey('scan_${scan.id}'),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade400,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.delete_outline,
+                                      color: Colors.white),
+                                ),
+                                confirmDismiss: (_) async {
+                                  return await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Delete Scan'),
+                                      content: const Text(
+                                          'Delete this scan from history?'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, false),
+                                          child: const Text('Cancel'),
                                         ),
-                                      );
-                                    },
-                                    onDismissed: (_) async {
-                                      await ref
-                                          .read(historyProvider.notifier)
-                                          .deleteScan(scan.id!);
-                                    },
-                                    child: card,
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, true),
+                                          child: const Text('Delete',
+                                              style:
+                                                  TextStyle(color: Colors.red)),
+                                        ),
+                                      ],
+                                    ),
                                   );
+                                },
+                                onDismissed: (_) async {
+                                  await ref
+                                      .read(historyProvider.notifier)
+                                      .deleteScan(scan.id!);
+                                },
+                                child: card,
+                              );
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 8),
@@ -922,8 +977,9 @@ class _CalorieRingCard extends StatefulWidget {
 }
 
 class _CalorieRingCardState extends State<_CalorieRingCard>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _anim;
+  late AnimationController _motion;
   late Animation<double> _progress;
 
   @override
@@ -933,8 +989,15 @@ class _CalorieRingCardState extends State<_CalorieRingCard>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
+    _motion = AnimationController(vsync: this);
     _setupAnimation();
     _anim.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncMotion();
   }
 
   @override
@@ -954,9 +1017,24 @@ class _CalorieRingCardState extends State<_CalorieRingCard>
     );
   }
 
+  void _syncMotion() {
+    final visual = context.visualTheme;
+    _motion.duration = visual.motionDuration;
+    final reduceMotion = MediaQuery.of(context).disableAnimations ||
+        MediaQuery.of(context).accessibleNavigation;
+    final shouldAnimate =
+        visual.premium && TickerMode.valuesOf(context).enabled && !reduceMotion;
+    if (shouldAnimate && !_motion.isAnimating) {
+      _motion.repeat();
+    } else if (!shouldAnimate && _motion.isAnimating) {
+      _motion.stop();
+    }
+  }
+
   @override
   void dispose() {
     _anim.dispose();
+    _motion.dispose();
     super.dispose();
   }
 
@@ -964,90 +1042,155 @@ class _CalorieRingCardState extends State<_CalorieRingCard>
   Widget build(BuildContext context) {
     final remaining = (widget.goal - widget.consumed).clamp(0, double.infinity);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Row(
-          children: [
-            // Animated ring
-            AnimatedBuilder(
-              animation: _progress,
-              builder: (_, __) => SizedBox(
-                width: 120,
-                height: 120,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 120,
-                      height: 120,
-                      child: CircularProgressIndicator(
-                        value: _progress.value,
-                        strokeWidth: 10,
-                        backgroundColor: context.primary100,
-                        color: widget.consumed > widget.goal
+    return PremiumSurface(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        children: [
+          // Animated ring
+          AnimatedBuilder(
+            animation: Listenable.merge([_progress, _motion]),
+            builder: (_, __) => SizedBox(
+              width: 120,
+              height: 120,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: CustomPaint(
+                      painter: _CalorieRingPainter(
+                        progress: _progress.value,
+                        phase: _motion.value,
+                        visual: context.visualTheme,
+                        trackColor: context.primary100,
+                        fallbackColor: widget.consumed > widget.goal
                             ? AppTheme.amber500
                             : context.primary500,
-                        strokeCap: StrokeCap.round,
                       ),
                     ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.consumed.round().toString(),
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.gray900,
-                          ),
-                        ),
-                        const Text(
-                          'kcal',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.gray400,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 24),
-
-            // Stats
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _StatRow(
-                    label: 'Goal',
-                    value: '${widget.goal.round()} kcal',
-                    color: AppTheme.gray700,
                   ),
-                  const SizedBox(height: 8),
-                  _StatRow(
-                    label: 'Remaining',
-                    value: '${remaining.round()} kcal',
-                    color: widget.consumed > widget.goal
-                        ? AppTheme.amber700
-                        : context.primary700,
-                  ),
-                  const SizedBox(height: 8),
-                  _StatRow(
-                    label: 'Scans today',
-                    value: '${widget.scanCount}',
-                    color: AppTheme.gray700,
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.consumed.round().toString(),
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: context.appTextColor,
+                        ),
+                      ),
+                      Text(
+                        'kcal',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.appMutedTextColor,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 24),
+
+          // Stats
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _StatRow(
+                  label: 'Goal',
+                  value: '${widget.goal.round()} kcal',
+                  color: context.appTextColor,
+                ),
+                const SizedBox(height: 8),
+                _StatRow(
+                  label: 'Remaining',
+                  value: '${remaining.round()} kcal',
+                  color: widget.consumed > widget.goal
+                      ? AppTheme.amber700
+                      : context.primary700,
+                ),
+                const SizedBox(height: 8),
+                _StatRow(
+                  label: 'Scans today',
+                  value: '${widget.scanCount}',
+                  color: context.appTextColor,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+class _CalorieRingPainter extends CustomPainter {
+  const _CalorieRingPainter({
+    required this.progress,
+    required this.phase,
+    required this.visual,
+    required this.trackColor,
+    required this.fallbackColor,
+  });
+
+  final double progress;
+  final double phase;
+  final AppVisualTheme visual;
+  final Color trackColor;
+  final Color fallbackColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const strokeWidth = 10.0;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.shortestSide - strokeWidth) / 2;
+    final circle = Rect.fromCircle(center: center, radius: radius);
+
+    final track = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, track);
+
+    if (progress <= 0) return;
+
+    final foreground = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    if (visual.premium) {
+      final colors = [...visual.gradient, visual.gradient.first];
+      foreground.shader = SweepGradient(
+        transform: GradientRotation(phase * math.pi * 2),
+        colors: colors,
+      ).createShader(circle);
+    } else {
+      foreground.color = fallbackColor;
+    }
+
+    canvas.drawArc(
+      circle,
+      -math.pi / 2,
+      math.pi * 2 * progress.clamp(0.0, 1.0),
+      false,
+      foreground,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _CalorieRingPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.phase != phase ||
+        oldDelegate.visual != visual ||
+        oldDelegate.trackColor != trackColor ||
+        oldDelegate.fallbackColor != fallbackColor;
   }
 }
 
@@ -1068,7 +1211,7 @@ class _StatRow extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 13, color: AppTheme.gray400),
+          style: TextStyle(fontSize: 13, color: context.appMutedTextColor),
         ),
         Text(
           value,
@@ -1091,10 +1234,10 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w700,
-        color: AppTheme.gray700,
+        color: context.appTextColor,
       ),
     );
   }
@@ -1189,7 +1332,8 @@ class _GoalProgressCard extends StatelessWidget {
         fatStress.clamp(0.0, 1.5) * 0.30 +
         kcalProgress.clamp(0.0, 1.5) * 0.20);
 
-    return Card(
+    return PremiumSurface(
+      padding: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
@@ -1358,10 +1502,9 @@ class _RecommendationsCard extends ConsumerWidget {
 
     if (state.recs.isEmpty) return const SizedBox.shrink();
 
-    return Card(
-      elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.1),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return PremiumSurface(
+      padding: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1373,7 +1516,10 @@ class _RecommendationsCard extends ConsumerWidget {
               gradient: LinearGradient(
                 colors: [
                   context.primary500.withValues(alpha: 0.08),
-                  Colors.amber.shade50.withValues(alpha: 0.5),
+                  context.isPremiumTheme
+                      ? context.visualTheme.secondaryAccent
+                          .withValues(alpha: 0.10)
+                      : Colors.amber.shade50.withValues(alpha: 0.5),
                 ],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
@@ -1394,12 +1540,12 @@ class _RecommendationsCard extends ConsumerWidget {
                       size: 16, color: AppTheme.amber600),
                 ),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'Smart Recommendations',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
-                    color: AppTheme.gray900,
+                    color: context.appTextColor,
                     letterSpacing: -0.2,
                   ),
                 ),
@@ -1481,7 +1627,7 @@ class _RecommendationsCard extends ConsumerWidget {
                                         rec.suggestion!,
                                         style: TextStyle(
                                           fontSize: 11,
-                                          color: AppTheme.gray500,
+                                          color: context.appMutedTextColor,
                                           height: 1.35,
                                         ),
                                       ),
@@ -1519,128 +1665,132 @@ class _HydrationCard extends ConsumerWidget {
 
     // Pick glass image based on progress
     final String glassAsset;
-    if (progress >= 0.75) {
+    if (progress >= 1.0) {
       glassAsset = 'assets/mascots/full_glass.png';
-    } else if (progress >= 0.50) {
+    } else if (progress >= 2 / 3) {
       glassAsset = 'assets/mascots/almost_full_glass.png';
-    } else if (progress >= 0.25) {
+    } else if (progress >= 1 / 3) {
       glassAsset = 'assets/mascots/almost_empty_glass.png';
     } else {
       glassAsset = 'assets/mascots/empty_glass.png';
     }
 
     final percent = (progress * 100).round();
+    final visualTheme = context.visualTheme;
+    final premium = visualTheme.premium;
+    final waterAccent =
+        premium ? visualTheme.primaryAccent : const Color(0xFF1976D2);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  'Hydration',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1565C0),
-                    letterSpacing: 0.3,
-                  ),
+    return PremiumSurface(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Hydration',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: waterAccent,
+                  letterSpacing: 0.3,
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline, size: 20),
-                  color:
-                      intake > 0 ? const Color(0xFF1976D2) : AppTheme.gray300,
-                  tooltip: 'Remove 250 ml',
-                  onPressed:
-                      intake > 0 ? () => _removeWater(context, ref, 250) : null,
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline, size: 20),
+                color: intake > 0 ? waterAccent : context.appMutedTextColor,
+                tooltip: 'Remove 250 ml',
+                onPressed:
+                    intake > 0 ? () => _removeWater(context, ref, 250) : null,
+              ),
+              IconButton(
+                key: TourKeys.hydrationAddDrink,
+                icon: const Icon(Icons.add_circle_outline, size: 22),
+                color: waterAccent,
+                tooltip: 'Add drink',
+                onPressed: () => _showDrinkSheet(context, ref),
+              ),
+              IconButton(
+                icon: const Icon(Icons.tune, size: 20),
+                color: context.appMutedTextColor,
+                tooltip: 'Adjust water goal',
+                onPressed: () => _showGoalDialog(context, ref, goal),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              // Glass mascot
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: premium
+                      ? context.appSubtleFillColor
+                      : const Color(0xFFE3F2FD),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                IconButton(
-                  key: TourKeys.hydrationAddDrink,
-                  icon: const Icon(Icons.add_circle_outline, size: 22),
-                  color: const Color(0xFF1976D2),
-                  tooltip: 'Add drink',
-                  onPressed: () => _showDrinkSheet(context, ref),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.tune, size: 20),
-                  color: AppTheme.gray400,
-                  tooltip: 'Adjust water goal',
-                  onPressed: () => _showGoalDialog(context, ref, goal),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                // Glass mascot
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE3F2FD),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  padding: const EdgeInsets.all(6),
-                  child: Image.asset(glassAsset, fit: BoxFit.contain),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${_fmtMl(intake)} / ${_fmtMl(goal)}  ($percent%)',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.gray900,
-                        ),
+                padding: const EdgeInsets.all(6),
+                child: Image.asset(glassAsset, fit: BoxFit.contain),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_fmtMl(intake)} / ${_fmtMl(goal)}  ($percent%)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: context.appTextColor,
                       ),
-                      const SizedBox(height: 4),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          backgroundColor: const Color(0xFFBBDEFB),
-                          valueColor:
-                              const AlwaysStoppedAnimation(Color(0xFF1976D2)),
-                          minHeight: 8,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: premium
+                            ? waterAccent.withValues(alpha: 0.16)
+                            : const Color(0xFFBBDEFB),
+                        valueColor: AlwaysStoppedAnimation(waterAccent),
+                        minHeight: 8,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        progress >= 1.0
-                            ? '🎉 Hydration goal reached!'
-                            : '${_fmtMl((goal - intake).clamp(0, goal))} remaining',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppTheme.gray400),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      progress >= 1.0
+                          ? '🎉 Hydration goal reached!'
+                          : '${_fmtMl((goal - intake).clamp(0, goal))} remaining',
+                      style: TextStyle(
+                          fontSize: 11, color: context.appMutedTextColor),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Quick-add water buttons
-            Row(
-              children: [
-                _WaterButton(label: '+150 ml', ml: 150),
-                const SizedBox(width: 8),
-                _WaterButton(
-                    key: TourKeys.hydrationQuickAdd200,
-                    label: '+200 ml',
-                    ml: 200),
-                const SizedBox(width: 8),
-                _WaterButton(label: '+250 ml', ml: 250),
-                const SizedBox(width: 8),
-                _WaterButton(label: '+500 ml', ml: 500),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Quick-add water buttons
+          Row(
+            children: [
+              _WaterButton(label: '+150 ml', ml: 150),
+              const SizedBox(width: 8),
+              _WaterButton(
+                  key: TourKeys.hydrationQuickAdd200,
+                  label: '+200 ml',
+                  ml: 200),
+              const SizedBox(width: 8),
+              _WaterButton(label: '+250 ml', ml: 250),
+              const SizedBox(width: 8),
+              _WaterButton(label: '+500 ml', ml: 500),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1793,8 +1943,10 @@ class _WaterButton extends ConsumerWidget {
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          side: const BorderSide(color: Color(0xFF90CAF9)),
-          foregroundColor: const Color(0xFF1976D2),
+          side: BorderSide(color: context.appBorderColor),
+          foregroundColor: context.isPremiumTheme
+              ? context.visualTheme.primaryAccent
+              : const Color(0xFF1976D2),
           textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         onPressed: () {

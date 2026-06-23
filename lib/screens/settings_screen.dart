@@ -652,7 +652,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       return Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: goalType.lightColor,
+                          color: context.isPremiumTheme
+                              ? context.primary50
+                              : goalType.lightColor,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                               color: goalType.color.withValues(alpha: 0.3)),
@@ -841,8 +843,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF3E0),
+                            color: AppTheme.amber100.withValues(
+                              alpha: context.isPremiumTheme ? 0.18 : 1,
+                            ),
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppTheme.amber500.withValues(alpha: 0.35),
+                            ),
                           ),
                           child: Row(
                             children: const [
@@ -1226,10 +1233,10 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w700,
-        color: AppTheme.gray700,
+        color: context.appTextColor,
       ),
     );
   }
@@ -1332,10 +1339,14 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
   Widget build(BuildContext context) {
     final unitLabel = _unit.label;
     return Card(
-      color: const Color(0xFFE3F2FD),
+      color:
+          context.isPremiumTheme ? context.primary50 : const Color(0xFFE3F2FD),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: _diabetesBlue, width: 1),
+        side: BorderSide(
+          color: context.isPremiumTheme ? context.primary300 : _diabetesBlue,
+          width: 1.2,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -1435,9 +1446,12 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.amber.shade50,
+                color: AppTheme.amber100.withValues(
+                  alpha: context.isPremiumTheme ? 0.18 : 1,
+                ),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.amber.shade300),
+                border: Border.all(
+                    color: AppTheme.amber500.withValues(alpha: 0.38)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1592,14 +1606,14 @@ class _InfoRow extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Text(label,
-              style: const TextStyle(fontSize: 14, color: AppTheme.gray700)),
+              style: TextStyle(fontSize: 14, color: context.appTextColor)),
         ),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: AppTheme.gray900,
+            color: context.appTextColor,
           ),
         ),
       ],
@@ -1634,7 +1648,7 @@ class _WeeklyBadgeRecapCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1643,15 +1657,15 @@ class _WeeklyBadgeRecapCard extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.gray900,
+                      color: context.appTextColor,
                     ),
                   ),
-                  SizedBox(height: 3),
+                  const SizedBox(height: 3),
                   Text(
                     'Show badges earned last week on the first app start of each new week.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.gray600,
+                      color: context.appMutedTextColor,
                       height: 1.35,
                     ),
                   ),
@@ -1710,12 +1724,14 @@ class _TextSizePickerCard extends ConsumerWidget {
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: selected ? context.primary100 : Colors.white,
+                          color: selected
+                              ? context.primary100
+                              : context.appSurfaceColor,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: selected
                                 ? context.primary600
-                                : AppTheme.gray300,
+                                : context.appBorderColor,
                             width: selected ? 2 : 1,
                           ),
                         ),
@@ -1726,7 +1742,7 @@ class _TextSizePickerCard extends ConsumerWidget {
                               size: 18 * opt.$1,
                               color: selected
                                   ? context.primary600
-                                  : AppTheme.gray400,
+                                  : context.appMutedTextColor,
                             ),
                             const SizedBox(height: 6),
                             Text(
@@ -1737,7 +1753,7 @@ class _TextSizePickerCard extends ConsumerWidget {
                                 fontWeight: FontWeight.w600,
                                 color: selected
                                     ? context.primary700
-                                    : AppTheme.gray400,
+                                    : context.appMutedTextColor,
                               ),
                             ),
                           ],
@@ -1754,8 +1770,9 @@ class _TextSizePickerCard extends ConsumerWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.gray100,
+                color: context.appSubtleFillColor,
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: context.appBorderColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1765,20 +1782,20 @@ class _TextSizePickerCard extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.gray400,
+                      color: context.appMutedTextColor,
                       letterSpacing: 0.5,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Calories · Protein · Vitamin D',
-                    style: TextStyle(fontSize: 14, color: AppTheme.gray700),
+                    style: TextStyle(fontSize: 14, color: context.appTextColor),
                   ),
                   Text(
                     '285 kcal  /  32 g protein',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppTheme.gray400,
+                      color: context.appMutedTextColor,
                     ),
                   ),
                 ],
@@ -2039,6 +2056,8 @@ class _ThemeColorPickerCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(userPrefsProvider);
     final current = prefs.themeColorSeed;
+    final premiumSeeds = AppColorSeed.values.where((seed) => seed.isPremium);
+    final standardSeeds = AppColorSeed.values.where((seed) => !seed.isPremium);
 
     return Card(
       child: Padding(
@@ -2059,30 +2078,82 @@ class _ThemeColorPickerCard extends ConsumerWidget {
                 final tileWidth =
                     (constraints.maxWidth - spacing * (columns - 1)) / columns;
 
-                return Wrap(
-                  spacing: spacing,
-                  runSpacing: spacing,
-                  children: AppColorSeed.values.map((seed) {
-                    return SizedBox(
-                      width: tileWidth,
-                      child: _ThemePreviewTile(
-                        seed: seed,
-                        selected: current == seed,
-                        onTap: () async {
-                          final updated = prefs.copyWith(themeColorSeed: seed);
-                          await ref
-                              .read(userPrefsProvider.notifier)
-                              .update(updated);
-                        },
-                      ),
-                    );
-                  }).toList(),
+                Widget tilesFor(Iterable<AppColorSeed> seeds) {
+                  return Wrap(
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: seeds.map((seed) {
+                      return SizedBox(
+                        width: tileWidth,
+                        child: _ThemePreviewTile(
+                          seed: seed,
+                          selected: current == seed,
+                          onTap: () async {
+                            final updated =
+                                prefs.copyWith(themeColorSeed: seed);
+                            await ref
+                                .read(userPrefsProvider.notifier)
+                                .update(updated);
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ThemePickerSectionHeader(
+                      label: 'Premium',
+                      color: context.visualTheme.primaryAccent,
+                    ),
+                    const SizedBox(height: 8),
+                    tilesFor(premiumSeeds),
+                    const SizedBox(height: 18),
+                    _ThemePickerSectionHeader(
+                      label: 'Standard',
+                      color: AppTheme.gray500,
+                    ),
+                    const SizedBox(height: 8),
+                    tilesFor(standardSeeds),
+                  ],
                 );
               },
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ThemePickerSectionHeader extends StatelessWidget {
+  const _ThemePickerSectionHeader({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            color: context.appTextColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.8,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -2139,11 +2210,13 @@ class _ThemePreviewTileState extends State<_ThemePreviewTile>
   Duration _animationDuration(AppColorSeed seed) {
     switch (seed) {
       case AppColorSeed.aiAurora:
-        return const Duration(seconds: 16);
+        return const Duration(seconds: 8);
       case AppColorSeed.liquidGlass:
-        return const Duration(seconds: 14);
-      case AppColorSeed.midnightPulse:
-        return const Duration(seconds: 12);
+        return const Duration(seconds: 9);
+      case AppColorSeed.geminiAI:
+      case AppColorSeed.midnightNeon:
+      case AppColorSeed.solarFlare:
+        return const Duration(seconds: 6);
       default:
         return const Duration(seconds: 1);
     }
@@ -2175,6 +2248,10 @@ class _ThemePreviewTileState extends State<_ThemePreviewTile>
             : AppTheme.gray200;
     final textColor = premium ? Colors.white : AppTheme.gray900;
     final mutedColor = premium ? Colors.white70 : AppTheme.gray600;
+    final standardTileFill = Color.alphaBlend(
+      seed.color.withValues(alpha: selected ? 0.10 : 0.055),
+      Colors.white,
+    );
     final radius = BorderRadius.circular(14);
 
     return Semantics(
@@ -2184,7 +2261,7 @@ class _ThemePreviewTileState extends State<_ThemePreviewTile>
       child: PremiumMotionSurface(
         enabled: premium,
         borderRadius: radius,
-        borderWidth: selected ? 1.5 : 1.0,
+        borderWidth: selected ? 3.6 : 2.6,
         glow: selected,
         child: Material(
           color: Colors.transparent,
@@ -2194,12 +2271,32 @@ class _ThemePreviewTileState extends State<_ThemePreviewTile>
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
-              constraints: const BoxConstraints(minHeight: 82),
+              constraints: const BoxConstraints(minHeight: 96),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: premium ? seed.surfaceColor : Colors.white,
+                color: premium ? null : standardTileFill,
+                gradient: premium
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          seed.surfaceColor,
+                          seed.premiumSurfaceColor,
+                          Color.alphaBlend(
+                            seed.color.withValues(alpha: 0.22),
+                            seed.premiumSurfaceColor,
+                          ),
+                        ],
+                      )
+                    : null,
                 borderRadius: radius,
-                border: Border.all(color: borderColor, width: selected ? 2 : 1),
+                border: Border.all(
+                    color: borderColor,
+                    width: premium
+                        ? 2.4
+                        : selected
+                            ? 2
+                            : 1),
                 boxShadow: selected
                     ? [
                         BoxShadow(
@@ -2249,7 +2346,7 @@ class _ThemePreviewTileState extends State<_ThemePreviewTile>
                       children: [
                         Text(
                           seed.label,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: textColor,
@@ -2321,8 +2418,12 @@ class _ThemePreviewPainter extends CustomPainter {
       case AppColorSeed.liquidGlass:
         _paintLiquidGlass(canvas, size);
         break;
-      case AppColorSeed.midnightPulse:
+      case AppColorSeed.midnightNeon:
         _paintMidnightPulse(canvas, size);
+        break;
+      case AppColorSeed.geminiAI:
+      case AppColorSeed.solarFlare:
+        _paintAurora(canvas, size);
         break;
       default:
         _paintClassic(canvas, size);
@@ -2335,7 +2436,10 @@ class _ThemePreviewPainter extends CustomPainter {
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [seed.surfaceColor, Colors.white],
+        colors: [
+          seed.surfaceColor,
+          Color.alphaBlend(seed.color.withValues(alpha: 0.08), Colors.white),
+        ],
       ).createShader(rect);
     canvas.drawRect(rect, background);
 
@@ -2355,7 +2459,11 @@ class _ThemePreviewPainter extends CustomPainter {
             size.height * 0.40),
         const Radius.circular(14),
       ),
-      Paint()..color = Colors.white.withValues(alpha: 0.88),
+      Paint()
+        ..color = Color.alphaBlend(
+          seed.color.withValues(alpha: 0.06),
+          Colors.white,
+        ).withValues(alpha: 0.92),
     );
     canvas.drawCircle(Offset(size.width * 0.22, size.height * 0.55),
         size.height * 0.11, accent);

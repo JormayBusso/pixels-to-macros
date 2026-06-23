@@ -221,16 +221,14 @@ class _MainShellState extends ConsumerState<MainShell> {
                 },
                 backgroundColor:
                     premium ? visualTheme.navBarColor : Colors.white,
-                indicatorColor: premium
-                    ? visualTheme.primaryAccent.withValues(alpha: 0.18)
-                    : context.primary100,
+                indicatorColor: Colors.transparent,
                 destinations: [
                   NavigationDestination(
                     icon: const Icon(Icons.home_outlined),
                     selectedIcon: PremiumFocusRing(
-                      enabled: premium,
-                      radius: 18,
-                      padding: const EdgeInsets.all(3),
+                      enabled: true,
+                      radius: 24,
+                      padding: const EdgeInsets.all(6),
                       child: Icon(Icons.home,
                           color: premium
                               ? visualTheme.primaryAccent
@@ -241,9 +239,9 @@ class _MainShellState extends ConsumerState<MainShell> {
                   NavigationDestination(
                     icon: const Icon(Icons.bar_chart_outlined),
                     selectedIcon: PremiumFocusRing(
-                      enabled: premium,
-                      radius: 18,
-                      padding: const EdgeInsets.all(3),
+                      enabled: true,
+                      radius: 24,
+                      padding: const EdgeInsets.all(6),
                       child: Icon(Icons.bar_chart,
                           color: premium
                               ? visualTheme.primaryAccent
@@ -254,9 +252,9 @@ class _MainShellState extends ConsumerState<MainShell> {
                   NavigationDestination(
                     icon: const Icon(Icons.restaurant_menu_outlined),
                     selectedIcon: PremiumFocusRing(
-                      enabled: premium,
-                      radius: 18,
-                      padding: const EdgeInsets.all(3),
+                      enabled: true,
+                      radius: 24,
+                      padding: const EdgeInsets.all(6),
                       child: Icon(Icons.restaurant_menu,
                           color: premium
                               ? visualTheme.primaryAccent
@@ -267,9 +265,9 @@ class _MainShellState extends ConsumerState<MainShell> {
                   NavigationDestination(
                     icon: const Icon(Icons.shopping_cart_outlined),
                     selectedIcon: PremiumFocusRing(
-                      enabled: premium,
-                      radius: 18,
-                      padding: const EdgeInsets.all(3),
+                      enabled: true,
+                      radius: 24,
+                      padding: const EdgeInsets.all(6),
                       child: Icon(Icons.shopping_cart,
                           color: premium
                               ? visualTheme.primaryAccent
@@ -280,9 +278,9 @@ class _MainShellState extends ConsumerState<MainShell> {
                   NavigationDestination(
                     icon: const Icon(Icons.calendar_month_outlined),
                     selectedIcon: PremiumFocusRing(
-                      enabled: premium,
-                      radius: 18,
-                      padding: const EdgeInsets.all(3),
+                      enabled: true,
+                      radius: 24,
+                      padding: const EdgeInsets.all(6),
                       child: Icon(Icons.calendar_month,
                           color: premium
                               ? visualTheme.primaryAccent
@@ -293,9 +291,9 @@ class _MainShellState extends ConsumerState<MainShell> {
                   NavigationDestination(
                     icon: const Icon(Icons.settings_outlined),
                     selectedIcon: PremiumFocusRing(
-                      enabled: premium,
-                      radius: 18,
-                      padding: const EdgeInsets.all(3),
+                      enabled: true,
+                      radius: 24,
+                      padding: const EdgeInsets.all(6),
                       child: Icon(Icons.settings,
                           color: premium
                               ? visualTheme.primaryAccent
@@ -312,12 +310,62 @@ class _MainShellState extends ConsumerState<MainShell> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    // ── AI Scan ───────────────────────────────────────────
+                    PremiumMotionSurface(
+                      enabled: premium,
+                      animate: premium,
+                      borderRadius: BorderRadius.circular(18),
+                      padding: const EdgeInsets.all(3),
+                      borderWidth: 3.4,
+                      child: FloatingActionButton.extended(
+                        key: TourKeys.scanFab,
+                        heroTag: 'scan',
+                        onPressed: _openScan,
+                        backgroundColor: premium
+                            ? visualTheme.cardColor
+                            : context.primary600,
+                        foregroundColor:
+                            premium ? visualTheme.primaryAccent : Colors.white,
+                        elevation: premium ? 2 : 4,
+                        icon: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.camera_alt, size: 20),
+                            Positioned(
+                              right: -5,
+                              bottom: -5,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: premium
+                                      ? visualTheme.primaryAccent
+                                      : Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.auto_awesome,
+                                    size: 8,
+                                    color: premium
+                                        ? visualTheme.cardColor
+                                        : context.primary600),
+                              ),
+                            ),
+                          ],
+                        ),
+                        label: Text(
+                          l10n.aiScan,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     // ── AI Speech (voice) ─────────────────────────────────
                     PremiumMotionSurface(
                       enabled: premium,
+                      animate: premium,
                       borderRadius: BorderRadius.circular(18),
-                      padding: const EdgeInsets.all(2),
-                      borderWidth: 1.2,
+                      padding: const EdgeInsets.all(3),
+                      borderWidth: 3.0,
                       child: FloatingActionButton.extended(
                         key: TourKeys.speechFab,
                         heroTag: 'voice',
@@ -326,7 +374,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                               builder: (_) => const VoiceEntryScreen()),
                         ),
                         backgroundColor:
-                            premium ? visualTheme.surface : Colors.white,
+                            premium ? visualTheme.cardColor : Colors.white,
                         foregroundColor: premium
                             ? visualTheme.primaryAccent
                             : context.primary700,
@@ -364,14 +412,14 @@ class _MainShellState extends ConsumerState<MainShell> {
                     PremiumMotionSurface(
                       enabled: premium,
                       borderRadius: BorderRadius.circular(18),
-                      padding: const EdgeInsets.all(2),
-                      borderWidth: 1.2,
+                      padding: const EdgeInsets.all(3),
+                      borderWidth: 3.0,
                       child: FloatingActionButton.extended(
                         key: TourKeys.manualFab,
                         heroTag: 'manual',
                         onPressed: _openManualEntry,
                         backgroundColor:
-                            premium ? visualTheme.surface : Colors.white,
+                            premium ? visualTheme.cardColor : Colors.white,
                         foregroundColor: premium
                             ? visualTheme.primaryAccent
                             : context.primary700,
@@ -385,47 +433,6 @@ class _MainShellState extends ConsumerState<MainShell> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    // ── AI Scan ───────────────────────────────────────────
-                    PremiumMotionSurface(
-                      enabled: premium,
-                      borderRadius: BorderRadius.circular(18),
-                      padding: const EdgeInsets.all(2),
-                      borderWidth: 1.5,
-                      child: FloatingActionButton.extended(
-                        key: TourKeys.scanFab,
-                        heroTag: 'scan',
-                        onPressed: _openScan,
-                        backgroundColor: premium
-                            ? visualTheme.primaryAccent
-                            : context.primary600,
-                        foregroundColor: Colors.white,
-                        elevation: 4,
-                        icon: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            const Icon(Icons.camera_alt, size: 20),
-                            Positioned(
-                              right: -5,
-                              bottom: -5,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(Icons.auto_awesome,
-                                    size: 8, color: context.primary600),
-                              ),
-                            ),
-                          ],
-                        ),
-                        label: Text(
-                          l10n.aiScan,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 12),
-                        ),
-                      ),
-                    ),
                   ],
                 )
               : null,

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_localizations.dart';
 import '../providers/progress_story_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/premium_theme_effects.dart';
 
 class ProgressStoryScreen extends ConsumerStatefulWidget {
   const ProgressStoryScreen({super.key});
@@ -27,7 +28,7 @@ class _ProgressStoryScreenState extends ConsumerState<ProgressStoryScreen> {
     final l10n = AppLocalizations.of(context);
     final story = ref.watch(progressStoryProvider);
     return Scaffold(
-      backgroundColor: AppTheme.gray50,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(l10n.progressStoryTitle),
         actions: [
@@ -139,28 +140,17 @@ class _HeroStoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final momentum = (story.loggedDays30 / 30).clamp(0.0, 1.0);
-    return Container(
+    return PremiumSurface(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.primary100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      borderRadius: BorderRadius.circular(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             l10n.progressStorySubtitle,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: AppTheme.gray600,
+              color: context.appMutedTextColor,
               height: 1.35,
             ),
           ),

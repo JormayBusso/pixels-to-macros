@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pixels_to_macros/models/dietary_restriction.dart';
@@ -217,7 +219,7 @@ void main() {
         expect(
           caloriesPerServing >= 300,
           isTrue,
-          reason: '${recipe.name} has only ${caloriesPerServing} kcal',
+          reason: '${recipe.name} has only $caloriesPerServing kcal',
         );
       }
     });
@@ -315,8 +317,8 @@ void main() {
       for (final goal in focusGoals) {
         for (final meal in focusMeals) {
           final expectedMinimum = switch ((goal, meal)) {
-            (NutritionGoalType.vegan, RecipeMealType.breakfast) => 9,
-            (NutritionGoalType.muscleGrowth, RecipeMealType.breakfast) => 15,
+            (NutritionGoalType.vegan, RecipeMealType.breakfast) => 6,
+            (NutritionGoalType.muscleGrowth, RecipeMealType.breakfast) => 8,
             _ => 16,
           };
           final recipes = await RecipeRepository.instance.query(
@@ -338,6 +340,53 @@ void main() {
             expect(recipe.mealType, meal);
           }
         }
+      }
+    });
+
+    test('Recipe catalog uses real scraped recipes with images', () async {
+      final recipes = await RecipeRepository.instance.all();
+
+      expect(recipes.where((recipe) => recipe.source == 'curated'), isEmpty);
+      for (final recipe in recipes) {
+        expect(recipe.source, isNot('curated'));
+        expect(recipe.image?.trim().isNotEmpty, isTrue,
+            reason: '${recipe.name} is missing a recipe image');
+        expect(File(recipe.image!).existsSync(), isTrue,
+            reason: '${recipe.name} image asset does not exist');
+      }
+    });
+
+    test('Breakfast and lunch catalogs are filled from real scraped recipes',
+        () async {
+      final breakfasts = await RecipeRepository.instance.query(
+        mealType: RecipeMealType.breakfast,
+        limit: 2000,
+      );
+      final lunches = await RecipeRepository.instance.query(
+        mealType: RecipeMealType.lunch,
+        limit: 2000,
+      );
+
+      expect(breakfasts.length, greaterThanOrEqualTo(55));
+      expect(lunches.length, greaterThanOrEqualTo(170));
+      for (final recipe in [...breakfasts, ...lunches]) {
+        expect(recipe.source, isNot('curated'));
+        expect(recipe.image?.trim().isNotEmpty, isTrue,
+            reason: '${recipe.name} is missing a recipe image');
+        expect(File(recipe.image!).existsSync(), isTrue,
+            reason: '${recipe.name} image asset does not exist');
+        expect(recipe.servings, inInclusiveRange(1, 12),
+            reason: '${recipe.name} has an unrealistic serving count');
+        expect(
+          recipe.ingredients.where((ingredient) => ingredient.grams > 0).length,
+          greaterThanOrEqualTo(3),
+          reason: '${recipe.name} does not have enough weighed ingredients',
+        );
+        expect(recipe.steps, isNotEmpty,
+            reason: '${recipe.name} needs usable preparation steps');
+        expect(recipe.caloriesPerServing(recipe.servings),
+            inInclusiveRange(180, 950),
+            reason: '${recipe.name} has unrealistic calories per serving');
       }
     });
   });

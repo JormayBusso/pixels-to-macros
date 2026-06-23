@@ -860,6 +860,12 @@ final class InferencePipeline {
             let seg = out[i]
             // No-op when ML Kit and segmentation already agree.
             if seg.label.lowercased() == food.normalised { continue }
+            let segmentationTrusted = seg.confidence >= 0.35
+            let mlKitMuchStronger = food.confidence >= max(0.72, seg.confidence + 0.22)
+            if segmentationTrusted && !mlKitMuchStronger {
+                print("[InferencePipeline] ML Kit hint kept as hint [\(i)]: seg=\(seg.label) conf=\(String(format: "%.2f", seg.confidence)) hint=\(food.normalised) conf=\(String(format: "%.2f", food.confidence))")
+                continue
+            }
             out[i] = SegmentationService.SegmentedObject(
                 label:      food.normalised,
                 classIndex: seg.classIndex,
@@ -872,7 +878,7 @@ final class InferencePipeline {
                 // better calibrated trust signal here.
                 confidence: max(seg.confidence, food.confidence)
             )
-            print("[InferencePipeline] ML Kit override [\(i)]: \(seg.label) → \(food.normalised) (conf \(food.confidence))")
+            print("[InferencePipeline] ML Kit override [\(i)]: \(seg.label) conf=\(String(format: "%.2f", seg.confidence)) -> \(food.normalised) conf=\(String(format: "%.2f", food.confidence))")
         }
         return out
     }
@@ -887,11 +893,15 @@ final class InferencePipeline {
         maskWidth: Int,
         maskHeight: Int
     ) -> [SegmentationService.SegmentedObject] {
-        guard foodClassifier.isAvailable, !segments.isEmpty else { return segments }
+        guard !segments.isEmpty else { return segments }
+        guard foodClassifier.isAvailable else {
+            print("[Classifier] unavailable; keeping segmentation labels")
+            return segments
+        }
         defer { foodClassifier.unload() }
 
         let topK = 3
-        let confidenceFloor: Float = 0.45
+        let confidenceFloor: Float = 0.30
         let order = segments.indices.sorted {
             segments[$0].pixelCount > segments[$1].pixelCount
         }

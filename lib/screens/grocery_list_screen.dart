@@ -30,10 +30,10 @@ class GroceryListScreen extends ConsumerStatefulWidget {
 
 class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   final _nameCtrl = TextEditingController();
-  final _picker   = ImagePicker();
+  final _picker = ImagePicker();
 
   String? _selectedCategory;
-  bool    _loaded = false;
+  bool _loaded = false;
 
   /// Three reference-photo slots for the smart-suggestion sheet.
   final List<XFile?> _photos = [null, null, null];
@@ -42,8 +42,14 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   int _groceryFrequency = 2;
 
   static const _categories = [
-    'Fruits', 'Vegetables', 'Protein', 'Dairy',
-    'Grains', 'Snacks',     'Drinks',  'Other',
+    'Fruits',
+    'Vegetables',
+    'Protein',
+    'Dairy',
+    'Grains',
+    'Snacks',
+    'Drinks',
+    'Other',
   ];
 
   @override
@@ -71,7 +77,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   void _addItem() {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) return;
-    ref.read(groceryProvider.notifier).addItem(name, category: _selectedCategory);
+    ref
+        .read(groceryProvider.notifier)
+        .addItem(name, category: _selectedCategory);
     _nameCtrl.clear();
     _selectedCategory = null;
   }
@@ -82,6 +90,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: context.appSurfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
           padding: EdgeInsets.fromLTRB(
@@ -173,7 +185,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       await labeler.close();
 
       // OCR text
-      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      final textRecognizer =
+          TextRecognizer(script: TextRecognitionScript.latin);
       final recognizedText = await textRecognizer.processImage(inputImage);
       await textRecognizer.close();
 
@@ -197,8 +210,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         // Check if any word of the grocery item name appears in detected terms
         final found = itemWords.any((word) =>
             word.length >= 3 &&
-            detectedTerms.any((term) =>
-                term.contains(word) || word.contains(term)));
+            detectedTerms
+                .any((term) => term.contains(word) || word.contains(term)));
         if (found) {
           ref.read(groceryProvider.notifier).toggleChecked(item);
           checkedOff++;
@@ -210,7 +223,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Found $checkedOff ingredient${checkedOff > 1 ? 's' : ''} you already have!'),
+            content: Text(
+                'Found $checkedOff ingredient${checkedOff > 1 ? 's' : ''} you already have!'),
             backgroundColor: AppTheme.green600,
             duration: const Duration(seconds: 3),
           ),
@@ -219,7 +233,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No matching grocery items found in the photo. Try scanning closer to the items.'),
+            content: Text(
+                'No matching grocery items found in the photo. Try scanning closer to the items.'),
             duration: Duration(seconds: 3),
           ),
         );
@@ -337,7 +352,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     final daysBetween = (7 / _groceryFrequency).ceil();
 
     // Already on the list? Skip those.
-    final existingNames = ref.read(groceryProvider)
+    final existingNames = ref
+        .read(groceryProvider)
         .items
         .map((g) => g.name.toLowerCase())
         .toSet();
@@ -356,10 +372,20 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       if (product.contains('egg')) {
         // Eggs come in dozens — estimate packs
         qty = (timesPerWeek * daysBetween / 7 / 6).ceil().clamp(1, 4);
-      } else if (['bananas', 'apples', 'oranges', 'avocados', 'lemons',
-                   'tomatoes', 'onions', 'bell peppers', 'cucumbers',
-                   'carrots', 'potatoes', 'sweet potatoes']
-          .any(product.contains)) {
+      } else if ([
+        'bananas',
+        'apples',
+        'oranges',
+        'avocados',
+        'lemons',
+        'tomatoes',
+        'onions',
+        'bell peppers',
+        'cucumbers',
+        'carrots',
+        'potatoes',
+        'sweet potatoes'
+      ].any(product.contains)) {
         // Count-based produce: estimate pieces per trip
         qty = (timesPerWeek * daysBetween / 7).ceil().clamp(1, 12);
       } else if (['milk', 'juice', 'almond milk'].any(product.contains)) {
@@ -380,26 +406,92 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
   String _guessCategory(String label) {
     final l = label.toLowerCase();
-    const fruits   = ['apple','banana','berry','orange','grape','mango','peach','pear','plum','melon','kiwi','pine','lemon','cherry','avocado'];
-    const vegs     = ['broc','carrot','pepper','tomato','onion','lettuce','spinach','cucumber','zucchini','kale','celery','potato','pea','bean','asparagus','corn'];
-    const proteins = ['chicken','beef','pork','salmon','tuna','shrimp','egg','tofu','steak','fish','lamb','turkey','tempeh'];
-    const dairy    = ['milk','cheese','yogurt','cream','butter','whey'];
-    const grains   = ['rice','pasta','bread','oat','cereal','quinoa','wheat','flour','noodle','tortilla'];
-    const drinks   = ['juice','coffee','tea','water','soda','smoothie','kombucha'];
-    if (fruits.any(l.contains))   return 'Fruits';
-    if (vegs.any(l.contains))     return 'Vegetables';
+    const fruits = [
+      'apple',
+      'banana',
+      'berry',
+      'orange',
+      'grape',
+      'mango',
+      'peach',
+      'pear',
+      'plum',
+      'melon',
+      'kiwi',
+      'pine',
+      'lemon',
+      'cherry',
+      'avocado'
+    ];
+    const vegs = [
+      'broc',
+      'carrot',
+      'pepper',
+      'tomato',
+      'onion',
+      'lettuce',
+      'spinach',
+      'cucumber',
+      'zucchini',
+      'kale',
+      'celery',
+      'potato',
+      'pea',
+      'bean',
+      'asparagus',
+      'corn'
+    ];
+    const proteins = [
+      'chicken',
+      'beef',
+      'pork',
+      'salmon',
+      'tuna',
+      'shrimp',
+      'egg',
+      'tofu',
+      'steak',
+      'fish',
+      'lamb',
+      'turkey',
+      'tempeh'
+    ];
+    const dairy = ['milk', 'cheese', 'yogurt', 'cream', 'butter', 'whey'];
+    const grains = [
+      'rice',
+      'pasta',
+      'bread',
+      'oat',
+      'cereal',
+      'quinoa',
+      'wheat',
+      'flour',
+      'noodle',
+      'tortilla'
+    ];
+    const drinks = [
+      'juice',
+      'coffee',
+      'tea',
+      'water',
+      'soda',
+      'smoothie',
+      'kombucha'
+    ];
+    if (fruits.any(l.contains)) return 'Fruits';
+    if (vegs.any(l.contains)) return 'Vegetables';
     if (proteins.any(l.contains)) return 'Protein';
-    if (dairy.any(l.contains))    return 'Dairy';
-    if (grains.any(l.contains))   return 'Grains';
-    if (drinks.any(l.contains))   return 'Drinks';
+    if (dairy.any(l.contains)) return 'Dairy';
+    if (grains.any(l.contains)) return 'Grains';
+    if (drinks.any(l.contains)) return 'Drinks';
     return 'Other';
   }
 
   Future<void> _takePhoto(int slot, StateSetter setSheetState) async {
     final file = await _picker.pickImage(
-      source:       ImageSource.camera,
-      maxWidth:     1200,
-      maxHeight:    1200,
+      source: ImageSource.camera,
+      maxWidth: 1200,
+      maxHeight: 1200,
       imageQuality: 75,
     );
     if (file != null && mounted) {
@@ -432,18 +524,52 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       await labeler.close();
 
       // 2) OCR text extraction (package text like "2x milk", "eggs 12")
-      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      final textRecognizer =
+          TextRecognizer(script: TextRecognitionScript.latin);
       final recognizedText = await textRecognizer.processImage(inputImage);
       await textRecognizer.close();
 
       // Filter to food-related labels only.
       const foodKeywords = {
-        'food', 'fruit', 'vegetable', 'meat', 'dairy', 'bread', 'egg',
-        'cheese', 'milk', 'apple', 'banana', 'tomato', 'lettuce', 'carrot',
-        'pepper', 'onion', 'potato', 'chicken', 'beef', 'fish', 'rice',
-        'pasta', 'cereal', 'juice', 'yogurt', 'butter', 'cream', 'sauce',
-        'berry', 'grape', 'orange', 'lemon', 'avocado', 'broccoli',
-        'mushroom', 'cucumber', 'spinach', 'produce', 'grocery',
+        'food',
+        'fruit',
+        'vegetable',
+        'meat',
+        'dairy',
+        'bread',
+        'egg',
+        'cheese',
+        'milk',
+        'apple',
+        'banana',
+        'tomato',
+        'lettuce',
+        'carrot',
+        'pepper',
+        'onion',
+        'potato',
+        'chicken',
+        'beef',
+        'fish',
+        'rice',
+        'pasta',
+        'cereal',
+        'juice',
+        'yogurt',
+        'butter',
+        'cream',
+        'sauce',
+        'berry',
+        'grape',
+        'orange',
+        'lemon',
+        'avocado',
+        'broccoli',
+        'mushroom',
+        'cucumber',
+        'spinach',
+        'produce',
+        'grocery',
       };
       final detected = <String>[];
       for (final label in labels) {
@@ -507,7 +633,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         final hint = quantityAndUnitHints[entry.name.toLowerCase()];
         final explicitQty = hint?['quantity'] ?? 0;
         final explicitUnit = hint?['unit'];
-        final inferredQty = explicitQty > 0 ? explicitQty : entry.sourceCount.clamp(1, 3);
+        final inferredQty =
+            explicitQty > 0 ? explicitQty : entry.sourceCount.clamp(1, 3);
 
         final key = entry.name.toLowerCase();
         final existing = existingByName[key];
@@ -625,7 +752,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   String _normalizeFoodName(String raw) {
     final s = raw.trim().toLowerCase();
     if (s.isEmpty) return '';
-    final clean = s.replaceAll(RegExp(r'[^a-z\s]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    final clean = s
+        .replaceAll(RegExp(r'[^a-z\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
     if (clean.isEmpty) return '';
     return clean.split(' ').map((w) {
       if (w.isEmpty) return w;
@@ -638,28 +768,29 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     ref.read(historyProvider.notifier).load().then((_) {
       if (!mounted) return;
       final suggestions = _buildSuggestions();
-      final selected    = <int>{};
+      final selected = <int>{};
 
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        backgroundColor: Colors.white,
+        backgroundColor: context.appSurfaceColor,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         builder: (ctx) => StatefulBuilder(
           builder: (ctx, setSheetState) {
             return DraggableScrollableSheet(
-              expand:            false,
-              initialChildSize:  0.75,
-              maxChildSize:      0.95,
-              minChildSize:      0.40,
+              expand: false,
+              initialChildSize: 0.75,
+              maxChildSize: 0.95,
+              minChildSize: 0.40,
               builder: (_, scrollCtrl) => Column(
                 children: [
                   // ── Handle bar ──────────────────────────────────────
                   Container(
                     margin: const EdgeInsets.only(top: 12, bottom: 8),
-                    width: 40, height: 4,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
                       color: AppTheme.gray300,
                       borderRadius: BorderRadius.circular(2),
@@ -673,7 +804,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                       children: [
                         Icon(Icons.auto_awesome, color: ctx.primary600),
                         const SizedBox(width: 8),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -684,7 +815,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                               Text('Based on your meal history',
                                   style: TextStyle(
                                       fontSize: 12,
-                                      color: AppTheme.gray400)),
+                                      color: context.appMutedTextColor)),
                             ],
                           ),
                         ),
@@ -704,40 +835,40 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                       children: [
                         // Photo slots
-                        const Text(
+                        Text(
                           'Snap your fridge, pantry or basket (optional)',
                           style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: AppTheme.gray700),
+                              color: context.appTextColor),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
+                        Text(
                           'Photos stay on your device and are never uploaded.',
                           style: TextStyle(
-                              fontSize: 11, color: AppTheme.gray400),
+                              fontSize: 11, color: context.appMutedTextColor),
                         ),
                         const SizedBox(height: 12),
 
                         // Three photo tiles
                         Row(
                           children: List.generate(3, (i) {
-                            final photo  = _photos[i];
+                            final photo = _photos[i];
                             final labels = ['Fridge', 'Basket', 'Freezer'];
                             return Expanded(
                               child: GestureDetector(
                                 onTap: () => _takePhoto(i, setSheetState),
                                 child: Container(
                                   height: 90,
-                                  margin: EdgeInsets.only(
-                                      right: i < 2 ? 8.0 : 0.0),
+                                  margin:
+                                      EdgeInsets.only(right: i < 2 ? 8.0 : 0.0),
                                   decoration: BoxDecoration(
                                     color: ctx.primary50,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: photo != null
                                           ? ctx.primary400
-                                          : AppTheme.gray200,
+                                          : context.appBorderColor,
                                     ),
                                   ),
                                   child: photo != null
@@ -746,7 +877,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                               BorderRadius.circular(11),
                                           child: Image.file(
                                             File(photo.path),
-                                            fit:   BoxFit.cover,
+                                            fit: BoxFit.cover,
                                             width: double.infinity,
                                           ),
                                         )
@@ -761,9 +892,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                             ),
                                             const SizedBox(height: 4),
                                             Text(labels[i],
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                     fontSize: 10,
-                                                    color: AppTheme.gray400)),
+                                                    color: context
+                                                        .appMutedTextColor)),
                                           ],
                                         ),
                                 ),
@@ -777,16 +909,21 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                         // Grocery frequency picker
                         Row(
                           children: [
-                            const Icon(Icons.calendar_today, size: 16, color: AppTheme.gray600),
+                            Icon(Icons.calendar_today,
+                                size: 16, color: context.appMutedTextColor),
                             const SizedBox(width: 8),
-                            const Text('How often do you shop?',
-                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.gray700)),
+                            Text('How often do you shop?',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: context.appTextColor)),
                             const Spacer(),
                             DropdownButton<int>(
                               value: _groceryFrequency,
                               underline: const SizedBox.shrink(),
                               items: [1, 2, 3, 4, 5, 7].map((n) {
-                                return DropdownMenuItem(value: n, child: Text('${n}x/week'));
+                                return DropdownMenuItem(
+                                    value: n, child: Text('${n}x/week'));
                               }).toList(),
                               onChanged: (v) {
                                 if (v != null) {
@@ -820,8 +957,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                   Text(
                                     'Scan a meal first to get personalised suggestions.',
                                     style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.gray400),
+                                        fontSize: 12, color: AppTheme.gray400),
                                     textAlign: TextAlign.center,
                                   ),
                                 ],
@@ -838,28 +974,29 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                   style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      color: AppTheme.gray700)),
+                                      color: context.appTextColor)),
                             ],
                           ),
                           const SizedBox(height: 8),
                           ...suggestions.asMap().entries.map((e) {
-                            final idx  = e.key;
+                            final idx = e.key;
                             final item = e.value;
                             return CheckboxListTile(
-                              value:           selected.contains(idx),
-                              dense:           true,
-                              activeColor:     ctx.primary600,
+                              value: selected.contains(idx),
+                              dense: true,
+                              activeColor: ctx.primary600,
                               contentPadding: EdgeInsets.zero,
                               title: Text(item.name,
                                   style: const TextStyle(fontSize: 14)),
                               subtitle: Text(
                                   '${item.category} • suggested qty: ${item.suggestedQty}',
                                   style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppTheme.gray400)),
+                                      fontSize: 11, color: AppTheme.gray400)),
                               onChanged: (v) => setSheetState(() {
-                                if (v == true) selected.add(idx);
-                                else           selected.remove(idx);
+                                if (v == true)
+                                  selected.add(idx);
+                                else
+                                  selected.remove(idx);
                               }),
                             );
                           }),
@@ -873,12 +1010,11 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                   if (selected.isNotEmpty)
                     SafeArea(
                       child: Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
-                            icon:  const Icon(Icons.add_shopping_cart),
+                            icon: const Icon(Icons.add_shopping_cart),
                             label: Text(
                               'Add ${selected.length} '
                               'item${selected.length > 1 ? "s" : ""} to list',
@@ -886,10 +1022,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                             onPressed: () {
                               for (final idx in selected) {
                                 final item = suggestions[idx];
-                                ref
-                                    .read(groceryProvider.notifier)
-                                    .addItem(item.name,
-                                        category: item.category);
+                                ref.read(groceryProvider.notifier).addItem(
+                                    item.name,
+                                    category: item.category);
                               }
                               Navigator.pop(ctx);
                             },
@@ -911,9 +1046,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final grocery   = ref.watch(groceryProvider);
+    final grocery = ref.watch(groceryProvider);
     final unchecked = grocery.items.where((i) => !i.checked).toList();
-    final checked   = grocery.items.where((i) =>  i.checked).toList();
+    final checked = grocery.items.where((i) => i.checked).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -927,19 +1062,19 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
           ),
           // Smart suggestion — always visible
           IconButton(
-            icon:    const Icon(Icons.auto_awesome_outlined),
+            icon: const Icon(Icons.auto_awesome_outlined),
             tooltip: 'Smart suggestions from history',
             onPressed: _showSmartSuggestSheet,
           ),
           // Manual add — always visible
           IconButton(
-            icon:    const Icon(Icons.add),
+            icon: const Icon(Icons.add),
             tooltip: 'Add item',
             onPressed: _showAddDialog,
           ),
           if (checked.isNotEmpty)
             IconButton(
-              icon:    const Icon(Icons.delete_sweep),
+              icon: const Icon(Icons.delete_sweep),
               tooltip: 'Clear purchased items',
               onPressed: () =>
                   ref.read(groceryProvider.notifier).clearChecked(),
@@ -957,21 +1092,22 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                           size: 64, color: AppTheme.gray300),
                       const SizedBox(height: 16),
                       Text('Your ${l10n.groceryList.toLowerCase()} is empty',
-                          style: TextStyle(
-                              fontSize: 16, color: AppTheme.gray400)),
+                          style:
+                              TextStyle(fontSize: 16, color: AppTheme.gray400)),
                       const SizedBox(height: 16),
-                      Row(
+                      Column(
                         mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           OutlinedButton.icon(
-                            icon:     const Icon(Icons.add, size: 18),
-                            label:    Text(l10n.addToGroceryList),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: Text(l10n.addToGroceryList),
                             onPressed: _showAddDialog,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(height: 10),
                           ElevatedButton.icon(
-                            icon:     const Icon(Icons.auto_awesome, size: 18),
-                            label:    Text(l10n.scanReceipt),
+                            icon: const Icon(Icons.auto_awesome, size: 18),
+                            label: Text(l10n.scanReceipt),
                             onPressed: _showSmartSuggestSheet,
                           ),
                         ],
@@ -984,9 +1120,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                   children: [
                     if (unchecked.isNotEmpty) ...[
                       _SectionLabel('To Buy (${unchecked.length})',
-                        color: context.primary700),
+                          color: context.primary700),
                       ...unchecked.map((item) => _GroceryTile(
-                            item:     item,
+                            item: item,
                             onToggle: () => ref
                                 .read(groceryProvider.notifier)
                                 .toggleChecked(item),
@@ -999,7 +1135,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                       _SectionLabel('Purchased (${checked.length})',
                           color: AppTheme.gray400),
                       ...checked.map((item) => _GroceryTile(
-                            item:     item,
+                            item: item,
                             onToggle: () => ref
                                 .read(groceryProvider.notifier)
                                 .toggleChecked(item),
@@ -1020,7 +1156,8 @@ class _SuggestionItem {
   final String name;
   final String category;
   final int suggestedQty;
-  const _SuggestionItem({required this.name, required this.category, this.suggestedQty = 1});
+  const _SuggestionItem(
+      {required this.name, required this.category, this.suggestedQty = 1});
 }
 
 class _PhotoCandidate {
@@ -1041,7 +1178,7 @@ class _PhotoCandidate {
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text, {required this.color});
   final String text;
-  final Color  color;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -1063,48 +1200,48 @@ class _GroceryTile extends StatelessWidget {
     required this.onDelete,
   });
 
-  final GroceryItem    item;
-  final VoidCallback   onToggle;
-  final VoidCallback   onDelete;
+  final GroceryItem item;
+  final VoidCallback onToggle;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     return Dismissible(
-      key:       ValueKey(item.id),
+      key: ValueKey(item.id),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
-        padding:   const EdgeInsets.only(right: 20),
-        color:     AppTheme.red500,
-        child:     const Icon(Icons.delete, color: Colors.white),
+        padding: const EdgeInsets.only(right: 20),
+        color: AppTheme.red500,
+        child: const Icon(Icons.delete, color: Colors.white),
       ),
       onDismissed: (_) => onDelete(),
       child: ListTile(
         leading: Checkbox(
-          value:       item.checked,
-          onChanged:   (_) => onToggle(),
+          value: item.checked,
+          onChanged: (_) => onToggle(),
           activeColor: context.primary500,
         ),
         title: Text(
           item.name,
           style: TextStyle(
-            fontSize:   15,
+            fontSize: 15,
             fontWeight: FontWeight.w500,
             decoration: item.checked ? TextDecoration.lineThrough : null,
-            color:      item.checked ? AppTheme.gray400 : AppTheme.gray900,
+            color:
+                item.checked ? context.appMutedTextColor : context.appTextColor,
           ),
         ),
         subtitle: item.category != null
             ? Text(item.category!,
-                style: const TextStyle(
-                    fontSize: 12, color: AppTheme.gray400))
+                style:
+                    TextStyle(fontSize: 12, color: context.appMutedTextColor))
             : null,
         trailing: item.quantity > 0 || item.unit != null
             ? Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color:        context.primary100,
+                  color: context.primary100,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -1112,9 +1249,9 @@ class _GroceryTile extends StatelessWidget {
                         ? '${item.quantity} ${item.unit}'
                         : 'x${item.quantity}',
                     style: TextStyle(
-                        fontSize:   12,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color:      context.primary700)),
+                        color: context.primary700)),
               )
             : null,
       ),

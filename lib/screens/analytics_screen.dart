@@ -7,6 +7,7 @@ import '../core/app_localizations.dart';
 import '../providers/analytics_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/premium_theme_effects.dart';
 import 'progress_story_screen.dart';
 
 /// Analytics tab.
@@ -123,7 +124,7 @@ class _RangeSelector extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppTheme.gray100,
+        color: context.appSubtleFillColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -138,7 +139,8 @@ class _RangeSelector extends StatelessWidget {
                 margin: const EdgeInsets.all(2),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: selected ? Colors.white : Colors.transparent,
+                  color:
+                      selected ? context.appSurfaceColor : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: selected
                       ? [
@@ -156,7 +158,9 @@ class _RangeSelector extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: selected ? context.primary600 : AppTheme.gray500,
+                    color: selected
+                        ? context.primary600
+                        : context.appMutedTextColor,
                   ),
                 ),
               ),
@@ -480,19 +484,9 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return PremiumSurface(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      borderRadius: BorderRadius.circular(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -510,9 +504,9 @@ class _StatTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: AppTheme.gray500,
+                    color: context.appMutedTextColor,
                     fontWeight: FontWeight.w600,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -984,9 +978,9 @@ class _DayBreakdownCard extends StatelessWidget {
                   width: 56,
                   child: Text(
                     '${d.date.day}/${d.date.month}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.gray500,
+                      color: context.appMutedTextColor,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1000,7 +994,7 @@ class _DayBreakdownCard extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: pct.clamp(0.0, 1.0),
                           minHeight: 10,
-                          backgroundColor: AppTheme.gray100,
+                          backgroundColor: context.appSubtleFillColor,
                           color: over ? AppTheme.amber500 : context.primary500,
                         ),
                       ),
@@ -1059,19 +1053,9 @@ class _CardShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return PremiumSurface(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      borderRadius: BorderRadius.circular(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

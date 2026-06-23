@@ -17,6 +17,7 @@ import '../services/database_service.dart';
 import '../services/food_scoring_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/food_score_badge.dart';
+import '../widgets/premium_theme_effects.dart';
 import 'create_meal_screen.dart';
 
 /// Manual food entry — pick from the food DB, scan a barcode, or enter grams.
@@ -258,6 +259,10 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   // ── Barcode scanning ────────────────────────────────────────────────────
 
   Future<void> _openBarcodeScanner() async {
+    final visualTheme = context.visualTheme;
+    final themeColor =
+        visualTheme.premium ? visualTheme.primaryAccent : context.primary500;
+
     // Barcode lookup needs internet (OpenFoodFacts API).
     // Do a quick connectivity check first.
     try {
@@ -279,7 +284,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     // The native Swift side presents its own full-screen scanner UI and
     // performs the OpenFoodFacts lookup using URLSession — no Flutter
     // packages required.
-    final themeColor = context.primary500;
     final result = await BarcodeLookupService.instance
         .scanAndLookup(themeColor: themeColor);
     if (result == null || !mounted) return;
@@ -390,8 +394,11 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
       scoreColor = const Color(0xFFD32F2F);
     }
     final l10n = AppLocalizations.of(context);
+    final visualTheme = context.visualTheme;
+    final premium = visualTheme.premium;
     return showModalBottomSheet(
       context: context,
+      backgroundColor: premium ? visualTheme.cardColor : null,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -412,9 +419,11 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
               ),
             ),
             const SizedBox(height: 14),
-            Text(food.label,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            PremiumGradientText(
+              text: food.label,
+              enabled: premium,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 6),
             Text(
               '${food.kcalPer100g.round()} kcal  •  ${food.proteinPer100g.round()} g protein  •  '
@@ -449,13 +458,15 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                 children: [
                   Container(
                     height: 14,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          Color(0xFFD32F2F),
-                          Color(0xFFFFA726),
-                          Color(0xFF388E3C),
-                        ],
+                        colors: premium
+                            ? visualTheme.gradient
+                            : const [
+                                Color(0xFFD32F2F),
+                                Color(0xFFFFA726),
+                                Color(0xFF388E3C),
+                              ],
                       ),
                     ),
                   ),
@@ -556,6 +567,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     final prefs = ref.watch(userPrefsProvider);
     final restrictions = prefs.dietaryRestrictions;
     final l10n = AppLocalizations.of(context);
+    final visualTheme = context.visualTheme;
+    final premium = visualTheme.premium;
     // "Actively editing" == keyboard visible. Drives the contextual Done
     // button (AppBar) and the dismiss FAB, so neither is permanently shown.
     final editing = MediaQuery.of(context).viewInsets.bottom > 0;
@@ -683,60 +696,73 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                             final isActive = _activeFood?.label == food.label;
                             final restrictionMatches =
                                 _restrictionMatchesForFood(food, restrictions);
-                            return Card(
-                              color: isActive
-                                  ? context.primary50
-                                  : (isSelected
-                                      ? context.primary50.withValues(alpha: 0.5)
-                                      : null),
-                              child: ListTile(
-                                leading: _categoryIcon(food.category),
-                                title: Text(
-                                  food.label,
-                                  style: TextStyle(
-                                    fontWeight: isSelected
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
+                            return PremiumMotionSurface(
+                              enabled: premium && (isActive || isSelected),
+                              borderRadius: BorderRadius.circular(16),
+                              padding: const EdgeInsets.all(2),
+                              borderWidth: isActive ? 3.0 : 2.4,
+                              glow: isActive,
+                              child: Card(
+                                color: premium
+                                    ? visualTheme.cardColor
+                                    : (isActive
+                                        ? context.primary50
+                                        : (isSelected
+                                            ? context.primary50
+                                                .withValues(alpha: 0.5)
+                                            : null)),
+                                child: ListTile(
+                                  leading: _categoryIcon(food.category),
+                                  title: Text(
+                                    food.label,
+                                    style: TextStyle(
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                    ),
                                   ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${food.kcalPer100g.round()} kcal / ${food.unitLabel}',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.gray400,
-                                      ),
-                                    ),
-                                    if (restrictionMatches.isNotEmpty)
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
                                       Text(
-                                        '${l10n.restrictionAlert}: ${restrictionMatches.map((restriction) => l10n.dietaryRestrictionShortLabel(restriction.name)).join(', ')}',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.amber.shade800,
+                                        '${food.kcalPer100g.round()} kcal / ${food.unitLabel}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppTheme.gray400,
                                         ),
                                       ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4),
-                                      child: FoodScoreBadge(
-                                        explanation:
-                                            FoodScoringService.scoreFood(
-                                          food,
-                                          goal: prefs.nutritionGoal,
+                                      if (restrictionMatches.isNotEmpty)
+                                        Text(
+                                          '${l10n.restrictionAlert}: ${restrictionMatches.map((restriction) => l10n.dietaryRestrictionShortLabel(restriction.name)).join(', ')}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.amber.shade800,
+                                          ),
                                         ),
-                                        compact: true,
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: FoodScoreBadge(
+                                          explanation:
+                                              FoodScoringService.scoreFood(
+                                            food,
+                                            goal: prefs.nutritionGoal,
+                                          ),
+                                          compact: true,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
+                                  trailing: isSelected
+                                      ? Icon(Icons.check_circle,
+                                          color: premium
+                                              ? visualTheme.primaryAccent
+                                              : context.primary600)
+                                      : Icon(Icons.circle_outlined,
+                                          color: AppTheme.gray300),
+                                  onTap: () => _selectFood(food),
                                 ),
-                                trailing: isSelected
-                                    ? Icon(Icons.check_circle,
-                                        color: context.primary600)
-                                    : Icon(Icons.circle_outlined,
-                                        color: AppTheme.gray300),
-                                onTap: () => _selectFood(food),
                               ),
                             );
                           },
@@ -749,9 +775,14 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: premium ? visualTheme.cardColor : Colors.white,
                           border: Border(
-                            top: BorderSide(color: context.primary100),
+                            top: BorderSide(
+                              color: premium
+                                  ? visualTheme.borderColor
+                                  : context.primary100,
+                              width: premium ? 2 : 1,
+                            ),
                           ),
                         ),
                         child: Column(
@@ -764,14 +795,19 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                                 child: Row(
                                   children: [
                                     Icon(Icons.check_circle,
-                                        size: 16, color: context.primary600),
+                                        size: 16,
+                                        color: premium
+                                            ? visualTheme.primaryAccent
+                                            : context.primary600),
                                     const SizedBox(width: 6),
                                     Text(
                                       '${_selectedLabels.length} items selected',
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
-                                        color: context.primary700,
+                                        color: premium
+                                            ? visualTheme.primaryAccent
+                                            : context.primary700,
                                       ),
                                     ),
                                   ],
@@ -799,7 +835,9 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                                           style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w700,
-                                            color: context.primary700,
+                                            color: premium
+                                                ? visualTheme.primaryAccent
+                                                : context.primary700,
                                           ),
                                         ),
                                     ],
@@ -940,21 +978,35 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   }
 
   Widget _categoryIcon(String category) {
+    final visualTheme = context.visualTheme;
+    final premium = visualTheme.premium;
     final (IconData icon, Color color) = switch (category) {
-      'fruit' => (Icons.apple, context.primary600),
-      'vegetable' => (Icons.grass, context.primary500),
+      'fruit' => (
+          Icons.apple,
+          premium ? visualTheme.primaryAccent : context.primary600
+        ),
+      'vegetable' => (
+          Icons.grass,
+          premium ? visualTheme.primaryAccent : context.primary500
+        ),
       'grain' => (Icons.grain, AppTheme.amber700),
       'protein' => (Icons.egg, AppTheme.red500),
       'dairy' => (Icons.water_drop, AppTheme.amber500),
       'mixed' => (Icons.restaurant, AppTheme.gray700),
-      'legume' => (Icons.eco, context.primary700),
+      'legume' => (
+          Icons.eco,
+          premium ? visualTheme.secondaryAccent : context.primary700
+        ),
       'nut' => (Icons.filter_vintage, AppTheme.amber600),
       'snack' => (Icons.cookie, AppTheme.amber500),
-      'drink' => (Icons.local_drink, context.primary400),
+      'drink' => (
+          Icons.local_drink,
+          premium ? visualTheme.secondaryAccent : context.primary400
+        ),
       _ => (Icons.circle, AppTheme.gray400),
     };
     return CircleAvatar(
-      backgroundColor: color.withValues(alpha: 0.12),
+      backgroundColor: color.withValues(alpha: premium ? 0.18 : 0.12),
       radius: 18,
       child: Icon(icon, size: 18, color: color),
     );

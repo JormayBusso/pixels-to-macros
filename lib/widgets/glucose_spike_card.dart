@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/glucose_spike_model.dart';
 import '../theme/app_theme.dart';
+import 'premium_theme_effects.dart';
 
 /// A card that shows the predicted blood glucose curve for a meal.
 ///
@@ -45,115 +46,115 @@ class GlucoseSpikeCard extends StatelessWidget {
       SpikeSeverity.high => '🌶️',
     };
 
-    return Card(
+    return PremiumSurface(
+      // Tier 3 AI-active treatment: this is an on-demand medical insight that
+      // only renders when the user is in diabetes mode and a meal is present.
+      animate: true,
       margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      padding: const EdgeInsets.all(14),
+      borderRadius: BorderRadius.circular(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(severityEmoji, style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Predicted Glucose Spike',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: context.appTextColor,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: severityColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  severityLabel,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: severityColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Spike chart
+          AspectRatio(
+            aspectRatio: 2.2,
+            child: CustomPaint(
+              painter: _SpikeChartPainter(
+                curve: curve,
+                peakMin: summary.peakAtMinute,
+                severityColor: severityColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Summary stats
+          Row(
+            children: [
+              _SpikeStat(
+                icon: Icons.arrow_upward,
+                label: 'Peak',
+                value: '+${summary.peakDeltaMgDl.round()} mg/dL',
+                color: severityColor,
+              ),
+              const SizedBox(width: 16),
+              _SpikeStat(
+                icon: Icons.timer_outlined,
+                label: 'Peak at',
+                value: summary.peakTimeLabel,
+                color: context.appMutedTextColor,
+              ),
+              const SizedBox(width: 16),
+              _SpikeStat(
+                icon: Icons.trending_down,
+                label: 'Duration',
+                value: summary.durationLabel,
+                color: context.appMutedTextColor,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Disclaimer
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: context.appSubtleFillColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(severityEmoji, style: const TextStyle(fontSize: 18)),
-                const SizedBox(width: 8),
+                Icon(Icons.info_outline,
+                    size: 14, color: context.appMutedTextColor),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Predicted Glucose Spike',
+                    'This is an educational estimate, not medical advice. '
+                    'Individual glucose responses vary widely. '
+                    'Always consult your healthcare provider.',
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.gray900,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: severityColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    severityLabel,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: severityColor,
+                      fontSize: 10,
+                      color: context.appMutedTextColor,
+                      height: 1.4,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            // Spike chart
-            AspectRatio(
-              aspectRatio: 2.2,
-              child: CustomPaint(
-                painter: _SpikeChartPainter(
-                  curve: curve,
-                  peakMin: summary.peakAtMinute,
-                  severityColor: severityColor,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            // Summary stats
-            Row(
-              children: [
-                _SpikeStat(
-                  icon: Icons.arrow_upward,
-                  label: 'Peak',
-                  value: '+${summary.peakDeltaMgDl.round()} mg/dL',
-                  color: severityColor,
-                ),
-                const SizedBox(width: 16),
-                _SpikeStat(
-                  icon: Icons.timer_outlined,
-                  label: 'Peak at',
-                  value: summary.peakTimeLabel,
-                  color: AppTheme.gray600,
-                ),
-                const SizedBox(width: 16),
-                _SpikeStat(
-                  icon: Icons.trending_down,
-                  label: 'Duration',
-                  value: summary.durationLabel,
-                  color: AppTheme.gray600,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Disclaimer
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppTheme.gray100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline,
-                      size: 14, color: AppTheme.gray400),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'This is an educational estimate, not medical advice. '
-                      'Individual glucose responses vary widely. '
-                      'Always consult your healthcare provider.',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppTheme.gray500,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -146,8 +146,8 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
   Future<void> _save() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).enterMealName)));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).enterMealName)));
       return;
     }
     if (_ingredients.isEmpty) {
@@ -164,8 +164,7 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
       final docsDir = await getApplicationDocumentsDirectory();
       final fileName =
           'meal_${DateTime.now().millisecondsSinceEpoch}${p.extension(_imageFile!.path)}';
-      final destFile =
-          File(p.join(docsDir.path, 'meal_images', fileName));
+      final destFile = File(p.join(docsDir.path, 'meal_images', fileName));
       await destFile.parent.create(recursive: true);
       await _imageFile!.copy(destFile.path);
       savedImagePath = destFile.path;
@@ -238,176 +237,177 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : Column(
-              children: [
-                // ── Photo banner ──────────────────────────────────────
-                GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    height: 160,
-                    width: double.infinity,
-                    color: AppTheme.gray100,
-                    child: _imageFile != null
-                        ? Image.file(_imageFile!, fit: BoxFit.cover)
-                        : _existingImagePath != null
-                            ? Image.file(
-                                File(_existingImagePath!),
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _ImagePlaceholder(
-                                    onTap: _pickImage),
-                              )
-                            : _ImagePlaceholder(onTap: _pickImage),
+                children: [
+                  // ── Photo banner ──────────────────────────────────────
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      height: 160,
+                      width: double.infinity,
+                      color: AppTheme.gray100,
+                      child: _imageFile != null
+                          ? Image.file(_imageFile!, fit: BoxFit.cover)
+                          : _existingImagePath != null
+                              ? Image.file(
+                                  File(_existingImagePath!),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      _ImagePlaceholder(onTap: _pickImage),
+                                )
+                              : _ImagePlaceholder(onTap: _pickImage),
+                    ),
                   ),
-                ),
-                // ── Meal name + type ──────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextField(
-                        controller: _nameCtrl,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: const InputDecoration(
-                          labelText: 'Meal name',
-                          hintText: 'e.g. My morning oatmeal',
-                          prefixIcon: Icon(Icons.restaurant_menu),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Meal type chips
-                      Row(
-                        children: MealType.values.map((type) {
-                          final selected = _mealType == type;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: FilterChip(
-                              label: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(_mealTypeIcon(type),
-                                      size: 14,
-                                      color: selected
-                                          ? context.primary700
-                                          : AppTheme.gray400),
-                                  const SizedBox(width: 4),
-                                  Text(type.displayName),
-                                ],
-                              ),
-                              selected: selected,
-                              onSelected: (_) =>
-                                  setState(() => _mealType = type),
-                              selectedColor: context.primary100,
-                              checkmarkColor: context.primary700,
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // ── Ingredient list ───────────────────────────────────
-                Expanded(
-                  child: _ingredients.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.add_shopping_cart_outlined,
-                                  size: 48, color: AppTheme.gray300),
-                              const SizedBox(height: 8),
-                              Text(AppLocalizations.of(context).noIngredientsYet,
-                                  style: TextStyle(
-                                      color: AppTheme.gray400,
-                                      fontSize: 15)),
-                            ],
+                  // ── Meal name + type ──────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          controller: _nameCtrl,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            labelText: 'Meal name',
+                            hintText: 'e.g. My morning oatmeal',
+                            prefixIcon: Icon(Icons.restaurant_menu),
+                            border: OutlineInputBorder(),
                           ),
-                        )
-                      : ReorderableListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                          itemCount: _ingredients.length,
-                          onReorder: (oldIndex, newIndex) {
-                            setState(() {
-                              if (newIndex > oldIndex) newIndex--;
-                              final item = _ingredients.removeAt(oldIndex);
-                              _ingredients.insert(newIndex, item);
-                            });
-                          },
-                          itemBuilder: (ctx, i) {
-                            final entry = _ingredients[i];
-                            final kcal = (kcalMap[entry.label] ?? 0) *
-                                entry.grams /
-                                100.0;
-                            return Card(
-                              key: ValueKey('$i-${entry.label}'),
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 4),
-                                title: Text(entry.label,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600)),
-                                subtitle: Text(
-                                    '${entry.grams.round()} g  •  ${kcal.round()} kcal'),
-                                trailing: Row(
+                        ),
+                        const SizedBox(height: 12),
+                        // Meal type chips
+                        Row(
+                          children: MealType.values.map((type) {
+                            final selected = _mealType == type;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                label: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // Grams edit
-                                    SizedBox(
-                                      width: 64,
-                                      child: _GramsField(
-                                        initialGrams: entry.grams,
-                                        onChanged: (g) =>
-                                            setState(() => entry.grams = g),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.close,
-                                          size: 18, color: AppTheme.gray400),
-                                      onPressed: () => _removeIngredient(i),
-                                    ),
+                                    Icon(_mealTypeIcon(type),
+                                        size: 14,
+                                        color: selected
+                                            ? context.primary700
+                                            : AppTheme.gray400),
+                                    const SizedBox(width: 4),
+                                    Text(type.displayName),
                                   ],
                                 ),
+                                selected: selected,
+                                onSelected: (_) =>
+                                    setState(() => _mealType = type),
+                                selectedColor: context.primary100,
+                                checkmarkColor: context.primary700,
                               ),
                             );
-                          },
+                          }).toList(),
                         ),
-                ),
+                      ],
+                    ),
+                  ),
 
-                // ── Bottom bar: total + add ───────────────────────────
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border(
-                        top: BorderSide(color: context.primary100)),
-                  ),
-                  child: Row(
-                    children: [
-                      if (_ingredients.isNotEmpty)
-                        Expanded(
-                          child: Text(
-                            'Total: ${totalKcal.round()} kcal  •  '
-                            '${_ingredients.length} ingredient${_ingredients.length == 1 ? '' : 's'}',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: context.primary700),
+                  // ── Ingredient list ───────────────────────────────────
+                  Expanded(
+                    child: _ingredients.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.add_shopping_cart_outlined,
+                                    size: 48, color: AppTheme.gray300),
+                                const SizedBox(height: 8),
+                                Text(
+                                    AppLocalizations.of(context)
+                                        .noIngredientsYet,
+                                    style: TextStyle(
+                                        color: AppTheme.gray400, fontSize: 15)),
+                              ],
+                            ),
+                          )
+                        : ReorderableListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                            itemCount: _ingredients.length,
+                            onReorder: (oldIndex, newIndex) {
+                              setState(() {
+                                if (newIndex > oldIndex) newIndex--;
+                                final item = _ingredients.removeAt(oldIndex);
+                                _ingredients.insert(newIndex, item);
+                              });
+                            },
+                            itemBuilder: (ctx, i) {
+                              final entry = _ingredients[i];
+                              final kcal = (kcalMap[entry.label] ?? 0) *
+                                  entry.grams /
+                                  100.0;
+                              return Card(
+                                key: ValueKey('$i-${entry.label}'),
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 4),
+                                  title: Text(entry.label,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600)),
+                                  subtitle: Text(
+                                      '${entry.grams.round()} g  •  ${kcal.round()} kcal'),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Grams edit
+                                      SizedBox(
+                                        width: 64,
+                                        child: _GramsField(
+                                          initialGrams: entry.grams,
+                                          onChanged: (g) =>
+                                              setState(() => entry.grams = g),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.close,
+                                            size: 18, color: AppTheme.gray400),
+                                        onPressed: () => _removeIngredient(i),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        )
-                      else
-                        const Expanded(child: SizedBox()),
-                      FilledButton.icon(
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Ingredient'),
-                        onPressed: _showAddIngredientSheet,
-                      ),
-                    ],
                   ),
-                ),
-              ],
-            ),
+
+                  // ── Bottom bar: total + add ───────────────────────────
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border:
+                          Border(top: BorderSide(color: context.primary100)),
+                    ),
+                    child: Row(
+                      children: [
+                        if (_ingredients.isNotEmpty)
+                          Expanded(
+                            child: Text(
+                              'Total: ${totalKcal.round()} kcal  •  '
+                              '${_ingredients.length} ingredient${_ingredients.length == 1 ? '' : 's'}',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: context.primary700),
+                            ),
+                          )
+                        else
+                          const Expanded(child: SizedBox()),
+                        FilledButton.icon(
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Ingredient'),
+                          onPressed: _showAddIngredientSheet,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -453,8 +453,7 @@ class _IngredientEntry {
 // ── Inline grams field ────────────────────────────────────────────────────
 
 class _GramsField extends StatefulWidget {
-  const _GramsField(
-      {required this.initialGrams, required this.onChanged});
+  const _GramsField({required this.initialGrams, required this.onChanged});
 
   final double initialGrams;
   final ValueChanged<double> onChanged;
@@ -545,6 +544,10 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
   }
 
   Future<void> _scanBarcode() async {
+    final visualTheme = context.visualTheme;
+    final themeColor =
+        visualTheme.premium ? visualTheme.primaryAccent : context.primary500;
+
     // Connectivity check
     try {
       final result = await InternetAddress.lookup('world.openfoodfacts.org')
@@ -558,7 +561,9 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
       return;
     }
 
-    final result = await BarcodeLookupService.instance.scanAndLookup();
+    final result = await BarcodeLookupService.instance.scanAndLookup(
+      themeColor: themeColor,
+    );
     if (result == null || !mounted) return;
 
     // Add to DB if not already present
@@ -566,7 +571,14 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
     if (existing == null) {
       final lowerName = result.name.toLowerCase();
       final isDrink = const [
-        'water', 'juice', 'drink', 'cola', 'soda', 'milk', 'tea', 'coffee',
+        'water',
+        'juice',
+        'drink',
+        'cola',
+        'soda',
+        'milk',
+        'tea',
+        'coffee',
       ].any((kw) => lowerName.contains(kw));
 
       final food = FoodData(
@@ -630,8 +642,7 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
               ),
             ),
             const Text('Add Ingredient',
-                style:
-                    TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
             // Search + barcode
             Row(
@@ -671,15 +682,14 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
                     dense: true,
                     title: Text(food.label,
                         style: TextStyle(
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
                             color: alreadyAdded ? AppTheme.gray400 : null)),
                     subtitle: Text(
                         '${food.kcalPer100g.round()} kcal / ${food.unitLabel}'),
                     trailing: alreadyAdded
-                        ? const Icon(Icons.check, color: AppTheme.gray400,
-                            size: 18)
+                        ? const Icon(Icons.check,
+                            color: AppTheme.gray400, size: 18)
                         : isSelected
                             ? Icon(Icons.check_circle,
                                 color: context.primary600)
@@ -717,8 +727,7 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
                   FilledButton(
                     onPressed: () {
                       FocusScope.of(context).unfocus();
-                      final g =
-                          double.tryParse(_gramsCtrl.text) ?? 100.0;
+                      final g = double.tryParse(_gramsCtrl.text) ?? 100.0;
                       widget.onAdded(_selected!.label, g);
                       Navigator.of(context).pop();
                     },

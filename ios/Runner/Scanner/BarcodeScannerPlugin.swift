@@ -103,18 +103,66 @@ private final class BarcodeScanViewController: UIViewController,
         // Scan guide box.
         let boxW: CGFloat = 280
         let boxH: CGFloat = 180
+        let glow = UIView()
+        glow.layer.borderColor = themeColor.withAlphaComponent(0.42).cgColor
+        glow.layer.borderWidth = 10
+        glow.layer.cornerRadius = 24
+        glow.layer.shadowColor = themeColor.cgColor
+        glow.layer.shadowOpacity = 0.72
+        glow.layer.shadowRadius = 24
+        glow.layer.shadowOffset = .zero
+        glow.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(glow)
+
         let box           = UIView()
         box.layer.borderColor  = themeColor.cgColor
-        box.layer.borderWidth  = 2.5
+        box.layer.borderWidth  = 4
         box.layer.cornerRadius = 16
+        box.layer.shadowColor = themeColor.cgColor
+        box.layer.shadowOpacity = 0.65
+        box.layer.shadowRadius = 14
+        box.layer.shadowOffset = .zero
         box.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(box)
+        let scanLine = UIView()
+        scanLine.backgroundColor = themeColor.withAlphaComponent(0.92)
+        scanLine.layer.cornerRadius = 2
+        scanLine.layer.shadowColor = themeColor.cgColor
+        scanLine.layer.shadowOpacity = 0.9
+        scanLine.layer.shadowRadius = 10
+        scanLine.layer.shadowOffset = .zero
+        scanLine.translatesAutoresizingMaskIntoConstraints = false
+        box.addSubview(scanLine)
         NSLayoutConstraint.activate([
+            glow.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            glow.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -30),
+            glow.widthAnchor.constraint(equalToConstant: boxW + 18),
+            glow.heightAnchor.constraint(equalToConstant: boxH + 18),
             box.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             box.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -30),
             box.widthAnchor.constraint(equalToConstant: boxW),
             box.heightAnchor.constraint(equalToConstant: boxH),
+            scanLine.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 18),
+            scanLine.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -18),
+            scanLine.centerYAnchor.constraint(equalTo: box.centerYAnchor),
+            scanLine.heightAnchor.constraint(equalToConstant: 4),
         ])
+
+        let glowPulse = CABasicAnimation(keyPath: "opacity")
+        glowPulse.fromValue = 0.45
+        glowPulse.toValue = 1.0
+        glowPulse.duration = 1.35
+        glowPulse.autoreverses = true
+        glowPulse.repeatCount = .infinity
+        glow.layer.add(glowPulse, forKey: "barcodeGlowPulse")
+
+        let scanPulse = CABasicAnimation(keyPath: "transform.scale.x")
+        scanPulse.fromValue = 0.82
+        scanPulse.toValue = 1.0
+        scanPulse.duration = 0.9
+        scanPulse.autoreverses = true
+        scanPulse.repeatCount = .infinity
+        scanLine.layer.add(scanPulse, forKey: "barcodeScanPulse")
 
         // Instruction label.
         let label            = UILabel()
@@ -122,9 +170,15 @@ private final class BarcodeScanViewController: UIViewController,
         label.textColor      = .white
         label.font           = .systemFont(ofSize: 16, weight: .medium)
         label.textAlignment  = .center
-        label.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        label.backgroundColor = UIColor.black.withAlphaComponent(0.72)
+        label.layer.borderColor = themeColor.withAlphaComponent(0.42).cgColor
+        label.layer.borderWidth = 1
+        label.layer.shadowColor = themeColor.cgColor
+        label.layer.shadowOpacity = 0.35
+        label.layer.shadowRadius = 12
+        label.layer.shadowOffset = .zero
         label.layer.cornerRadius = 10
-        label.clipsToBounds  = true
+        label.clipsToBounds  = false
         label.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(label)
         NSLayoutConstraint.activate([

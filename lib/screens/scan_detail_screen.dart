@@ -285,7 +285,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                         top: 12,
                         child: FilledButton.icon(
                           style: FilledButton.styleFrom(
-                            backgroundColor: Colors.black.withValues(alpha: 0.62),
+                            backgroundColor:
+                                Colors.black.withValues(alpha: 0.62),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 8),
@@ -1013,9 +1014,9 @@ class _MissingScanMediaCard extends StatelessWidget {
       height: 180,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppTheme.gray50,
+        color: context.appSubtleFillColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.gray100),
+        border: Border.all(color: context.appBorderColor),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1027,7 +1028,9 @@ class _MissingScanMediaCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            hasModel ? '3D reconstruction saved' : 'Captured scan image unavailable',
+            hasModel
+                ? '3D reconstruction saved'
+                : 'Captured scan image unavailable',
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,

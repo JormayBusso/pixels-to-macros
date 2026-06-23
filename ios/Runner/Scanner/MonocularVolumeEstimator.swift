@@ -257,8 +257,10 @@ final class MonocularVolumeEstimator {
                 guardrailUpperCm3 = bounded.upperCm3
                 guardrailApplied = bounded.softened
                 scanMode = "monocular_visual_hull"
+                let roundMesh = transverseRoundnessStrength(for: seg.label) > 0
                 debugInfo = String(
-                    format: "visual_hull: side=hard scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm fill=%.2f ar=%.2f vol=%.0fcm³",
+                    format: "visual_hull: side=hard mesh=%@ scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm fill=%.2f ar=%.2f vol=%.0fcm³",
+                    roundMesh ? "round" : "profile",
                     scale.source,
                     scale.pixelsPerCm,
                     profile.topAxis.rawValue,
@@ -268,7 +270,7 @@ final class MonocularVolumeEstimator {
                     profile.aspectRatio,
                     volumeCm3
                 )
-                print("[MonocularEstimator] visual-hull food#\(idx) \(seg.label): sideLabel=\(profile.label), axis=\(profile.topAxis.rawValue), reversed=\(profile.reversed), ar=\(String(format: "%.2f", profile.aspectRatio)), height=\(String(format: "%.2f", heightCm))cm, fill=\(String(format: "%.2f", profile.meanNormalizedHeight)), vol=\(String(format: "%.1f", volumeCm3))cm3")
+                print("[MonocularEstimator] visual-hull food#\(idx) \(seg.label): sideLabel=\(profile.label), axis=\(profile.topAxis.rawValue), reversed=\(profile.reversed), mesh=\(roundMesh ? "round" : "profile"), ar=\(String(format: "%.2f", profile.aspectRatio)), height=\(String(format: "%.2f", heightCm))cm, fill=\(String(format: "%.2f", profile.meanNormalizedHeight)), vol=\(String(format: "%.1f", volumeCm3))cm3")
             } else {
                 let rawHeightCm = (idx == 0 ? measuredHeightCm : nil) ?? priorBoundCm
                 heightCm = boundedHeightCm(
@@ -367,10 +369,15 @@ final class MonocularVolumeEstimator {
             var row: [String: Any] = [
                 "id": id,
                 "label": seg.label,
+                "detected_category": seg.label,
                 "volume_cm3": roundedVolume,
                 "voxel_count": object.voxelCount,
                 "pixel_count": seg.pixelCount,
                 "confidence": roundedConfidence,
+                "confidence_score": roundedConfidence,
+                "silhouette_height_px": round(heightCm * scale.pixelsPerCm * 10) / 10,
+                "pixels_per_cm": round(scale.pixelsPerCm * 100) / 100,
+                "density_source": "label_prior",
                 "frames_used": sideFrame == nil ? 1 : 2,
                 "scan_mode": scanMode,
                 "scale_source": scale.source,
@@ -387,9 +394,10 @@ final class MonocularVolumeEstimator {
             if let guardrailUpperCm3 {
                 row["guardrail_upper_cm3"] = round(guardrailUpperCm3 * 10) / 10
             }
+            row["mesh_roundness_applied"] = sideApplied && transverseRoundnessStrength(for: seg.label) > 0
             row["debug"] = diagnosticInfo
             // [EVAL] one line per food for known-weight calibration (#3).
-            print("[EVAL] label=\(seg.label) footprint_cm2=\(String(format: "%.1f", areaCm2)) height_cm=\(String(format: "%.2f", heightCm)) raw_volume_cm3=\(String(format: "%.1f", rawVolumeCm3)) final_volume_cm3=\(String(format: "%.1f", roundedVolume)) density_g_cm3=\(String(format: "%.2f", densityEstimate)) weight_g=\(String(format: "%.0f", weightEstimateG)) mode=\(scanMode) scale=\(scale.source) px/cm=\(String(format: "%.2f", scale.pixelsPerCm)) side_applied=\(sideApplied) fallback=\(fallbackUsed) guardrail=\(guardrailApplied ? "soft" : "none")")
+            print("[EVAL] label=\(seg.label) conf=\(String(format: "%.2f", roundedConfidence)) footprint_cm2=\(String(format: "%.1f", areaCm2)) silhouette_px=\(String(format: "%.1f", heightCm * scale.pixelsPerCm)) height_cm=\(String(format: "%.2f", heightCm)) raw_volume_cm3=\(String(format: "%.1f", rawVolumeCm3)) final_volume_cm3=\(String(format: "%.1f", roundedVolume)) density_g_cm3=\(String(format: "%.2f", densityEstimate)) density_source=label_prior weight_g=\(String(format: "%.0f", weightEstimateG)) mode=\(scanMode) scale=\(scale.source) px/cm=\(String(format: "%.2f", scale.pixelsPerCm)) side_applied=\(sideApplied) fallback=\(fallbackUsed) guardrail=\(guardrailApplied ? "soft" : "none")")
             payload.append(row)
             metadata.append(row)
         }
@@ -574,15 +582,16 @@ final class MonocularVolumeEstimator {
         // The side view is powerful, but a bad side mask is also the fastest
         // way to explode volume. Keep only profiles that look like a real,
         // reasonably filled object silhouette.
-        guard profile.pixelCount >= 850,
-              profile.confidence >= 0.30,
-              profile.coverage >= 0.002,
-              profile.aspectRatio >= 0.12,
-              profile.aspectRatio <= 2.2,
-              profile.meanNormalizedHeight >= 0.18,
-              profile.meanNormalizedHeight <= 0.96
-        else {
-            print("[MonocularEstimator] side-profile rejected label=\(profile.label) px=\(profile.pixelCount) conf=\(String(format: "%.2f", profile.confidence)) cov=\(String(format: "%.3f", profile.coverage)) ar=\(String(format: "%.2f", profile.aspectRatio)) fill=\(String(format: "%.2f", profile.meanNormalizedHeight))")
+        var rejectionReasons: [String] = []
+        if profile.pixelCount < 600 { rejectionReasons.append("px<600") }
+        if profile.confidence < 0.20 { rejectionReasons.append("conf<0.20") }
+        if profile.coverage < 0.0015 { rejectionReasons.append("cov<0.0015") }
+        if profile.aspectRatio < 0.10 { rejectionReasons.append("ar<0.10") }
+        if profile.aspectRatio > 2.5 { rejectionReasons.append("ar>2.5") }
+        if profile.meanNormalizedHeight < 0.14 { rejectionReasons.append("fill<0.14") }
+        if profile.meanNormalizedHeight > 0.98 { rejectionReasons.append("fill>0.98") }
+        guard rejectionReasons.isEmpty else {
+            print("[MonocularEstimator] side-profile rejected label=\(profile.label) reasons=\(rejectionReasons.joined(separator: ",")) px=\(profile.pixelCount) conf=\(String(format: "%.2f", profile.confidence)) cov=\(String(format: "%.3f", profile.coverage)) ar=\(String(format: "%.2f", profile.aspectRatio)) fill=\(String(format: "%.2f", profile.meanNormalizedHeight))")
             return nil
         }
 
@@ -670,6 +679,16 @@ final class MonocularVolumeEstimator {
         if l.contains("chicken") || l.contains("beef") || l.contains("steak") || l.contains("fish") { return 1.02 }
         if l.contains("salad") || l.contains("vegetable") { return 0.55 }
         return 0.90
+    }
+
+    private func transverseRoundnessStrength(for label: String) -> Float {
+        let l = label.lowercased()
+        if l.contains("tomato") { return 0.96 }
+        if l.contains("apple") || l.contains("orange") ||
+            l.contains("peach") || l.contains("plum") { return 0.92 }
+        if l.contains("egg") { return 0.88 }
+        if l.contains("onion") || l.contains("potato") { return 0.72 }
+        return 0
     }
 
     private func physicalEnvelope(for label: String) -> PhysicalEnvelope? {
@@ -867,6 +886,7 @@ final class MonocularVolumeEstimator {
         }
         var cornerB = [Float](repeating: 0, count: (gr + 1) * cornerCols)
         var cornerH = [Float](repeating: 0, count: (gr + 1) * cornerCols)
+        let transverseStrength = transverseRoundnessStrength(for: label)
         for rr in 0...gr {
             for cc in 0...gc {
                 let n = cornerCells(rr, cc)
@@ -889,10 +909,27 @@ final class MonocularVolumeEstimator {
                     let sideLimit = max(0, sideTop - sideBottom)
                     let silhouetteEdge: Float = n >= 4 ? 1.0 : max(0.72, Float(n) / 4.0)
                     let boundedBottom = max(0, min(max(0, sideTop - 0.035), sideBottom))
-                    bottomFraction = boundedBottom * silhouetteEdge
+                    let transverseFalloff: Float
+                    if transverseStrength > 0 {
+                        let transverseCoord = sideProfile.topAxis == .columns ? Float(rr) : Float(cc)
+                        let transverseCenter = sideProfile.topAxis == .columns ? cgR : cgC
+                        let transverseExtent = sideProfile.topAxis == .columns ? Float(gr) : Float(gc)
+                        let radius = transverseCoord >= transverseCenter
+                            ? max(0.5, transverseExtent - transverseCenter)
+                            : max(0.5, transverseCenter)
+                        let transverseRho = min(1.0, abs(transverseCoord - transverseCenter) / radius)
+                        let roundFalloff = sqrt(max(0.0, 1.0 - transverseRho * transverseRho))
+                        transverseFalloff = 1.0 - transverseStrength * (1.0 - roundFalloff)
+                    } else {
+                        transverseFalloff = 1.0
+                    }
+                    let roundedTop = sideBottom + sideLimit * transverseFalloff
+                    let undersideLift = sideLimit * (1.0 - transverseFalloff) * (0.18 + 0.10 * transverseStrength)
+                    let liftedBottom = min(max(0, roundedTop - 0.035), boundedBottom + undersideLift)
+                    bottomFraction = liftedBottom * silhouetteEdge
                     heightFraction = max(
                         bottomFraction + 0.035 * silhouetteEdge,
-                        (sideBottom + sideLimit) * silhouetteEdge
+                        roundedTop * silhouetteEdge
                     )
                 } else {
                     bottomFraction = fallbackBottomFraction(rho: rho, dome: dome, edge: edge)

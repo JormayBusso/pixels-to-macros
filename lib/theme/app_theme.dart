@@ -46,9 +46,9 @@ class AppTheme {
   /// Build a light theme from any [AppColorSeed].
   static ThemeData fromSeed(AppColorSeed seed) {
     final primary = seed.color;
-    final surface = seed.surfaceColor;
     final premium = seed.isPremium;
     final visual = AppVisualTheme.fromSeed(seed);
+    final surface = premium ? visual.background : seed.surfaceColor;
 
     // Compute lighter variants from the seed for borders/fills
     final light100 =
@@ -59,10 +59,12 @@ class AppTheme {
         Color.alphaBlend(primary.withValues(alpha: 0.35), Colors.white);
     final dark700 =
         Color.alphaBlend(Colors.black.withValues(alpha: 0.20), primary);
-    final cardColor = premium ? visual.cardColor : Colors.white;
-    final appBarColor = premium ? visual.appBarColor : Colors.white;
+    final cardColor = visual.cardColor;
+    final appBarColor = visual.appBarColor;
     final appBarForeground = premium ? visual.onDark : gray900;
     final bodyColor = premium ? visual.onSurface : gray900;
+    final accentForeground =
+        premium ? _foregroundFor(visual.primaryAccent) : Colors.white;
 
     final base = ThemeData(
       useMaterial3: true,
@@ -102,19 +104,81 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: cardColor,
         elevation: premium ? 1 : 0,
+        shadowColor: premium ? visual.glowColor.withValues(alpha: 0.22) : null,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(premium ? 18 : 16),
           side: BorderSide(
             color: premium ? visual.borderColor : light100,
+            width: premium ? 1.8 : 1,
           ),
         ),
         margin: EdgeInsets.zero,
       ),
 
+      chipTheme: base.chipTheme.copyWith(
+        backgroundColor: visual.inputFillColor,
+        selectedColor:
+            premium ? visual.primaryAccent.withValues(alpha: 0.20) : light100,
+        disabledColor:
+            premium ? visual.inputFillColor.withValues(alpha: 0.48) : gray100,
+        checkmarkColor: premium ? visual.primaryAccent : dark700,
+        labelStyle: GoogleFonts.inter(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: bodyColor,
+        ),
+        secondaryLabelStyle: GoogleFonts.inter(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: premium ? visual.primaryAccent : dark700,
+        ),
+        side: BorderSide(color: premium ? visual.borderColor : light200),
+        shape: const StadiumBorder(),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+      ),
+
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            final selected = states.contains(WidgetState.selected);
+            if (selected) {
+              return premium
+                  ? visual.primaryAccent.withValues(alpha: 0.22)
+                  : light100;
+            }
+            return visual.inputFillColor;
+          }),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            final selected = states.contains(WidgetState.selected);
+            if (selected) return premium ? visual.primaryAccent : dark700;
+            return premium ? visual.onMuted : gray700;
+          }),
+          side: WidgetStateProperty.resolveWith((states) {
+            final selected = states.contains(WidgetState.selected);
+            return BorderSide(
+              color: selected
+                  ? (premium ? visual.primaryAccent : light400)
+                  : (premium ? visual.borderColor : light200),
+              width: selected ? 1.8 : 1,
+            );
+          }),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          ),
+          textStyle: WidgetStatePropertyAll(
+            GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: premium ? visual.navBarColor : Colors.white,
-        indicatorColor:
-            premium ? visual.primaryAccent.withValues(alpha: 0.18) : light100,
+        indicatorColor: Colors.transparent,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
@@ -146,8 +210,8 @@ class AppTheme {
       // Elevated buttons
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: Colors.white,
+          backgroundColor: premium ? visual.primaryAccent : primary,
+          foregroundColor: accentForeground,
           elevation: 1,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(
@@ -163,8 +227,9 @@ class AppTheme {
       // Outlined buttons
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: dark700,
-          side: BorderSide(color: light200),
+          backgroundColor: premium ? visual.inputFillColor : null,
+          foregroundColor: premium ? visual.primaryAccent : dark700,
+          side: BorderSide(color: premium ? visual.borderColor : light200),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -179,7 +244,7 @@ class AppTheme {
       // Input fields
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: premium ? visual.inputFillColor : Colors.white,
+        fillColor: visual.inputFillColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
@@ -187,8 +252,9 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              BorderSide(color: premium ? visual.borderColor : light200),
+          borderSide: BorderSide(
+              color: premium ? visual.borderColor : light200,
+              width: premium ? 2.0 : 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -203,11 +269,59 @@ class AppTheme {
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
 
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: premium ? visual.cardColor : primary,
+        foregroundColor: premium ? visual.primaryAccent : Colors.white,
+        elevation: premium ? 1 : 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+      ),
+
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: cardColor,
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: cardColor,
+      ),
+
+      dialogTheme: DialogThemeData(
+        backgroundColor: cardColor,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: GoogleFonts.inter(
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+          color: bodyColor,
+        ),
+        contentTextStyle: GoogleFonts.inter(
+          fontSize: 14,
+          color: premium ? visual.onMuted : gray600,
+        ),
+      ),
+
+      dividerTheme: DividerThemeData(
+        color: premium ? visual.borderColor.withValues(alpha: 0.58) : light100,
+      ),
+
+      listTileTheme: ListTileThemeData(
+        textColor: bodyColor,
+        iconColor: premium ? visual.primaryAccent : dark700,
+        subtitleTextStyle: GoogleFonts.inter(
+          fontSize: 12,
+          color: premium ? visual.onMuted : gray500,
+        ),
+      ),
+
       // Embed the vivid seed color so ThemeColors can retrieve it
       extensions: [
         AppColorTheme(seedColor: primary, visual: visual),
       ],
     );
+  }
+
+  static Color _foregroundFor(Color background) {
+    return ThemeData.estimateBrightnessForColor(background) == Brightness.light
+        ? gray900
+        : Colors.white;
   }
 }
 
@@ -240,15 +354,23 @@ class AppVisualTheme {
 
   factory AppVisualTheme.fromSeed(AppColorSeed seed) {
     if (!seed.isPremium) {
+      final card = Color.alphaBlend(
+        seed.color.withValues(alpha: 0.045),
+        Colors.white,
+      );
+      final input = Color.alphaBlend(
+        seed.color.withValues(alpha: 0.035),
+        Colors.white,
+      );
       return AppVisualTheme(
         seed: seed,
         premium: false,
         background: seed.surfaceColor,
         surface: Colors.white,
-        cardColor: Colors.white,
-        appBarColor: Colors.white,
-        navBarColor: Colors.white,
-        inputFillColor: Colors.white,
+        cardColor: card,
+        appBarColor: seed.surfaceColor,
+        navBarColor: card,
+        inputFillColor: input,
         borderColor:
             Color.alphaBlend(seed.color.withValues(alpha: 0.08), Colors.white),
         primaryAccent: seed.color,
@@ -268,79 +390,135 @@ class AppVisualTheme {
         return const AppVisualTheme(
           seed: AppColorSeed.aiAurora,
           premium: true,
-          background: Color(0xFF0B0F17),
-          surface: Color(0xFF111821),
-          cardColor: Color(0xFFF8FAFC),
-          appBarColor: Color(0xFF0B0F17),
-          navBarColor: Color(0xF20E1520),
-          inputFillColor: Color(0xFFFFFFFF),
-          borderColor: Color(0x3322D3EE),
-          primaryAccent: Color(0xFF67E8F9),
-          secondaryAccent: Color(0xFFF0ABFC),
-          glowColor: Color(0x6645F2D1),
-          onSurface: AppTheme.gray900,
+          background: Color(0xFF0C111D),
+          surface: Color(0xFF111827),
+          cardColor: Color(0xFF151B2A),
+          appBarColor: Color(0xFF0C111D),
+          navBarColor: Color(0xF2111725),
+          inputFillColor: Color(0xFF101827),
+          borderColor: Color(0x8874A9FF),
+          primaryAccent: Color(0xFF74A9FF),
+          secondaryAccent: Color(0xFFFF8BD2),
+          glowColor: Color(0x8874A9FF),
+          onSurface: Color(0xFFF8FAFC),
           onDark: Color(0xFFF8FAFC),
-          onMuted: Color(0xFFAAB6C7),
+          onMuted: Color(0xFFB8C5DA),
           gradient: [
-            Color(0xFF22D3EE),
-            Color(0xFF45F2D1),
+            Color(0xFF74A9FF),
+            Color(0xFF9BC8FF),
             Color(0xFFA78BFA),
-            Color(0xFFF0ABFC),
+            Color(0xFFFF8BD2),
+            Color(0xFF9EE7FF),
+            Color(0xFFB8D8FF),
           ],
           motionStyle: AppPremiumMotionStyle.aurora,
-          motionDuration: Duration(seconds: 18),
+          motionDuration: Duration(seconds: 16),
         );
       case AppColorSeed.liquidGlass:
         return const AppVisualTheme(
           seed: AppColorSeed.liquidGlass,
           premium: true,
-          background: Color(0xFF101114),
-          surface: Color(0xFF1A1D22),
-          cardColor: Color(0xF7FFFFFF),
-          appBarColor: Color(0xFF101114),
-          navBarColor: Color(0xF0181B20),
-          inputFillColor: Color(0xFFFFFFFF),
-          borderColor: Color(0x55F8FAFC),
-          primaryAccent: Color(0xFFEAF2FF),
-          secondaryAccent: Color(0xFFB7D8FF),
-          glowColor: Color(0x55F8FAFC),
-          onSurface: AppTheme.gray900,
+          background: Color(0xFF0D0F12),
+          surface: Color(0xFF14171C),
+          cardColor: Color(0xFF181B20),
+          appBarColor: Color(0xFF0D0F12),
+          navBarColor: Color(0xF014171C),
+          inputFillColor: Color(0xFF15181D),
+          borderColor: Color(0x99CDD5DF),
+          primaryAccent: Color(0xFFE5E7EB),
+          secondaryAccent: Color(0xFF9CA3AF),
+          glowColor: Color(0x77CDD5DF),
+          onSurface: Color(0xFFF8FAFC),
           onDark: Color(0xFFFFFFFF),
-          onMuted: Color(0xFFC5CEDA),
+          onMuted: Color(0xFFC7CBD2),
           gradient: [
+            Color(0xFFEEF2F7),
+            Color(0xFFB8C0CC),
+            Color(0xFF6B7280),
             Color(0xFFFFFFFF),
-            Color(0xFFDDE7F3),
-            Color(0xFFB7D8FF),
-            Color(0xFFF8FAFC),
           ],
           motionStyle: AppPremiumMotionStyle.glass,
-          motionDuration: Duration(seconds: 14),
+          motionDuration: Duration(seconds: 8),
         );
-      case AppColorSeed.midnightPulse:
+      case AppColorSeed.geminiAI:
         return const AppVisualTheme(
-          seed: AppColorSeed.midnightPulse,
+          seed: AppColorSeed.geminiAI,
           premium: true,
-          background: Color(0xFF030712),
-          surface: Color(0xFF080D1A),
-          cardColor: Color(0xFFF8FAFC),
-          appBarColor: Color(0xFF030712),
-          navBarColor: Color(0xFF060B17),
-          inputFillColor: Color(0xFFFFFFFF),
-          borderColor: Color(0x334F46E5),
-          primaryAccent: Color(0xFF2563EB),
-          secondaryAccent: Color(0xFF7C3AED),
-          glowColor: Color(0x662563EB),
-          onSurface: AppTheme.gray900,
+          background: Color(0xFF0A1020),
+          surface: Color(0xFF0D172B),
+          cardColor: Color(0xFF101A2F),
+          appBarColor: Color(0xFF0A1020),
+          navBarColor: Color(0xF20D172B),
+          inputFillColor: Color(0xFF0F1B31),
+          borderColor: Color(0x884F8CFF),
+          primaryAccent: Color(0xFF4F8CFF),
+          secondaryAccent: Color(0xFF22D3EE),
+          glowColor: Color(0x774F8CFF),
+          onSurface: Color(0xFFF8FAFC),
           onDark: Color(0xFFF8FAFC),
-          onMuted: Color(0xFF9FB1D1),
+          onMuted: Color(0xFFB4C5E5),
           gradient: [
-            Color(0xFF1D4ED8),
-            Color(0xFF4F46E5),
-            Color(0xFF7C3AED),
+            Color(0xFF4F8CFF),
             Color(0xFF38BDF8),
+            Color(0xFF22D3EE),
+            Color(0xFF60A5FA),
+            Color(0xFF7C3AED),
+            Color(0xFFB8C7FF),
+          ],
+          motionStyle: AppPremiumMotionStyle.aurora,
+          motionDuration: Duration(seconds: 20),
+        );
+      case AppColorSeed.midnightNeon:
+        return const AppVisualTheme(
+          seed: AppColorSeed.midnightNeon,
+          premium: true,
+          background: Color(0xFF020617),
+          surface: Color(0xFF050C1B),
+          cardColor: Color(0xFF071126),
+          appBarColor: Color(0xFF020617),
+          navBarColor: Color(0xF2050C1B),
+          inputFillColor: Color(0xFF061025),
+          borderColor: Color(0x9900E5FF),
+          primaryAccent: Color(0xFF00E5FF),
+          secondaryAccent: Color(0xFFFF2BD6),
+          glowColor: Color(0x8800E5FF),
+          onSurface: Color(0xFFF2FBFF),
+          onDark: Color(0xFFF2FBFF),
+          onMuted: Color(0xFF9CB8D1),
+          gradient: [
+            Color(0xFF00E5FF),
+            Color(0xFF2563EB),
+            Color(0xFFFF2BD6),
+            Color(0xFF7C3AED),
           ],
           motionStyle: AppPremiumMotionStyle.pulse,
-          motionDuration: Duration(seconds: 11),
+          motionDuration: Duration(seconds: 6),
+        );
+      case AppColorSeed.solarFlare:
+        return const AppVisualTheme(
+          seed: AppColorSeed.solarFlare,
+          premium: true,
+          background: Color(0xFF171008),
+          surface: Color(0xFF1D1209),
+          cardColor: Color(0xFF24170C),
+          appBarColor: Color(0xFF171008),
+          navBarColor: Color(0xF01F1308),
+          inputFillColor: Color(0xFF211409),
+          borderColor: Color(0x99FF7A45),
+          primaryAccent: Color(0xFFFF7A45),
+          secondaryAccent: Color(0xFFFACC15),
+          glowColor: Color(0x88FF7A45),
+          onSurface: Color(0xFFFFFAF0),
+          onDark: Color(0xFFFFFAF0),
+          onMuted: Color(0xFFE7CDAF),
+          gradient: [
+            Color(0xFFFF7A45),
+            Color(0xFFFACC15),
+            Color(0xFFFF4F8B),
+            Color(0xFF7C3AED),
+          ],
+          motionStyle: AppPremiumMotionStyle.aurora,
+          motionDuration: Duration(seconds: 7),
         );
       default:
         return AppVisualTheme.fromSeed(AppColorSeed.green);
@@ -403,26 +581,51 @@ extension ThemeColors on BuildContext {
       Theme.of(this).extension<AppColorTheme>()?.visual ??
       AppVisualTheme.fromSeed(AppColorSeed.green);
 
+  bool get isPremiumTheme => visualTheme.premium;
+
+  Color get appSurfaceColor => visualTheme.cardColor;
+
+  Color get appPanelColor =>
+      visualTheme.premium ? visualTheme.surface : visualTheme.background;
+
+  Color get appSubtleFillColor => visualTheme.inputFillColor;
+
+  Color get appBorderColor =>
+      visualTheme.premium ? visualTheme.borderColor : primary100;
+
+  Color get appTextColor =>
+      visualTheme.premium ? visualTheme.onSurface : AppTheme.gray900;
+
+  Color get appMutedTextColor =>
+      visualTheme.premium ? visualTheme.onMuted : AppTheme.gray500;
+
   /// Lightest tint — backgrounds, subtle fills.
-  Color get primary50 =>
-      Color.alphaBlend(_seed.withValues(alpha: 0.04), Colors.white);
-  Color get primary100 =>
-      Color.alphaBlend(_seed.withValues(alpha: 0.10), Colors.white);
-  Color get primary200 =>
-      Color.alphaBlend(_seed.withValues(alpha: 0.20), Colors.white);
-  Color get primary300 =>
-      Color.alphaBlend(_seed.withValues(alpha: 0.35), Colors.white);
+  Color get primary50 => visualTheme.premium
+      ? Color.alphaBlend(_seed.withValues(alpha: 0.08), visualTheme.surface)
+      : Color.alphaBlend(_seed.withValues(alpha: 0.04), Colors.white);
+  Color get primary100 => visualTheme.premium
+      ? Color.alphaBlend(_seed.withValues(alpha: 0.14), visualTheme.surface)
+      : Color.alphaBlend(_seed.withValues(alpha: 0.10), Colors.white);
+  Color get primary200 => visualTheme.premium
+      ? Color.alphaBlend(_seed.withValues(alpha: 0.22), visualTheme.surface)
+      : Color.alphaBlend(_seed.withValues(alpha: 0.20), Colors.white);
+  Color get primary300 => visualTheme.premium
+      ? Color.alphaBlend(_seed.withValues(alpha: 0.32), visualTheme.surface)
+      : Color.alphaBlend(_seed.withValues(alpha: 0.35), Colors.white);
 
   /// Medium shades — icons, badges, active states.
-  Color get primary400 =>
-      Color.alphaBlend(_seed.withValues(alpha: 0.55), Colors.white);
+  Color get primary400 => visualTheme.premium
+      ? Color.alphaBlend(Colors.white.withValues(alpha: 0.16), _seed)
+      : Color.alphaBlend(_seed.withValues(alpha: 0.55), Colors.white);
 
   /// The vivid seed color itself — matches ElevatedButton and Save Changes.
   Color get primary500 => _seed;
 
   /// Darker shades — text, prominent UI.
-  Color get primary600 =>
-      Color.alphaBlend(Colors.black.withValues(alpha: 0.18), _seed);
-  Color get primary700 =>
-      Color.alphaBlend(Colors.black.withValues(alpha: 0.35), _seed);
+  Color get primary600 => visualTheme.premium
+      ? Color.alphaBlend(Colors.white.withValues(alpha: 0.10), _seed)
+      : Color.alphaBlend(Colors.black.withValues(alpha: 0.18), _seed);
+  Color get primary700 => visualTheme.premium
+      ? Color.alphaBlend(Colors.white.withValues(alpha: 0.22), _seed)
+      : Color.alphaBlend(Colors.black.withValues(alpha: 0.35), _seed);
 }

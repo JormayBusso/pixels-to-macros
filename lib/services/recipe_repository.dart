@@ -29,7 +29,13 @@ class RecipeRepository {
   }
 
   Future<List<Recipe>> _load() async {
-    final list = await _loadAssetRecipes('assets/bundled_recipes.json');
+    final scraped = await _loadAssetRecipes('assets/bundled_recipes.json');
+    final byId = <String, Recipe>{};
+    for (final recipe in scraped) {
+      if (recipe.id.isEmpty) continue;
+      byId[recipe.id] = recipe;
+    }
+    final list = byId.values.toList(growable: false);
     _cache = list;
     _inFlight = null;
     return list;
@@ -65,6 +71,7 @@ class RecipeRepository {
     for (final r in list) {
       if (!includeGenerated && r.source.toLowerCase() == 'generated') continue;
       if (goal != null && !_matchesGoal(r, goal)) continue;
+      if (!_hasProfessionalRecipeQuality(r)) continue;
       if (goal != null &&
           strictGoalRules &&
           !_isRecipeEligibleForGoal(r, goal)) {
@@ -106,9 +113,11 @@ class RecipeRepository {
         localized.length < _focusBucketFallbackLimit) {
       final relaxed = <Recipe>[];
       for (final r in list) {
-        if (!includeGenerated && r.source.toLowerCase() == 'generated')
+        if (!includeGenerated && r.source.toLowerCase() == 'generated') {
           continue;
+        }
         if (goal != null && !_matchesGoal(r, goal)) continue;
+        if (!_hasProfessionalRecipeQuality(r)) continue;
         if (mealType != null && r.mealType != mealType) continue;
         if (!_isMealQualityMatch(r, mealType, allowFallbackFillers: true)) {
           continue;
@@ -138,8 +147,9 @@ class RecipeRepository {
         if (localized.length >= _focusBucketFallbackLimit) break;
       }
     }
-    if (limit > 0 && localized.length > limit)
+    if (limit > 0 && localized.length > limit) {
       return localized.sublist(0, limit);
+    }
     return localized;
   }
 
@@ -354,6 +364,40 @@ class RecipeRepository {
       case RecipeMealType.snack:
       case RecipeMealType.dessert:
         return true;
+    }
+  }
+
+  bool _hasProfessionalRecipeQuality(Recipe recipe) {
+    final caloriesPerServing = recipe.caloriesPerServing(recipe.servings);
+    final proteinPerServing = recipe.proteinPerServing(recipe.servings);
+    final carbsPerServing = recipe.carbsPerServing(recipe.servings);
+    final fatPerServing = recipe.fatPerServing(recipe.servings);
+    final hasUsableIngredients =
+        recipe.ingredients.where((ingredient) => ingredient.grams > 0).length >=
+            3;
+    final hasInstructions = recipe.steps.isNotEmpty;
+    final hasImage = (recipe.image ?? '').trim().isNotEmpty;
+
+    if (!hasUsableIngredients || !hasInstructions || !hasImage) return false;
+    if (recipe.servings <= 0 || recipe.servings > 12) return false;
+    if (caloriesPerServing < 120 || caloriesPerServing > 1200) return false;
+    if (proteinPerServing < 2 || carbsPerServing < 0 || fatPerServing < 0) {
+      return false;
+    }
+
+    switch (recipe.mealType) {
+      case RecipeMealType.breakfast:
+        return caloriesPerServing >= 180 && caloriesPerServing <= 900;
+      case RecipeMealType.lunch:
+        // Light salad/bowl lunches (180-250 kcal/serving) are legitimate and
+        // were previously hidden by an over-strict floor; allow them through.
+        return caloriesPerServing >= 180 && caloriesPerServing <= 950;
+      case RecipeMealType.snack:
+        return caloriesPerServing >= 120 && caloriesPerServing <= 550;
+      case RecipeMealType.dinner:
+        return caloriesPerServing >= 250 && caloriesPerServing <= 1200;
+      case RecipeMealType.dessert:
+        return caloriesPerServing >= 120 && caloriesPerServing <= 900;
     }
   }
 

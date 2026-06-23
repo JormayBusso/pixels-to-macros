@@ -12,6 +12,7 @@ import '../../models/insulin_settings.dart';
 import '../../providers/diabetes_provider.dart';
 import '../../services/diabetes/bolus_calculator_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/premium_theme_effects.dart';
 import 'bolus_setup_screen.dart' show kDiabetesBlue;
 
 /// A meal-time bolus *estimate* card.
@@ -81,133 +82,130 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
 
     final isMmol = settings.glucoseUnit.isMmol;
 
-    return Card(
+    return PremiumSurface(
+      // Tier 3 AI-active treatment: the live bolus estimate only renders when
+      // the calculator is fully available (opt-in + survey + consent + review).
+      animate: true,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: kDiabetesBlue, width: 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: const [
-                Icon(Icons.calculate_outlined, color: kDiabetesBlue),
-                SizedBox(width: 8),
-                Text('Bolus estimate',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color: kDiabetesBlue)),
-              ],
+      borderRadius: BorderRadius.circular(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.calculate_outlined, color: kDiabetesBlue),
+              SizedBox(width: 8),
+              Text('Bolus estimate',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: kDiabetesBlue)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            DiabetesSafetyCopy.generalDisclaimer,
+            style:
+                TextStyle(fontSize: 11, color: AppTheme.gray500, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _carbsCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+            ],
+            decoration: const InputDecoration(
+              labelText: 'Meal carbohydrates (g)',
+              border: OutlineInputBorder(),
+              isDense: true,
             ),
-            const SizedBox(height: 4),
-            const Text(
-              DiabetesSafetyCopy.generalDisclaimer,
-              style: TextStyle(fontSize: 11, color: AppTheme.gray500, height: 1.4),
+            onChanged: (_) => _clearResult(),
+          ),
+          const SizedBox(height: 12),
+          if (settings.correctionEnabled) ...[
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: const Text('Add correction for current glucose'),
+              value: _includeCorrection,
+              activeColor: kDiabetesBlue,
+              onChanged: (v) {
+                setState(() {
+                  _includeCorrection = v;
+                  _clearResult();
+                });
+              },
             ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _carbsCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-              ],
-              decoration: const InputDecoration(
-                labelText: 'Meal carbohydrates (g)',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              onChanged: (_) => _clearResult(),
-            ),
-            const SizedBox(height: 12),
-            if (settings.correctionEnabled) ...[
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: const Text('Add correction for current glucose'),
-                value: _includeCorrection,
-                activeColor: kDiabetesBlue,
-                onChanged: (v) {
-                  setState(() {
-                    _includeCorrection = v;
-                    _clearResult();
-                  });
-                },
-              ),
-              if (_includeCorrection)
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _glucoseCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                        ],
-                        decoration: InputDecoration(
-                          labelText:
-                              'Current glucose (${isMmol ? 'mmol/L' : 'mg/dL'})',
-                          border: const OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        onChanged: (_) {
-                          _glucoseReadingAt ??= DateTime.now();
-                          _clearResult();
-                        },
+            if (_includeCorrection)
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _glucoseCtrl,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      ],
+                      decoration: InputDecoration(
+                        labelText:
+                            'Current glucose (${isMmol ? 'mmol/L' : 'mg/dL'})',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () {
-                        setState(() => _glucoseReadingAt = DateTime.now());
+                      onChanged: (_) {
+                        _glucoseReadingAt ??= DateTime.now();
+                        _clearResult();
                       },
-                      child: Text(
-                        _glucoseReadingAt == null
-                            ? 'Set time'
-                            : 'Now (${_fmtTime(_glucoseReadingAt!)})',
-                      ),
                     ),
-                  ],
-                ),
-            ],
-            if (settings.iobEnabled)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: const Text('Subtract insulin-on-board (IOB)'),
-                subtitle: const Text(
-                  'Uses confirmed recent doses you logged.',
-                  style: TextStyle(fontSize: 11),
-                ),
-                value: _includeIob,
-                activeColor: kDiabetesBlue,
-                onChanged: (v) {
-                  setState(() {
-                    _includeIob = v;
-                    _clearResult();
-                  });
-                },
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      setState(() => _glucoseReadingAt = DateTime.now());
+                    },
+                    child: Text(
+                      _glucoseReadingAt == null
+                          ? 'Set time'
+                          : 'Now (${_fmtTime(_glucoseReadingAt!)})',
+                    ),
+                  ),
+                ],
               ),
-            const SizedBox(height: 8),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: kDiabetesBlue,
-                minimumSize: const Size.fromHeight(46),
-              ),
-              onPressed: _calculate,
-              child: const Text('Calculate estimate'),
-            ),
-            if (_result != null) ...[
-              const SizedBox(height: 16),
-              _resultSection(_result!, settings),
-            ],
           ],
-        ),
+          if (settings.iobEnabled)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: const Text('Subtract insulin-on-board (IOB)'),
+              subtitle: const Text(
+                'Uses confirmed recent doses you logged.',
+                style: TextStyle(fontSize: 11),
+              ),
+              value: _includeIob,
+              activeColor: kDiabetesBlue,
+              onChanged: (v) {
+                setState(() {
+                  _includeIob = v;
+                  _clearResult();
+                });
+              },
+            ),
+          const SizedBox(height: 8),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: kDiabetesBlue,
+              minimumSize: const Size.fromHeight(46),
+            ),
+            onPressed: _calculate,
+            child: const Text('Calculate estimate'),
+          ),
+          if (_result != null) ...[
+            const SizedBox(height: 16),
+            _resultSection(_result!, settings),
+          ],
+        ],
       ),
     );
   }
@@ -396,11 +394,13 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
   Widget _breakdownTable(BolusBreakdown b, String unit) {
     String g(double? mgdl) => mgdl == null
         ? '—'
-        : GlucoseConversion.formatForDisplay(mgdl, unitIsMmol: unit == 'mmol/L');
+        : GlucoseConversion.formatForDisplay(mgdl,
+            unitIsMmol: unit == 'mmol/L');
 
     final rows = <(String, String)>[
       ('Meal carbs', '${_fmtUnits(b.mealCarbsG)} g'),
-      if (b.icrUsed != null) ('Insulin-to-carb ratio used', '1u : ${_fmtUnits(b.icrUsed!)} g'),
+      if (b.icrUsed != null)
+        ('Insulin-to-carb ratio used', '1u : ${_fmtUnits(b.icrUsed!)} g'),
       ('Meal component', '${_fmtUnits(b.mealBolusUnits)} u'),
       if (b.currentGlucoseMgdl != null)
         ('Current glucose', '${g(b.currentGlucoseMgdl)} $unit'),
@@ -411,8 +411,10 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
       ('Correction component', '${_fmtUnits(b.correctionUnits)} u'),
       ('Insulin-on-board subtracted', '${_fmtUnits(b.iobUnits)} u'),
       ('Raw total', '${_fmtUnits(b.rawBolusUnits)} u'),
-      ('Rounded (to ${_fmtUnits(b.minIncrement)} u)',
-          '${_fmtUnits(b.roundedBolusUnits)} u'),
+      (
+        'Rounded (to ${_fmtUnits(b.minIncrement)} u)',
+        '${_fmtUnits(b.roundedBolusUnits)} u'
+      ),
       ('Max single bolus', '${_fmtUnits(b.maxSingleBolusUnits)} u'),
       ('Time block', b.timeBlockLabel),
     ];
@@ -428,8 +430,7 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
           const Align(
             alignment: Alignment.centerLeft,
             child: Text('How this was calculated',
-                style: TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 13)),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
           ),
           const SizedBox(height: 8),
           ...rows.map(
@@ -472,8 +473,7 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
               SizedBox(width: 8),
               Text('No estimate shown',
                   style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.red700)),
+                      fontWeight: FontWeight.w800, color: AppTheme.red700)),
             ],
           ),
           const SizedBox(height: 8),
@@ -522,8 +522,7 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
       );
 
   // ── Dose logging ────────────────────────────────────────────────────────────
-  Future<void> _openDoseLog(
-      double estimate, InsulinSettings settings) async {
+  Future<void> _openDoseLog(double estimate, InsulinSettings settings) async {
     // Mark the audit record as user-confirmed (they accepted responsibility).
     if (_lastCalculationId != null) {
       final settingsNow = ref.read(insulinSettingsProvider);
@@ -618,8 +617,7 @@ class _InsulinDoseLogSheetState extends ConsumerState<InsulinDoseLogSheet> {
           const SizedBox(height: 14),
           TextField(
             controller: _unitsCtrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
             ],

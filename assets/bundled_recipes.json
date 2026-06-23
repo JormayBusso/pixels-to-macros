@@ -100467,108 +100467,6 @@
     "source_url": "https://www.bbcgoodfood.com/recipes/nicoise-toasts"
   },
   {
-    "id": "en_tahini_sour_cherry_pancakes_eb15adb229",
-    "language": "EN",
-    "title": "Tahini & sour cherry pancakes",
-    "name": "Tahini & sour cherry pancakes",
-    "image": "",
-    "meal_type": "breakfast",
-    "goals": [
-      "maintain",
-      "vegetarian"
-    ],
-    "time": 30,
-    "minutes": 30,
-    "servings": 6,
-    "ingredients": [
-      {
-        "name": "eggs separated",
-        "amount": "6",
-        "grams": 300.0
-      },
-      {
-        "name": "plain flour",
-        "amount": "220g",
-        "grams": 220.0
-      },
-      {
-        "name": "baking powder",
-        "amount": "2 tsp",
-        "grams": 10.0
-      },
-      {
-        "name": "milk",
-        "amount": "270ml",
-        "grams": 270.0
-      },
-      {
-        "name": "date molasses plus 1 tbsp",
-        "amount": "80g",
-        "grams": 80.0
-      },
-      {
-        "name": "tahini",
-        "amount": "150g",
-        "grams": 150.0
-      },
-      {
-        "name": "butter for frying",
-        "amount": "2 tbsp",
-        "grams": 30.0
-      },
-      {
-        "name": "sour cherries in syrup",
-        "amount": "100g",
-        "grams": 100.0
-      },
-      {
-        "name": "pistachios chopped",
-        "amount": "50g",
-        "grams": 50.0
-      },
-      {
-        "name": "clotted cream",
-        "amount": "100g",
-        "grams": 100.0
-      }
-    ],
-    "instructions": "Whisk the egg yolks with the flour and baking powder in a large bowl, then gradually whisk in the milk and 1 tbsp of date molasses until smooth.\nIn a separate bowl, add the egg whites and a pinch of salt and whisk until soft peaks form. Mix the tahini with the remaining date molasses in a small bowl until combined.\nGently fold the whipped egg whites into the yolk mixture using a spatula.\nHeat a little butter in a frying pan over medium heat. Pour in a ladleful of batter and cook until the edges look set, flip and cook for another minute or two.\nStack the pancakes on a plate and drizzle with the tahini-date syrup. Top with sour cherries, chopped pistachios and a dollop of clotted cream.",
-    "steps": [
-      "Whisk the egg yolks with the flour and baking powder in a large bowl, then gradually whisk in the milk and 1 tbsp of date molasses until smooth.",
-      "In a separate bowl, add the egg whites and a pinch of salt and whisk until soft peaks form. Mix the tahini with the remaining date molasses in a small bowl until combined.",
-      "Gently fold the whipped egg whites into the yolk mixture using a spatula.",
-      "Heat a little butter in a frying pan over medium heat. Pour in a ladleful of batter and cook until the edges look set, flip and cook for another minute or two.",
-      "Stack the pancakes on a plate and drizzle with the tahini-date syrup. Top with sour cherries, chopped pistachios and a dollop of clotted cream."
-    ],
-    "macros": {
-      "calories": 4026,
-      "protein": 114.0,
-      "carbs": 318.0,
-      "fat": 246.0,
-      "fiber": 30.0,
-      "sugar": 126.0
-    },
-    "calories": 4026,
-    "protein_g": 114.0,
-    "carbs_g": 318.0,
-    "fat_g": 246.0,
-    "fiber_g": 30.0,
-    "sugar_g": 126.0,
-    "glycemic_index": 0,
-    "glycemic_load": 0,
-    "insulin_units": 28.8,
-    "tags": [
-      "breakfast",
-      "en",
-      "maintain",
-      "vegetarian"
-    ],
-    "health_score": 51,
-    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
-    "source": "www.bbcgoodfood.com",
-    "source_url": "https://www.bbcgoodfood.com/recipes/tahini-sour-cherry-pancakes"
-  },
-  {
     "id": "en_chunky_mediterranean_fish_soup_a08ed2ffac",
     "language": "EN",
     "title": "Chunky Mediterranean fish soup",
@@ -100981,151 +100879,6 @@
     "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
     "source": "www.chefkoch.de",
     "source_url": "https://www.chefkoch.de/rezepte/1845761298924162/Senfei-so-wie-wir-es-lieben.html"
-  },
-  {
-    "id": "nl_eclairs_maken_3086feb95d",
-    "language": "NL",
-    "title": "Eclairs maken",
-    "name": "Eclairs maken",
-    "image": "",
-    "meal_type": "dinner",
-    "goals": [
-      "maintain",
-      "vegetarian"
-    ],
-    "time": 115,
-    "minutes": 115,
-    "servings": 10,
-    "ingredients": [
-      {
-        "name": "vanillestokje",
-        "amount": "1",
-        "grams": 100.0
-      },
-      {
-        "name": "volle melk",
-        "amount": "400 ml",
-        "grams": 400.0
-      },
-      {
-        "name": "kristalsuiker",
-        "amount": "200 g",
-        "grams": 200.0
-      },
-      {
-        "name": "middelgrote eieren",
-        "amount": "15",
-        "grams": 750.0
-      },
-      {
-        "name": "maizena",
-        "amount": "4 el",
-        "grams": 60.0
-      },
-      {
-        "name": "ongezouten roomboter",
-        "amount": "115 g",
-        "grams": 115.0
-      },
-      {
-        "name": "water",
-        "amount": "100 ml",
-        "grams": 100.0
-      },
-      {
-        "name": "zout",
-        "amount": "0.5 tl",
-        "grams": 2.5
-      },
-      {
-        "name": "kristalsuiker",
-        "amount": "0.5 tl",
-        "grams": 2.5
-      },
-      {
-        "name": "patentbloem",
-        "amount": "100 g",
-        "grams": 100.0
-      },
-      {
-        "name": "poedersuiker",
-        "amount": "2 el",
-        "grams": 30.0
-      },
-      {
-        "name": "pure chocolade",
-        "amount": "125 g",
-        "grams": 125.0
-      },
-      {
-        "name": "honing",
-        "amount": "1 el",
-        "grams": 15.0
-      },
-      {
-        "name": "verse slagroom",
-        "amount": "125 ml",
-        "grams": 125.0
-      }
-    ],
-    "instructions": "Snijd het vanillestokje open en schraap met een mespunt het merg eruit.\nDoe het vanillestokje met het merg, de melk en suiker in een steelpan en breng tegen de kook aan. Zorg ervoor dat de melk niet kookt.\nHoud op laag vuur warm.\nSplits ondertussen de eieren, de eiwitten worden niet gebruikt. Roer de eidooiers en maizena met een garde glad.\nVoeg de suiker toe en roer weer tot een egaal mengsel.\nHaal het vanillestokje uit de pan en giet ca. ¼ van de melk, al roerend met een garde, bij het ei-maizena mengsel.\nSchenk het mengsel terug bij de rest van de melk in de pan, breng langzaam aan de kook en kook in ca. 4 min. op laag vuur tot een crème patissière.\nBlijf continu roeren met de garde, zodat de bodem niet aanbrandt. Haal de crème patissière van het vuur en schenk in een ruime ovenschaal.\nLeg een stuk vershoudfolie rechtstreeks op de crème, zodat er geen vel ontstaat. Laat volledig afkoelen in de koelkast tot gebruik.\nVerwarm de oven voor op 190 °C.\nVerwarm de boter met het water en de rest van de melk in een steelpan en verwarm op middelhoog vuur tot de boter is gesmolten.\nVoeg het zout, de suiker en de bloem toe en roer met een pollepel goed door.\nBlijf 3-4 min. roeren tot je een glanzende deegbal hebt die loskomt van de randen van de pan.\nHaal de pan van het vuur en doe het deeg in de kom van een staande mixer met vlindergarde.\nLaat het deeg 4-5 min. afkoelen, klop af en toe kort door met de vlinder.\nKlop ondertussen de rest van de eieren los en weeg er 135 g van af en in een maatbeker. De rest van het ei wordt niet gebruikt.\nZet de mixer aan op een middellage stand en schenk langzaam het ei erbij. Meng tot het ei helemaal is opgenomen en je een egaal, stevig beslag hebt.\nSchep het beslag in de spuitzak met de gekartelde spuitmond. Leg het bakpapier op een bakplaat en spuit er 10 stroken op van 1-2 cm dik en 8 cm lang.\nZorg voor een paar centimeter tussenruimte, de eclairs worden groter tijdens het bakken.\nDruk met je natte vinger de puntjes die zijn ontstaan tijdens het spuiten, glad.\nBestrooi de eclairs door een theezeefje licht met poedersuiker. Bak ze ca. 25 min. in het midden van de oven.\nMaak de ovendeur tijdens het bakken niet open! Dan is de kans groot dat de eclairs inzakken.\nVerlaag de oventemperatuur naar 170 °C en bak nog ca. 10 min. Haal de eclairs uit de oven.\nPrik in elke eclair een klein gaatje met een scherp mesje zodat de stoom kan ontsnappen. Zo zakken ze minder snel in.\nLaat afkoelen tot kamertemperatuur.\nBreek de chocolade in stukken en doe met de rest van de boter en de honing in een hittebestendige, wijde kom.\nBreng de slagroom aan de kook en schenk over de chocolade. Laat 5 min. staan en roer door met een garde. Mix dan extra glad met een staafmixer.\nRoer de crème patissière los met een garde en doe in de spuitzak met de gladde spuitmond.\nPrik in de onderkant van de eclairs aan beide uiteinden een gaatje waar de spuitmond in past. Vul de eclairs door de 2 gaatjes voorzichtig met de crème.\nDoop de eclairs voorzichtig met de bovenkant in de chocolade.",
-    "steps": [
-      "Snijd het vanillestokje open en schraap met een mespunt het merg eruit.",
-      "Doe het vanillestokje met het merg, de melk en suiker in een steelpan en breng tegen de kook aan. Zorg ervoor dat de melk niet kookt.",
-      "Houd op laag vuur warm.",
-      "Splits ondertussen de eieren, de eiwitten worden niet gebruikt. Roer de eidooiers en maizena met een garde glad.",
-      "Voeg de suiker toe en roer weer tot een egaal mengsel.",
-      "Haal het vanillestokje uit de pan en giet ca. ¼ van de melk, al roerend met een garde, bij het ei-maizena mengsel.",
-      "Schenk het mengsel terug bij de rest van de melk in de pan, breng langzaam aan de kook en kook in ca. 4 min. op laag vuur tot een crème patissière.",
-      "Blijf continu roeren met de garde, zodat de bodem niet aanbrandt. Haal de crème patissière van het vuur en schenk in een ruime ovenschaal.",
-      "Leg een stuk vershoudfolie rechtstreeks op de crème, zodat er geen vel ontstaat. Laat volledig afkoelen in de koelkast tot gebruik.",
-      "Verwarm de oven voor op 190 °C.",
-      "Verwarm de boter met het water en de rest van de melk in een steelpan en verwarm op middelhoog vuur tot de boter is gesmolten.",
-      "Voeg het zout, de suiker en de bloem toe en roer met een pollepel goed door.",
-      "Blijf 3-4 min. roeren tot je een glanzende deegbal hebt die loskomt van de randen van de pan.",
-      "Haal de pan van het vuur en doe het deeg in de kom van een staande mixer met vlindergarde.",
-      "Laat het deeg 4-5 min. afkoelen, klop af en toe kort door met de vlinder.",
-      "Klop ondertussen de rest van de eieren los en weeg er 135 g van af en in een maatbeker. De rest van het ei wordt niet gebruikt.",
-      "Zet de mixer aan op een middellage stand en schenk langzaam het ei erbij. Meng tot het ei helemaal is opgenomen en je een egaal, stevig beslag hebt.",
-      "Schep het beslag in de spuitzak met de gekartelde spuitmond. Leg het bakpapier op een bakplaat en spuit er 10 stroken op van 1-2 cm dik en 8 cm lang.",
-      "Zorg voor een paar centimeter tussenruimte, de eclairs worden groter tijdens het bakken.",
-      "Druk met je natte vinger de puntjes die zijn ontstaan tijdens het spuiten, glad.",
-      "Bestrooi de eclairs door een theezeefje licht met poedersuiker. Bak ze ca. 25 min. in het midden van de oven.",
-      "Maak de ovendeur tijdens het bakken niet open! Dan is de kans groot dat de eclairs inzakken.",
-      "Verlaag de oventemperatuur naar 170 °C en bak nog ca. 10 min. Haal de eclairs uit de oven.",
-      "Prik in elke eclair een klein gaatje met een scherp mesje zodat de stoom kan ontsnappen. Zo zakken ze minder snel in.",
-      "Laat afkoelen tot kamertemperatuur.",
-      "Breek de chocolade in stukken en doe met de rest van de boter en de honing in een hittebestendige, wijde kom.",
-      "Breng de slagroom aan de kook en schenk over de chocolade. Laat 5 min. staan en roer door met een garde. Mix dan extra glad met een staafmixer.",
-      "Roer de crème patissière los met een garde en doe in de spuitzak met de gladde spuitmond.",
-      "Prik in de onderkant van de eclairs aan beide uiteinden een gaatje waar de spuitmond in past. Vul de eclairs door de 2 gaatjes voorzichtig met de crème.",
-      "Doop de eclairs voorzichtig met de bovenkant in de chocolade."
-    ],
-    "macros": {
-      "calories": 4750,
-      "protein": 110.0,
-      "carbs": 420.0,
-      "fat": 290.0
-    },
-    "calories": 4750,
-    "protein_g": 110.0,
-    "carbs_g": 420.0,
-    "fat_g": 290.0,
-    "fiber_g": 0.0,
-    "sugar_g": 0.0,
-    "glycemic_index": 0,
-    "glycemic_load": 0,
-    "insulin_units": 42.0,
-    "tags": [
-      "dinner",
-      "maintain",
-      "nl",
-      "vegetarian"
-    ],
-    "health_score": 63,
-    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
-    "source": "www.ah.nl",
-    "source_url": "https://www.ah.nl/allerhande/recept/R-R1198388/eclairs-maken"
   },
   {
     "id": "en_quick_roast_lamb_23ba889d6b",
@@ -149573,5 +149326,826 @@
     "health_score_reason": "Recipe checked from scraped nutrition data: high protein, plant-based, muscle-friendly macros.",
     "source": "www.chefkoch.de",
     "source_url": "https://www.chefkoch.de/rezepte/63051022929691/Gebratene-Nudeln.html"
+  },
+  {
+    "id": "en_lentil_carrot_ham_salad_6d7dfcba7b",
+    "language": "EN",
+    "title": "Lentil, carrot & ham salad",
+    "name": "Lentil, carrot & ham salad",
+    "image": "assets/images/recipes/en_lentil_carrot_ham_salad_6d7dfcba7b.webp",
+    "meal_type": "lunch",
+    "goals": [
+      "diabetes",
+      "maintain",
+      "weight_loss"
+    ],
+    "time": 10,
+    "minutes": 10,
+    "servings": 2,
+    "ingredients": [
+      {
+        "name": "ham shredded",
+        "amount": "250g",
+        "grams": 250.0
+      },
+      {
+        "name": "can lentil drained",
+        "amount": "400g",
+        "grams": 400.0
+      },
+      {
+        "name": "carrots finely diced",
+        "amount": "2",
+        "grams": 200.0
+      },
+      {
+        "name": "celery sticks, finely diced",
+        "amount": "4",
+        "grams": 400.0
+      },
+      {
+        "name": "handful parsley finely chopped",
+        "amount": "handful parsley finely chopped",
+        "grams": 0.0
+      },
+      {
+        "name": "olive oil",
+        "amount": "2 tbsp",
+        "grams": 30.0
+      },
+      {
+        "name": "red wine vinegar",
+        "amount": "2 tbsp",
+        "grams": 30.0
+      },
+      {
+        "name": "good pinch sugar",
+        "amount": "good pinch sugar",
+        "grams": 0.0
+      },
+      {
+        "name": "wholegrain mustard",
+        "amount": "1 tsp",
+        "grams": 5.0
+      }
+    ],
+    "instructions": "Combine the salad ingredients in a large mixing bowl. To make the dressing, whisk together the ingredients with 1 tbsp water and some seasoning. Pour the dressing over the salad and stir well to combine.",
+    "steps": [
+      "Combine the salad ingredients in a large mixing bowl.",
+      "To make the dressing, whisk together the ingredients with 1 tbsp water and some seasoning.",
+      "Pour the dressing over the salad and stir well to combine."
+    ],
+    "macros": {
+      "calories": 800,
+      "protein": 60.0,
+      "carbs": 48.0,
+      "fat": 38.0,
+      "fiber": 18.0,
+      "sugar": 26.0
+    },
+    "calories": 800,
+    "protein_g": 60.0,
+    "carbs_g": 48.0,
+    "fat_g": 38.0,
+    "fiber_g": 18.0,
+    "sugar_g": 26.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 3.0,
+    "tags": [
+      "diabetes",
+      "en",
+      "lunch",
+      "maintain",
+      "weight_loss"
+    ],
+    "health_score": 92,
+    "health_score_reason": "Recipe checked from scraped nutrition data: high protein, high fiber.",
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/lentil-carrot-ham-salad"
+  },
+  {
+    "id": "en_warm_tuna_lentil_ni_oise_salad_09bf03820e",
+    "language": "EN",
+    "title": "Warm tuna & lentil Niçoise salad",
+    "name": "Warm tuna & lentil Niçoise salad",
+    "image": "assets/images/recipes/en_warm_tuna_lentil_ni_oise_salad_09bf03820e.webp",
+    "meal_type": "lunch",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "muscle",
+      "weight_loss"
+    ],
+    "time": 10,
+    "minutes": 10,
+    "servings": 2,
+    "ingredients": [
+      {
+        "name": "medium eggs",
+        "amount": "2",
+        "grams": 100.0
+      },
+      {
+        "name": "pouch puy lentils",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "1pack mixed olive & veg antipasti",
+        "amount": "1pack mixed olive & veg antipasti",
+        "grams": 0.0
+      },
+      {
+        "name": "can or jar tuna in olive oil",
+        "amount": "160g",
+        "grams": 160.0
+      }
+    ],
+    "instructions": "Cook the eggs in a pan of boiling water for 7 mins, then set aside in cold water. Tip the lentils into a saucepan and gently warm. Stir through the mixed antipasti in their oil, along with the tuna in large flakes. Season to taste. Gently peel the eggs and slice them in half. Spoon the warm lentils into bowls and top each one with the halved eggs and black pepper.",
+    "steps": [
+      "Cook the eggs in a pan of boiling water for 7 mins, then set aside in cold water.",
+      "Tip the lentils into a saucepan and gently warm.",
+      "Stir through the mixed antipasti in their oil, along with the tuna in large flakes.",
+      "Season to taste.",
+      "Gently peel the eggs and slice them in half.",
+      "Spoon the warm lentils into bowls and top each one with the halved eggs and black pepper."
+    ],
+    "macros": {
+      "calories": 1108,
+      "protein": 72.0,
+      "carbs": 62.0,
+      "fat": 58.0,
+      "fiber": 22.0,
+      "sugar": 6.0
+    },
+    "calories": 1108,
+    "protein_g": 72.0,
+    "carbs_g": 62.0,
+    "fat_g": 58.0,
+    "fiber_g": 22.0,
+    "sugar_g": 6.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 4.0,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "lunch",
+      "maintain",
+      "muscle",
+      "weight_loss"
+    ],
+    "health_score": 92,
+    "health_score_reason": "Recipe checked from scraped nutrition data: high protein, high fiber, muscle-friendly macros.",
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/warm-tuna-lentil-nicoise-salad"
+  },
+  {
+    "id": "en_tahini_sour_cherry_pancakes_eb15adb229",
+    "language": "EN",
+    "title": "Tahini & sour cherry pancakes",
+    "name": "Tahini & sour cherry pancakes",
+    "image": "assets/images/recipes/en_tahini_sour_cherry_pancakes_eb15adb229.webp",
+    "meal_type": "breakfast",
+    "goals": [
+      "maintain",
+      "vegetarian"
+    ],
+    "time": 30,
+    "minutes": 30,
+    "servings": 6,
+    "ingredients": [
+      {
+        "name": "eggs separated",
+        "amount": "6",
+        "grams": 300.0
+      },
+      {
+        "name": "plain flour",
+        "amount": "220g",
+        "grams": 220.0
+      },
+      {
+        "name": "baking powder",
+        "amount": "2 tsp",
+        "grams": 10.0
+      },
+      {
+        "name": "milk",
+        "amount": "270ml",
+        "grams": 270.0
+      },
+      {
+        "name": "date molasses plus 1 tbsp",
+        "amount": "80g",
+        "grams": 80.0
+      },
+      {
+        "name": "tahini",
+        "amount": "150g",
+        "grams": 150.0
+      },
+      {
+        "name": "butter for frying",
+        "amount": "2 tbsp",
+        "grams": 30.0
+      },
+      {
+        "name": "sour cherries in syrup",
+        "amount": "100g",
+        "grams": 100.0
+      },
+      {
+        "name": "pistachios chopped",
+        "amount": "50g",
+        "grams": 50.0
+      },
+      {
+        "name": "clotted cream",
+        "amount": "100g",
+        "grams": 100.0
+      }
+    ],
+    "instructions": "Whisk the egg yolks with the flour and baking powder in a large bowl, then gradually whisk in the milk and 1 tbsp of date molasses until smooth.\nIn a separate bowl, add the egg whites and a pinch of salt and whisk until soft peaks form. Mix the tahini with the remaining date molasses in a small bowl until combined.\nGently fold the whipped egg whites into the yolk mixture using a spatula.\nHeat a little butter in a frying pan over medium heat. Pour in a ladleful of batter and cook until the edges look set, flip and cook for another minute or two.\nStack the pancakes on a plate and drizzle with the tahini-date syrup. Top with sour cherries, chopped pistachios and a dollop of clotted cream.",
+    "steps": [
+      "Whisk the egg yolks with the flour and baking powder in a large bowl, then gradually whisk in the milk and 1 tbsp of date molasses until smooth.",
+      "In a separate bowl, add the egg whites and a pinch of salt and whisk until soft peaks form. Mix the tahini with the remaining date molasses in a small bowl until combined.",
+      "Gently fold the whipped egg whites into the yolk mixture using a spatula.",
+      "Heat a little butter in a frying pan over medium heat. Pour in a ladleful of batter and cook until the edges look set, flip and cook for another minute or two.",
+      "Stack the pancakes on a plate and drizzle with the tahini-date syrup. Top with sour cherries, chopped pistachios and a dollop of clotted cream."
+    ],
+    "macros": {
+      "calories": 4026,
+      "protein": 114.0,
+      "carbs": 318.0,
+      "fat": 246.0,
+      "fiber": 30.0,
+      "sugar": 126.0
+    },
+    "calories": 4026,
+    "protein_g": 114.0,
+    "carbs_g": 318.0,
+    "fat_g": 246.0,
+    "fiber_g": 30.0,
+    "sugar_g": 126.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 28.8,
+    "tags": [
+      "breakfast",
+      "en",
+      "maintain",
+      "vegetarian"
+    ],
+    "health_score": 51,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/tahini-sour-cherry-pancakes"
+  },
+  {
+    "id": "en_falafel_lunchbox_9be56030fe",
+    "language": "EN",
+    "title": "Falafel lunchbox",
+    "name": "Falafel lunchbox",
+    "image": "assets/images/recipes/en_falafel_lunchbox_9be56030fe.webp",
+    "meal_type": "lunch",
+    "goals": [
+      "maintain",
+      "vegan",
+      "vegetarian",
+      "weight_loss"
+    ],
+    "time": 10,
+    "minutes": 10,
+    "servings": 3,
+    "ingredients": [
+      {
+        "name": "pouch cooked grains or lentils (we used red & white quinoa)",
+        "amount": "250g",
+        "grams": 250.0
+      },
+      {
+        "name": "handful of baby spinach",
+        "amount": "handful of baby spinach",
+        "grams": 0.0
+      },
+      {
+        "name": "¼ cucumber chopped",
+        "amount": "¼ cucumber chopped",
+        "grams": 0.0
+      },
+      {
+        "name": "handful of cherry tomatoes halved",
+        "amount": "handful of cherry tomatoes halved",
+        "grams": 0.0
+      },
+      {
+        "name": "carrots grated",
+        "amount": "2",
+        "grams": 200.0
+      },
+      {
+        "name": "pomegranate seeds only",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "olives (optional)",
+        "amount": "10",
+        "grams": 1000.0
+      },
+      {
+        "name": "falafel",
+        "amount": "12",
+        "grams": 1200.0
+      },
+      {
+        "name": "hummus",
+        "amount": "4 tbsp",
+        "grams": 60.0
+      },
+      {
+        "name": "drizzle of olive oil (optional)",
+        "amount": "drizzle of olive oil (optional)",
+        "grams": 0.0
+      },
+      {
+        "name": "½ lemon quartered",
+        "amount": "½ lemon quartered",
+        "grams": 0.0
+      }
+    ],
+    "instructions": "Divide the grains between the lunchboxes. Top each one with the vegetables, falafel, a spoonful of hummus and a drizzle of oil, if using, or divide the ingredients between the compartments of a bento-style lunchbox. Put a lemon in each box for squeezing over just before eating.",
+    "steps": [
+      "Divide the grains between the lunchboxes.",
+      "Top each one with the vegetables, falafel, a spoonful of hummus and a drizzle of oil, if using, or divide the ingredients between the compartments of a bento-style lunchbox.",
+      "Put a lemon in each box for squeezing over just before eating."
+    ],
+    "macros": {
+      "calories": 1500,
+      "protein": 57.0,
+      "carbs": 183.0,
+      "fat": 48.0,
+      "fiber": 48.0,
+      "sugar": 45.0
+    },
+    "calories": 1500,
+    "protein_g": 57.0,
+    "carbs_g": 183.0,
+    "fat_g": 48.0,
+    "fiber_g": 48.0,
+    "sugar_g": 45.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 13.5,
+    "tags": [
+      "en",
+      "lunch",
+      "maintain",
+      "vegan",
+      "vegetarian",
+      "weight_loss"
+    ],
+    "health_score": 86,
+    "health_score_reason": "Recipe checked from scraped nutrition data: high fiber, plant-based.",
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/falafel-lunchbox"
+  },
+  {
+    "id": "en_new_potato_tuna_salad_b435f2dfd2",
+    "language": "EN",
+    "title": "New potato & tuna salad",
+    "name": "New potato & tuna salad",
+    "image": "assets/images/recipes/en_new_potato_tuna_salad_b435f2dfd2.webp",
+    "meal_type": "lunch",
+    "goals": [
+      "diabetes",
+      "maintain",
+      "weight_loss"
+    ],
+    "time": 30,
+    "minutes": 30,
+    "servings": 4,
+    "ingredients": [
+      {
+        "name": "new potato",
+        "amount": "350g",
+        "grams": 350.0
+      },
+      {
+        "name": "anchovies",
+        "amount": "4",
+        "grams": 400.0
+      },
+      {
+        "name": "mayonnaise (reduced fat is fine)",
+        "amount": "4 tbsp",
+        "grams": 60.0
+      },
+      {
+        "name": "splash white wine vinegar or juice 1 lemon",
+        "amount": "splash white wine vinegar or juice 1 lemon",
+        "grams": 0.0
+      },
+      {
+        "name": "large Cos lettuce",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "bunch spring onions",
+        "amount": "bunch spring onions",
+        "grams": 0.0
+      },
+      {
+        "name": "x 185g can tuna steaks in brine or oil",
+        "amount": "2",
+        "grams": 200.0
+      }
+    ],
+    "instructions": "Boil potatoes for 15 mins or until tender. Drain and cool under cold water. Meanwhile, make the dressing by mashing anchovies with the mayonnaise. Add the white wine vinegar or lemon juice and season to taste with black pepper. Tear the leaves from the lettuce into a large bowl. Chop spring onions and tip them in. Slice the potatoes and add to the bowl, then drain the tuna and flake into the bowl. Drizzle the dressing over and serve.",
+    "steps": [
+      "Boil potatoes for 15 mins or until tender.",
+      "Drain and cool under cold water.",
+      "Meanwhile, make the dressing by mashing anchovies with the mayonnaise.",
+      "Add the white wine vinegar or lemon juice and season to taste with black pepper.",
+      "Tear the leaves from the lettuce into a large bowl.",
+      "Chop spring onions and tip them in.",
+      "Slice the potatoes and add to the bowl, then drain the tuna and flake into the bowl.",
+      "Drizzle the dressing over and serve."
+    ],
+    "macros": {
+      "calories": 1036,
+      "protein": 84.0,
+      "carbs": 64.0,
+      "fat": 52.0,
+      "fiber": 7.2,
+      "sugar": 11.2
+    },
+    "calories": 1036,
+    "protein_g": 84.0,
+    "carbs_g": 64.0,
+    "fat_g": 52.0,
+    "fiber_g": 7.2,
+    "sugar_g": 11.2,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 5.7,
+    "tags": [
+      "diabetes",
+      "en",
+      "lunch",
+      "maintain",
+      "weight_loss"
+    ],
+    "health_score": 76,
+    "health_score_reason": "Recipe checked from scraped nutrition data: balanced everyday macros.",
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/new-potato-tuna-salad"
+  },
+  {
+    "id": "en_ploughman_s_sandwich_13409ad2b8",
+    "language": "EN",
+    "title": "Ploughman’s sandwich",
+    "name": "Ploughman’s sandwich",
+    "image": "assets/images/recipes/en_ploughman_s_sandwich_13409ad2b8.webp",
+    "meal_type": "lunch",
+    "goals": [
+      "maintain"
+    ],
+    "time": 10,
+    "minutes": 10,
+    "servings": 2,
+    "ingredients": [
+      {
+        "name": "medium baguette",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "mayo",
+        "amount": "2 tbsp",
+        "grams": 30.0
+      },
+      {
+        "name": "heaped tsp wholegrain mustard",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "½ small Braeburn apple",
+        "amount": "½ small Braeburn apple",
+        "grams": 0.0
+      },
+      {
+        "name": "slices smoked ham",
+        "amount": "3",
+        "grams": 90.0
+      },
+      {
+        "name": "cheddar sliced",
+        "amount": "50g",
+        "grams": 50.0
+      },
+      {
+        "name": "pickle or chutney",
+        "amount": "2 tbsp",
+        "grams": 30.0
+      },
+      {
+        "name": "handful of rocket",
+        "amount": "handful of rocket",
+        "grams": 0.0
+      }
+    ],
+    "instructions": "Slice the baguette in half lengthways. Mix the mayo with the mustard and cut the apple into thin slices. Spread the mayo mixture over the baguette base, then lay on the ham, cheese, apple and the pickle or chutney. Finish with the rocket and the baguette top, then cut in half.",
+    "steps": [
+      "Slice the baguette in half lengthways.",
+      "Mix the mayo with the mustard and cut the apple into thin slices.",
+      "Spread the mayo mixture over the baguette base, then lay on the ham, cheese, apple and the pickle or chutney.",
+      "Finish with the rocket and the baguette top, then cut in half."
+    ],
+    "macros": {
+      "calories": 1340,
+      "protein": 46.0,
+      "carbs": 128.0,
+      "fat": 70.0,
+      "fiber": 8.0,
+      "sugar": 20.0
+    },
+    "calories": 1340,
+    "protein_g": 46.0,
+    "carbs_g": 128.0,
+    "fat_g": 70.0,
+    "fiber_g": 8.0,
+    "sugar_g": 20.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 12.0,
+    "tags": [
+      "en",
+      "lunch",
+      "maintain"
+    ],
+    "health_score": 63,
+    "health_score_reason": "Recipe checked from scraped nutrition data: balanced everyday macros.",
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/ploughmans-sandwich"
+  },
+  {
+    "id": "en_chorizo_potato_cheese_omelette_68339651b9",
+    "language": "EN",
+    "title": "Chorizo, potato & cheese omelette",
+    "name": "Chorizo, potato & cheese omelette",
+    "image": "assets/images/recipes/en_chorizo_potato_cheese_omelette_68339651b9.webp",
+    "meal_type": "breakfast",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "muscle"
+    ],
+    "time": 28,
+    "minutes": 28,
+    "servings": 1,
+    "ingredients": [
+      {
+        "name": "small potato cut into 2cm dice",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "olive oil",
+        "amount": "1 tsp",
+        "grams": 5.0
+      },
+      {
+        "name": "chorizo chopped",
+        "amount": "50g",
+        "grams": 50.0
+      },
+      {
+        "name": "3 eggs",
+        "amount": "2",
+        "grams": 100.0
+      },
+      {
+        "name": "chopped parsley",
+        "amount": "chopped parsley",
+        "grams": 0.0
+      },
+      {
+        "name": "grated cheddar",
+        "amount": "25g",
+        "grams": 25.0
+      }
+    ],
+    "instructions": "Cook the potato in boiling water for 8-10 mins or until tender. Drain and allow to steam-dry. Heat oil in an omelette pan, add chorizo and cook for 2 mins. Add the potato and cook for a further 5 mins until the potato starts to crisp. Spoon pan contents out, wipe pan and cook a 2 or 3-egg omelette in the same pan. When almost cooked, scatter with the chorizo and potato, parsley and cheese. Fold the omelette in the pan and cook for 1 min more to melt the cheese.",
+    "steps": [
+      "Cook the potato in boiling water for 8-10 mins or until tender.",
+      "Drain and allow to steam-dry.",
+      "Heat oil in an omelette pan, add chorizo and cook for 2 mins.",
+      "Add the potato and cook for a further 5 mins until the potato starts to crisp.",
+      "Spoon pan contents out, wipe pan and cook a 2 or 3-egg omelette in the same pan.",
+      "When almost cooked, scatter with the chorizo and potato, parsley and cheese.",
+      "Fold the omelette in the pan and cook for 1 min more to melt the cheese."
+    ],
+    "macros": {
+      "calories": 602,
+      "protein": 36.0,
+      "carbs": 15.0,
+      "fat": 44.0,
+      "fiber": 1.0,
+      "sugar": 2.0
+    },
+    "calories": 602,
+    "protein_g": 36.0,
+    "carbs_g": 15.0,
+    "fat_g": 44.0,
+    "fiber_g": 1.0,
+    "sugar_g": 2.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 1.4,
+    "tags": [
+      "breakfast",
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "muscle"
+    ],
+    "health_score": 82,
+    "health_score_reason": "Recipe checked from scraped nutrition data: high protein, muscle-friendly macros.",
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/chorizo-potato-cheese-omelette"
+  },
+  {
+    "id": "en_carrot_orange_avocado_salad_8af4d5ed05",
+    "language": "EN",
+    "title": "Carrot, orange & avocado salad",
+    "name": "Carrot, orange & avocado salad",
+    "image": "assets/images/recipes/en_carrot_orange_avocado_salad_8af4d5ed05.webp",
+    "meal_type": "lunch",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegan",
+      "vegetarian"
+    ],
+    "time": 10,
+    "minutes": 10,
+    "servings": 4,
+    "ingredients": [
+      {
+        "name": "oranges plus zest and juice of 1",
+        "amount": "2",
+        "grams": 200.0
+      },
+      {
+        "name": "carrots halved lengthways and sliced with a peeler",
+        "amount": "3",
+        "grams": 90.0
+      },
+      {
+        "name": "bag rocket",
+        "amount": "70g",
+        "grams": 70.0
+      },
+      {
+        "name": "avocados stoned, peeled and sliced",
+        "amount": "2",
+        "grams": 60.0
+      },
+      {
+        "name": "olive oil",
+        "amount": "1 tbsp",
+        "grams": 15.0
+      }
+    ],
+    "instructions": "Cut the segments from 2 of the oranges and put in a bowl with the carrots, rocket and avocados. Whisk together the orange juice, zest and oil. Toss through the salad, and season.",
+    "steps": [
+      "Cut the segments from 2 of the oranges and put in a bowl with the carrots, rocket and avocados.",
+      "Whisk together the orange juice, zest and oil.",
+      "Toss through the salad, and season."
+    ],
+    "macros": {
+      "calories": 812,
+      "protein": 8.0,
+      "carbs": 40.0,
+      "fat": 68.0,
+      "fiber": 24.0,
+      "sugar": 32.0
+    },
+    "calories": 812,
+    "protein_g": 8.0,
+    "carbs_g": 40.0,
+    "fat_g": 68.0,
+    "fiber_g": 24.0,
+    "sugar_g": 32.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 1.6,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "lunch",
+      "maintain",
+      "vegan",
+      "vegetarian"
+    ],
+    "health_score": 78,
+    "health_score_reason": "Recipe checked from scraped nutrition data: high fiber, plant-based.",
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/carrot-orange-avocado-salad"
+  },
+  {
+    "id": "en_watermelon_feta_salad_32fde4ebb1",
+    "language": "EN",
+    "title": "Watermelon & feta salad",
+    "name": "Watermelon & feta salad",
+    "image": "assets/images/recipes/en_watermelon_feta_salad_32fde4ebb1.webp",
+    "meal_type": "lunch",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegetarian"
+    ],
+    "time": 5,
+    "minutes": 5,
+    "servings": 2,
+    "ingredients": [
+      {
+        "name": "watermelon",
+        "amount": "180g",
+        "grams": 180.0
+      },
+      {
+        "name": "½ cucumber",
+        "amount": "½ cucumber",
+        "grams": 0.0
+      },
+      {
+        "name": "½ bunch mint",
+        "amount": "½ bunch mint",
+        "grams": 0.0
+      },
+      {
+        "name": "olive oil",
+        "amount": "1 tbsp",
+        "grams": 15.0
+      },
+      {
+        "name": "feta",
+        "amount": "100g",
+        "grams": 100.0
+      },
+      {
+        "name": "balsamic glaze",
+        "amount": "1 tbsp",
+        "grams": 15.0
+      }
+    ],
+    "instructions": "Chop 180g watermelon and ½ cucumber into chunks and tip into a bowl with the leaves from ½ bunch mint (reserving a few for garnish) and drizzle with 1 tbsp olive oil. Season and pile on to a serving plate. Crumble over 100g feta, the remaining mint leaves, then drizzle with 1 tbsp balsamic glaze just before serving.",
+    "steps": [
+      "Chop 180g watermelon and ½ cucumber into chunks and tip into a bowl with the leaves from ½ bunch mint (reserving a few for garnish) and drizzle with 1 tbsp olive oil.",
+      "Season and pile on to a serving plate.",
+      "Crumble over 100g feta, the remaining mint leaves, then drizzle with 1 tbsp balsamic glaze just before serving."
+    ],
+    "macros": {
+      "calories": 472,
+      "protein": 18.0,
+      "carbs": 24.0,
+      "fat": 32.0,
+      "fiber": 2.0,
+      "sugar": 24.0
+    },
+    "calories": 472,
+    "protein_g": 18.0,
+    "carbs_g": 24.0,
+    "fat_g": 32.0,
+    "fiber_g": 2.0,
+    "sugar_g": 24.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 2.2,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "lunch",
+      "maintain",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/watermelon-feta-salad"
   }
 ]

@@ -59,6 +59,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   ScanResult? _savedScanResult;
   List<DetectedFood> _buildPreviewFoods = const [];
   bool _launched3DViewer = false;
+  bool _orientationReady = false;
   int? _sessionGeneration; // generation counter for safe stop()
 
   /// Flashlight (torch) state and ambient light (lux) for low-light warning.
@@ -142,26 +143,46 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     } catch (_) {}
   }
 
+  Future<void> _closeScan() async {
+    _isInferenceRunning = false;
+    await _restorePortrait();
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
   String? _sessionErrorDetail; // actual error text for UI
 
   /// Force the app into landscape for the duration of the scan sweep so the
   /// user clearly knows to hold the phone sideways.
-  void _lockLandscape() {
-    SystemChrome.setPreferredOrientations(const [
+  Future<void> _lockLandscape() async {
+    if (mounted && _orientationReady) {
+      setState(() => _orientationReady = false);
+    }
+    await SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+    await WidgetsBinding.instance.endOfFrame;
+    if (mounted) {
+      setState(() => _orientationReady = true);
+    }
   }
 
   /// Restore portrait the moment the sweep finishes / the screen is left.
-  void _restorePortrait() {
-    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+  Future<void> _restorePortrait() async {
+    if (mounted && _orientationReady) {
+      setState(() => _orientationReady = false);
+    }
+    await SystemChrome.setPreferredOrientations(
+        const [DeviceOrientation.portraitUp]);
+    await WidgetsBinding.instance.endOfFrame;
   }
 
   Future<void> _startSession() async {
     // The scan runs in landscape — (re)apply the lock on every session start
     // (initial open and retry).
-    _lockLandscape();
+    await _lockLandscape();
+    if (!mounted) return;
     // Stop any previous session, using the generation counter so only
     // the correct session is stopped.
     try {
@@ -285,7 +306,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       _bridge.stopSession(generation: _sessionGeneration);
     } catch (_) {}
     // Restore portrait for the rest of the app after leaving the scan flow.
-    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+    unawaited(SystemChrome.setPreferredOrientations(
+      const [DeviceOrientation.portraitUp],
+    ));
     super.dispose();
   }
 
@@ -448,7 +471,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
     // Both photos captured → snap back to portrait while the (hidden-preview)
     // reconstruction runs, per the scan UX contract.
-    _restorePortrait();
+    await _restorePortrait();
+    if (!mounted) return;
     setState(() {
       _capturing = false;
       _isInferenceRunning = true;
@@ -608,24 +632,28 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         }
       }
       DebugLog.instance.log('Scan', 'Result saved to history');
-      _launch3DViewer(model3dPath, model3dObjects);
+      await _launch3DViewer(model3dPath, model3dObjects);
     } catch (e) {
       DebugLog.instance.log('Scan', 'Save result error: $e');
       rethrow;
     }
   }
 
-  void _launch3DViewer(String path, List<Scan3DObject> objects) {
+  Future<void> _launch3DViewer(String path, List<Scan3DObject> objects) async {
     if (_launched3DViewer || !mounted) return;
     _launched3DViewer = true;
+    await _restorePortrait();
+    if (!mounted) return;
     debugPrint('[SCAN] launching Scan3DViewer');
     DebugLog.instance.log('Scan3D', 'launching Scan3DViewer: $path');
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => Scan3DViewerScreen(
-          modelPath: path,
-          objects: objects,
-          scanId: _savedScanResult?.id,
+    unawaited(
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => Scan3DViewerScreen(
+            modelPath: path,
+            objects: objects,
+            scanId: _savedScanResult?.id,
+          ),
         ),
       ),
     );
@@ -684,7 +712,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           // Hide the platform view during inference/done so Flutter widgets
           // (close button, cancel) can receive touches unobstructed.
           // ARKit inference runs on a background Swift thread independently.
-          if (!isProcessing)
+          if (_orientationReady && _sessionStarted && !isProcessing)
             const Positioned.fill(
               child: UiKitView(viewType: 'com.pixelstomacros/ar_camera'),
             )
@@ -692,7 +720,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             const Positioned.fill(child: ColoredBox(color: Colors.black)),
 
           // ── Guided dual-photo capture overlay ────────────────────────
-          if (_isCaptureState(scanState))
+          if (_orientationReady &&
+              _sessionStarted &&
+              _isCaptureState(scanState))
             Positioned.fill(
               child: DualPhotoCaptureOverlay(
                 scanState: scanState,
@@ -737,10 +767,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                   depthMode: _detectedDepthMode,
                   timings: PerfMonitor.instance.allTimings,
                   onRetry: _retry,
-                  onClose: () {
-                    _isInferenceRunning = false;
-                    Navigator.of(context).pop();
-                  },
+                  onClose: () => unawaited(_closeScan()),
                   onViewDetails: _savedScanResult != null
                       ? () {
                           Navigator.of(context).pushReplacement(
@@ -763,10 +790,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               color: Colors.transparent,
               child: IconButton(
                 icon: const Icon(Icons.close, color: Colors.white70, size: 28),
-                onPressed: () {
-                  _isInferenceRunning = false;
-                  Navigator.of(context).pop();
-                },
+                onPressed: () => unawaited(_closeScan()),
               ),
             ),
           ),
@@ -1196,6 +1220,7 @@ class _ProcessingIndicator extends StatelessWidget {
       children: [
         PremiumFocusRing(
           enabled: visualTheme.premium,
+          animate: visualTheme.premium,
           radius: 28,
           padding: const EdgeInsets.all(3),
           child: SizedBox(

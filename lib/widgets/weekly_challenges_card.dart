@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/challenge_provider.dart';
 import '../theme/app_theme.dart';
+import 'premium_theme_effects.dart';
 
 /// Compact card showing this week's 3 challenges with progress.
 class WeeklyChallengesCard extends ConsumerWidget {
@@ -15,19 +16,8 @@ class WeeklyChallengesCard extends ConsumerWidget {
 
     final completed = state.completedCount();
 
-    return Container(
+    return PremiumSurface(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -45,8 +35,7 @@ class WeeklyChallengesCard extends ConsumerWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: completed == state.activeChallenges.length
                       ? Colors.green.withValues(alpha: 0.12)
@@ -88,7 +77,9 @@ class WeeklyChallengesCard extends ConsumerWidget {
                             fontWeight: FontWeight.w700,
                             decoration:
                                 done ? TextDecoration.lineThrough : null,
-                            color: done ? AppTheme.gray400 : AppTheme.gray800,
+                            color: done
+                                ? context.appMutedTextColor
+                                : context.appTextColor,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -97,7 +88,7 @@ class WeeklyChallengesCard extends ConsumerWidget {
                           child: LinearProgressIndicator(
                             value: pct,
                             minHeight: 4,
-                            backgroundColor: AppTheme.gray100,
+                            backgroundColor: context.appSubtleFillColor,
                             color: done ? Colors.green : context.primary500,
                           ),
                         ),
@@ -110,7 +101,7 @@ class WeeklyChallengesCard extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: done ? Colors.green : AppTheme.gray500,
+                      color: done ? Colors.green : context.appMutedTextColor,
                     ),
                   ),
                 ],
@@ -137,7 +128,7 @@ class StreakFreezeIndicator extends ConsumerWidget {
         decoration: BoxDecoration(
           color: freeze.remaining > 0
               ? Colors.blue.withValues(alpha: 0.10)
-              : AppTheme.gray100,
+              : context.appSubtleFillColor,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(

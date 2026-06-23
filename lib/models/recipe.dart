@@ -241,6 +241,13 @@ class Recipe {
     final rawHealthReason = j['health_score_reason'] ?? j['healthScoreReason'];
     final macros = (j['macros'] as Map?) ?? const {};
     final language = (j['language'] as String?)?.trim().toLowerCase();
+    final proteinG =
+        ((j['protein_g'] ?? macros['protein']) as num?)?.toDouble() ?? 0;
+    final carbsG = ((j['carbs_g'] ?? macros['carbs']) as num?)?.toDouble() ?? 0;
+    final fatG = ((j['fat_g'] ?? macros['fat']) as num?)?.toDouble() ?? 0;
+    final computedCalories = (proteinG * 4 + carbsG * 4 + fatG * 9).round();
+    final rawCalories =
+        ((j['calories'] ?? macros['calories']) as num?)?.toInt();
     final parsedGoals =
         goalsRaw.map(_goalFromKey).whereType<NutritionGoalType>().toSet();
     final rawIngredients = (j['ingredients'] as List?) ?? const [];
@@ -272,11 +279,10 @@ class Recipe {
       goals: parsedGoals.isEmpty ? {NutritionGoalType.maintain} : parsedGoals,
       minutes: ((j['minutes'] ?? j['time']) as num?)?.toInt() ?? 30,
       servings: (j['servings'] as num?)?.toInt() ?? 1,
-      calories: ((j['calories'] ?? macros['calories']) as num?)?.toInt() ?? 0,
-      proteinG:
-          ((j['protein_g'] ?? macros['protein']) as num?)?.toDouble() ?? 0,
-      carbsG: ((j['carbs_g'] ?? macros['carbs']) as num?)?.toDouble() ?? 0,
-      fatG: ((j['fat_g'] ?? macros['fat']) as num?)?.toDouble() ?? 0,
+      calories: rawCalories ?? computedCalories,
+      proteinG: proteinG,
+      carbsG: carbsG,
+      fatG: fatG,
       fiberG: ((j['fiber_g'] ?? macros['fiber']) as num?)?.toDouble() ?? 0,
       sugarG: ((j['sugar_g'] ?? macros['sugar']) as num?)?.toDouble() ?? 0,
       vitaminAUg: (j['vitamin_a_ug'] as num?)?.toDouble() ?? 0,
