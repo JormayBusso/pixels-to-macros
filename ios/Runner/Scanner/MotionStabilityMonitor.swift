@@ -25,9 +25,10 @@ final class MotionStabilityMonitor {
 
     /// Motion magnitude (combined units) at/above which the device is treated
     /// as "moving" → stability 0. Holding a phone still reads well under 0.05;
-    /// a deliberate reframing move reads 0.4–2.0. 0.22 gives a responsive yet
-    /// forgiving "hold steady" gate.
-    private let motionCeiling: Double = 0.22
+    /// natural hand tremor during a macro shot is often 0.08–0.22, while a
+    /// deliberate reframing move reads 0.4–2.0. 0.38 keeps the shutter from
+    /// firing during a real move but no longer demands perfect stillness.
+    private let motionCeiling: Double = 0.38
 
     private(set) var isRunning = false
 
@@ -73,8 +74,10 @@ final class MotionStabilityMonitor {
         let window = samples
         lock.unlock()
         guard window.count >= 4 else { return 0 }
-        let peak = window.max() ?? 0
-        let normalized = 1.0 - min(1.0, peak / motionCeiling)
+        let sorted = window.sorted()
+        let percentileIndex = min(sorted.count - 1, Int(Double(sorted.count - 1) * 0.75))
+        let motion = sorted[percentileIndex]
+        let normalized = 1.0 - min(1.0, motion / motionCeiling)
         return max(0.0, normalized)
     }
 }

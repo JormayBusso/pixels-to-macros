@@ -17,6 +17,7 @@ class DualPhotoCaptureOverlay extends StatefulWidget {
     super.key,
     required this.scanState,
     required this.aligned,
+    required this.alignmentScore,
     required this.stability,
     required this.holdProgress,
     required this.capturing,
@@ -28,6 +29,10 @@ class DualPhotoCaptureOverlay extends StatefulWidget {
 
   /// Whether the device currently matches the active step's target orientation.
   final bool aligned;
+
+  /// Target-orientation alignment score in 0…1, shown as the restored tilt
+  /// percentage slider (Top view / Side view aligned).
+  final double alignmentScore;
 
   /// Live motion stability 0…1 (1 = perfectly still).
   final double stability;
@@ -119,12 +124,13 @@ class _DualPhotoCaptureOverlayState extends State<DualPhotoCaptureOverlay>
 
         // Primary guidance + stability ring (bottom-center).
         Positioned(
-          bottom: 24,
-          left: 0,
-          right: 0,
+          bottom: 20,
+          left: 24,
+          right: 24,
           child: _GuidancePanel(
             scanState: widget.scanState,
             aligned: widget.aligned,
+            alignmentScore: widget.alignmentScore,
             holdProgress: widget.holdProgress,
             stability: widget.stability,
             confirming: confirming,
@@ -337,6 +343,7 @@ class _GuidancePanel extends StatelessWidget {
   const _GuidancePanel({
     required this.scanState,
     required this.aligned,
+    required this.alignmentScore,
     required this.holdProgress,
     required this.stability,
     required this.confirming,
@@ -345,6 +352,7 @@ class _GuidancePanel extends StatelessWidget {
   });
   final ScanState scanState;
   final bool aligned;
+  final double alignmentScore;
   final double holdProgress;
   final double stability;
   final bool confirming;
@@ -360,82 +368,149 @@ class _GuidancePanel extends StatelessWidget {
     if (!aligned) {
       return _isTop ? 'Aim straight down at the plate' : 'Tilt up to the side view';
     }
-    return 'Hold steady…';
+    return stability >= 0.35 ? 'Hold steady…' : 'Almost there';
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Stability ring + center capture dot (tap = manual fallback).
-        GestureDetector(
-          onTap: confirming ? null : onManualCapture,
-          child: SizedBox(
-            width: 76,
-            height: 76,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 76,
-                  height: 76,
-                  child: CircularProgressIndicator(
-                    value: aligned ? holdProgress.clamp(0.0, 1.0) : null,
-                    strokeWidth: 4,
-                    backgroundColor: Colors.white24,
-                    valueColor: AlwaysStoppedAnimation(
-                      aligned ? AppTheme.green500 : Colors.white54,
+    final score = alignmentScore.clamp(0.0, 1.0);
+    final percent = (score * 100).round().clamp(0, 100);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.62),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          ),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: confirming ? null : onManualCapture,
+                child: SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 64,
+                        height: 64,
+                        child: CircularProgressIndicator(
+                          value: aligned ? holdProgress.clamp(0.0, 1.0) : null,
+                          strokeWidth: 4,
+                          backgroundColor: Colors.white24,
+                          valueColor: AlwaysStoppedAnimation(
+                            aligned ? AppTheme.green500 : Colors.white54,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: aligned
+                              ? AppTheme.green500.withValues(alpha: 0.92)
+                              : Colors.white.withValues(alpha: 0.88),
+                        ),
+                        child: Icon(
+                          confirming ? Icons.check : Icons.camera_alt,
+                          color: Colors.black87,
+                          size: 21,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            child: Text(
+                              _primaryText,
+                              key: ValueKey(_primaryText),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '${_isTop ? 'Top view' : 'Side view'}: $percent% aligned',
+                          style: TextStyle(
+                            color: aligned ? AppTheme.green500 : Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: 10),
+                    _TiltPercentBar(value: score, aligned: aligned),
+                    const SizedBox(height: 8),
+                    Text(
+                      _isTop
+                          ? 'Frame the full food area from above'
+                          : 'Keep the camera near plate level',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white60, fontSize: 12),
+                    ),
+                  ],
                 ),
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: aligned
-                        ? AppTheme.green500.withValues(alpha: 0.9)
-                        : Colors.white.withValues(alpha: 0.85),
-                  ),
-                  child: Icon(
-                    confirming ? Icons.check : Icons.camera_alt,
-                    color: Colors.black87,
-                    size: 24,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          child: Container(
-            key: ValueKey(_primaryText),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(22),
+      ),
+    );
+  }
+}
+
+class _TiltPercentBar extends StatelessWidget {
+  const _TiltPercentBar({required this.value, required this.aligned});
+  final double value;
+  final bool aligned;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = aligned ? AppTheme.green500 : context.primary400;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: SizedBox(
+        height: 10,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ColoredBox(color: Colors.white.withValues(alpha: 0.18)),
             ),
-            child: Text(
-              _primaryText,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+            FractionallySizedBox(
+              widthFactor: value.clamp(0.0, 1.0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                curve: Curves.easeOutCubic,
+                decoration: BoxDecoration(color: color),
               ),
             ),
-          ),
+          ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          _isTop
-              ? 'Hold ~30 cm above • keep the whole plate framed'
-              : 'Lower to plate level • keep food in the frame',
-          style: const TextStyle(color: Colors.white60, fontSize: 12),
-        ),
-      ],
+      ),
     );
   }
 }

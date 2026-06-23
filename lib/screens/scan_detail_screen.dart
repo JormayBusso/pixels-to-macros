@@ -20,13 +20,13 @@ import '../core/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
 import '../widgets/food_score_badge.dart';
-import '../widgets/generated_food_preview.dart';
 import '../widgets/glucose_spike_card.dart';
 import '../widgets/plate_score_widget.dart';
 import 'diabetes/bolus_calculator_card.dart';
 import 'diabetes/diabetes_review_screen.dart';
 import 'edit_food_screen.dart';
 import 'ground_truth_screen.dart';
+import 'scan_3d_viewer_screen.dart';
 
 /// Detail view for a single scan result.
 class ScanDetailScreen extends ConsumerStatefulWidget {
@@ -221,15 +221,16 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           const SizedBox(height: 16),
 
           if (_scan.foods.isNotEmpty) ...[
-            // Show the real scan overlay image if available,
-            // otherwise fall back to the generated preview.
-            if (_scan.imagePath != null && File(_scan.imagePath!).existsSync())
+            // Show the real captured scan images when available. Older rows may
+            // only have imagePath; new scans persist both top and side captures.
+            if ((_scan.topImagePath ?? _scan.imagePath) != null &&
+                File((_scan.topImagePath ?? _scan.imagePath)!).existsSync())
               ClipRRect(
                 borderRadius: BorderRadius.circular(18),
                 child: Stack(
                   children: [
                     Image.file(
-                      File(_scan.imagePath!),
+                      File((_scan.topImagePath ?? _scan.imagePath)!),
                       height: 240,
                       width: double.infinity,
                       fit: BoxFit.cover,
@@ -262,13 +263,67 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                         ),
                       ),
                     ),
+                    if (_scan.sideImagePath != null &&
+                        File(_scan.sideImagePath!).existsSync())
+                      Positioned(
+                        right: 12,
+                        bottom: 12,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            File(_scan.sideImagePath!),
+                            width: 112,
+                            height: 72,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    if (_scan.modelPath != null &&
+                        File(_scan.modelPath!).existsSync())
+                      Positioned(
+                        right: 12,
+                        top: 12,
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.black.withValues(alpha: 0.62),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => Scan3DViewerScreen(
+                                  modelPath: _scan.modelPath,
+                                  scanId: _scan.id,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.view_in_ar, size: 16),
+                          label: const Text('3D'),
+                        ),
+                      ),
                   ],
                 ),
               )
             else
-              GeneratedFoodPreview(
-                foods: _scan.foods,
-                height: 240,
+              _MissingScanMediaCard(
+                hasModel: _scan.modelPath != null &&
+                    File(_scan.modelPath!).existsSync(),
+                onViewModel: _scan.modelPath != null &&
+                        File(_scan.modelPath!).existsSync()
+                    ? () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => Scan3DViewerScreen(
+                              modelPath: _scan.modelPath,
+                              scanId: _scan.id,
+                            ),
+                          ),
+                        );
+                      }
+                    : null,
               ),
             const SizedBox(height: 16),
           ],
@@ -943,6 +998,52 @@ class _RangeRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _MissingScanMediaCard extends StatelessWidget {
+  const _MissingScanMediaCard({required this.hasModel, this.onViewModel});
+  final bool hasModel;
+  final VoidCallback? onViewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 180,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppTheme.gray50,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.gray100),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            hasModel ? Icons.view_in_ar : Icons.image_not_supported_outlined,
+            size: 34,
+            color: AppTheme.gray400,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            hasModel ? '3D reconstruction saved' : 'Captured scan image unavailable',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.gray700,
+            ),
+          ),
+          if (onViewModel != null) ...[
+            const SizedBox(height: 10),
+            FilledButton.icon(
+              onPressed: onViewModel,
+              icon: const Icon(Icons.view_in_ar, size: 18),
+              label: const Text('View 3D Scan'),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

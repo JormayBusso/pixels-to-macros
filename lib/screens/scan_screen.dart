@@ -50,6 +50,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   Timer? _pitchTimer; // polls orientation + stability at ~12 fps
   double _stability = 0.0; // 0..1 from CoreMotion (1 = perfectly still)
+  double _alignmentScore = 0.0; // 0..1 target-orientation score
   bool _aligned = false; // current orientation matches the active capture step
   int _stableHoldTicks = 0; // consecutive aligned+stable polls before auto-shutter
   String _detectedDepthMode = 'unknown';
@@ -72,15 +73,18 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   /// Stability (0..1) at/above which the phone is considered "still enough" to
   /// capture, and the number of consecutive aligned+stable polls required
-  /// before the shutter fires (~0.4 s at 80 ms/poll) to debounce.
-  static const double _stableThreshold = 0.6;
-  static const int _requiredHoldTicks = 5;
+  /// before the shutter fires. These are intentionally forgiving: we want a
+  /// sharp-enough frame, not a lab-tripod frame, and brief hand tremors should
+  /// slow the shutter rather than restarting the whole capture.
+  static const double _stableThreshold = 0.35;
+  static const double _softStableThreshold = 0.22;
+  static const int _requiredHoldTicks = 3;
 
   /// Pitch thresholds (radians).
   /// Top-view:  pitch < -80° = -1.396 rad → phone is nearly flat / pointing straight down.
   /// Side-view: pitch > -10° = -0.175 rad → phone is nearly vertical (upright).
-  static const double _topViewThreshold = -1.396; // -80° — truly horizontal
-  static const double _sideViewThreshold = -0.175; // -10° — nearly vertical
+  static const double _topViewThreshold = -1.309; // -75° — near-horizontal
+  static const double _sideViewThreshold = -0.300; // -17° — near-vertical
 
   @override
   void initState() {
@@ -314,23 +318,31 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
     // Which orientation does the active capture step require?
     bool aligned;
+    double alignmentScore;
     if (state == ScanState.waitingForTopView || state == ScanState.captureTop) {
       aligned = pitch < _topViewThreshold; // straight down
+      alignmentScore = _alignmentForTop(pitch);
     } else if (state == ScanState.moveSide || state == ScanState.captureSide) {
       aligned = pitch > _sideViewThreshold; // upright side view
+      alignmentScore = _alignmentForSide(pitch);
     } else {
       aligned = false;
+      alignmentScore = 0.0;
     }
 
-    final bool stable = stability >= _stableThreshold;
-    if (aligned && stable && !_capturing) {
+    final bool stable = stability >= _stableThreshold ||
+        (_stableHoldTicks > 0 && stability >= _softStableThreshold);
+    if (!aligned || _capturing) {
+      _stableHoldTicks = 0;
+    } else if (stable) {
       _stableHoldTicks++;
     } else {
-      _stableHoldTicks = 0;
+      _stableHoldTicks = (_stableHoldTicks - 1).clamp(0, _requiredHoldTicks);
     }
 
     setState(() {
       _stability = stability;
+      _alignmentScore = alignmentScore;
       _aligned = aligned;
     });
 
@@ -358,6 +370,16 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   /// Progress (0..1) of the "hold steady" gate, for the UI stability meter.
   double get _holdProgress =>
       (_stableHoldTicks / _requiredHoldTicks).clamp(0.0, 1.0);
+
+  double _alignmentForTop(double pitch) {
+    final error = (pitch + 1.5707963267948966).abs();
+    return (1.0 - error / 1.0471975511965976).clamp(0.0, 1.0).toDouble();
+  }
+
+  double _alignmentForSide(double pitch) {
+    final error = pitch.abs();
+    return (1.0 - error / 1.0471975511965976).clamp(0.0, 1.0).toDouble();
+  }
 
   // ── Guided dual-photo capture ──────────────────────────────────────────────
 
@@ -518,6 +540,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     try {
       // Hard contract: a successful scan must have a real 3-D model file.
       final model3dPath = await _bridge.getModel3DPath();
+      final capturePaths = await _bridge.getScanCapturePaths();
       final model3dRaw = await _bridge.getModel3DObjects();
       final model3dObjects = model3dRaw
           .map(Scan3DObject.fromMap)
@@ -547,7 +570,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         topCameraTransform: null,
         sideCameraPosition: null,
         sideCameraTransform: null,
-        imagePath: null,
+        imagePath: capturePaths['topImagePath'] as String?,
+        topImagePath: capturePaths['topImagePath'] as String?,
+        sideImagePath: capturePaths['sideImagePath'] as String?,
+        modelPath: model3dPath,
       );
       await ref.read(historyProvider.notifier).addScan(scanResult);
       if (!mounted) return;
@@ -669,6 +695,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               child: DualPhotoCaptureOverlay(
                 scanState: scanState,
                 aligned: _aligned,
+                alignmentScore: _alignmentScore,
                 stability: _stability,
                 holdProgress: _holdProgress,
                 capturing: _capturing,

@@ -102,7 +102,19 @@ final class MonocularVolumeEstimator {
     private let plateDetector = PlateDetector()
     private let exporter = Food3DExporter()
     private let monoDepth = MonoDepthService()
-    private let guidedDistanceCm: Double = 30.0
+    /// Conservative fallback capture distance when ARKit has not yet locked a
+    /// table plane. Earlier code used 30 cm for every plateless scan; at the
+    /// actual 10-25 cm food-scanning distance, monocular volume error grows
+    /// roughly with distance cubed, producing tomato-sized objects in the
+    /// kilogram range. 22 cm matches the guided capture distance while keeping
+    /// ARKit plane distance as the preferred metric source whenever available.
+    private let guidedDistanceCm: Double = 22.0
+
+    private struct PhysicalEnvelope {
+        let maxLateralCm: Double
+        let maxHeightCm: Double
+        let maxVolumeCm3: Double
+    }
 
     /// Metric-depth (Depth Anything V2 metric-indoor) is OUT-OF-DOMAIN at the
     /// 10–30 cm hold distance used for plated food: device testing showed 4–9×
@@ -168,9 +180,19 @@ final class MonocularVolumeEstimator {
             }
 
             let prior = priors(for: seg.label)
-            let areaCm2 = Double(seg.pixelCount) / max(scale.pixelsPerCm * scale.pixelsPerCm, 0.0001)
-            let widthCm = Double(max(1, footprint.maxCol - footprint.minCol + 1)) / scale.pixelsPerCm
-            let depthCm = Double(max(1, footprint.maxRow - footprint.minRow + 1)) / scale.pixelsPerCm
+            let rawAreaCm2 = Double(seg.pixelCount) / max(scale.pixelsPerCm * scale.pixelsPerCm, 0.0001)
+            let rawWidthCm = Double(max(1, footprint.maxCol - footprint.minCol + 1)) / scale.pixelsPerCm
+            let rawDepthCm = Double(max(1, footprint.maxRow - footprint.minRow + 1)) / scale.pixelsPerCm
+            let stabilized = stabilizeFootprint(
+                label: seg.label,
+                scaleSource: scale.source,
+                widthCm: rawWidthCm,
+                depthCm: rawDepthCm,
+                areaCm2: rawAreaCm2
+            )
+            let areaCm2 = stabilized.areaCm2
+            let widthCm = stabilized.widthCm
+            let depthCm = stabilized.depthCm
             let lateralBoundCm = max(0.8, max(widthCm, depthCm))
             let priorBoundCm = min(prior.heightCm, lateralBoundCm)
 
@@ -194,8 +216,8 @@ final class MonocularVolumeEstimator {
                 in: sideProfiles,
                 excluding: usedSideProfileIndices
             )
-            if let profileMatch { usedSideProfileIndices.insert(profileMatch.index) }
-            let profile = profileMatch?.profile
+            let profile = usableSideProfile(profileMatch?.profile, for: seg.label)
+            if profile != nil, let profileMatch { usedSideProfileIndices.insert(profileMatch.index) }
             if let dr = depthResult {
                 heightCm = dr.meanHeightCm
                 volumeCm3 = max(6.0, dr.volumeCm3)
@@ -216,7 +238,14 @@ final class MonocularVolumeEstimator {
                     lateralBoundCm: lateralBoundCm
                 )
                 let shapeFactor = sideProfileShapeFactor(profile, fallback: prior.shapeFactor)
-                volumeCm3 = max(6.0, areaCm2 * heightCm * shapeFactor)
+                volumeCm3 = boundedVolumeCm3(
+                    rawVolumeCm3: areaCm2 * heightCm * shapeFactor,
+                    label: seg.label,
+                    widthCm: widthCm,
+                    depthCm: depthCm,
+                    heightCm: heightCm,
+                    shapeFactor: shapeFactor
+                )
                 scanMode = "monocular_visual_hull"
                 debugInfo = String(
                     format: "visual_hull: scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm fill=%.2f ar=%.2f vol=%.0fcm³",
@@ -238,7 +267,14 @@ final class MonocularVolumeEstimator {
                     priorBoundCm: priorBoundCm,
                     lateralBoundCm: lateralBoundCm
                 )
-                volumeCm3 = max(6.0, areaCm2 * heightCm * prior.shapeFactor)
+                volumeCm3 = boundedVolumeCm3(
+                    rawVolumeCm3: areaCm2 * heightCm * prior.shapeFactor,
+                    label: seg.label,
+                    widthCm: widthCm,
+                    depthCm: depthCm,
+                    heightCm: heightCm,
+                    shapeFactor: prior.shapeFactor
+                )
                 scanMode = "monocular_scale"
                 debugInfo = String(
                     format: "prism: scale=%@ %.1fpx/cm h=%.1fcm vol=%.0fcm³",
@@ -446,7 +482,11 @@ final class MonocularVolumeEstimator {
         // Non-LiDAR side silhouettes are real but still monocular. Refuse to
         // create a tall object whose height exceeds the observed top footprint
         // by much; this is the direct cucumber prevention guard.
-        return min(18.0, max(1.0, lateralBoundCm * 1.05))
+        let base = min(18.0, max(1.0, lateralBoundCm * 1.05))
+        if let envelope = physicalEnvelope(for: label) {
+            return min(base, envelope.maxHeightCm)
+        }
+        return base
     }
 
     private func sideProfileShapeFactor(_ profile: SideProfile, fallback: Double) -> Double {
@@ -456,6 +496,100 @@ final class MonocularVolumeEstimator {
         // near a sphere-like 0.64 area*height factor.
         let silhouetteFactor = min(0.90, max(0.42, profile.meanNormalizedHeight * 0.82))
         return min(0.90, max(0.42, fallback * 0.55 + silhouetteFactor * 0.45))
+    }
+
+    private func usableSideProfile(_ profile: SideProfile?, for label: String) -> SideProfile? {
+        guard let profile else { return nil }
+        // The side view is powerful, but a bad side mask is also the fastest
+        // way to explode volume. Keep only profiles that look like a real,
+        // reasonably filled object silhouette.
+        guard profile.pixelCount >= 850,
+              profile.confidence >= 0.30,
+              profile.coverage >= 0.002,
+              profile.aspectRatio >= 0.12,
+              profile.aspectRatio <= 2.2,
+              profile.meanNormalizedHeight >= 0.18,
+              profile.meanNormalizedHeight <= 0.96
+        else {
+            print("[MonocularEstimator] side-profile rejected label=\(profile.label) px=\(profile.pixelCount) conf=\(String(format: "%.2f", profile.confidence)) cov=\(String(format: "%.3f", profile.coverage)) ar=\(String(format: "%.2f", profile.aspectRatio)) fill=\(String(format: "%.2f", profile.meanNormalizedHeight))")
+            return nil
+        }
+
+        if let envelope = physicalEnvelope(for: label),
+           profile.aspectRatio * envelope.maxLateralCm > envelope.maxHeightCm * 1.35 {
+            print("[MonocularEstimator] side-profile rejected as too-tall for \(label): ar=\(String(format: "%.2f", profile.aspectRatio))")
+            return nil
+        }
+        return profile
+    }
+
+    private func stabilizeFootprint(
+        label: String,
+        scaleSource: String,
+        widthCm: Double,
+        depthCm: Double,
+        areaCm2: Double
+    ) -> (widthCm: Double, depthCm: Double, areaCm2: Double) {
+        guard let envelope = physicalEnvelope(for: label) else {
+            return (widthCm, depthCm, areaCm2)
+        }
+
+        let lateral = max(widthCm, depthCm)
+        guard lateral > envelope.maxLateralCm else {
+            return (widthCm, depthCm, areaCm2)
+        }
+
+        let factor = envelope.maxLateralCm / max(lateral, 0.0001)
+        let softenedFactor: Double
+        switch scaleSource {
+        case "plate":
+            // Plate scale is usually trustworthy; trim only truly implausible
+            // masks while preserving unusually large foods.
+            softenedFactor = max(factor, 0.78)
+        default:
+            // AR plane/fallback scale at macro distances is noisier. Apply the
+            // full physical clamp so a bad distance estimate cannot cube into a
+            // kilogram tomato.
+            softenedFactor = factor
+        }
+        let clampedWidth = max(0.8, widthCm * softenedFactor)
+        let clampedDepth = max(0.8, depthCm * softenedFactor)
+        let clampedArea = max(0.5, areaCm2 * softenedFactor * softenedFactor)
+        print("[MonocularEstimator] footprint stabilized \(label): \(String(format: "%.1f", widthCm))x\(String(format: "%.1f", depthCm))cm -> \(String(format: "%.1f", clampedWidth))x\(String(format: "%.1f", clampedDepth))cm source=\(scaleSource)")
+        return (clampedWidth, clampedDepth, clampedArea)
+    }
+
+    private func boundedVolumeCm3(
+        rawVolumeCm3: Double,
+        label: String,
+        widthCm: Double,
+        depthCm: Double,
+        heightCm: Double,
+        shapeFactor: Double
+    ) -> Double {
+        var upper = widthCm * depthCm * max(heightCm, 0.8) * min(0.92, max(0.35, shapeFactor * 1.18))
+        if let envelope = physicalEnvelope(for: label) {
+            upper = min(upper, envelope.maxVolumeCm3)
+        }
+        let bounded = min(max(6.0, rawVolumeCm3), max(6.0, upper))
+        if bounded < rawVolumeCm3 * 0.98 {
+            print("[MonocularEstimator] volume bounded \(label): raw=\(String(format: "%.0f", rawVolumeCm3))cm3 -> \(String(format: "%.0f", bounded))cm3")
+        }
+        return bounded
+    }
+
+    private func physicalEnvelope(for label: String) -> PhysicalEnvelope? {
+        let l = label.lowercased()
+        if l.contains("tomato") { return PhysicalEnvelope(maxLateralCm: 10.0, maxHeightCm: 8.0, maxVolumeCm3: 420.0) }
+        if l.contains("apple") || l.contains("orange") || l.contains("peach") || l.contains("plum") {
+            return PhysicalEnvelope(maxLateralCm: 11.0, maxHeightCm: 10.0, maxVolumeCm3: 620.0)
+        }
+        if l.contains("onion") || l.contains("potato") {
+            return PhysicalEnvelope(maxLateralCm: 13.0, maxHeightCm: 10.0, maxVolumeCm3: 900.0)
+        }
+        if l.contains("egg") { return PhysicalEnvelope(maxLateralCm: 7.5, maxHeightCm: 6.0, maxVolumeCm3: 110.0) }
+        if l.contains("banana") { return PhysicalEnvelope(maxLateralCm: 26.0, maxHeightCm: 14.0, maxVolumeCm3: 950.0) }
+        return nil
     }
 
     private func normalisedLabel(_ label: String) -> String {
@@ -556,7 +690,11 @@ final class MonocularVolumeEstimator {
                         if mask[mr][mc] == 1 { onCount += 1 }
                     }
                 }
-                if total > 0 && onCount * 2 >= total { on[cell(r, c)] = true }
+                // Preserve the real top-view outline. Majority voting was too
+                // aggressive on small/round foods and could shave off the mask
+                // into a generic blob; 25% keeps legitimate silhouette edges
+                // while the later close step handles tiny internal gaps.
+                if total > 0 && onCount * 4 >= total { on[cell(r, c)] = true }
             }
         }
         // Guarantee at least one cell so the viewer always has geometry.
@@ -638,12 +776,19 @@ final class MonocularVolumeEstimator {
                     let sideLimit = max(0, sideTop - sideBottom)
                     let perp = Float(perpU * 2.0 - 1.0)
                     let transverseRoundness = sqrt(max(0.0, 1.0 - perp * perp))
-                    // The side silhouette is a hard upper bound; the transverse
-                    // factor rounds the unobserved axis instead of extruding a
-                    // box. The centre line still reaches the real side contour.
-                    let roundedSpan = sideLimit * max(0.10, transverseRoundness)
-                    bottomFraction = sideBottom * min(1.0, max(0.0, transverseRoundness)) * edge
-                    heightFraction = (sideBottom + roundedSpan) * edge
+                    let axis = Float(axisU) * 2.0 - 1.0
+                    let longitudinalDome = sqrt(max(0.0, 1.0 - axis * axis))
+                    // The side silhouette is the longitudinal constraint. The
+                    // transverse term rounds the unobserved axis, while a small
+                    // minimum keeps the profile from becoming a cut-off cylinder
+                    // with vertical walls. The lower side contour is carried
+                    // into the underside, so the base is only perfectly flat in
+                    // the no-side-profile fallback.
+                    let roundness = max(0.12, transverseRoundness)
+                    let topBlend = max(0.10, longitudinalDome * 0.22 + roundness * 0.78)
+                    let bottomBlend = max(0.0, min(1.0, longitudinalDome * 0.35 + transverseRoundness * 0.45))
+                    bottomFraction = sideBottom * bottomBlend * edge
+                    heightFraction = max(bottomFraction + 0.035 * edge, (sideBottom + sideLimit * topBlend) * edge)
                 } else {
                     bottomFraction = 0
                     heightFraction = dome * edge

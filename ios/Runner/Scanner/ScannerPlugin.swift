@@ -258,6 +258,18 @@ final class ScannerPlugin {
             print("[ScannerPlugin] model3dPath = \(model3dPath ?? "nil")")
             result(model3dPath)
 
+        case "getScanCapturePaths":
+            var payload: [String: Any] = [:]
+            if let path = recorder.topImagePath { payload["topImagePath"] = path }
+            if let path = recorder.sideImagePath { payload["sideImagePath"] = path }
+            if let path = pipeline.lastModel3DPath { payload["modelPath"] = path }
+            if let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
+               let json = String(data: data, encoding: .utf8) {
+                result(json)
+            } else {
+                result(nil)
+            }
+
         case "getModel3DObjects":
             // Per-object metadata for the most-recent 3-D model. Mirrors the
             // MDLMesh order in the USDZ exactly so Flutter UI can address

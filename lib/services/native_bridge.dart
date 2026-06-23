@@ -201,6 +201,18 @@ class NativeBridge {
     }
   }
 
+  /// Persisted media/model paths for the latest completed scan.
+  /// Keys: topImagePath, sideImagePath, modelPath.
+  Future<Map<String, dynamic>> getScanCapturePaths() async {
+    try {
+      final raw = await _channel.invokeMethod<String>('getScanCapturePaths');
+      if (raw == null || raw.isEmpty) return {};
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return {};
+    }
+  }
+
   /// Per-object metadata for the most recently exported 3-D model. Each entry
   /// carries `id` (stable cluster id like `rice_0`), `label`, `volume_cm3`,
   /// `voxel_count`, and `confidence`. Mirrors the `MDLMesh` order in the

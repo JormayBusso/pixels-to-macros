@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -733,6 +735,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         final selected = scan.id != null &&
                             _selectedScanIds.contains(scan.id);
 
+                        final thumbPath = scan.topImagePath ?? scan.imagePath;
+                        final hasThumb = thumbPath != null && File(thumbPath).existsSync();
+
                         final card = GestureDetector(
                           onTap: () {
                             if (selecting) {
@@ -772,9 +777,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           borderRadius:
                                               BorderRadius.circular(10),
                                         ),
-                                        child: Icon(Icons.fastfood,
-                                            color: context.primary600,
-                                            size: 20),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: hasThumb
+                                            ? Image.file(
+                                                File(thumbPath),
+                                                fit: BoxFit.cover,
+                                              )
+                                            : Icon(Icons.fastfood,
+                                                color: context.primary600,
+                                                size: 20),
                                       ),
                                     ),
                               title: Text(

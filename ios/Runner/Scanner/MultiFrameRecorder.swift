@@ -1,6 +1,8 @@
 import ARKit
+import CoreImage
 import CoreVideo
 import Foundation
+import ImageIO
 
 /// Samples AR frames from the running session at ~10 fps during a video sweep.
 ///
@@ -45,6 +47,12 @@ final class MultiFrameRecorder {
     /// detected. Used by the non-LiDAR estimator as the primary volume scale.
     private(set) var tableDistanceCm: Double?
 
+    /// JPEG snapshots of the guided top/side captures, persisted for scan
+    /// history. These are intentionally lightweight gallery assets; the full
+    /// CVPixelBuffers still live only in memory for reconstruction.
+    private(set) var topImagePath: String?
+    private(set) var sideImagePath: String?
+
     var frameCount: Int { topViewFrames.count + lightFrames.count }
     var hasDepthData: Bool { !topViewFrames.isEmpty || !lightFrames.isEmpty }
 
@@ -78,6 +86,8 @@ final class MultiFrameRecorder {
     /// Keep a short stable top-view lock before side-view depth is allowed to influence volume.
     private let maxTopViewFrames = 4
 
+    private static let snapshotContext = CIContext(options: nil)
+
     // MARK: – Control
 
     /// Start sampling from the running ARKit session.
@@ -90,6 +100,8 @@ final class MultiFrameRecorder {
         lightFrames = []
         meshAnchors = []
         tableDistanceCm = nil
+        topImagePath = nil
+        sideImagePath = nil
         isActive    = true
 
         timer = Timer.scheduledTimer(
@@ -134,6 +146,8 @@ final class MultiFrameRecorder {
         lightFrames = []
         meshAnchors = []
         tableDistanceCm = nil
+        topImagePath = nil
+        sideImagePath = nil
     }
 
     /// Capture the current AR frame as the top-down reference photo (RGB + depth).
@@ -178,6 +192,7 @@ final class MultiFrameRecorder {
                     imageHeight: h
                 )]
             }
+            topImagePath = MultiFrameRecorder.writeSnapshot(pixBuf, suffix: "top")
         }
         print("[SCAN] dual-photo top frame captured (depth=\(topFrame?.depthBuffer != nil))")
         return topFrame != nil
@@ -219,6 +234,7 @@ final class MultiFrameRecorder {
                     imageHeight: h
                 ))
             }
+            sideImagePath = MultiFrameRecorder.writeSnapshot(pixBuf, suffix: "side")
         }
         print("[SCAN] dual-photo side frame captured (depth=\(sideFrame?.depthBuffer != nil))")
         return sideFrame != nil
@@ -343,6 +359,32 @@ final class MultiFrameRecorder {
 
     private static func isLikelyTopView(pitch: Float) -> Bool {
         abs(Double(pitch) + Double.pi / 2.0) < 0.55
+    }
+
+    private static func writeSnapshot(_ pixelBuffer: CVPixelBuffer, suffix: String) -> String? {
+        let fileName = "scan_capture_\(suffix)_\(Int(Date().timeIntervalSince1970 * 1000)).jpg"
+        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        let dir = docs.appendingPathComponent("scan_captures", isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            let url = dir.appendingPathComponent(fileName)
+            let image = CIImage(cvPixelBuffer: pixelBuffer)
+            let colorSpace = CGColorSpaceCreateDeviceRGB()
+            try snapshotContext.writeJPEGRepresentation(
+                of: image,
+                to: url,
+                colorSpace: colorSpace,
+                options: [
+                    CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): 0.84
+                ]
+            )
+            return url.path
+        } catch {
+            print("[SCAN] snapshot write failed (\(suffix)): \(error)")
+            return nil
+        }
     }
 
     // MARK: – Pixel buffer deep copy

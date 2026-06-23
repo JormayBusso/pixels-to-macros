@@ -48,7 +48,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 37,
+      version: 38,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -97,7 +97,11 @@ class DatabaseService {
         top_camera_position   TEXT,
         top_camera_transform  TEXT,
         side_camera_position  TEXT,
-        side_camera_transform TEXT
+        side_camera_transform TEXT,
+        image_path            TEXT,
+        top_image_path        TEXT,
+        side_image_path       TEXT,
+        model_path            TEXT
       )
     ''');
 
@@ -636,6 +640,18 @@ class DatabaseService {
         await db.execute(
             'ALTER TABLE scan_results ADD COLUMN image_path TEXT');
       } catch (_) {}
+    }
+    if (oldVersion < 38) {
+      for (final col in [
+        'image_path TEXT',
+        'top_image_path TEXT',
+        'side_image_path TEXT',
+        'model_path TEXT',
+      ]) {
+        try {
+          await db.execute('ALTER TABLE scan_results ADD COLUMN $col');
+        } catch (_) {}
+      }
     }
     if (oldVersion < 33) {
       // Diabetes correction-dose support: Insulin Sensitivity Factor (ISF),
