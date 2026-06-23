@@ -49,7 +49,14 @@ final class MonoDepthService {
 
     /// Plausible food-height band (cm) for rejecting depth noise / bad scale.
     private let minHeightCm: Double = 0.3
-    private let maxHeightCm: Double = 25.0
+    private let maxHeightCm: Double = 18.0
+
+    /// One-time absolute calibration. The metric-indoor depth net is used out of
+    /// its training domain at ~30 cm, so its absolute scale can be biased. Volume
+    /// scales with depth³, so set this from a single known-weight scan:
+    /// `metricVolumeCalibration = trueVolumeCm3 / measuredVolumeCm3`. Default 1.0
+    /// (no correction) until calibrated.
+    static var metricVolumeCalibration: Double = 1.0
 
     private static let resourceCandidates = ["MonoDepth"]
 
@@ -188,19 +195,25 @@ final class MonoDepthService {
     /// volume. The table reference depth is the median of a thin ring just
     /// OUTSIDE the food mask; per-pixel height = (tableDepth − foodDepth).
     ///
+    /// Both the per-pixel AREA and the height come from the SAME metric depth,
+    /// so the result is self-consistent and needs no plate or assumed shooting
+    /// distance: at depth `d` a mask pixel covers `(d/fxMask)·(d/fyMask)` m².
+    ///
     /// - Parameters:
-    ///   - depth:        Metric depth grid aligned to the mask.
-    ///   - mask:         Binary food mask (`mask[r][c] == 1`).
-    ///   - pixelsPerCm:  Mask-space scale (same value the prism path uses).
+    ///   - depth:   Metric depth grid aligned to the mask.
+    ///   - mask:    Binary food mask (`mask[r][c] == 1`).
+    ///   - fxMask:  Focal length in mask-pixel units (x). See caller.
+    ///   - fyMask:  Focal length in mask-pixel units (y).
     /// - Returns: nil when the result is implausible (caller falls back to prior).
     func foodVolume(
         depth: DepthGrid,
         mask: [[UInt8]],
         maskWidth: Int,
         maskHeight: Int,
-        pixelsPerCm: Double
+        fxMask: Double,
+        fyMask: Double
     ) -> FoodDepthResult? {
-        guard pixelsPerCm > 0.0001,
+        guard fxMask > 1, fyMask > 1,
               maskWidth == depth.width, maskHeight == depth.height else { return nil }
 
         // 1. Table reference = median depth of a 2-px ring just outside the mask.
@@ -219,23 +232,27 @@ final class MonoDepthService {
         let tableDepth = Double(ring[ring.count / 2])
         guard tableDepth > 0.05, tableDepth < 5.0 else { return nil }
 
-        // 2. Integrate height above the table over the food mask.
-        let cmPerPx = 1.0 / pixelsPerCm
-        let pxAreaCm2 = cmPerPx * cmPerPx
+        // 2. Integrate height above the table over the food mask. Per-pixel area
+        //    is back-projected from the pixel's own metric depth (cm² = (d·100)²
+        //    / (fxMask·fyMask)), so closer/larger framing self-corrects.
         var volume = 0.0
         var heightSum = 0.0
         var peak = 0.0
         var foodPixels = 0
         var validPixels = 0
+        var foodDepths: [Float] = []
 
         for r in 0..<maskHeight {
             for c in 0..<maskWidth where mask[r][c] == 1 {
                 foodPixels += 1
                 let d = Double(depth.at(r, c))
                 guard d.isFinite, d > 0 else { continue }
+                foodDepths.append(Float(d))
                 var h = (tableDepth - d) * 100.0 // metres → cm
                 if h <= 0 { continue }
                 if h > maxHeightCm { h = maxHeightCm }
+                let dCm = d * 100.0
+                let pxAreaCm2 = (dCm * dCm) / (fxMask * fyMask)
                 validPixels += 1
                 heightSum += h
                 peak = max(peak, h)
@@ -244,8 +261,11 @@ final class MonoDepthService {
         }
 
         guard foodPixels > 0, validPixels > 0 else { return nil }
+        volume *= Self.metricVolumeCalibration
         let coverage = Double(validPixels) / Double(foodPixels)
         let meanHeight = heightSum / Double(validPixels)
+        let medianFoodDepth = foodDepths.isEmpty ? 0 : Double(foodDepths.sorted()[foodDepths.count / 2])
+        print("[EVAL] depth-raw tableDepth_m=\(String(format: "%.3f", tableDepth)) medianFoodDepth_m=\(String(format: "%.3f", medianFoodDepth)) meanH_cm=\(String(format: "%.2f", meanHeight)) vol_cm3=\(String(format: "%.1f", volume)) cov=\(String(format: "%.2f", coverage)) cal=\(String(format: "%.2f", Self.metricVolumeCalibration))")
         // Reject implausible reconstructions; the prior path is safer there.
         guard meanHeight >= minHeightCm, peak >= minHeightCm,
               coverage >= 0.25, volume > 1.0 else { return nil }

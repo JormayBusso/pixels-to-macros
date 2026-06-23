@@ -58,6 +58,20 @@ final class MonocularVolumeEstimator {
             maskHeight: maskHeight
         )
 
+        // Effective focal lengths in MASK-pixel units, used to back-project each
+        // food pixel's metric area from depth (self-consistent scale, no plate /
+        // distance assumption). The mask is a scaleFill resize of the plate crop,
+        // so a full-image focal length maps through the crop fraction.
+        let imageW = CVPixelBufferGetWidth(topFrame.pixelBuffer)
+        let imageH = CVPixelBufferGetHeight(topFrame.pixelBuffer)
+        let plateForFocal = plateDetector.detect(in: topFrame.pixelBuffer)
+        let fxImg = Double(topFrame.cameraIntrinsics.columns.0.x)
+        let fyImg = Double(topFrame.cameraIntrinsics.columns.1.y)
+        let cropWFrac = max(0.05, Double(plateForFocal.rect.width))
+        let cropHFrac = max(0.05, Double(plateForFocal.rect.height))
+        let fxMask = fxImg > 1 ? fxImg * Double(maskWidth) / (cropWFrac * Double(imageW)) : 0
+        let fyMask = fyImg > 1 ? fyImg * Double(maskHeight) / (cropHFrac * Double(imageH)) : 0
+
         // Metric monocular depth (gated): when `MonoDepth.mlmodelc` is bundled
         // and we have the preprocessed RGB the segmenter used, predict a depth
         // grid aligned to the mask so each food's height above the table can be
@@ -92,7 +106,7 @@ final class MonocularVolumeEstimator {
                 monoDepth.foodVolume(
                     depth: grid, mask: seg.mask,
                     maskWidth: maskWidth, maskHeight: maskHeight,
-                    pixelsPerCm: scale.pixelsPerCm
+                    fxMask: fxMask, fyMask: fyMask
                 )
             }
 
