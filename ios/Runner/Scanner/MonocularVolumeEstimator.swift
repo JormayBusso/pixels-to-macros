@@ -9,16 +9,77 @@ import simd
 ///
 /// Accuracy contract:
 ///   • This is an estimate, not a measured LiDAR reconstruction.
-///   • Scale priority: plate diameter → camera intrinsics at 30 cm.
-///   • Geometry: top-mask footprint × class-specific height/shape prior.
-///   • Mesh: generated dome/extrusion from the mask bounding box, suitable
-///     for the viewer and for keeping volume/calorie math wired identically.
+///   • Scale priority: plate diameter → ARKit table distance → 30 cm fallback.
+///   • Geometry: top-mask footprint × side-view silhouette profile when
+///     available, falling back to bounded class priors.
+///   • Mesh: generated height-field visual hull from real masks, suitable for
+///     the viewer and for keeping volume/calorie math wired identically.
 final class MonocularVolumeEstimator {
 
     struct Result {
         let json: String
         let modelPath: String
         let objects: [[String: Any]]
+    }
+
+    struct SideProfile {
+        enum TopAxis: String {
+            case columns
+            case rows
+        }
+
+        let label: String
+        let classIndex: Int
+        let topAxis: TopAxis
+        let reversed: Bool
+        /// Normalized side silhouette height samples across the side-view
+        /// horizontal extent. Values are 0...1 and are extracted from the real
+        /// side-view mask, not from a food prior.
+        let normalizedHeights: [Double]
+        /// Lower/upper side silhouette boundaries for each sample, normalized
+        /// so 0 is the visible bottom of the side mask and 1 is its visible top.
+        /// These let the mesh match the side contour's bottom and top arcs
+        /// instead of assuming every object has a perfectly flat base.
+        let normalizedBottoms: [Double]
+        let normalizedTops: [Double]
+        /// Full-frame vertical-pixel extent / horizontal-pixel extent of the
+        /// side mask. Multiplying by the matching top-axis length gives metric
+        /// object height without assuming a fixed camera distance.
+        let aspectRatio: Double
+        let coverage: Double
+        let confidence: Float
+        let pixelCount: Int
+
+        var meanNormalizedHeight: Double {
+            guard !normalizedHeights.isEmpty else { return 0 }
+            return normalizedHeights.reduce(0, +) / Double(normalizedHeights.count)
+        }
+
+        func sample(_ u: Double) -> Double {
+            guard !normalizedHeights.isEmpty else { return 0 }
+            let clamped = reversed ? 1.0 - min(1.0, max(0.0, u)) : min(1.0, max(0.0, u))
+            let x = clamped * Double(normalizedHeights.count - 1)
+            let i0 = Int(floor(x))
+            let i1 = min(normalizedHeights.count - 1, i0 + 1)
+            let t = x - Double(i0)
+            return normalizedHeights[i0] * (1.0 - t) + normalizedHeights[i1] * t
+        }
+
+        func sampleBounds(_ u: Double) -> (bottom: Double, top: Double) {
+            guard !normalizedBottoms.isEmpty,
+                  normalizedBottoms.count == normalizedTops.count else {
+                let h = sample(u)
+                return (0.0, h)
+            }
+            let clamped = reversed ? 1.0 - min(1.0, max(0.0, u)) : min(1.0, max(0.0, u))
+            let x = clamped * Double(normalizedBottoms.count - 1)
+            let i0 = Int(floor(x))
+            let i1 = min(normalizedBottoms.count - 1, i0 + 1)
+            let t = x - Double(i0)
+            let bottom = normalizedBottoms[i0] * (1.0 - t) + normalizedBottoms[i1] * t
+            let top = normalizedTops[i0] * (1.0 - t) + normalizedTops[i1] * t
+            return (min(bottom, top), max(bottom, top))
+        }
     }
 
     enum EstimateError: LocalizedError {
@@ -55,6 +116,7 @@ final class MonocularVolumeEstimator {
         segments: [SegmentationService.SegmentedObject],
         topFrame: FrameCaptureService.CapturedFrame,
         sideFrame: FrameCaptureService.CapturedFrame?,
+        sideProfiles: [SideProfile] = [],
         maskWidth: Int,
         maskHeight: Int,
         measuredHeightCm: Double? = nil,
@@ -98,6 +160,7 @@ final class MonocularVolumeEstimator {
         var objects: [DepthFusion.Food3DObject] = []
         var payload: [[String: Any]] = []
         var metadata: [[String: Any]] = []
+        var usedSideProfileIndices = Set<Int>()
 
         for (idx, seg) in segments.enumerated() {
             guard let footprint = footprintStats(seg.mask, maskWidth: maskWidth, maskHeight: maskHeight) else {
@@ -111,8 +174,8 @@ final class MonocularVolumeEstimator {
             let lateralBoundCm = max(0.8, max(widthCm, depthCm))
             let priorBoundCm = min(prior.heightCm, lateralBoundCm)
 
-            // 1) Metric depth integral (best). 2) Real side-view height for the
-            // dominant food. 3) Class height prior bounded by lateral size.
+            // 1) Metric depth integral (currently disabled). 2) Real side-view
+            // contour visual hull. 3) Legacy side height. 4) Bounded prior.
             let depthResult = depthGrid.flatMap { grid in
                 monoDepth.foodVolume(
                     depth: grid, mask: seg.mask,
@@ -125,6 +188,14 @@ final class MonocularVolumeEstimator {
             let volumeCm3: Double
             let scanMode: String
             var debugInfo: String? = nil
+            let profileMatch = sideProfileMatch(
+                for: seg,
+                index: idx,
+                in: sideProfiles,
+                excluding: usedSideProfileIndices
+            )
+            if let profileMatch { usedSideProfileIndices.insert(profileMatch.index) }
+            let profile = profileMatch?.profile
             if let dr = depthResult {
                 heightCm = dr.meanHeightCm
                 volumeCm3 = max(6.0, dr.volumeCm3)
@@ -135,8 +206,38 @@ final class MonocularVolumeEstimator {
                     dr.meanHeightCm, dr.coverage * 100, dr.volumeCm3
                 )
                 print("[MonocularEstimator] depth food#\(idx) \(seg.label): meanH=\(String(format: "%.2f", dr.meanHeightCm))cm peakH=\(String(format: "%.2f", dr.peakHeightCm))cm cov=\(String(format: "%.2f", dr.coverage)) vol=\(String(format: "%.1f", dr.volumeCm3))cm3")
+            } else if let profile {
+                let topAxisCm = profile.topAxis == .columns ? widthCm : depthCm
+                let rawHeightCm = max(0.5, profile.aspectRatio * topAxisCm)
+                heightCm = boundedHeightCm(
+                    rawHeightCm: rawHeightCm,
+                    label: seg.label,
+                    priorBoundCm: priorBoundCm,
+                    lateralBoundCm: lateralBoundCm
+                )
+                let shapeFactor = sideProfileShapeFactor(profile, fallback: prior.shapeFactor)
+                volumeCm3 = max(6.0, areaCm2 * heightCm * shapeFactor)
+                scanMode = "monocular_visual_hull"
+                debugInfo = String(
+                    format: "visual_hull: scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm fill=%.2f ar=%.2f vol=%.0fcm³",
+                    scale.source,
+                    scale.pixelsPerCm,
+                    profile.topAxis.rawValue,
+                    profile.reversed ? "R" : "",
+                    heightCm,
+                    profile.meanNormalizedHeight,
+                    profile.aspectRatio,
+                    volumeCm3
+                )
+                print("[MonocularEstimator] visual-hull food#\(idx) \(seg.label): sideLabel=\(profile.label), axis=\(profile.topAxis.rawValue), reversed=\(profile.reversed), ar=\(String(format: "%.2f", profile.aspectRatio)), height=\(String(format: "%.2f", heightCm))cm, fill=\(String(format: "%.2f", profile.meanNormalizedHeight)), vol=\(String(format: "%.1f", volumeCm3))cm3")
             } else {
-                heightCm = (idx == 0 ? measuredHeightCm : nil) ?? priorBoundCm
+                let rawHeightCm = (idx == 0 ? measuredHeightCm : nil) ?? priorBoundCm
+                heightCm = boundedHeightCm(
+                    rawHeightCm: rawHeightCm,
+                    label: seg.label,
+                    priorBoundCm: priorBoundCm,
+                    lateralBoundCm: lateralBoundCm
+                )
                 volumeCm3 = max(6.0, areaCm2 * heightCm * prior.shapeFactor)
                 scanMode = "monocular_scale"
                 debugInfo = String(
@@ -160,7 +261,8 @@ final class MonocularVolumeEstimator {
                 voxelCount: max(seg.pixelCount, Int(volumeCm3.rounded())),
                 topFrame: topFrame,
                 maskWidth: maskWidth,
-                maskHeight: maskHeight
+                maskHeight: maskHeight,
+                sideProfile: profile
             )
             objects.append(object)
 
@@ -283,6 +385,83 @@ final class MonocularVolumeEstimator {
         return (3.0, 0.70)
     }
 
+    private func sideProfileMatch(
+        for segment: SegmentationService.SegmentedObject,
+        index: Int,
+        in profiles: [SideProfile],
+        excluding used: Set<Int>
+    ) -> (index: Int, profile: SideProfile)? {
+        guard !profiles.isEmpty else { return nil }
+        if let exactClass = profiles.enumerated().first(where: {
+            !used.contains($0.offset) && $0.element.classIndex == segment.classIndex
+        }) {
+            return (exactClass.offset, exactClass.element)
+        }
+        let label = normalisedLabel(segment.label)
+        if let exactLabel = profiles.enumerated().first(where: {
+            !used.contains($0.offset) && normalisedLabel($0.element.label) == label
+        }) {
+            return (exactLabel.offset, exactLabel.element)
+        }
+        // Single-food scans are the common calibration/testing case. If the top
+        // object is dominant, a side label mismatch should not discard useful
+        // silhouette geometry; labels are less stable than masks across view.
+        if index == 0,
+           let firstUnused = profiles.enumerated().first(where: { !used.contains($0.offset) }) {
+            return (firstUnused.offset, firstUnused.element)
+        }
+        return nil
+    }
+
+    private func boundedHeightCm(
+        rawHeightCm: Double,
+        label: String,
+        priorBoundCm: Double,
+        lateralBoundCm: Double
+    ) -> Double {
+        let lower = max(0.8, min(priorBoundCm * 0.45, lateralBoundCm))
+        let upper = maxVisualHeightCm(
+            label: label,
+            priorBoundCm: priorBoundCm,
+            lateralBoundCm: lateralBoundCm
+        )
+        return min(upper, max(lower, rawHeightCm))
+    }
+
+    private func maxVisualHeightCm(
+        label: String,
+        priorBoundCm: Double,
+        lateralBoundCm: Double
+    ) -> Double {
+        let l = label.lowercased()
+        if l.contains("soup") || l.contains("sauce") || l.contains("yogurt") {
+            return min(6.0, max(1.0, min(lateralBoundCm * 0.45, priorBoundCm * 1.4)))
+        }
+        if l.contains("rice") || l.contains("pasta") || l.contains("noodle") || l.contains("salad") {
+            return min(12.0, max(priorBoundCm * 1.35, lateralBoundCm * 0.75))
+        }
+        if l.contains("banana") {
+            return min(14.0, max(priorBoundCm * 1.2, lateralBoundCm * 0.85))
+        }
+        // Non-LiDAR side silhouettes are real but still monocular. Refuse to
+        // create a tall object whose height exceeds the observed top footprint
+        // by much; this is the direct cucumber prevention guard.
+        return min(18.0, max(1.0, lateralBoundCm * 1.05))
+    }
+
+    private func sideProfileShapeFactor(_ profile: SideProfile, fallback: Double) -> Double {
+        // A side silhouette's fill ratio describes a 2-D contour; use it as
+        // evidence, but damp it toward the food prior so segmentation noise does
+        // not swing calorie volume violently. Circular profiles (~0.78) land
+        // near a sphere-like 0.64 area*height factor.
+        let silhouetteFactor = min(0.90, max(0.42, profile.meanNormalizedHeight * 0.82))
+        return min(0.90, max(0.42, fallback * 0.55 + silhouetteFactor * 0.45))
+    }
+
+    private func normalisedLabel(_ label: String) -> String {
+        label.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
     // MARK: - Mask geometry
 
     private typealias Footprint = (
@@ -342,7 +521,8 @@ final class MonocularVolumeEstimator {
         voxelCount: Int,
         topFrame: FrameCaptureService.CapturedFrame,
         maskWidth: Int,
-        maskHeight: Int
+        maskHeight: Int,
+        sideProfile: SideProfile? = nil
     ) -> DepthFusion.Food3DObject {
         let centroid = footprint.centroid
         let rx = Float(max(widthCm, 2.0) / 200.0)   // half-width in metres
@@ -404,10 +584,11 @@ final class MonocularVolumeEstimator {
             on = filled
         }
 
-        // Smooth dome as a shared-corner height field. Heights live on the
-        // (gr+1)×(gc+1) lattice so neighbouring cells reuse identical corner
-        // heights — the top surface is therefore continuous, with no stair-step
-        // "cubes" between cells.
+        // Shared-corner height field. With a side profile, this becomes a
+        // two-silhouette visual hull: the top mask defines where the object
+        // exists on the plate, while the side contour defines the vertical
+        // profile across the aligned footprint axis. Without side evidence, it
+        // falls back to a conservative spherical cap prior.
         let cornerCols = gc + 1
         @inline(__always) func corner(_ rr: Int, _ cc: Int) -> Int { rr * cornerCols + cc }
         @inline(__always) func cornerCells(_ rr: Int, _ cc: Int) -> Int {
@@ -430,6 +611,7 @@ final class MonocularVolumeEstimator {
             }
         }
         let maxR = sqrt(maxR2)
+        var cornerB = [Float](repeating: 0, count: (gr + 1) * cornerCols)
         var cornerH = [Float](repeating: 0, count: (gr + 1) * cornerCols)
         for rr in 0...gr {
             for cc in 0...gc {
@@ -437,12 +619,37 @@ final class MonocularVolumeEstimator {
                 if n == 0 { continue }
                 let dr = Float(rr) - cgR, dc = Float(cc) - cgC
                 let rho = min(1.0, sqrt(dr * dr + dc * dc) / maxR)
-                // Spherical-cap profile → a rounded top instead of a cone tip.
                 let dome = sqrt(max(0.0, 1.0 - rho * rho))
                 // Corners on the silhouette edge taper toward the plate so the
                 // rim rounds off rather than dropping as a vertical cliff.
                 let edge: Float = n >= 4 ? 1.0 : Float(n) / 4.0
-                cornerH[corner(rr, cc)] = max(0.0, h * dome * edge)
+                let heightFraction: Float
+                let bottomFraction: Float
+                if let sideProfile, !sideProfile.normalizedHeights.isEmpty {
+                    let axisU = sideProfile.topAxis == .columns
+                        ? Double(cc) / Double(max(gc, 1))
+                        : Double(rr) / Double(max(gr, 1))
+                    let perpU = sideProfile.topAxis == .columns
+                        ? Double(rr) / Double(max(gr, 1))
+                        : Double(cc) / Double(max(gc, 1))
+                    let bounds = sideProfile.sampleBounds(axisU)
+                    let sideBottom = Float(bounds.bottom)
+                    let sideTop = Float(bounds.top)
+                    let sideLimit = max(0, sideTop - sideBottom)
+                    let perp = Float(perpU * 2.0 - 1.0)
+                    let transverseRoundness = sqrt(max(0.0, 1.0 - perp * perp))
+                    // The side silhouette is a hard upper bound; the transverse
+                    // factor rounds the unobserved axis instead of extruding a
+                    // box. The centre line still reaches the real side contour.
+                    let roundedSpan = sideLimit * max(0.10, transverseRoundness)
+                    bottomFraction = sideBottom * min(1.0, max(0.0, transverseRoundness)) * edge
+                    heightFraction = (sideBottom + roundedSpan) * edge
+                } else {
+                    bottomFraction = 0
+                    heightFraction = dome * edge
+                }
+                cornerB[corner(rr, cc)] = max(0.0, min(h * 0.80, h * bottomFraction))
+                cornerH[corner(rr, cc)] = max(0.0, h * heightFraction)
             }
         }
 
@@ -490,40 +697,45 @@ final class MonocularVolumeEstimator {
                 let yTR = cornerH[corner(r, c + 1)]
                 let yBL = cornerH[corner(r + 1, c)]
                 let yBR = cornerH[corner(r + 1, c + 1)]
+                let bTL = cornerB[corner(r, c)]
+                let bTR = cornerB[corner(r, c + 1)]
+                let bBL = cornerB[corner(r + 1, c)]
+                let bBR = cornerB[corner(r + 1, c + 1)]
 
                 // Top surface (shared corner heights → smooth & watertight).
                 addQuad(
                     SIMD3<Float>(x0, yTL, z0), SIMD3<Float>(x0, yBL, z1),
                     SIMD3<Float>(x1, yBR, z1), SIMD3<Float>(x1, yTR, z0)
                 )
-                // Bottom face (normal -Y).
+                // Bottom/underside follows the lower side contour when present
+                // and is flat only in the fallback path.
                 addQuad(
-                    SIMD3<Float>(x0, 0, z0), SIMD3<Float>(x1, 0, z0),
-                    SIMD3<Float>(x1, 0, z1), SIMD3<Float>(x0, 0, z1)
+                    SIMD3<Float>(x0, bTL, z0), SIMD3<Float>(x1, bTR, z0),
+                    SIMD3<Float>(x1, bBR, z1), SIMD3<Float>(x0, bBL, z1)
                 )
                 // Skirt walls only on silhouette edges, meeting the rounded top.
                 if !isOn(r - 1, c) {
                     addQuad(
-                        SIMD3<Float>(x0, 0, z0), SIMD3<Float>(x0, yTL, z0),
-                        SIMD3<Float>(x1, yTR, z0), SIMD3<Float>(x1, 0, z0)
+                        SIMD3<Float>(x0, bTL, z0), SIMD3<Float>(x0, yTL, z0),
+                        SIMD3<Float>(x1, yTR, z0), SIMD3<Float>(x1, bTR, z0)
                     )
                 }
                 if !isOn(r + 1, c) {
                     addQuad(
-                        SIMD3<Float>(x1, 0, z1), SIMD3<Float>(x1, yBR, z1),
-                        SIMD3<Float>(x0, yBL, z1), SIMD3<Float>(x0, 0, z1)
+                        SIMD3<Float>(x1, bBR, z1), SIMD3<Float>(x1, yBR, z1),
+                        SIMD3<Float>(x0, yBL, z1), SIMD3<Float>(x0, bBL, z1)
                     )
                 }
                 if !isOn(r, c - 1) {
                     addQuad(
-                        SIMD3<Float>(x0, 0, z1), SIMD3<Float>(x0, yBL, z1),
-                        SIMD3<Float>(x0, yTL, z0), SIMD3<Float>(x0, 0, z0)
+                        SIMD3<Float>(x0, bBL, z1), SIMD3<Float>(x0, yBL, z1),
+                        SIMD3<Float>(x0, yTL, z0), SIMD3<Float>(x0, bTL, z0)
                     )
                 }
                 if !isOn(r, c + 1) {
                     addQuad(
-                        SIMD3<Float>(x1, 0, z0), SIMD3<Float>(x1, yTR, z0),
-                        SIMD3<Float>(x1, yBR, z1), SIMD3<Float>(x1, 0, z1)
+                        SIMD3<Float>(x1, bTR, z0), SIMD3<Float>(x1, yTR, z0),
+                        SIMD3<Float>(x1, yBR, z1), SIMD3<Float>(x1, bBR, z1)
                     )
                 }
             }

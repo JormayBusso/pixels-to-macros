@@ -227,16 +227,22 @@ final class InferencePipeline {
         // through DepthFusion. Generate an estimated 3-D object from the
         // segmentation mask, plate/intrinsics scale, and food shape priors.
         if !recorder.hasDepthData {
-            // Real side-view height (Task 1.2): when the user tilted to a side
-            // view, segment that frame and measure the dominant food's true
-            // vertical extent via the pinhole model, replacing the height prior.
-            let measuredHeightCm = recorder.sideFrame.flatMap {
+            // Real side-view silhouette (dominant path): when the user reaches
+            // side view, segment the latest side frame and reduce each side mask
+            // to a vertical profile. The monocular estimator uses that profile
+            // to carve the top-mask footprint into a two-silhouette visual hull.
+            let sideProfiles = recorder.sideFrame.map { frame in
+                autoreleasepool { extractSideProfiles(from: frame, topFrame: topFrame) }
+            } ?? []
+            // Legacy scalar fallback only runs if side-profile extraction fails.
+            let measuredHeightCm = sideProfiles.isEmpty ? recorder.sideFrame.flatMap {
                 frame in autoreleasepool { measureSideHeightCm(frame) }
-            }
+            } : nil
             let estimate = try monocularEstimator.estimate(
                 segments: segments,
                 topFrame: topFrame,
                 sideFrame: recorder.sideFrame,
+                sideProfiles: sideProfiles,
                 maskWidth: preprocessor.modelInputWidth,
                 maskHeight: preprocessor.modelInputHeight,
                 measuredHeightCm: measuredHeightCm,
@@ -499,6 +505,243 @@ final class InferencePipeline {
         }
 
         return true
+    }
+
+    /// Extract real side-view silhouette profiles for the monocular visual-hull
+    /// estimator. This is the important non-LiDAR shape path: the top frame
+    /// supplies the plate footprint and this side frame supplies the vertical
+    /// contour across the matching top-footprint axis.
+    private func extractSideProfiles(
+        from sideFrame: FrameCaptureService.CapturedFrame,
+        topFrame: FrameCaptureService.CapturedFrame
+    ) -> [MonocularVolumeEstimator.SideProfile] {
+        guard let pre = preprocessor.preprocess(
+            pixelBuffer: sideFrame.pixelBuffer, plateRect: nil
+        ) else { return [] }
+
+        let sideSegments: [SegmentationService.SegmentedObject]
+        do {
+            sideSegments = yoloSegmentationService.isAvailable
+                ? try yoloSegmentationService.segment(pixelBuffer: pre)
+                : try segmentationService.segment(pixelBuffer: pre)
+        } catch {
+            print("[PIPELINE] side-profile: segmentation failed: \(error)")
+            return []
+        }
+        guard !sideSegments.isEmpty else {
+            print("[PIPELINE] side-profile: no side segments")
+            return []
+        }
+
+        let axes = sideProfileAxes(sideFrame: sideFrame, topFrame: topFrame)
+        let imageWidth = CVPixelBufferGetWidth(sideFrame.pixelBuffer)
+        let imageHeight = CVPixelBufferGetHeight(sideFrame.pixelBuffer)
+        let profiles = sideSegments.prefix(4).compactMap { segment in
+            makeSideProfile(
+                segment: segment,
+                axes: axes,
+                imageWidth: imageWidth,
+                imageHeight: imageHeight
+            )
+        }
+        print("[PIPELINE] side-profile: profiles=\(profiles.count), " +
+              profiles.map { "\($0.label)(axis=\($0.topAxis.rawValue)\($0.reversed ? "R" : ""), ar=\(String(format: "%.2f", $0.aspectRatio)), fill=\(String(format: "%.2f", $0.meanNormalizedHeight)))" }.joined(separator: ", "))
+        return profiles
+    }
+
+    private typealias SideProfileAxes = (
+        verticalUsesColumns: Bool,
+        topAxis: MonocularVolumeEstimator.SideProfile.TopAxis,
+        reversed: Bool
+    )
+
+    private func sideProfileAxes(
+        sideFrame: FrameCaptureService.CapturedFrame,
+        topFrame: FrameCaptureService.CapturedFrame
+    ) -> SideProfileAxes {
+        func normalized(_ v: simd_float3) -> simd_float3? {
+            let len = simd_length(v)
+            guard len > 0.0001 else { return nil }
+            return v / len
+        }
+        func tableProjected(_ v: simd_float3) -> simd_float3? {
+            normalized(simd_float3(v.x, 0, v.z))
+        }
+
+        let worldUp = simd_float3(0, 1, 0)
+        let sideT = sideFrame.cameraTransform
+        let sideRight = normalized(simd_float3(sideT.columns.0.x, sideT.columns.0.y, sideT.columns.0.z)) ?? simd_float3(1, 0, 0)
+        let sideUp = normalized(simd_float3(sideT.columns.1.x, sideT.columns.1.y, sideT.columns.1.z)) ?? simd_float3(0, 1, 0)
+
+        // Image columns follow camera-right; image rows increase downward, so
+        // rows follow -camera-up. Whichever image axis best aligns with gravity
+        // is the side-mask vertical axis. The other is the side horizontal axis.
+        let verticalUsesColumns = abs(simd_dot(sideRight, worldUp)) >= abs(simd_dot(sideUp, worldUp))
+        let sideHorizontal = verticalUsesColumns ? -sideUp : sideRight
+
+        let topT = topFrame.cameraTransform
+        let topCols = tableProjected(simd_float3(topT.columns.0.x, topT.columns.0.y, topT.columns.0.z)) ?? simd_float3(1, 0, 0)
+        let topRows = tableProjected(-simd_float3(topT.columns.1.x, topT.columns.1.y, topT.columns.1.z)) ?? simd_float3(0, 0, 1)
+        let sideHorizontalProjected = tableProjected(sideHorizontal) ?? topCols
+
+        let dotCols = simd_dot(sideHorizontalProjected, topCols)
+        let dotRows = simd_dot(sideHorizontalProjected, topRows)
+        if abs(dotCols) >= abs(dotRows) {
+            return (verticalUsesColumns, .columns, dotCols < 0)
+        }
+        return (verticalUsesColumns, .rows, dotRows < 0)
+    }
+
+    private func makeSideProfile(
+        segment: SegmentationService.SegmentedObject,
+        axes: SideProfileAxes,
+        imageWidth: Int,
+        imageHeight: Int
+    ) -> MonocularVolumeEstimator.SideProfile? {
+        let mask = segment.mask
+        let maskH = mask.count
+        let maskW = mask.first?.count ?? 0
+        guard maskH > 0, maskW > 0, segment.pixelCount > 0 else { return nil }
+
+        var minHorizontal = Int.max
+        var maxHorizontal = -1
+        var minVertical = Int.max
+        var maxVertical = -1
+
+        for r in 0..<maskH {
+            let row = mask[r]
+            for c in 0..<maskW where row[c] == 1 {
+                let horizontal = axes.verticalUsesColumns ? r : c
+                let vertical = axes.verticalUsesColumns ? c : r
+                minHorizontal = min(minHorizontal, horizontal)
+                maxHorizontal = max(maxHorizontal, horizontal)
+                minVertical = min(minVertical, vertical)
+                maxVertical = max(maxVertical, vertical)
+            }
+        }
+        guard maxHorizontal >= minHorizontal, maxVertical >= minVertical else { return nil }
+
+        let horizontalExtent = maxHorizontal - minHorizontal + 1
+        let verticalExtent = maxVertical - minVertical + 1
+        let sampleCount = min(64, max(12, horizontalExtent))
+        var heights = [Double](repeating: 0, count: sampleCount)
+        var bottoms = [Double](repeating: 0, count: sampleCount)
+        var tops = [Double](repeating: 0, count: sampleCount)
+        var hasSample = [Bool](repeating: false, count: sampleCount)
+
+        for sampleIndex in 0..<sampleCount {
+            let h0 = minHorizontal + Int((Double(sampleIndex) * Double(horizontalExtent) / Double(sampleCount)).rounded(.down))
+            let h1 = minHorizontal + max(0, Int((Double(sampleIndex + 1) * Double(horizontalExtent) / Double(sampleCount)).rounded(.up)) - 1)
+            var localMinV = Int.max
+            var localMaxV = -1
+
+            if axes.verticalUsesColumns {
+                for r in max(0, h0)...min(maskH - 1, h1) {
+                    let row = mask[r]
+                    for c in 0..<maskW where row[c] == 1 {
+                        localMinV = min(localMinV, c)
+                        localMaxV = max(localMaxV, c)
+                    }
+                }
+            } else {
+                for r in 0..<maskH {
+                    let row = mask[r]
+                    for c in max(0, h0)...min(maskW - 1, h1) where row[c] == 1 {
+                        localMinV = min(localMinV, r)
+                        localMaxV = max(localMaxV, r)
+                    }
+                }
+            }
+
+            if localMaxV >= localMinV {
+                heights[sampleIndex] = Double(localMaxV - localMinV + 1) / Double(max(1, verticalExtent))
+                // Image vertical axis can be rows or columns depending on how
+                // the phone is held in landscape. Normalize from bottom-up:
+                // 0 = visible side-mask bottom, 1 = visible side-mask top.
+                let bottomOffset = Double(maxVertical - localMaxV) / Double(max(1, verticalExtent))
+                let topOffset = Double(maxVertical - localMinV + 1) / Double(max(1, verticalExtent))
+                bottoms[sampleIndex] = min(1.0, max(0.0, bottomOffset))
+                tops[sampleIndex] = min(1.0, max(0.0, topOffset))
+                hasSample[sampleIndex] = true
+            }
+        }
+
+        // Interpolate tiny segmentation gaps inside the side silhouette, but
+        // keep true endpoints tapered. This avoids a notch in the exported mesh
+        // when the side mask has a one-column dropout.
+        for i in 0..<sampleCount where !hasSample[i] {
+            var left: Int?
+            var right: Int?
+            if i > 0 {
+                for j in stride(from: i - 1, through: 0, by: -1) where hasSample[j] {
+                    left = j
+                    break
+                }
+            }
+            if i + 1 < sampleCount {
+                for j in (i + 1)..<sampleCount where hasSample[j] {
+                    right = j
+                    break
+                }
+            }
+            switch (left, right) {
+            case let (l?, r?):
+                let t = Double(i - l) / Double(r - l)
+                heights[i] = heights[l] * (1.0 - t) + heights[r] * t
+                bottoms[i] = bottoms[l] * (1.0 - t) + bottoms[r] * t
+                tops[i] = tops[l] * (1.0 - t) + tops[r] * t
+            case let (l?, nil):
+                heights[i] = heights[l] * 0.35
+                bottoms[i] = bottoms[l]
+                tops[i] = max(bottoms[i], bottoms[i] + heights[i])
+            case let (nil, r?):
+                heights[i] = heights[r] * 0.35
+                bottoms[i] = bottoms[r]
+                tops[i] = max(bottoms[i], bottoms[i] + heights[i])
+            default:
+                heights[i] = 0
+                bottoms[i] = 0
+                tops[i] = 0
+            }
+        }
+
+        var smoothed = heights
+        var smoothedBottoms = bottoms
+        var smoothedTops = tops
+        if sampleCount >= 3 {
+            for i in 1..<(sampleCount - 1) {
+                smoothed[i] = heights[i - 1] * 0.25 + heights[i] * 0.5 + heights[i + 1] * 0.25
+                smoothedBottoms[i] = bottoms[i - 1] * 0.25 + bottoms[i] * 0.5 + bottoms[i + 1] * 0.25
+                smoothedTops[i] = tops[i - 1] * 0.25 + tops[i] * 0.5 + tops[i + 1] * 0.25
+            }
+        }
+        smoothed = smoothed.map { min(1.0, max(0.0, $0)) }
+        smoothedBottoms = smoothedBottoms.map { min(1.0, max(0.0, $0)) }
+        smoothedTops = smoothedTops.map { min(1.0, max(0.0, $0)) }
+
+        let verticalMaskDim = Double(axes.verticalUsesColumns ? maskW : maskH)
+        let horizontalMaskDim = Double(axes.verticalUsesColumns ? maskH : maskW)
+        let verticalFullDim = Double(axes.verticalUsesColumns ? imageWidth : imageHeight)
+        let horizontalFullDim = Double(axes.verticalUsesColumns ? imageHeight : imageWidth)
+        let verticalFullPx = Double(verticalExtent) * verticalFullDim / max(1.0, verticalMaskDim)
+        let horizontalFullPx = Double(horizontalExtent) * horizontalFullDim / max(1.0, horizontalMaskDim)
+        let aspectRatio = verticalFullPx / max(1.0, horizontalFullPx)
+        let coverage = Double(segment.pixelCount) / Double(max(1, maskW * maskH))
+        guard aspectRatio > 0.05, aspectRatio < 4.0, coverage > 0.001 else { return nil }
+
+        return MonocularVolumeEstimator.SideProfile(
+            label: segment.label,
+            classIndex: segment.classIndex,
+            topAxis: axes.topAxis,
+            reversed: axes.reversed,
+            normalizedHeights: smoothed,
+            normalizedBottoms: smoothedBottoms,
+            normalizedTops: smoothedTops,
+            aspectRatio: aspectRatio,
+            coverage: coverage,
+            confidence: segment.confidence,
+            pixelCount: segment.pixelCount
+        )
     }
 
     /// Measure the dominant food's true vertical height (cm) from the side
