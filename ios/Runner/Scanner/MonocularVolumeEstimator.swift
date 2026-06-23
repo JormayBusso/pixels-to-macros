@@ -208,6 +208,9 @@ final class MonocularVolumeEstimator {
 
             let heightCm: Double
             let volumeCm3: Double
+            let rawVolumeCm3: Double
+            let guardrailUpperCm3: Double?
+            let guardrailApplied: Bool
             let scanMode: String
             var debugInfo: String? = nil
             let profileMatch = sideProfileMatch(
@@ -221,6 +224,9 @@ final class MonocularVolumeEstimator {
             if let dr = depthResult {
                 heightCm = dr.meanHeightCm
                 volumeCm3 = max(6.0, dr.volumeCm3)
+                rawVolumeCm3 = dr.volumeCm3
+                guardrailUpperCm3 = nil
+                guardrailApplied = false
                 scanMode = "monocular_depth"
                 debugInfo = String(
                     format: "depth: table=%.0fcm food=%.0fcm h=%.1fcm cov=%.0f%% vol=%.0fcm³",
@@ -238,17 +244,21 @@ final class MonocularVolumeEstimator {
                     lateralBoundCm: lateralBoundCm
                 )
                 let shapeFactor = sideProfileShapeFactor(profile, fallback: prior.shapeFactor)
-                volumeCm3 = boundedVolumeCm3(
-                    rawVolumeCm3: areaCm2 * heightCm * shapeFactor,
+                rawVolumeCm3 = areaCm2 * heightCm * shapeFactor
+                let bounded = boundedVolumeCm3(
+                    rawVolumeCm3: rawVolumeCm3,
                     label: seg.label,
                     widthCm: widthCm,
                     depthCm: depthCm,
                     heightCm: heightCm,
                     shapeFactor: shapeFactor
                 )
+                volumeCm3 = bounded.volumeCm3
+                guardrailUpperCm3 = bounded.upperCm3
+                guardrailApplied = bounded.softened
                 scanMode = "monocular_visual_hull"
                 debugInfo = String(
-                    format: "visual_hull: scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm fill=%.2f ar=%.2f vol=%.0fcm³",
+                    format: "visual_hull: side=hard scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm fill=%.2f ar=%.2f vol=%.0fcm³",
                     scale.source,
                     scale.pixelsPerCm,
                     profile.topAxis.rawValue,
@@ -267,20 +277,70 @@ final class MonocularVolumeEstimator {
                     priorBoundCm: priorBoundCm,
                     lateralBoundCm: lateralBoundCm
                 )
-                volumeCm3 = boundedVolumeCm3(
-                    rawVolumeCm3: areaCm2 * heightCm * prior.shapeFactor,
+                rawVolumeCm3 = areaCm2 * heightCm * prior.shapeFactor
+                let bounded = boundedVolumeCm3(
+                    rawVolumeCm3: rawVolumeCm3,
                     label: seg.label,
                     widthCm: widthCm,
                     depthCm: depthCm,
                     heightCm: heightCm,
                     shapeFactor: prior.shapeFactor
                 )
+                volumeCm3 = bounded.volumeCm3
+                guardrailUpperCm3 = bounded.upperCm3
+                guardrailApplied = bounded.softened
                 scanMode = "monocular_scale"
                 debugInfo = String(
                     format: "prism: scale=%@ %.1fpx/cm h=%.1fcm vol=%.0fcm³",
                     scale.source, scale.pixelsPerCm, heightCm, volumeCm3
                 )
             }
+            let densityEstimate = estimatedDensityGPerCm3(for: seg.label)
+            let weightEstimateG = volumeCm3 * densityEstimate
+            let guardrailText = guardrailUpperCm3.map {
+                return String(
+                    format: " guard=%@%.0fcm³",
+                    guardrailApplied ? "soft>" : "≤",
+                    $0
+                )
+            } ?? ""
+            let sideApplied = profile != nil
+            let fallbackUsed = depthResult == nil && profile == nil
+            let sideProfileSummary = profile.map { sideProfile in
+                let heightSamples = [0.0, 0.25, 0.5, 0.75, 1.0]
+                    .map { position in
+                        String(format: "%.2f", sideProfile.sample(position))
+                    }
+                    .joined(separator: ",")
+                return String(
+                    format: " sideProfile=applied axis=%@%@ samples=%d heights=[%@] fill=%.2f ar=%.2f",
+                    sideProfile.topAxis.rawValue,
+                    sideProfile.reversed ? "R" : "",
+                    sideProfile.normalizedHeights.count,
+                    heightSamples,
+                    sideProfile.meanNormalizedHeight,
+                    sideProfile.aspectRatio
+                )
+            } ?? " sideProfile=none"
+            let diagnosticInfo = String(
+                format: "%@ | footprint raw=%.1fcm² %.1fx%.1fcm stable=%.1fcm² %.1fx%.1fcm height=%.2fcm rawVol=%.1fcm³ finalVol=%.1fcm³ density=%.2fg/cm³ weight=%.0fg fallback=%@ sideApplied=%@%@%@",
+                debugInfo ?? scanMode,
+                rawAreaCm2,
+                rawWidthCm,
+                rawDepthCm,
+                areaCm2,
+                widthCm,
+                depthCm,
+                heightCm,
+                rawVolumeCm3,
+                volumeCm3,
+                densityEstimate,
+                weightEstimateG,
+                fallbackUsed ? "true" : "false",
+                sideApplied ? "true" : "false",
+                sideProfileSummary,
+                guardrailText
+            )
             let confidence = confidenceForScale(scale, segmentConfidence: seg.confidence, sideFrame: sideFrame)
             let id = "\(sanitised(seg.label))_\(idx)"
 
@@ -315,10 +375,21 @@ final class MonocularVolumeEstimator {
                 "scan_mode": scanMode,
                 "scale_source": scale.source,
                 "estimated": true,
+                "footprint_area_cm2": round(areaCm2 * 10) / 10,
+                "height_cm": round(heightCm * 10) / 10,
+                "raw_volume_cm3": round(rawVolumeCm3 * 10) / 10,
+                "density_g_cm3": round(densityEstimate * 100) / 100,
+                "weight_g": round(weightEstimateG),
+                "volume_guardrail_applied": guardrailApplied,
+                "side_view_applied": sideApplied,
+                "fallback_used": fallbackUsed,
             ]
-            if let debugInfo { row["debug"] = debugInfo }
+            if let guardrailUpperCm3 {
+                row["guardrail_upper_cm3"] = round(guardrailUpperCm3 * 10) / 10
+            }
+            row["debug"] = diagnosticInfo
             // [EVAL] one line per food for known-weight calibration (#3).
-            print("[EVAL] label=\(seg.label) volume_cm3=\(String(format: "%.1f", roundedVolume)) height_cm=\(String(format: "%.2f", heightCm)) mode=\(scanMode) scale=\(scale.source) px/cm=\(String(format: "%.2f", scale.pixelsPerCm))")
+            print("[EVAL] label=\(seg.label) footprint_cm2=\(String(format: "%.1f", areaCm2)) height_cm=\(String(format: "%.2f", heightCm)) raw_volume_cm3=\(String(format: "%.1f", rawVolumeCm3)) final_volume_cm3=\(String(format: "%.1f", roundedVolume)) density_g_cm3=\(String(format: "%.2f", densityEstimate)) weight_g=\(String(format: "%.0f", weightEstimateG)) mode=\(scanMode) scale=\(scale.source) px/cm=\(String(format: "%.2f", scale.pixelsPerCm)) side_applied=\(sideApplied) fallback=\(fallbackUsed) guardrail=\(guardrailApplied ? "soft" : "none")")
             payload.append(row)
             metadata.append(row)
         }
@@ -490,12 +561,12 @@ final class MonocularVolumeEstimator {
     }
 
     private func sideProfileShapeFactor(_ profile: SideProfile, fallback: Double) -> Double {
-        // A side silhouette's fill ratio describes a 2-D contour; use it as
-        // evidence, but damp it toward the food prior so segmentation noise does
-        // not swing calorie volume violently. Circular profiles (~0.78) land
-        // near a sphere-like 0.64 area*height factor.
-        let silhouetteFactor = min(0.90, max(0.42, profile.meanNormalizedHeight * 0.82))
-        return min(0.90, max(0.42, fallback * 0.55 + silhouetteFactor * 0.45))
+        // Treat the side silhouette as the primary geometric evidence. The
+        // prior only provides a light stabiliser after `usableSideProfile(...)`
+        // has accepted the mask, so the side view visibly changes both volume
+        // and mesh shape instead of being blended into a generic dome.
+        let silhouetteFactor = min(0.92, max(0.38, profile.meanNormalizedHeight * 0.88))
+        return min(0.92, max(0.38, fallback * 0.15 + silhouetteFactor * 0.85))
     }
 
     private func usableSideProfile(_ profile: SideProfile?, for label: String) -> SideProfile? {
@@ -566,16 +637,39 @@ final class MonocularVolumeEstimator {
         depthCm: Double,
         heightCm: Double,
         shapeFactor: Double
-    ) -> Double {
+    ) -> (volumeCm3: Double, upperCm3: Double, softened: Bool) {
         var upper = widthCm * depthCm * max(heightCm, 0.8) * min(0.92, max(0.35, shapeFactor * 1.18))
         if let envelope = physicalEnvelope(for: label) {
             upper = min(upper, envelope.maxVolumeCm3)
         }
-        let bounded = min(max(6.0, rawVolumeCm3), max(6.0, upper))
-        if bounded < rawVolumeCm3 * 0.98 {
-            print("[MonocularEstimator] volume bounded \(label): raw=\(String(format: "%.0f", rawVolumeCm3))cm3 -> \(String(format: "%.0f", bounded))cm3")
+        let safeUpper = max(6.0, upper)
+        let floorVolume = max(6.0, rawVolumeCm3)
+        guard floorVolume > safeUpper else {
+            return (floorVolume, safeUpper, false)
         }
-        return bounded
+
+        // Do not snap to the same cap for every oversized scan. Compress the
+        // excess logarithmically so impossible monocular outliers are still
+        // damped, while different top/side masks produce different final
+        // volumes for diagnostics and calibration.
+        let ratio = floorVolume / safeUpper
+        let softened = safeUpper * (1.0 + 0.10 * log(ratio))
+        print("[MonocularEstimator] volume softened \(label): raw=\(String(format: "%.0f", rawVolumeCm3))cm3 upper=\(String(format: "%.0f", safeUpper))cm3 -> \(String(format: "%.0f", softened))cm3")
+        return (max(6.0, softened), safeUpper, true)
+    }
+
+    private func estimatedDensityGPerCm3(for label: String) -> Double {
+        let l = label.lowercased()
+        if l.contains("banana") { return 0.875 }
+        if l.contains("tomato") { return 0.915 }
+        if l.contains("apple") || l.contains("orange") || l.contains("peach") || l.contains("plum") { return 0.90 }
+        if l.contains("onion") || l.contains("potato") { return 0.975 }
+        if l.contains("egg") { return 1.03 }
+        if l.contains("rice") || l.contains("pasta") || l.contains("noodle") { return 0.95 }
+        if l.contains("bread") || l.contains("toast") { return 0.30 }
+        if l.contains("chicken") || l.contains("beef") || l.contains("steak") || l.contains("fish") { return 1.02 }
+        if l.contains("salad") || l.contains("vegetable") { return 0.55 }
+        return 0.90
     }
 
     private func physicalEnvelope(for label: String) -> PhysicalEnvelope? {
@@ -711,12 +805,18 @@ final class MonocularVolumeEstimator {
             var filled = on
             for r in 0..<gr {
                 for c in 0..<gc where !on[cell(r, c)] {
-                    var n = 0
-                    if isOn(r - 1, c) { n += 1 }
-                    if isOn(r + 1, c) { n += 1 }
-                    if isOn(r, c - 1) { n += 1 }
-                    if isOn(r, c + 1) { n += 1 }
-                    if n >= 3 { filled[cell(r, c)] = true }
+                    let up = isOn(r - 1, c)
+                    let down = isOn(r + 1, c)
+                    let left = isOn(r, c - 1)
+                    let right = isOn(r, c + 1)
+                    let diagonal = isOn(r - 1, c - 1) ||
+                        isOn(r - 1, c + 1) ||
+                        isOn(r + 1, c - 1) ||
+                        isOn(r + 1, c + 1)
+                    if (up && down && (left || right || diagonal)) ||
+                        (left && right && (up || down || diagonal)) {
+                        filled[cell(r, c)] = true
+                    }
                 }
             }
             on = filled
@@ -749,6 +849,22 @@ final class MonocularVolumeEstimator {
             }
         }
         let maxR = sqrt(maxR2)
+        @inline(__always) func fallbackBottomFraction(rho: Float, dome: Float, edge: Float) -> Float {
+            let l = label.lowercased()
+            if l.contains("soup") || l.contains("sauce") || l.contains("yogurt") ||
+                l.contains("rice") || l.contains("pasta") || l.contains("noodle") ||
+                l.contains("salad") || l.contains("bread") || l.contains("toast") {
+                return 0
+            }
+            if l.contains("banana") {
+                return min(0.18, 0.08 + 0.10 * dome) * edge
+            }
+            if l.contains("tomato") || l.contains("apple") || l.contains("orange") ||
+                l.contains("peach") || l.contains("plum") || l.contains("egg") {
+                return min(0.24, 0.14 * dome + 0.04 * (1.0 - rho)) * edge
+            }
+            return min(0.16, 0.08 * dome + 0.03 * (1.0 - rho)) * edge
+        }
         var cornerB = [Float](repeating: 0, count: (gr + 1) * cornerCols)
         var cornerH = [Float](repeating: 0, count: (gr + 1) * cornerCols)
         for rr in 0...gr {
@@ -767,31 +883,20 @@ final class MonocularVolumeEstimator {
                     let axisU = sideProfile.topAxis == .columns
                         ? Double(cc) / Double(max(gc, 1))
                         : Double(rr) / Double(max(gr, 1))
-                    let perpU = sideProfile.topAxis == .columns
-                        ? Double(rr) / Double(max(gr, 1))
-                        : Double(cc) / Double(max(gc, 1))
                     let bounds = sideProfile.sampleBounds(axisU)
                     let sideBottom = Float(bounds.bottom)
                     let sideTop = Float(bounds.top)
                     let sideLimit = max(0, sideTop - sideBottom)
-                    let perp = Float(perpU * 2.0 - 1.0)
-                    let transverseRoundness = sqrt(max(0.0, 1.0 - perp * perp))
-                    let axis = Float(axisU) * 2.0 - 1.0
-                    let longitudinalDome = sqrt(max(0.0, 1.0 - axis * axis))
-                    // The side silhouette is the longitudinal constraint. The
-                    // transverse term rounds the unobserved axis, while a small
-                    // minimum keeps the profile from becoming a cut-off cylinder
-                    // with vertical walls. The lower side contour is carried
-                    // into the underside, so the base is only perfectly flat in
-                    // the no-side-profile fallback.
-                    let roundness = max(0.12, transverseRoundness)
-                    let topBlend = max(0.10, longitudinalDome * 0.22 + roundness * 0.78)
-                    let bottomBlend = max(0.0, min(1.0, longitudinalDome * 0.35 + transverseRoundness * 0.45))
-                    bottomFraction = sideBottom * bottomBlend * edge
-                    heightFraction = max(bottomFraction + 0.035 * edge, (sideBottom + sideLimit * topBlend) * edge)
+                    let silhouetteEdge: Float = n >= 4 ? 1.0 : max(0.72, Float(n) / 4.0)
+                    let boundedBottom = max(0, min(max(0, sideTop - 0.035), sideBottom))
+                    bottomFraction = boundedBottom * silhouetteEdge
+                    heightFraction = max(
+                        bottomFraction + 0.035 * silhouetteEdge,
+                        (sideBottom + sideLimit) * silhouetteEdge
+                    )
                 } else {
-                    bottomFraction = 0
-                    heightFraction = dome * edge
+                    bottomFraction = fallbackBottomFraction(rho: rho, dome: dome, edge: edge)
+                    heightFraction = max(bottomFraction + 0.035 * edge, dome * edge)
                 }
                 cornerB[corner(rr, cc)] = max(0.0, min(h * 0.80, h * bottomFraction))
                 cornerH[corner(rr, cc)] = max(0.0, h * heightFraction)
@@ -905,7 +1010,8 @@ final class MonocularVolumeEstimator {
             // a later step. Empty UVs make the exporter skip the texture path.
             uvs: [],
             voxelCount: voxelCount,
-            volumeCm3: volumeCm3
+            volumeCm3: volumeCm3,
+            preserveCreases: true
         )
     }
 

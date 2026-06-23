@@ -203,10 +203,14 @@ final class Food3DExporter {
         // contain spaces or punctuation.
         mesh.name = sanitised(label: object.id)
 
-        // Pre-compute smooth vertex normals so lighting works out-of-the-box
-        // in QuickLook + the planned SceneKit viewer. `creaseThreshold = 0`
-        // means: average normals everywhere (smooth shading).
-        mesh.addNormals(withAttributeNamed: MDLVertexAttributeNormal, creaseThreshold: 0)
+        // Pre-compute normals so lighting works out-of-the-box in QuickLook
+        // and SceneKit. Monocular visual-hull meshes preserve creases because
+        // averaging every normal made top/side/underside surfaces read as one
+        // soft blanket shell over the food.
+        mesh.addNormals(
+            withAttributeNamed: MDLVertexAttributeNormal,
+            creaseThreshold: object.preserveCreases ? 1 : 0
+        )
 
         return mesh
     }

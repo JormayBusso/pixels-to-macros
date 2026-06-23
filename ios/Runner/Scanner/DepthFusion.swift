@@ -365,6 +365,10 @@ final class DepthFusion {
         /// so debug overlays can show voxel density alongside volume.
         let voxelCount: Int
         let volumeCm3: Double
+        /// Preserve hard surface boundaries when exporting normals. LiDAR meshes
+        /// can stay smooth, but monocular visual-hull meshes should not let
+        /// top, side, and underside normals blur into a blanket-like shell.
+        let preserveCreases: Bool
     }
 
     /// Canonical clustering step. Performs (in order):
@@ -572,7 +576,8 @@ final class DepthFusion {
                 colors: colors,
                 uvs: uvs,
                 voxelCount: cluster.voxelKeys.count,
-                volumeCm3: cluster.volumeCm3
+                volumeCm3: cluster.volumeCm3,
+                preserveCreases: false
             ))
         }
         return objects

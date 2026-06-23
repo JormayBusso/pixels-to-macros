@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +23,7 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
+import '../widgets/premium_theme_effects.dart';
 import '../widgets/tour_keys.dart';
 import 'auth_screen.dart';
 import 'eval_dashboard_screen.dart';
@@ -928,7 +931,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SizedBox(height: 24),
         _SectionHeader(l10n.appColorTheme),
         const SizedBox(height: 12),
-        _ThemeColorPickerCard(),
+        const _ThemeColorPickerCard(),
       ],
     );
   }
@@ -1335,7 +1338,7 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
         side: const BorderSide(color: _diabetesBlue, width: 1),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2030,9 +2033,10 @@ class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
 // ── Theme color picker ────────────────────────────────────────────────────────
 
 class _ThemeColorPickerCard extends ConsumerWidget {
+  const _ThemeColorPickerCard();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
     final prefs = ref.watch(userPrefsProvider);
     final current = prefs.themeColorSeed;
 
@@ -2042,62 +2046,520 @@ class _ThemeColorPickerCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.pickAccentColor,
-              style: const TextStyle(fontSize: 13, color: AppTheme.gray600),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: AppColorSeed.values.map((seed) {
-                final selected = current == seed;
-                return GestureDetector(
-                  onTap: () async {
-                    final updated = prefs.copyWith(themeColorSeed: seed);
-                    await ref.read(userPrefsProvider.notifier).update(updated);
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: seed.color,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: selected ? AppTheme.gray900 : Colors.transparent,
-                        width: 3,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                const spacing = 8.0;
+                final columns = constraints.maxWidth >= 780
+                    ? 4
+                    : constraints.maxWidth >= 560
+                        ? 3
+                        : constraints.maxWidth >= 340
+                            ? 2
+                            : 1;
+                final tileWidth =
+                    (constraints.maxWidth - spacing * (columns - 1)) / columns;
+
+                return Wrap(
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: AppColorSeed.values.map((seed) {
+                    return SizedBox(
+                      width: tileWidth,
+                      child: _ThemePreviewTile(
+                        seed: seed,
+                        selected: current == seed,
+                        onTap: () async {
+                          final updated = prefs.copyWith(themeColorSeed: seed);
+                          await ref
+                              .read(userPrefsProvider.notifier)
+                              .update(updated);
+                        },
                       ),
-                      boxShadow: selected
-                          ? [
-                              BoxShadow(
-                                color: seed.color.withValues(alpha: 0.5),
-                                blurRadius: 10,
-                                spreadRadius: 2,
-                              )
-                            ]
-                          : [],
-                    ),
-                    child: selected
-                        ? const Icon(Icons.check, color: Colors.white, size: 22)
-                        : null,
-                  ),
+                    );
+                  }).toList(),
                 );
-              }).toList(),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              current.label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: current.color,
-              ),
+              },
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _ThemePreviewTile extends StatefulWidget {
+  const _ThemePreviewTile({
+    required this.seed,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AppColorSeed seed;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<_ThemePreviewTile> createState() => _ThemePreviewTileState();
+}
+
+class _ThemePreviewTileState extends State<_ThemePreviewTile>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: _animationDuration(widget.seed),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ThemePreviewTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.seed != widget.seed) {
+      _controller.duration = _animationDuration(widget.seed);
+    }
+    _syncAnimation();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Duration _animationDuration(AppColorSeed seed) {
+    switch (seed) {
+      case AppColorSeed.aiAurora:
+        return const Duration(seconds: 16);
+      case AppColorSeed.liquidGlass:
+        return const Duration(seconds: 14);
+      case AppColorSeed.midnightPulse:
+        return const Duration(seconds: 12);
+      default:
+        return const Duration(seconds: 1);
+    }
+  }
+
+  void _syncAnimation() {
+    final reduceMotion = MediaQuery.of(context).disableAnimations ||
+        MediaQuery.of(context).accessibleNavigation;
+    final shouldAnimate = widget.seed.isPremium &&
+        TickerMode.valuesOf(context).enabled &&
+        !reduceMotion;
+
+    if (shouldAnimate && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (!shouldAnimate && _controller.isAnimating) {
+      _controller.stop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final seed = widget.seed;
+    final premium = seed.isPremium;
+    final selected = widget.selected;
+    final borderColor = selected
+        ? seed.color
+        : premium
+            ? Colors.white.withValues(alpha: 0.16)
+            : AppTheme.gray200;
+    final textColor = premium ? Colors.white : AppTheme.gray900;
+    final mutedColor = premium ? Colors.white70 : AppTheme.gray600;
+    final radius = BorderRadius.circular(14);
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: seed.label,
+      child: PremiumMotionSurface(
+        enabled: premium,
+        borderRadius: radius,
+        borderWidth: selected ? 1.5 : 1.0,
+        glow: selected,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: radius,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              constraints: const BoxConstraints(minHeight: 82),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: premium ? seed.surfaceColor : Colors.white,
+                borderRadius: radius,
+                border: Border.all(color: borderColor, width: selected ? 2 : 1),
+                boxShadow: selected
+                    ? [
+                        BoxShadow(
+                          color: seed.color
+                              .withValues(alpha: premium ? 0.22 : 0.16),
+                          blurRadius: premium ? 14 : 10,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 6),
+                        ),
+                      ]
+                    : const [],
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 46,
+                    height: 46,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: AnimatedBuilder(
+                        animation: _controller,
+                        builder: (context, _) {
+                          return CustomPaint(
+                            painter: _ThemePreviewPainter(
+                              seed: seed,
+                              progress: _controller.value,
+                            ),
+                            child: premium && seed == AppColorSeed.liquidGlass
+                                ? BackdropFilter(
+                                    filter: ui.ImageFilter.blur(
+                                      sigmaX: 4,
+                                      sigmaY: 4,
+                                    ),
+                                    child: const SizedBox.expand(),
+                                  )
+                                : const SizedBox.expand(),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          seed.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          seed.shortDescription,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: mutedColor,
+                            fontSize: 10.5,
+                            height: 1.18,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: selected ? seed.color : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: selected
+                            ? seed.color
+                            : (premium
+                                ? Colors.white.withValues(alpha: 0.24)
+                                : AppTheme.gray300),
+                      ),
+                    ),
+                    child: selected
+                        ? const Icon(Icons.check, color: Colors.white, size: 14)
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemePreviewPainter extends CustomPainter {
+  const _ThemePreviewPainter({required this.seed, required this.progress});
+
+  final AppColorSeed seed;
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (!seed.isPremium) {
+      _paintClassic(canvas, size);
+      return;
+    }
+
+    switch (seed) {
+      case AppColorSeed.aiAurora:
+        _paintAurora(canvas, size);
+        break;
+      case AppColorSeed.liquidGlass:
+        _paintLiquidGlass(canvas, size);
+        break;
+      case AppColorSeed.midnightPulse:
+        _paintMidnightPulse(canvas, size);
+        break;
+      default:
+        _paintClassic(canvas, size);
+    }
+  }
+
+  void _paintClassic(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final background = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [seed.surfaceColor, Colors.white],
+      ).createShader(rect);
+    canvas.drawRect(rect, background);
+
+    final accent = Paint()..color = seed.color;
+    final soft = Paint()..color = seed.color.withValues(alpha: 0.16);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.10, size.height * 0.14, size.width * 0.54,
+            size.height * 0.12),
+        const Radius.circular(12),
+      ),
+      soft,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.10, size.height * 0.35, size.width * 0.78,
+            size.height * 0.40),
+        const Radius.circular(14),
+      ),
+      Paint()..color = Colors.white.withValues(alpha: 0.88),
+    );
+    canvas.drawCircle(Offset(size.width * 0.22, size.height * 0.55),
+        size.height * 0.11, accent);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.40, size.height * 0.49, size.width * 0.34,
+            size.height * 0.09),
+        const Radius.circular(12),
+      ),
+      Paint()..color = seed.color.withValues(alpha: 0.52),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.40, size.height * 0.63, size.width * 0.22,
+            size.height * 0.06),
+        const Radius.circular(12),
+      ),
+      Paint()..color = seed.color.withValues(alpha: 0.28),
+    );
+  }
+
+  void _paintAurora(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(rect, Paint()..color = const Color(0xFF0B0F17));
+
+    final colors = seed.accentColors;
+    for (var i = 0; i < colors.length; i++) {
+      final phase = progress * math.pi * 2 + i * 1.35;
+      final center = Offset(
+        size.width * (0.22 + 0.58 * ((math.sin(phase) + 1) / 2)),
+        size.height * (0.20 + 0.55 * ((math.cos(phase * 0.72) + 1) / 2)),
+      );
+      final radius = size.shortestSide * (0.42 + i * 0.05);
+      final paint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            colors[i].withValues(alpha: 0.42),
+            colors[i].withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromCircle(center: center, radius: radius));
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    final linePaint = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          Colors.transparent,
+          colors[2].withValues(alpha: 0.48),
+          colors[1].withValues(alpha: 0.34),
+          Colors.transparent,
+        ],
+      ).createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    final path = Path()..moveTo(0, size.height * 0.60);
+    for (var x = 0.0; x <= size.width; x += 8) {
+      final y = size.height *
+          (0.56 + 0.08 * math.sin(x / size.width * 5 + progress * 2));
+      path.lineTo(x, y);
+    }
+    canvas.drawPath(path, linePaint);
+
+    _paintPreviewChrome(canvas, size, colors[0], dark: true);
+  }
+
+  void _paintLiquidGlass(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0D1117), Color(0xFF1D2632)],
+        ).createShader(rect),
+    );
+
+    final shimmerX = size.width * (-0.28 + 1.56 * progress);
+    final shimmerPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.transparent,
+          Colors.white.withValues(alpha: 0.20),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromLTWH(shimmerX - 24, 0, 48, size.height));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(shimmerX - 18, -8, 36, size.height + 16),
+        const Radius.circular(22),
+      ),
+      shimmerPaint,
+    );
+
+    final glassFill = Paint()..color = Colors.white.withValues(alpha: 0.14);
+    final glassStroke = Paint()
+      ..color = Colors.white.withValues(alpha: 0.36)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final panel = RRect.fromRectAndRadius(
+      Rect.fromLTWH(size.width * 0.08, size.height * 0.15, size.width * 0.84,
+          size.height * 0.62),
+      const Radius.circular(18),
+    );
+    canvas.drawRRect(panel, glassFill);
+    canvas.drawRRect(panel, glassStroke);
+
+    _paintPreviewChrome(canvas, size, const Color(0xFF93C5FD), dark: true);
+  }
+
+  void _paintMidnightPulse(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF050816), Color(0xFF0B1020)],
+        ).createShader(rect),
+    );
+
+    final pulse = 0.5 + 0.5 * math.sin(progress * math.pi * 2);
+    final center = Offset(size.width * 0.68, size.height * 0.47);
+    for (var i = 0; i < 3; i++) {
+      final radius = size.shortestSide * (0.18 + i * 0.13 + pulse * 0.035);
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..color =
+              seed.color.withValues(alpha: (0.22 - i * 0.045).clamp(0.0, 1.0))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2,
+      );
+    }
+
+    final tracePaint = Paint()
+      ..color = const Color(0xFF22D3EE).withValues(alpha: 0.42)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3
+      ..strokeCap = StrokeCap.round;
+    final path = Path()
+      ..moveTo(size.width * 0.10, size.height * 0.64)
+      ..lineTo(size.width * 0.32, size.height * 0.64)
+      ..cubicTo(size.width * 0.42, size.height * 0.64, size.width * 0.40,
+          size.height * 0.35, size.width * 0.52, size.height * 0.35)
+      ..lineTo(size.width * 0.86, size.height * 0.35);
+    canvas.drawPath(path, tracePaint);
+
+    _paintPreviewChrome(canvas, size, seed.color, dark: true);
+  }
+
+  void _paintPreviewChrome(Canvas canvas, Size size, Color accent,
+      {required bool dark}) {
+    final textPaint = Paint()
+      ..color =
+          (dark ? Colors.white : AppTheme.gray900).withValues(alpha: 0.86);
+    final mutedPaint = Paint()
+      ..color =
+          (dark ? Colors.white : AppTheme.gray500).withValues(alpha: 0.34);
+    final accentPaint = Paint()..color = accent.withValues(alpha: 0.82);
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.10, size.height * 0.16, size.width * 0.34,
+            size.height * 0.055),
+        const Radius.circular(12),
+      ),
+      textPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.10, size.height * 0.28, size.width * 0.22,
+            size.height * 0.045),
+        const Radius.circular(12),
+      ),
+      mutedPaint,
+    );
+    canvas.drawCircle(Offset(size.width * 0.22, size.height * 0.58),
+        size.height * 0.095, accentPaint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.40, size.height * 0.52, size.width * 0.30,
+            size.height * 0.055),
+        const Radius.circular(12),
+      ),
+      textPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.40, size.height * 0.63, size.width * 0.20,
+            size.height * 0.045),
+        const Radius.circular(12),
+      ),
+      mutedPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ThemePreviewPainter oldDelegate) {
+    return oldDelegate.seed != seed || oldDelegate.progress != progress;
   }
 }
 

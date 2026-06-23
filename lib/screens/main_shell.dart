@@ -13,6 +13,7 @@ import '../services/notification_service.dart';
 import '../services/weekly_badge_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_tutorial_overlay.dart';
+import '../widgets/premium_theme_effects.dart';
 import '../widgets/tour_keys.dart';
 import '../widgets/weekly_badge_recap_sheet.dart';
 import 'analytics_screen.dart';
@@ -154,6 +155,8 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final visualTheme = context.visualTheme;
+    final premium = visualTheme.premium;
     ref.watch(userPrefsProvider);
 
     // Watch showTourProvider so we can re-show tour on demand (from Settings).
@@ -183,17 +186,26 @@ class _MainShellState extends ConsumerState<MainShell> {
         Scaffold(
           body: IndexedStack(
             index: _tabIndex,
-            children: _tabs,
+            children: [
+              for (var i = 0; i < _tabs.length; i++)
+                TickerMode(enabled: i == _tabIndex, child: _tabs[i]),
+            ],
           ),
           bottomNavigationBar: NavigationBarTheme(
             data: NavigationBarThemeData(
-              labelTextStyle: WidgetStateProperty.all(
-                const TextStyle(
+              labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                final selected = states.contains(WidgetState.selected);
+                return TextStyle(
                   fontSize: 9.5,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                   overflow: TextOverflow.ellipsis,
-                ),
-              ),
+                  color: selected
+                      ? (premium
+                          ? visualTheme.primaryAccent
+                          : context.primary700)
+                      : (premium ? visualTheme.onMuted : AppTheme.gray500),
+                );
+              }),
             ),
             child: MediaQuery.withClampedTextScaling(
               // Keep nav labels at their designed size so longer translations
@@ -207,42 +219,88 @@ class _MainShellState extends ConsumerState<MainShell> {
                   FocusScope.of(context).unfocus();
                   setState(() => _tabIndex = i);
                 },
-                backgroundColor: Colors.white,
-                indicatorColor: context.primary100,
+                backgroundColor:
+                    premium ? visualTheme.navBarColor : Colors.white,
+                indicatorColor: premium
+                    ? visualTheme.primaryAccent.withValues(alpha: 0.18)
+                    : context.primary100,
                 destinations: [
                   NavigationDestination(
                     icon: const Icon(Icons.home_outlined),
-                    selectedIcon: Icon(Icons.home, color: context.primary700),
+                    selectedIcon: PremiumFocusRing(
+                      enabled: premium,
+                      radius: 18,
+                      padding: const EdgeInsets.all(3),
+                      child: Icon(Icons.home,
+                          color: premium
+                              ? visualTheme.primaryAccent
+                              : context.primary700),
+                    ),
                     label: l10n.home,
                   ),
                   NavigationDestination(
                     icon: const Icon(Icons.bar_chart_outlined),
-                    selectedIcon:
-                        Icon(Icons.bar_chart, color: context.primary700),
+                    selectedIcon: PremiumFocusRing(
+                      enabled: premium,
+                      radius: 18,
+                      padding: const EdgeInsets.all(3),
+                      child: Icon(Icons.bar_chart,
+                          color: premium
+                              ? visualTheme.primaryAccent
+                              : context.primary700),
+                    ),
                     label: l10n.analytics,
                   ),
                   NavigationDestination(
                     icon: const Icon(Icons.restaurant_menu_outlined),
-                    selectedIcon:
-                        Icon(Icons.restaurant_menu, color: context.primary700),
+                    selectedIcon: PremiumFocusRing(
+                      enabled: premium,
+                      radius: 18,
+                      padding: const EdgeInsets.all(3),
+                      child: Icon(Icons.restaurant_menu,
+                          color: premium
+                              ? visualTheme.primaryAccent
+                              : context.primary700),
+                    ),
                     label: l10n.recipes,
                   ),
                   NavigationDestination(
                     icon: const Icon(Icons.shopping_cart_outlined),
-                    selectedIcon:
-                        Icon(Icons.shopping_cart, color: context.primary700),
+                    selectedIcon: PremiumFocusRing(
+                      enabled: premium,
+                      radius: 18,
+                      padding: const EdgeInsets.all(3),
+                      child: Icon(Icons.shopping_cart,
+                          color: premium
+                              ? visualTheme.primaryAccent
+                              : context.primary700),
+                    ),
                     label: l10n.groceryList,
                   ),
                   NavigationDestination(
                     icon: const Icon(Icons.calendar_month_outlined),
-                    selectedIcon:
-                        Icon(Icons.calendar_month, color: context.primary700),
+                    selectedIcon: PremiumFocusRing(
+                      enabled: premium,
+                      radius: 18,
+                      padding: const EdgeInsets.all(3),
+                      child: Icon(Icons.calendar_month,
+                          color: premium
+                              ? visualTheme.primaryAccent
+                              : context.primary700),
+                    ),
                     label: l10n.mealPlanner,
                   ),
                   NavigationDestination(
                     icon: const Icon(Icons.settings_outlined),
-                    selectedIcon:
-                        Icon(Icons.settings, color: context.primary700),
+                    selectedIcon: PremiumFocusRing(
+                      enabled: premium,
+                      radius: 18,
+                      padding: const EdgeInsets.all(3),
+                      child: Icon(Icons.settings,
+                          color: premium
+                              ? visualTheme.primaryAccent
+                              : context.primary700),
+                    ),
                     label: l10n.settings,
                   ),
                 ],
@@ -255,89 +313,117 @@ class _MainShellState extends ConsumerState<MainShell> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     // ── AI Speech (voice) ─────────────────────────────────
-                    FloatingActionButton.extended(
-                      key: TourKeys.speechFab,
-                      heroTag: 'voice',
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const VoiceEntryScreen()),
-                      ),
-                      backgroundColor: Colors.white,
-                      foregroundColor: context.primary700,
-                      elevation: 2,
-                      icon: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          const Icon(Icons.mic, size: 20),
-                          Positioned(
-                            right: -5,
-                            bottom: -5,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: context.primary600,
-                                shape: BoxShape.circle,
+                    PremiumMotionSurface(
+                      enabled: premium,
+                      borderRadius: BorderRadius.circular(18),
+                      padding: const EdgeInsets.all(2),
+                      borderWidth: 1.2,
+                      child: FloatingActionButton.extended(
+                        key: TourKeys.speechFab,
+                        heroTag: 'voice',
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const VoiceEntryScreen()),
+                        ),
+                        backgroundColor:
+                            premium ? visualTheme.surface : Colors.white,
+                        foregroundColor: premium
+                            ? visualTheme.primaryAccent
+                            : context.primary700,
+                        elevation: 2,
+                        icon: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.mic, size: 20),
+                            Positioned(
+                              right: -5,
+                              bottom: -5,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: premium
+                                      ? visualTheme.primaryAccent
+                                      : context.primary600,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.auto_awesome,
+                                    size: 8, color: Colors.white),
                               ),
-                              child: const Icon(Icons.auto_awesome,
-                                  size: 8, color: Colors.white),
                             ),
-                          ),
-                        ],
-                      ),
-                      label: Text(
-                        l10n.aiSpeech,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 12),
+                          ],
+                        ),
+                        label: Text(
+                          l10n.aiSpeech,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 12),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
                     // ── Manual Log ────────────────────────────────────────
-                    FloatingActionButton.extended(
-                      key: TourKeys.manualFab,
-                      heroTag: 'manual',
-                      onPressed: _openManualEntry,
-                      backgroundColor: Colors.white,
-                      foregroundColor: context.primary700,
-                      elevation: 2,
-                      icon: const Icon(Icons.edit_note, size: 20),
-                      label: Text(
-                        l10n.manualLog,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 12),
+                    PremiumMotionSurface(
+                      enabled: premium,
+                      borderRadius: BorderRadius.circular(18),
+                      padding: const EdgeInsets.all(2),
+                      borderWidth: 1.2,
+                      child: FloatingActionButton.extended(
+                        key: TourKeys.manualFab,
+                        heroTag: 'manual',
+                        onPressed: _openManualEntry,
+                        backgroundColor:
+                            premium ? visualTheme.surface : Colors.white,
+                        foregroundColor: premium
+                            ? visualTheme.primaryAccent
+                            : context.primary700,
+                        elevation: 2,
+                        icon: const Icon(Icons.edit_note, size: 20),
+                        label: Text(
+                          l10n.manualLog,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 12),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
                     // ── AI Scan ───────────────────────────────────────────
-                    FloatingActionButton.extended(
-                      key: TourKeys.scanFab,
-                      heroTag: 'scan',
-                      onPressed: _openScan,
-                      backgroundColor: context.primary600,
-                      foregroundColor: Colors.white,
-                      elevation: 4,
-                      icon: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          const Icon(Icons.camera_alt, size: 20),
-                          Positioned(
-                            right: -5,
-                            bottom: -5,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
+                    PremiumMotionSurface(
+                      enabled: premium,
+                      borderRadius: BorderRadius.circular(18),
+                      padding: const EdgeInsets.all(2),
+                      borderWidth: 1.5,
+                      child: FloatingActionButton.extended(
+                        key: TourKeys.scanFab,
+                        heroTag: 'scan',
+                        onPressed: _openScan,
+                        backgroundColor: premium
+                            ? visualTheme.primaryAccent
+                            : context.primary600,
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        icon: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.camera_alt, size: 20),
+                            Positioned(
+                              right: -5,
+                              bottom: -5,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.auto_awesome,
+                                    size: 8, color: context.primary600),
                               ),
-                              child: Icon(Icons.auto_awesome,
-                                  size: 8, color: context.primary600),
                             ),
-                          ),
-                        ],
-                      ),
-                      label: Text(
-                        l10n.aiScan,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 12),
+                          ],
+                        ),
+                        label: Text(
+                          l10n.aiScan,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 12),
+                        ),
                       ),
                     ),
                   ],

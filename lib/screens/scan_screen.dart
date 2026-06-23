@@ -23,6 +23,7 @@ import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
 import '../widgets/generated_food_preview.dart';
 import '../widgets/dual_photo_capture_overlay.dart';
+import '../widgets/premium_theme_effects.dart';
 import '../widgets/scan_tutorial_overlay.dart';
 import 'scan_3d_viewer_screen.dart';
 import '../widgets/scan_3d_viewer.dart' show Scan3DObject;
@@ -52,7 +53,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   double _stability = 0.0; // 0..1 from CoreMotion (1 = perfectly still)
   double _alignmentScore = 0.0; // 0..1 target-orientation score
   bool _aligned = false; // current orientation matches the active capture step
-  int _stableHoldTicks = 0; // consecutive aligned+stable polls before auto-shutter
+  int _stableHoldTicks =
+      0; // consecutive aligned+stable polls before auto-shutter
   String _detectedDepthMode = 'unknown';
   ScanResult? _savedScanResult;
   List<DetectedFood> _buildPreviewFoods = const [];
@@ -1189,14 +1191,24 @@ class _ProcessingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visualTheme = context.visualTheme;
     return Column(
       children: [
-        SizedBox(
-          width: 40,
-          height: 40,
-          child: CircularProgressIndicator(
-            strokeWidth: 3,
-            valueColor: AlwaysStoppedAnimation(context.primary400),
+        PremiumFocusRing(
+          enabled: visualTheme.premium,
+          radius: 28,
+          padding: const EdgeInsets.all(3),
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation(
+                visualTheme.premium
+                    ? visualTheme.primaryAccent
+                    : context.primary400,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 12),
