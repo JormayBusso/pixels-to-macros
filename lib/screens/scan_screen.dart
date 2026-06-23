@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,7 +22,7 @@ import '../core/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
 import '../widgets/generated_food_preview.dart';
-import '../widgets/scan_guidance_overlay.dart';
+import '../widgets/dual_photo_capture_overlay.dart';
 import '../widgets/scan_tutorial_overlay.dart';
 import 'scan_3d_viewer_screen.dart';
 import '../widgets/scan_3d_viewer.dart' show Scan3DObject;
@@ -42,18 +41,17 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   final _bridge = NativeBridge.instance;
   bool _sessionStarted = false;
   bool _showTutorial = false;
-  bool _isRecording = false;
 
   /// True while runVideoInference is in-flight — prevents re-entry.
   bool _isInferenceRunning = false;
 
-  double _recordProgress = 0.0; // 0.0 – 1.0 over the recording window
-  Timer? _recordTimer;
-  DateTime? _recordStartedAt;
-  Timer? _pitchTimer; // polls phone orientation at ~15 fps
-  double _currentPitch = 0.0; // radians: -π/2 = top, 0 = horizontal
-  double _currentRoll = 0.0; // radians: 0 = portrait, ±π/2 = landscape
-  int _quarterTurns = 0; // overlay counter-rotation (0..3) to stay world-upright
+  /// True while a top/side photo is being committed — prevents double capture.
+  bool _capturing = false;
+
+  Timer? _pitchTimer; // polls orientation + stability at ~12 fps
+  double _stability = 0.0; // 0..1 from CoreMotion (1 = perfectly still)
+  bool _aligned = false; // current orientation matches the active capture step
+  int _stableHoldTicks = 0; // consecutive aligned+stable polls before auto-shutter
   String _detectedDepthMode = 'unknown';
   ScanResult? _savedScanResult;
   List<DetectedFood> _buildPreviewFoods = const [];
@@ -65,14 +63,18 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   double _ambientLux = -1.0;
   int _pitchTickCounter = 0;
 
-  /// The native recorder keeps up to 40 frames at ~10 fps (a 4-second HARD
-  /// cap). The sweep normally finishes earlier: recording auto-stops the moment
-  /// the phone completes the top-to-side arc (pitch > side-view threshold) once
-  /// [_minRecordDuration] has elapsed, so a steady user is done in ~1.6–2.5 s
-  /// and only a slow sweep uses the full 4 s.
-  static const _maxRecordDuration = Duration(seconds: 4);
-  static const _minRecordDuration = Duration(milliseconds: 1600);
-  static const _timerInterval = Duration(milliseconds: 80);
+  /// The guided capture takes two deliberate, orientation- and stability-gated
+  /// photos: a top-down view, then a side profile. The auto-shutter fires only
+  /// after the phone has held the correct orientation AND been still for
+  /// [_requiredHoldTicks] consecutive polls — eliminating motion blur. The two
+  /// frames feed the SAME 3-D reconstruction pipeline the video sweep used.
+  static const Duration _pollInterval = Duration(milliseconds: 80);
+
+  /// Stability (0..1) at/above which the phone is considered "still enough" to
+  /// capture, and the number of consecutive aligned+stable polls required
+  /// before the shutter fires (~0.4 s at 80 ms/poll) to debounce.
+  static const double _stableThreshold = 0.6;
+  static const int _requiredHoldTicks = 5;
 
   /// Pitch thresholds (radians).
   /// Top-view:  pitch < -80° = -1.396 rad → phone is nearly flat / pointing straight down.
@@ -85,10 +87,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     super.initState();
     // The scan is performed in LANDSCAPE: the moment the scan screen opens we
     // force the app to landscape so it is obvious the phone must be held
-    // sideways for the top→side sweep. Portrait is restored the instant the
-    // sweep finishes (see [_stopRecording]) and on leaving the screen. The
-    // landscape lock itself is applied in [_startSession] so it also re-applies
-    // after a retry. The ARKit preview transform is orientation-aware.
+    // sideways for the guided top→side photo capture. Portrait is restored the
+    // instant the second (side) photo is taken (see [_captureSide]) and on
+    // leaving the screen. The landscape lock itself is applied in
+    // [_startSession] so it also re-applies after a retry. The ARKit preview
+    // transform is orientation-aware.
     // Reset any stale state from a previous scan session (the provider is
     // NOT autoDispose so depthFailed / modelFailed from earlier persists).
     // Defer both reset AND session start to post-frame callback so that
@@ -201,7 +204,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           _sessionErrorDetail = null;
         });
         ref.read(scanStateProvider.notifier).sessionReady();
-        _startPitchPolling();
+        // Reset the native recorder for a fresh top→side capture.
+        unawaited(_bridge.beginScan());
+        _startSensorPolling();
       }
       DebugLog.instance.log('Scan', 'AR session started');
     } catch (e) {
@@ -259,10 +264,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   @override
   void dispose() {
-    _recordTimer?.cancel();
     _pitchTimer?.cancel();
-    _isRecording = false;
     _isInferenceRunning = false;
+    _capturing = false;
     // Make sure we never leave the torch on after the user leaves the screen.
     if (_torchOn) {
       try {
@@ -287,63 +291,50 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   void _hapticSuccess() => HapticFeedback.mediumImpact();
   void _hapticError() => HapticFeedback.heavyImpact();
 
-  // ── Orientation tracking ──────────────────────────────────────────────────
+  // ── Orientation + stability tracking ──────────────────────────────────────
 
-  void _startPitchPolling() {
-    _pitchTimer = Timer.periodic(
-      const Duration(milliseconds: 66), // ~15 fps
-      (_) => _pollPitch(),
-    );
+  void _startSensorPolling() {
+    _pitchTimer = Timer.periodic(_pollInterval, (_) => _pollSensors());
   }
 
-  /// Snap a continuous device [roll] (radians) to one of four quarter-turn
-  /// orientations (0..3) for the overlay, with hysteresis so it does not flicker
-  /// at the 45° boundaries. The overlay is counter-rotated clockwise by the
-  /// returned number of quarter turns to stay upright relative to the world.
-  int _snapQuarterTurns(double roll, int current) {
-    // Roll at the centre of the current quadrant (q maps to roll ≈ q·π/2).
-    final double currentCentre = current * (math.pi / 2);
-    double delta = roll - currentCentre;
-    while (delta > math.pi) {
-      delta -= 2 * math.pi;
-    }
-    while (delta < -math.pi) {
-      delta += 2 * math.pi;
-    }
-    // Stay in the current quadrant until clearly past 45° (+10° hysteresis).
-    if (delta.abs() < (math.pi / 4) + 0.18) return current;
-    return ((roll / (math.pi / 2)).round() % 4 + 4) % 4;
-  }
-
-  Future<void> _pollPitch() async {
+  Future<void> _pollSensors() async {
     if (!mounted || !_sessionStarted) return;
+
     double pitch;
+    double stability;
     try {
       pitch = await _bridge.getPhonePitch();
-    } catch (e) {
+      stability = await _bridge.getMotionStability();
+    } catch (_) {
       return;
     }
     if (!mounted) return;
 
-    // Track device roll so the guidance overlay can rotate to stay upright when
-    // the phone is physically held in landscape — independent of scan state.
-    double roll = 999.0;
-    try {
-      roll = await _bridge.getPhoneRoll();
-    } catch (_) {
-      roll = 999.0;
+    final state = ref.read(scanStateProvider);
+
+    // Which orientation does the active capture step require?
+    bool aligned;
+    if (state == ScanState.waitingForTopView || state == ScanState.captureTop) {
+      aligned = pitch < _topViewThreshold; // straight down
+    } else if (state == ScanState.moveSide || state == ScanState.captureSide) {
+      aligned = pitch > _sideViewThreshold; // upright side view
+    } else {
+      aligned = false;
     }
-    if (!mounted) return;
-    final int quarterTurns =
-        roll > 100 ? _quarterTurns : _snapQuarterTurns(roll, _quarterTurns);
+
+    final bool stable = stability >= _stableThreshold;
+    if (aligned && stable && !_capturing) {
+      _stableHoldTicks++;
+    } else {
+      _stableHoldTicks = 0;
+    }
 
     setState(() {
-      _currentPitch = pitch;
-      if (roll <= 100) _currentRoll = roll;
-      _quarterTurns = quarterTurns;
+      _stability = stability;
+      _aligned = aligned;
     });
 
-    // Sample ambient light every ~5 ticks (~3 Hz) — cheap.
+    // Sample ambient light every ~5 ticks — cheap; drives the low-light banner.
     _pitchTickCounter++;
     if (_pitchTickCounter % 5 == 0) {
       unawaited(_bridge.getAmbientIntensity().then((lux) {
@@ -353,100 +344,93 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       }).catchError((_) {}));
     }
 
-    final state = ref.read(scanStateProvider);
-
-    // Auto-start recording when phone points down (top-view).
-    if (state == ScanState.waitingForTopView && pitch < _topViewThreshold) {
-      ref.read(scanStateProvider.notifier).topViewDetected();
-      unawaited(_startRecording());
-      return;
-    }
-
-    // Auto-stop recording when phone reaches side-view.
-    // Guard: don't trigger if inference is already in-flight.
-    final hasEnoughSweep = _recordStartedAt == null ||
-        DateTime.now().difference(_recordStartedAt!) >= _minRecordDuration;
-
-    if (state == ScanState.recording &&
-        pitch > _sideViewThreshold &&
-        hasEnoughSweep &&
-        !_isInferenceRunning) {
-      unawaited(_stopRecording());
+    // Auto-shutter: fire only once the phone has held the correct orientation
+    // AND been still for [_requiredHoldTicks] consecutive polls.
+    if (!_capturing && _stableHoldTicks >= _requiredHoldTicks) {
+      if (state == ScanState.waitingForTopView) {
+        unawaited(_captureTop());
+      } else if (state == ScanState.moveSide) {
+        unawaited(_captureSide());
+      }
     }
   }
 
-  // ── Recording ────────────────────────────────────────────────────────────
+  /// Progress (0..1) of the "hold steady" gate, for the UI stability meter.
+  double get _holdProgress =>
+      (_stableHoldTicks / _requiredHoldTicks).clamp(0.0, 1.0);
 
-  Future<void> _startRecording() async {
-    if (_isRecording || !mounted) return;
+  // ── Guided dual-photo capture ──────────────────────────────────────────────
+
+  /// Commit the top-down photo, then advance to the side-view step.
+  Future<void> _captureTop() async {
+    if (_capturing || !mounted) return;
+    setState(() => _capturing = true);
+    _stableHoldTicks = 0;
     _hapticMedium();
-    setState(() {
-      _isRecording = true;
-      _recordProgress = 0.0;
-      _buildPreviewFoods = const [];
-    });
-    _recordStartedAt = DateTime.now();
-    ref.read(scanStateProvider.notifier).startedRecording();
+    ref.read(scanStateProvider.notifier).topAligned(); // → captureTop (flash)
+
+    bool ok = false;
     try {
       PerfMonitor.instance.start('record');
-      await _bridge.startRecording();
+      ok = await _bridge.captureTopFrame();
+      PerfMonitor.instance.end();
     } catch (e) {
-      DebugLog.instance.log('Scan', 'Recording start failed: $e — resetting');
+      DebugLog.instance.log('Scan', 'captureTopFrame error: $e');
+    }
+    if (!mounted) return;
+
+    if (!ok) {
       _hapticError();
-      if (!mounted) return;
-      setState(() => _isRecording = false);
-      _recordStartedAt = null;
-      ref.read(scanStateProvider.notifier).reset();
+      ref.read(scanStateProvider.notifier).sessionReady(); // retry top
+      setState(() => _capturing = false);
       return;
     }
 
-    // Recording ends ONLY when the user completes the top→side arc (pitch >
-    // side-view threshold, handled in [_pollPitch]) after [_minRecordDuration].
-    // The timer below is a REFERENCE indicator only — it fills toward 1.0 over
-    // the nominal sweep window and then holds; it never stops the recording.
-    final totalTicks =
-        _maxRecordDuration.inMilliseconds ~/ _timerInterval.inMilliseconds;
-    var tick = 0;
-    _recordTimer = Timer.periodic(_timerInterval, (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      tick++;
-      final double progress = (tick / totalTicks).clamp(0.0, 1.0);
-      if (mounted) setState(() => _recordProgress = progress);
-    });
+    _hapticSuccess();
+    // Brief confirmation flash so the user sees the top shot landed.
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    if (!mounted) return;
+    ref.read(scanStateProvider.notifier).topCaptured(); // → moveSide
+    setState(() => _capturing = false);
   }
 
-  Future<void> _stopRecording() async {
-    if (!_isRecording || _isInferenceRunning) return;
-    if (_recordStartedAt != null &&
-        DateTime.now().difference(_recordStartedAt!) < _minRecordDuration) {
+  /// Commit the side-profile photo, then run reconstruction + inference on the
+  /// two captured frames via the SAME pipeline the video sweep used.
+  Future<void> _captureSide() async {
+    if (_capturing || _isInferenceRunning || !mounted) return;
+    setState(() => _capturing = true);
+    _stableHoldTicks = 0;
+    _hapticMedium();
+    ref.read(scanStateProvider.notifier).sideReady(); // → captureSide (flash)
+
+    bool ok = false;
+    try {
+      ok = await _bridge.captureSideFrame();
+    } catch (e) {
+      DebugLog.instance.log('Scan', 'captureSideFrame error: $e');
+    }
+    if (!mounted) return;
+
+    if (!ok) {
+      _hapticError();
+      ref.read(scanStateProvider.notifier).topCaptured(); // back to moveSide
+      setState(() => _capturing = false);
       return;
     }
-    _recordTimer?.cancel();
-    _recordTimer = null;
+
+    _hapticHeavy();
+    await Future<void>.delayed(const Duration(milliseconds: 350));
     if (!mounted) return;
-    // The sweep is complete — snap the app back to portrait immediately while
-    // the (hidden-preview) inference runs, per the scan UX contract.
+
+    // Both photos captured → snap back to portrait while the (hidden-preview)
+    // reconstruction runs, per the scan UX contract.
     _restorePortrait();
     setState(() {
-      _isRecording = false;
+      _capturing = false;
       _isInferenceRunning = true;
-      _recordProgress = 1.0;
     });
-    _recordStartedAt = null;
-    _hapticHeavy();
-    PerfMonitor.instance.end();
-    try {
-      await _bridge.stopRecording();
-    } catch (e) {
-      DebugLog.instance.log('Scan', 'stopRecording error: $e');
-    }
-    if (!mounted) {
-      _isInferenceRunning = false;
-      return;
-    }
+    ref.read(scanStateProvider.notifier).sideCaptured(); // → calculating
+
     try {
       await _runVideoInference();
     } catch (e, st) {
@@ -621,14 +605,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   void _retry() {
     _hapticLight();
-    _recordTimer?.cancel();
-    _recordTimer = null;
-    _recordStartedAt = null;
     _pitchTimer?.cancel();
     _pitchTimer = null;
-    _isRecording = false;
+    _capturing = false;
     _isInferenceRunning = false;
-    _recordProgress = 0.0;
+    _stableHoldTicks = 0;
     _sessionStarted = false;
     _sessionErrorDetail = null;
     _launched3DViewer = false;
@@ -636,6 +617,25 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();
     _startSession();
+  }
+
+  /// Whether the given state belongs to the guided dual-photo capture phase
+  /// (top/side framing + capture), as opposed to processing/done/error.
+  bool _isCaptureState(ScanState s) =>
+      s == ScanState.waitingForTopView ||
+      s == ScanState.captureTop ||
+      s == ScanState.moveSide ||
+      s == ScanState.captureSide;
+
+  /// Manual shutter fallback (tapping the capture dot) in case the auto-shutter
+  /// never fires — captures whichever photo the active step needs.
+  void _manualCapture() {
+    final state = ref.read(scanStateProvider);
+    if (state == ScanState.waitingForTopView) {
+      unawaited(_captureTop());
+    } else if (state == ScanState.moveSide) {
+      unawaited(_captureSide());
+    }
   }
 
   // ── Build ───────────────────────────────────────────────────────────────
@@ -663,12 +663,19 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           else
             const Positioned.fill(child: ColoredBox(color: Colors.black)),
 
-          // ── Guidance overlay ─────────────────────────────────────────
-          ScanGuidanceOverlay(
-              scanState: scanState,
-              currentPitch: _currentPitch,
-              quarterTurns: _quarterTurns,
-              scanMode: _detectedDepthMode),
+          // ── Guided dual-photo capture overlay ────────────────────────
+          if (_isCaptureState(scanState))
+            Positioned.fill(
+              child: DualPhotoCaptureOverlay(
+                scanState: scanState,
+                aligned: _aligned,
+                stability: _stability,
+                holdProgress: _holdProgress,
+                capturing: _capturing,
+                scanMode: _detectedDepthMode,
+                onManualCapture: _manualCapture,
+              ),
+            ),
 
           if (scanState == ScanState.calculating)
             Positioned(
@@ -685,43 +692,39 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               ),
             ),
 
-          // ── Bottom action panel ─────────────────────────────────────
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Material(
-              color: Colors.transparent,
-              child: _BottomPanel(
-                scanState: scanState,
-                scanResult: scanResult,
-                sessionStarted: _sessionStarted,
-                sessionErrorDetail: _sessionErrorDetail,
-                depthMode: _detectedDepthMode,
-                timings: PerfMonitor.instance.allTimings,
-                isRecording: _isRecording,
-                recordProgress: _recordProgress,
-                currentPitch: _currentPitch,
-                onStartRecord: _startRecording,
-                onStopRecord: _stopRecording,
-                onRetry: _retry,
-                onClose: () {
-                  _isInferenceRunning = false;
-                  Navigator.of(context).pop();
-                },
-                onViewDetails: _savedScanResult != null
-                    ? () {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                ScanDetailScreen(scan: _savedScanResult!),
-                          ),
-                        );
-                      }
-                    : null,
+          // ── Bottom action panel (processing / done / error only) ─────
+          if (!_isCaptureState(scanState))
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Material(
+                color: Colors.transparent,
+                child: _BottomPanel(
+                  scanState: scanState,
+                  scanResult: scanResult,
+                  sessionStarted: _sessionStarted,
+                  sessionErrorDetail: _sessionErrorDetail,
+                  depthMode: _detectedDepthMode,
+                  timings: PerfMonitor.instance.allTimings,
+                  onRetry: _retry,
+                  onClose: () {
+                    _isInferenceRunning = false;
+                    Navigator.of(context).pop();
+                  },
+                  onViewDetails: _savedScanResult != null
+                      ? () {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ScanDetailScreen(scan: _savedScanResult!),
+                            ),
+                          );
+                        }
+                      : null,
+                ),
               ),
             ),
-          ),
 
           // ── Close button (top-left) ─────────────────────────────────
           Positioned(
@@ -821,11 +824,6 @@ class _BottomPanel extends StatelessWidget {
     this.sessionErrorDetail,
     required this.depthMode,
     required this.timings,
-    required this.isRecording,
-    required this.recordProgress,
-    required this.currentPitch,
-    required this.onStartRecord,
-    required this.onStopRecord,
     required this.onRetry,
     required this.onClose,
     this.onViewDetails,
@@ -837,11 +835,6 @@ class _BottomPanel extends StatelessWidget {
   final String? sessionErrorDetail;
   final String depthMode;
   final Map<String, Duration> timings;
-  final bool isRecording;
-  final double recordProgress;
-  final double currentPitch;
-  final VoidCallback onStartRecord;
-  final VoidCallback onStopRecord;
   final VoidCallback onRetry;
   final VoidCallback onClose;
   final VoidCallback? onViewDetails;
@@ -888,34 +881,6 @@ class _BottomPanel extends StatelessWidget {
           // ── Step indicator ────────────────────────────────────────
           _StateProgressRow(state: scanState),
           const SizedBox(height: 16),
-
-          // ── Waiting for top-view orientation ──────────────────────
-          if (scanState == ScanState.waitingForTopView)
-            _OrientationIndicator(
-              pitch: currentPitch,
-              sessionStarted: sessionStarted,
-              l10n: l10n,
-            ),
-
-          // ── Ready to record (manual start) ─────────────────────
-          if (scanState == ScanState.readyToRecord)
-            _RecordButton(
-              enabled: sessionStarted,
-              isRecording: false,
-              progress: 0,
-              l10n: l10n,
-              onPressed: onStartRecord,
-            ),
-
-          // ── Recording in progress ─────────────────────────────────
-          if (scanState == ScanState.recording)
-            _RecordButton(
-              enabled: true,
-              isRecording: true,
-              progress: recordProgress,
-              l10n: l10n,
-              onPressed: onStopRecord,
-            ),
 
           // ── Processing ────────────────────────────────────────────
           if (scanState == ScanState.calculating) ...[
@@ -1089,8 +1054,8 @@ class _StateProgressRow extends StatelessWidget {
   final ScanState state;
 
   static const _steps = [
-    (ScanState.waitingForTopView, 'Aim'),
-    (ScanState.recording, 'Record'),
+    (ScanState.waitingForTopView, 'Top'),
+    (ScanState.moveSide, 'Side'),
     (ScanState.calculating, 'Analyse'),
     (ScanState.done, 'Done'),
   ];
@@ -1099,7 +1064,10 @@ class _StateProgressRow extends StatelessWidget {
     return switch (state) {
       ScanState.waitingForTopView => 0,
       ScanState.readyToRecord => 0,
+      ScanState.captureTop => 0,
       ScanState.recording => 1,
+      ScanState.moveSide => 1,
+      ScanState.captureSide => 1,
       ScanState.calculating => 2,
       ScanState.done => 3,
       _ => -1, // error
@@ -1188,90 +1156,6 @@ class _StepDot extends StatelessWidget {
 
 // ── Shared widgets ──────────────────────────────────────────────────────────
 
-/// Circular record button that shows a countdown arc while recording.
-class _RecordButton extends StatelessWidget {
-  const _RecordButton({
-    required this.enabled,
-    required this.isRecording,
-    required this.progress,
-    required this.l10n,
-    required this.onPressed,
-  });
-
-  final bool enabled;
-  final bool isRecording;
-  final double progress; // 0.0 – 1.0
-  final AppLocalizations l10n;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GestureDetector(
-          onTap: enabled ? onPressed : null,
-          child: SizedBox(
-            width: 88,
-            height: 88,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Progress arc
-                SizedBox(
-                  width: 88,
-                  height: 88,
-                  child: CircularProgressIndicator(
-                    value: isRecording ? progress : 0,
-                    strokeWidth: 5,
-                    backgroundColor: Colors.white12,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      AppTheme.amber500,
-                    ),
-                  ),
-                ),
-                // Inner circle button
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 70,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    color: isRecording
-                        ? AppTheme.red500
-                        : (enabled
-                            ? context.primary500
-                            : context.primary500.withValues(alpha: 0.3)),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    isRecording ? Icons.stop : Icons.videocam,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          isRecording
-              ? l10n.secondsRemaining(
-                  ((1.0 - progress) *
-                          _ScanScreenState._maxRecordDuration.inSeconds)
-                      .ceil(),
-                )
-              : (enabled ? l10n.tapToScan : l10n.startingCamera),
-          style: TextStyle(
-            fontSize: 12,
-            color: isRecording ? AppTheme.amber500 : Colors.white54,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _ProcessingIndicator extends StatelessWidget {
   const _ProcessingIndicator({required this.text});
   final String text;
@@ -1322,74 +1206,6 @@ class _InfoChipDark extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Visual indicator showing the phone's tilt angle.
-/// Guides the user to point the phone straight down at the food.
-class _OrientationIndicator extends StatelessWidget {
-  const _OrientationIndicator({
-    required this.pitch,
-    required this.sessionStarted,
-    required this.l10n,
-  });
-
-  final double pitch; // radians: -π/2 = top-view, 0 = horizontal
-  final bool sessionStarted;
-  final AppLocalizations l10n;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!sessionStarted) {
-      return _ProcessingIndicator(text: l10n.startingCamera);
-    }
-
-    // Map pitch to 0..1 progress: -π/2 → 1.0 (top-view), 0 → 0.0 (horizontal).
-    final progress = (pitch / (-math.pi / 2)).clamp(0.0, 1.0);
-    final isTopView = pitch < -1.047; // < -60°
-    final angleDeg = (pitch * 180 / math.pi).round().abs();
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 88,
-          height: 88,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 88,
-                height: 88,
-                child: CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 5,
-                  backgroundColor: Colors.white12,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    isTopView ? context.primary400 : AppTheme.amber500,
-                  ),
-                ),
-              ),
-              Icon(
-                isTopView ? Icons.check : Icons.phone_android,
-                color: isTopView ? context.primary400 : Colors.white70,
-                size: 36,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          isTopView
-              ? l10n.topViewDetectedStarting
-              : l10n.tiltPhoneDown(angleDeg),
-          style: TextStyle(
-            fontSize: 12,
-            color: isTopView ? context.primary400 : AppTheme.amber500,
-          ),
-        ),
-      ],
     );
   }
 }

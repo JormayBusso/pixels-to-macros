@@ -72,7 +72,51 @@ class NativeBridge {
     return jsonDecode(raw) as Map<String, dynamic>;
   }
 
-  // ── Video recording ──────────────────────────────────────────────────────
+  // ── Guided dual-photo capture ─────────────────────────────────────────────
+
+  /// Reset the native recorder for a fresh guided top→side capture session.
+  /// Call once when the scan screen becomes ready, before the first capture.
+  Future<void> beginScan() async {
+    try {
+      await _channel.invokeMethod<void>('beginScan');
+    } catch (_) {}
+  }
+
+  /// Capture the current frame as the top-down photo into the reconstruction
+  /// recorder. Returns true if a frame was captured.
+  Future<bool> captureTopFrame() async {
+    try {
+      final ok = await _channel.invokeMethod<bool>('captureTopFrame');
+      return ok ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Capture the current frame as the side-profile photo into the
+  /// reconstruction recorder. Returns true if a frame was captured.
+  Future<bool> captureSideFrame() async {
+    try {
+      final ok = await _channel.invokeMethod<bool>('captureSideFrame');
+      return ok ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Real-time device-motion stability from CoreMotion (gyro + accelerometer).
+  /// Returns 0…1 where 1 means the phone is perfectly still. Used to gate the
+  /// automatic shutter so the top/side photos are sharp.
+  Future<double> getMotionStability() async {
+    try {
+      final v = await _channel.invokeMethod<double>('getMotionStability');
+      return v ?? 0.0;
+    } catch (_) {
+      return 0.0;
+    }
+  }
+
+  // ── Video recording (legacy — superseded by guided dual-photo capture) ─────
 
   /// Start sampling ARKit frames (~10 fps) for a video-sweep scan.
   /// Times out after 10 s.

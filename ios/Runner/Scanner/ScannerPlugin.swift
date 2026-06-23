@@ -22,10 +22,14 @@ final class ScannerPlugin {
     private static let captureService = FrameCaptureService()
     private static let pipeline = InferencePipeline()
     private static let pointCloudExporter = PointCloudExporter()
-    /// Accumulates frames during a video-sweep recording session.
+    /// Accumulates frames for a scan. With the guided dual-photo flow it holds
+    /// the two deliberate captures (top + side); the legacy video sweep filled
+    /// the same slots frame-by-frame.
     private static let recorder = MultiFrameRecorder()
-    /// PLY snapshot from the most recent video sweep. The recorder releases
-    /// buffers after inference, so export keeps this lightweight text copy.
+    /// CoreMotion stability monitor driving the auto-shutter "hold steady" gate.
+    private static let motionMonitor = MotionStabilityMonitor()
+    /// PLY snapshot from the most recent scan. The recorder releases buffers
+    /// after inference, so export keeps this lightweight text copy.
     private static var lastVideoPLY: String?
 
     // MARK: - Registration
@@ -62,6 +66,9 @@ final class ScannerPlugin {
                         details: nil
                     ))
                 } else {
+                    // Begin device-motion monitoring so the guided dual-photo
+                    // capture can gate its auto-shutter on a stable hold.
+                    motionMonitor.start()
                     // Return the generation number so Dart doesn't need a
                     // second round-trip to call getSessionGeneration.
                     result(sessionManager.generation)
@@ -71,6 +78,7 @@ final class ScannerPlugin {
         case "stopSession":
             // Support generation-aware stop to prevent stale dispose() calls
             // from killing a freshly started session.
+            motionMonitor.stop()
             if let args = call.arguments as? [String: Any],
                let gen = args["generation"] as? Int {
                 sessionManager.stop(generation: gen)
@@ -84,6 +92,27 @@ final class ScannerPlugin {
 
         case "captureFrame":
             handleCaptureFrame(call, result: result)
+
+        // ── Guided dual-photo capture ───────────────────────────────────────
+        case "beginScan":
+            // Reset the recorder for a fresh top→side capture session.
+            DispatchQueue.main.async {
+                lastVideoPLY = nil
+                recorder.beginTwoShotCapture()
+                result(nil)
+            }
+
+        case "captureTopFrame":
+            let ok = recorder.captureTopFrame(from: sessionManager)
+            result(ok)
+
+        case "captureSideFrame":
+            let ok = recorder.captureSideFrame(from: sessionManager)
+            result(ok)
+
+        case "getMotionStability":
+            // 0…1 where 1 = perfectly still. Drives the auto-shutter gate.
+            result(motionMonitor.stability)
 
         case "startRecording":
             // Must run on main thread — Timer requires a RunLoop.

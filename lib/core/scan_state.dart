@@ -43,7 +43,7 @@ extension ScanStateLabel on ScanState {
   String get label {
     switch (this) {
       case ScanState.waitingForTopView:
-        return 'Hold flat above the plate to lock what should be scanned';
+        return 'Hold flat directly above the plate';
       case ScanState.readyToRecord:
         return 'Press the button to start scanning';
       case ScanState.recording:
@@ -57,7 +57,7 @@ extension ScanStateLabel on ScanState {
       case ScanState.captureTop:
         return 'Capturing top view…';
       case ScanState.moveSide:
-        return 'Move phone smoothly to the side';
+        return 'Tilt up to the side view';
       case ScanState.captureSide:
         return 'Capturing side view…';
       case ScanState.depthFailed:

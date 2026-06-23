@@ -118,6 +118,112 @@ final class MultiFrameRecorder {
         tableDistanceCm = nil
     }
 
+    // MARK: – Guided dual-photo capture
+
+    /// Reset all stored frames for a fresh guided two-shot capture session
+    /// (top photo → side photo). Unlike `startRecording`, this starts NO timer:
+    /// frames are captured deliberately via `captureTopFrame` / `captureSideFrame`
+    /// once the device is correctly oriented AND held still. The resulting
+    /// `topFrame` + `sideFrame` feed the SAME `InferencePipeline.runVideoScan`
+    /// reconstruction unchanged.
+    func beginTwoShotCapture() {
+        stopRecording()
+        topFrame    = nil
+        sideFrame   = nil
+        topViewFrames = []
+        lightFrames = []
+        meshAnchors = []
+        tableDistanceCm = nil
+    }
+
+    /// Capture the current AR frame as the top-down reference photo (RGB + depth).
+    /// Also locks the metric camera-to-table distance and, on LiDAR devices,
+    /// seeds the depth-fusion top-view list so the existing voxel path still
+    /// works from two deliberate shots. Returns `false` if no frame was ready.
+    @discardableResult
+    func captureTopFrame(from sessionManager: ARSessionManager) -> Bool {
+        guard let arFrame = sessionManager.latestFrame else { return false }
+        currentPitch = arFrame.camera.eulerAngles.x
+
+        let meshes = arFrame.anchors.compactMap { $0 as? ARMeshAnchor }
+        if !meshes.isEmpty { meshAnchors = meshes }
+
+        if let d = sessionManager.cameraToTableDistanceMeters() {
+            tableDistanceCm = Double(d) * 100.0
+            print("[SCAN] dual-photo top: ARKit table distance \(String(format: "%.1f", tableDistanceCm ?? 0)) cm")
+        }
+
+        autoreleasepool {
+            let pixBuf     = arFrame.capturedImage
+            let depthBuf   = FrameCaptureService.preferredDepthMap(from: arFrame)
+            let transform  = arFrame.camera.transform
+            let intrinsics = arFrame.camera.intrinsics
+            let w = CVPixelBufferGetWidth(pixBuf)
+            let h = CVPixelBufferGetHeight(pixBuf)
+
+            topFrame = FrameCaptureService.CapturedFrame(
+                pixelBuffer:      MultiFrameRecorder.copyPixelBuffer(pixBuf),
+                depthBuffer:      depthBuf.flatMap { MultiFrameRecorder.copyPixelBuffer($0) },
+                cameraTransform:  transform,
+                cameraIntrinsics: intrinsics,
+                timestamp:        arFrame.timestamp
+            )
+
+            if let depth = depthBuf {
+                topViewFrames = [LightFrame(
+                    depthBuffer:      MultiFrameRecorder.copyPixelBuffer(depth),
+                    cameraTransform:  transform,
+                    cameraIntrinsics: intrinsics,
+                    imageWidth:  w,
+                    imageHeight: h
+                )]
+            }
+        }
+        print("[SCAN] dual-photo top frame captured (depth=\(topFrame?.depthBuffer != nil))")
+        return topFrame != nil
+    }
+
+    /// Capture the current AR frame as the side-profile photo (RGB + depth).
+    /// On LiDAR devices the side depth is appended to the fusion list. Returns
+    /// `false` if no frame was ready or the top frame has not been captured yet.
+    @discardableResult
+    func captureSideFrame(from sessionManager: ARSessionManager) -> Bool {
+        guard topFrame != nil, let arFrame = sessionManager.latestFrame else { return false }
+        currentPitch = arFrame.camera.eulerAngles.x
+
+        let meshes = arFrame.anchors.compactMap { $0 as? ARMeshAnchor }
+        if !meshes.isEmpty { meshAnchors = meshes }
+
+        autoreleasepool {
+            let pixBuf     = arFrame.capturedImage
+            let depthBuf   = FrameCaptureService.preferredDepthMap(from: arFrame)
+            let transform  = arFrame.camera.transform
+            let intrinsics = arFrame.camera.intrinsics
+            let w = CVPixelBufferGetWidth(pixBuf)
+            let h = CVPixelBufferGetHeight(pixBuf)
+
+            sideFrame = FrameCaptureService.CapturedFrame(
+                pixelBuffer:      MultiFrameRecorder.copyPixelBuffer(pixBuf),
+                depthBuffer:      depthBuf.flatMap { MultiFrameRecorder.copyPixelBuffer($0) },
+                cameraTransform:  transform,
+                cameraIntrinsics: intrinsics,
+                timestamp:        arFrame.timestamp
+            )
+
+            if let depth = depthBuf, lightFrames.count < maxFrames {
+                lightFrames.append(LightFrame(
+                    depthBuffer:      MultiFrameRecorder.copyPixelBuffer(depth),
+                    cameraTransform:  transform,
+                    cameraIntrinsics: intrinsics,
+                    imageWidth:  w,
+                    imageHeight: h
+                ))
+            }
+        }
+        print("[SCAN] dual-photo side frame captured (depth=\(sideFrame?.depthBuffer != nil))")
+        return sideFrame != nil
+    }
+
     // MARK: – Orientation query
 
     /// Read the current pitch from the latest AR frame without recording.

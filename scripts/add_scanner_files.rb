@@ -9,7 +9,7 @@ require 'xcodeproj'
 PROJECT_PATH = 'ios/Runner.xcodeproj'
 SCANNER_DIR  = 'ios/Runner/Scanner'
 DEPLOYMENT   = '17.0'
-FRAMEWORKS   = %w[ARKit CoreML Vision CoreVideo AVFoundation ModelIO].freeze
+FRAMEWORKS   = %w[ARKit CoreML Vision CoreVideo AVFoundation ModelIO CoreMotion].freeze
 
 project = Xcodeproj::Project.open(PROJECT_PATH)
 target  = project.targets.find { |t| t.name == 'Runner' }

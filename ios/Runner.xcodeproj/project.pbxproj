@@ -23,6 +23,7 @@
 		6F06832C86A68E1812C45917 /* ScannerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF95F7274EDE7D628FF00B57 /* ScannerPlugin.swift */; };
 		710444ACC7C21EE9F504D11B /* Food3DTextureBaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F2D2ADD144D6E8613B574CF /* Food3DTextureBaker.swift */; };
 		716DF690045748758CCFCC22 /* PointCloudExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4147F5FBF2C3FF8FB550B03 /* PointCloudExporter.swift */; };
+		736B7E4E4EF34BEA6A9C7680 /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5662700E76C7838BA72BC7D1 /* CoreMotion.framework */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A232C2CA52BEB0C154F86E /* ARCameraPreviewPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A430111209B9F1B66F2EB7D /* ARCameraPreviewPlugin.swift */; };
@@ -41,6 +42,7 @@
 		AE6CD655BAAFDEAB3A9093F4 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E94BBFB04F45F07C2C97BB54 /* Pods_Runner.framework */; };
 		B8410DFB9E7D43B20984CA04 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD21DFEC0A22BBFCB8544CBC /* Pods_RunnerTests.framework */; };
 		B9F1794EDC74D4B66629E742 /* InferencePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FC2652E2325A3BB61C0433C /* InferencePipeline.swift */; };
+		C17EE1400334A1F1CBAEED47 /* MotionStabilityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1216872B75939DD9FC20D1E3 /* MotionStabilityMonitor.swift */; };
 		C22D5836EB3C91CD06874FAA /* DepthFusion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E044877C9BA5C5BD6249387 /* DepthFusion.swift */; };
 		C6902D46C1904645B9759B61 /* ARMeshVolumeEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54DB78DF1B2697AC7053B30 /* ARMeshVolumeEstimator.swift */; };
 		DA7869F3377AA0498695AD5C /* FoodSegmentation.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 10DECEA94831997726B8E2B6 /* FoodSegmentation.mlmodelc */; };
@@ -83,6 +85,7 @@
 		106E69CAAEAFA6A5B66AD4AC /* CoreML.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreML.framework; path = System/Library/Frameworks/CoreML.framework; sourceTree = SDKROOT; };
 		10DECEA94831997726B8E2B6 /* FoodSegmentation.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper; path = FoodSegmentation.mlmodelc; sourceTree = "<group>"; };
 		10DECEA94831997726B8E2B7 /* FoodSegmentationLabels.json */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json; path = FoodSegmentationLabels.json; sourceTree = "<group>"; };
+		1216872B75939DD9FC20D1E3 /* MotionStabilityMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MotionStabilityMonitor.swift; sourceTree = "<group>"; };
 		140240A56278DC831D8F29B5 /* MLKitFoodValidator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MLKitFoodValidator.swift; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
@@ -93,6 +96,7 @@
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		45253471A282FCFFF61F56CE /* ModelIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ModelIO.framework; path = System/Library/Frameworks/ModelIO.framework; sourceTree = SDKROOT; };
 		514F71439B0203B75E0C0B36 /* MonoDepth.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = MonoDepth.mlmodelc; sourceTree = "<group>"; };
+		5662700E76C7838BA72BC7D1 /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
 		5D01C0FF0017F00000000000 /* MonocularVolumeEstimator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonocularVolumeEstimator.swift; sourceTree = "<group>"; };
 		5E044877C9BA5C5BD6249387 /* DepthFusion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DepthFusion.swift; sourceTree = "<group>"; };
 		6A247DD49A22C552B3A3F825 /* MonoDepthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonoDepthService.swift; sourceTree = "<group>"; };
@@ -151,6 +155,7 @@
 				24CBC83F2DA4A19876130207 /* CoreVideo.framework in Frameworks */,
 				3D6F446E71D9A26DB407808E /* AVFoundation.framework in Frameworks */,
 				8799FEB7EE3524C3187E1815 /* ModelIO.framework in Frameworks */,
+				736B7E4E4EF34BEA6A9C7680 /* CoreMotion.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -200,6 +205,7 @@
 				A6713F1DA74192839CE32B65 /* Food3DRealityView.swift */,
 				C54DB78DF1B2697AC7053B30 /* ARMeshVolumeEstimator.swift */,
 				6A247DD49A22C552B3A3F825 /* MonoDepthService.swift */,
+				1216872B75939DD9FC20D1E3 /* MotionStabilityMonitor.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -215,6 +221,7 @@
 				6CAAE6E0DFEB32AB337D33B7 /* CoreVideo.framework */,
 				D713E30A5540B7F350AC47C2 /* AVFoundation.framework */,
 				45253471A282FCFFF61F56CE /* ModelIO.framework */,
+				5662700E76C7838BA72BC7D1 /* CoreMotion.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -548,6 +555,7 @@
 				92E1BE887986365546D2F19B /* Food3DRealityView.swift in Sources */,
 				C6902D46C1904645B9759B61 /* ARMeshVolumeEstimator.swift in Sources */,
 				EFF8B23A41BA9547D2527651 /* MonoDepthService.swift in Sources */,
+				C17EE1400334A1F1CBAEED47 /* MotionStabilityMonitor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
