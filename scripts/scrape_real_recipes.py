@@ -146,6 +146,30 @@ SITES: tuple[SiteConfig, ...] = (
         sitemap_hints=("https://www.allrecipes.com/sitemap.xml",),
         index_pages=("https://www.allrecipes.com/recipes/",),
     ),
+    SiteConfig(
+        language="EN",
+        country="UK/US",
+        base_url="https://www.eatingwell.com/",
+        recipe_patterns=("/recipe/",),
+        sitemap_hints=("https://www.eatingwell.com/sitemap.xml",),
+        index_pages=("https://www.eatingwell.com/recipes/",),
+    ),
+    SiteConfig(
+        language="EN",
+        country="US",
+        base_url="https://www.simplyrecipes.com/",
+        recipe_patterns=("-recipe-", "/recipes/"),
+        sitemap_hints=("https://www.simplyrecipes.com/sitemap_1.xml",),
+        index_pages=("https://www.simplyrecipes.com/recipes/",),
+    ),
+    SiteConfig(
+        language="EN",
+        country="US",
+        base_url="https://www.food.com/",
+        recipe_patterns=("/recipe/",),
+        sitemap_hints=("https://www.food.com/sitemap.xml",),
+        index_pages=("https://www.food.com/recipe-finder/all",),
+    ),
 )
 
 

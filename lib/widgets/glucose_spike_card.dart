@@ -26,8 +26,14 @@ class GlucoseSpikeCard extends StatelessWidget {
     final curve = GlucoseSpikeModel.predict(mealItems);
     final summary = GlucoseSpikeModel.summarize(curve);
 
-    if (summary.peakDeltaMgDl < 2) {
-      return const SizedBox.shrink(); // No meaningful spike.
+    // Only suppress the card for a meal with no carbohydrate at all (a pure
+    // protein/fat meal produces no glucose rise). For ANY carb-containing meal
+    // we always render the prediction, so the diabetes insight never silently
+    // disappears for the low-carb meals diabetes users typically eat.
+    final totalNetCarbs =
+        mealItems.fold<double>(0, (sum, m) => sum + m.netCarbsG);
+    if (totalNetCarbs <= 0 || summary.peakDeltaMgDl < 0.5) {
+      return const SizedBox.shrink();
     }
 
     final severityColor = switch (summary.severity) {
