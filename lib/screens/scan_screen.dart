@@ -23,6 +23,9 @@ import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
 import '../widgets/generated_food_preview.dart';
 import '../widgets/dual_photo_capture_overlay.dart';
+import '../widgets/ai_scan_edge_glow.dart';
+import '../models/scan_diagnostics.dart';
+import '../providers/scan_diagnostics_provider.dart';
 import '../widgets/premium_theme_effects.dart';
 import '../widgets/scan_tutorial_overlay.dart';
 import 'scan_3d_viewer_screen.dart';
@@ -588,6 +591,28 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         throw StateError('missing_3d_model');
       }
 
+      // Capture structured scanner diagnostics for inspection/validation.
+      try {
+        var diagMemory = 0;
+        try {
+          diagMemory = await _bridge.getMemoryUsage();
+        } catch (_) {}
+        final diagnostics = ScanDiagnostics.fromCapture(
+          depthMode: _detectedDepthMode,
+          nativeObjects: model3dRaw,
+          timings: PerfMonitor.instance.allTimings,
+          peakMemoryBytes: diagMemory,
+          ambientLux: _ambientLux,
+          stability: _stability,
+        );
+        if (mounted) {
+          ref.read(scanDiagnosticsProvider.notifier).add(diagnostics);
+        }
+        DebugLog.instance.log('ScanDiag', diagnostics.toReport());
+      } catch (e) {
+        DebugLog.instance.log('ScanDiag', 'capture failed: $e');
+      }
+
       final scanResult = ScanResult(
         timestamp: DateTime.now(),
         depthMode: _detectedDepthMode,
@@ -748,6 +773,18 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 title: _buildPreviewFoods.isEmpty
                     ? l10n.building3dPreview
                     : l10n.refining3dFoodModel,
+              ),
+            ),
+
+          // ── Premium AI edge effect (signals on-device intelligence) ──
+          // Theme-aware Siri-style glow that hugs the screen edges while a
+          // scan is in progress. IgnorePointer + premium-gated internally.
+          if (_orientationReady && _sessionStarted)
+            Positioned.fill(
+              child: AiScanEdgeGlow(
+                active: _isCaptureState(scanState) ||
+                    scanState == ScanState.calculating,
+                intensity: scanState == ScanState.calculating ? 1.0 : 0.78,
               ),
             ),
 

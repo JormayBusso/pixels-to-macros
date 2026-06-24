@@ -141,7 +141,9 @@ class _DualPhotoCaptureOverlayState extends State<DualPhotoCaptureOverlay>
           child: IgnorePointer(
             child: PremiumMotionSurface(
               enabled: visualTheme.premium,
-              borderRadius: BorderRadius.circular(top ? 130 : 44),
+              // Both steps share the same rounded (circular) framing so the
+              // top and side captures feel like one consistent flow.
+              borderRadius: BorderRadius.circular(130),
               padding: const EdgeInsets.all(5),
               borderWidth: widget.aligned ? 3.4 : 2.4,
               animate: true,
@@ -322,7 +324,6 @@ class _FramePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
     final cy = size.height / 2;
-    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
 
     final guide = Paint()
       ..color = color.withValues(alpha: 0.62)
@@ -330,17 +331,9 @@ class _FramePainter extends CustomPainter {
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round;
 
-    if (isTop) {
-      canvas.drawCircle(Offset(cx, cy), size.width * 0.43, guide);
-    } else {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          rect.deflate(18),
-          const Radius.circular(38),
-        ),
-        guide,
-      );
-    }
+    // Both capture steps share the same rounded (circular) framing guide so
+    // the top and side captures stay visually consistent (no square frame).
+    canvas.drawCircle(Offset(cx, cy), size.width * 0.43, guide);
 
     // Ghost guide: dashed plate circle (top) or horizon line (side).
     final ghost = Paint()

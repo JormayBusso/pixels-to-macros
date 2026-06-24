@@ -782,7 +782,11 @@ final class MonocularVolumeEstimator {
         // follows the food outline while keeping vertex counts small.
         let bboxW = max(1, footprint.maxCol - footprint.minCol + 1)
         let bboxH = max(1, footprint.maxRow - footprint.minRow + 1)
-        let maxCells = 36
+        // Higher silhouette sampling resolution. The previous 36-cell cap made
+        // the height field coarse enough that even smooth shading left a blocky
+        // outline; 56 keeps the reconstructed top/side contour crisp without an
+        // unbounded vertex count.
+        let maxCells = 56
         let step = max(1, Int((Double(max(bboxW, bboxH)) / Double(maxCells)).rounded(.up)))
         let gc = max(1, Int((Double(bboxW) / Double(step)).rounded(.up)))
         let gr = max(1, Int((Double(bboxH) / Double(step)).rounded(.up)))
@@ -907,7 +911,12 @@ final class MonocularVolumeEstimator {
                     let sideBottom = Float(bounds.bottom)
                     let sideTop = Float(bounds.top)
                     let sideLimit = max(0, sideTop - sideBottom)
-                    let silhouetteEdge: Float = n >= 4 ? 1.0 : max(0.72, Float(n) / 4.0)
+                    // Taper boundary corners toward the plate instead of
+                    // holding them at 72% height. The old floor created a near-
+                    // vertical wall around the whole silhouette, which read as a
+                    // cube/cylinder; tapering rounds the rim so the side contour
+                    // and footprint blend into a real food shape.
+                    let silhouetteEdge: Float = n >= 4 ? 1.0 : Float(n) / 4.0
                     let boundedBottom = max(0, min(max(0, sideTop - 0.035), sideBottom))
                     let transverseFalloff: Float
                     if transverseStrength > 0 {

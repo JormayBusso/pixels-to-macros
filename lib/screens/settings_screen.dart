@@ -27,6 +27,7 @@ import '../widgets/premium_theme_effects.dart';
 import '../widgets/tour_keys.dart';
 import 'auth_screen.dart';
 import 'eval_dashboard_screen.dart';
+import 'scan_diagnostics_screen.dart';
 import 'diabetes/bolus_setup_screen.dart';
 import 'diabetes/diabetes_review_screen.dart';
 import 'food_database_screen.dart';
@@ -1157,6 +1158,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.insights_outlined),
+                    label: const Text('Scanner Diagnostics'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const ScanDiagnosticsScreen(),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 const Text(
                   'Testing tools — reset the app to the initial state.',
                   style: TextStyle(fontSize: 13, color: AppTheme.gray400),

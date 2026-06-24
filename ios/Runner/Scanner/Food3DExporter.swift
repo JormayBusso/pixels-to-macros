@@ -209,7 +209,11 @@ final class Food3DExporter {
         // soft blanket shell over the food.
         mesh.addNormals(
             withAttributeNamed: MDLVertexAttributeNormal,
-            creaseThreshold: object.preserveCreases ? 1 : 0
+            // A moderate crease threshold keeps genuine silhouette/rim edges
+            // defined while smoothing gentle curvature, so the camera estimate
+            // renders as a rounded food surface instead of a hard faceted/cubic
+            // block (creaseThreshold 1) or a featureless soft blanket (0).
+            creaseThreshold: object.preserveCreases ? 0.45 : 0
         )
 
         return mesh

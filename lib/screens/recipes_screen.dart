@@ -16,6 +16,7 @@ import '../providers/history_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/barcode_lookup_service.dart';
 import '../services/database_service.dart';
+import '../services/ingredient_localizer.dart';
 import '../services/recipe_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/tour_keys.dart';
@@ -1167,6 +1168,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final r = widget.recipe;
+    final ingredientLang = AppLocalizations.of(context).locale.languageCode;
     final prefs = ref.watch(userPrefsProvider);
     final isDiabetic = prefs.nutritionGoal == NutritionGoalType.diabetes;
     final icr = prefs.icrGramsPerUnit; // pass raw; 0.0 = not set
@@ -1294,7 +1296,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             child: Text.rich(
                               TextSpan(children: [
                                 TextSpan(
-                                  text: i.name,
+                                  text: IngredientLocalizer.localize(
+                                    i.name,
+                                    targetLang: ingredientLang,
+                                    sourceLang: r.language,
+                                  ),
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
