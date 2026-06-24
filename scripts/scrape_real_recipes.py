@@ -732,12 +732,18 @@ def normalize_ingredients(raw_ingredients: list[str]) -> list[dict[str, object]]
 
 
 def infer_meal_type(title: str, url: str, ingredients: list[str]) -> str:
-    blob = " ".join([title, url]).lower()
+    blob = " ".join([title, url]).lower().replace("-", " ").replace("_", " ")
     keyword_groups = {
         "breakfast": (
             "breakfast", "brunch", "pancake", "waffle", "porridge", "granola", "overnight oats",
             "smoothie", "shake", "yogurt", "yoghurt", "muesli", "omelet", "omelette", "frittata",
-            "scrambled egg", "scrambled eggs", "baked eggs",
+            "scrambled egg", "scrambled eggs", "baked eggs", "fried egg", "poached egg", "boiled egg",
+            "oats", "oatmeal", "rolled oats", "bircher", "chia pudding",
+            "on toast", "french toast", "avocado toast", "smashed avocado",
+            "bagel", "bagels", "crumpet", "crumpets", "english muffin", "breakfast muffin", "egg muffin",
+            "eggs benedict", "eggs florentine", "eggs royale", "huevos rancheros",
+            "shakshuka", "shakshouka", "hash brown", "hash browns", "kedgeree",
+            "croissant", "crepe", "crepes", "breakfast bar", "granola bar",
             "ontbijt", "havermout", "frühstück", "fruehstueck", "śniadanie", "sniadanie", "desayuno",
         ),
         "dessert": (
@@ -827,6 +833,7 @@ def classify_goals(
     macros_total: dict[str, float | int],
     servings: int,
     meal_type: str,
+    nutrition_estimated: bool = False,
 ) -> list[str]:
     calories = per_serving(macros_total, "calories", servings)
     protein = per_serving(macros_total, "protein", servings)
@@ -837,29 +844,34 @@ def classify_goals(
     net_carbs = max(0.0, carbs - fiber)
 
     goals: set[str] = {"maintain"}
-    if meal_type == "breakfast":
-        diabetes_carb_limit = 20
-    elif meal_type == "dessert":
-        diabetes_carb_limit = 25
-    else:
-        diabetes_carb_limit = 35
+    # Macro-derived goals (diabetes/keto/weight_loss/muscle) require REAL published
+    # nutrition. When macros were ESTIMATED from ingredients we skip them entirely
+    # so estimated numbers never drive medical (diabetes/insulin) or fitness
+    # recommendations. Ingredient-derived vegan/vegetarian tags stay valid.
+    if not nutrition_estimated:
+        if meal_type == "breakfast":
+            diabetes_carb_limit = 20
+        elif meal_type == "dessert":
+            diabetes_carb_limit = 25
+        else:
+            diabetes_carb_limit = 35
 
-    if calories > 0 and carbs <= diabetes_carb_limit and sugar <= 15:
-        goals.add("diabetes")
-    if calories > 0 and net_carbs <= 20 and fat >= protein * 0.7:
-        goals.add("keto")
-    if calories > 0 and calories <= 600 and protein >= 15:
-        goals.add("weight_loss")
+        if calories > 0 and carbs <= diabetes_carb_limit and sugar <= 15:
+            goals.add("diabetes")
+        if calories > 0 and net_carbs <= 20 and fat >= protein * 0.7:
+            goals.add("keto")
+        if calories > 0 and calories <= 600 and protein >= 15:
+            goals.add("weight_loss")
 
-    muscle_min_calories = {
-        "breakfast": 450,
-        "lunch": 550,
-        "dinner": 650,
-        "snack": 300,
-        "dessert": 350,
-    }.get(meal_type, 450)
-    if calories >= muscle_min_calories and protein >= 25:
-        goals.add("muscle")
+        muscle_min_calories = {
+            "breakfast": 450,
+            "lunch": 550,
+            "dinner": 650,
+            "snack": 300,
+            "dessert": 350,
+        }.get(meal_type, 450)
+        if calories >= muscle_min_calories and protein >= 25:
+            goals.add("muscle")
     if is_probably_vegan(title, ingredients):
         goals.add("vegan")
         goals.add("vegetarian")
@@ -957,14 +969,27 @@ def recompute_recipe_categories(recipe: dict) -> tuple[str, list[str], int, str]
     ingredients = ingredient_texts_from_recipe(recipe)
     macros = recipe.get("macros") if isinstance(recipe.get("macros"), dict) else {}
     servings = parse_servings(recipe.get("servings"))
-    meal_type = infer_meal_type(title, source_url, ingredients)
-    goals = classify_goals(
-        title=title,
-        ingredients=ingredients,
-        macros_total=macros,
-        servings=servings,
-        meal_type=meal_type,
-    )
+    nutrition_estimated = bool(recipe.get("nutrition_estimated"))
+    # Index-sourced imports lock their meal_type: the source category page (e.g. the
+    # site's "breakfast" listing) is a more authoritative signal than keyword
+    # inference over a foreign-language title.
+    if recipe.get("meal_locked") and recipe.get("meal_type"):
+        meal_type = str(recipe.get("meal_type"))
+    else:
+        meal_type = infer_meal_type(title, source_url, ingredients)
+    if recipe.get("goals_locked") and isinstance(recipe.get("goals"), list) and recipe.get("goals"):
+        # Imported recipes may compute language-aware diet tags the generic
+        # classifier can't (e.g. Polish inflections); trust the locked goals.
+        goals = sorted({str(goal) for goal in recipe.get("goals")})
+    else:
+        goals = classify_goals(
+            title=title,
+            ingredients=ingredients,
+            macros_total=macros,
+            servings=servings,
+            meal_type=meal_type,
+            nutrition_estimated=nutrition_estimated,
+        )
     health_score, health_score_reason = compute_health_score(macros, servings, goals)
     return meal_type, goals, health_score, health_score_reason
 
