@@ -485,6 +485,8 @@ double _premiumColorDrift(AppVisualTheme visual) {
       return 0.035;
     case AppColorSeed.geminiAI:
       return 0.012;
+    case AppColorSeed.rainbow:
+      return 0.05;
     default:
       return 0;
   }
@@ -517,6 +519,16 @@ List<Color> _premiumColorAnchors(AppVisualTheme visual) {
         Color(0xFFB8C0CC),
         Color(0xFF8B95A5),
         Color(0xFFEFF3F8),
+      ];
+    case AppColorSeed.rainbow:
+      return const [
+        Color(0xFFFF3B30),
+        Color(0xFFFF9500),
+        Color(0xFFFFCC00),
+        Color(0xFF34C759),
+        Color(0xFF007AFF),
+        Color(0xFF5856D6),
+        Color(0xFFAF52DE),
       ];
     default:
       return visual.gradient.length >= 3

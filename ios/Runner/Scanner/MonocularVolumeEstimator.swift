@@ -601,16 +601,27 @@ final class MonocularVolumeEstimator {
         if l.contains("soup") || l.contains("sauce") || l.contains("yogurt") {
             return min(6.0, max(1.0, min(lateralBoundCm * 0.45, priorBoundCm * 1.4)))
         }
+        // Flat baked goods are physically short no matter how wide the footprint
+        // reads. A slice of bread, a tortilla or a pizza can never be tall, so a
+        // foreshortened side view (the #1 cause of a 4x-too-tall slice) is capped
+        // hard here. This is a physical ceiling, not the primary height driver:
+        // a clean side capture still measures the true 1-3 cm within this bound.
+        if l.contains("bread") || l.contains("toast") || l.contains("pizza") ||
+            l.contains("cracker") || l.contains("tortilla") || l.contains("pancake") ||
+            l.contains("waffle") || l.contains("flatbread") || l.contains("cookie") ||
+            l.contains("biscuit") || l.contains("pita") || l.contains("naan") {
+            return 3.5
+        }
         if l.contains("rice") || l.contains("pasta") || l.contains("noodle") || l.contains("salad") {
-            return min(12.0, max(priorBoundCm * 1.35, lateralBoundCm * 0.75))
+            return min(11.0, max(priorBoundCm * 1.3, lateralBoundCm * 0.7))
         }
         if l.contains("banana") {
             return min(14.0, max(priorBoundCm * 1.2, lateralBoundCm * 0.85))
         }
-        // Non-LiDAR side silhouettes are real but still monocular. Refuse to
-        // create a tall object whose height exceeds the observed top footprint
-        // by much; this is the direct cucumber prevention guard.
-        let base = min(18.0, max(1.0, lateralBoundCm * 1.05))
+        // Generic: a plated food is almost never taller than it is wide. Capping
+        // the height near the lateral footprint (not 1.05x of it) blocks absurd
+        // monocular spikes while leaving real domes and round produce intact.
+        let base = min(14.0, max(1.0, lateralBoundCm * 0.9))
         if let envelope = physicalEnvelope(for: label) {
             return min(base, envelope.maxHeightCm)
         }
@@ -844,6 +855,14 @@ final class MonocularVolumeEstimator {
 
     private func physicalEnvelope(for label: String) -> PhysicalEnvelope? {
         let l = label.lowercased()
+        // Flat baked goods: bounded hard in height so a foreshortened or
+        // plate-bleeding side mask can never inflate the object vertically.
+        if l.contains("bread") || l.contains("toast") || l.contains("pizza") ||
+            l.contains("tortilla") || l.contains("pancake") || l.contains("waffle") ||
+            l.contains("cracker") || l.contains("flatbread") || l.contains("pita") ||
+            l.contains("naan") || l.contains("cookie") || l.contains("biscuit") {
+            return PhysicalEnvelope(maxLateralCm: 30.0, maxHeightCm: 3.5, maxVolumeCm3: 2000.0)
+        }
         if l.contains("tomato") { return PhysicalEnvelope(maxLateralCm: 10.0, maxHeightCm: 8.0, maxVolumeCm3: 420.0) }
         if l.contains("apple") || l.contains("orange") || l.contains("peach") || l.contains("plum") {
             return PhysicalEnvelope(maxLateralCm: 11.0, maxHeightCm: 10.0, maxVolumeCm3: 620.0)
@@ -906,6 +925,64 @@ final class MonocularVolumeEstimator {
     /// This is purely the *visual* geometry of a camera estimate — the volume
     /// and calorie numbers come from the prism formula in `estimate(...)` and
     /// are NOT derived from this mesh.
+    /// Shrink-free Taubin smoothing. Turns the blocky exposed-voxel surface into
+    /// a smoothly curved one so round food gets round edges, while the alternating
+    /// positive (lambda) and negative (mu) passes cancel the volume shrink that a
+    /// plain Laplacian smooth would cause. Vertices flagged `pinned` (the contact
+    /// base on the table) never move, keeping the food grounded with a crisp
+    /// footprint while the body and rim are rounded to follow the true silhouette.
+    private func taubinSmooth(
+        _ verts: inout [SIMD3<Float>],
+        faces: [Int],
+        iterations: Int,
+        pinned: [Bool]
+    ) {
+        let n = verts.count
+        guard n > 4, faces.count >= 3 else { return }
+        var adjacency = [[Int]](repeating: [], count: n)
+        var seen = [Set<Int>](repeating: [], count: n)
+        @inline(__always) func link(_ a: Int, _ b: Int) {
+            guard a != b, a >= 0, a < n, b >= 0, b < n else { return }
+            if !seen[a].contains(b) {
+                seen[a].insert(b)
+                adjacency[a].append(b)
+            }
+        }
+        var i = 0
+        while i + 2 < faces.count {
+            let a = faces[i], b = faces[i + 1], c = faces[i + 2]
+            link(a, b); link(a, c)
+            link(b, a); link(b, c)
+            link(c, a); link(c, b)
+            i += 3
+        }
+        let lambda: Float = 0.5
+        let mu: Float = -0.53
+        var scratch = verts
+        @inline(__always) func pass(_ factor: Float) {
+            for v in 0..<n {
+                if v < pinned.count && pinned[v] {
+                    scratch[v] = verts[v]
+                    continue
+                }
+                let nb = adjacency[v]
+                if nb.isEmpty {
+                    scratch[v] = verts[v]
+                    continue
+                }
+                var sum = SIMD3<Float>(repeating: 0)
+                for j in nb { sum += verts[j] }
+                let avg = sum / Float(nb.count)
+                scratch[v] = verts[v] + (avg - verts[v]) * factor
+            }
+            swap(&verts, &scratch)
+        }
+        for _ in 0..<max(0, iterations) {
+            pass(lambda)
+            pass(mu)
+        }
+    }
+
     private func makeEstimatedObject(
         id: String,
         label: String,
@@ -1184,6 +1261,17 @@ final class MonocularVolumeEstimator {
                     SIMD3<Float>(x1, y1, z1), SIMD3<Float>(x1, y1, z0))
         }
 
+        // Round the blocky voxel facets into a smooth surface that follows the
+        // exact top + side silhouettes. The contact base (vertices on the table
+        // plane) is pinned so the food stays grounded with a crisp footprint
+        // while the body and rim curve naturally — rounded food gets round edges.
+        let basePin = max(Float(0.0006), h * 0.03)
+        var pinnedBase = [Bool](repeating: false, count: vertices.count)
+        for vi in 0..<vertices.count where vertices[vi].y <= basePin {
+            pinnedBase[vi] = true
+        }
+        taubinSmooth(&vertices, faces: faces, iterations: 8, pinned: pinnedBase)
+
         let color = dominantColor(topFrame: topFrame, mask: mask, footprint: footprint, maskWidth: maskWidth, maskHeight: maskHeight)
         var colors: [UInt8] = []
         colors.reserveCapacity(vertices.count * 3)
@@ -1204,7 +1292,10 @@ final class MonocularVolumeEstimator {
             uvs: [],
             voxelCount: voxelCount,
             volumeCm3: volumeCm3,
-            preserveCreases: true
+            // The hull is now Taubin-smoothed into a curved organic surface, so
+            // average normals across shared vertices for soft shading instead of
+            // preserving the old voxel creases that made it read as low-poly.
+            preserveCreases: false
         )
     }
 

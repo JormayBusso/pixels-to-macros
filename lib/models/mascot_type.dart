@@ -75,6 +75,7 @@ enum AppColorSeed {
   solarFlare,
   emeraldMirage,
   royalAmethyst,
+  rainbow,
 }
 
 extension AppColorSeedX on AppColorSeed {
@@ -110,6 +111,8 @@ extension AppColorSeedX on AppColorSeed {
         return 'Premium Emerald';
       case AppColorSeed.royalAmethyst:
         return 'Premium Amethyst';
+      case AppColorSeed.rainbow:
+        return 'Premium Rainbow';
     }
   }
 
@@ -129,6 +132,8 @@ extension AppColorSeedX on AppColorSeed {
         return 'Lush emerald and teal';
       case AppColorSeed.royalAmethyst:
         return 'Regal violet and indigo';
+      case AppColorSeed.rainbow:
+        return 'All seven colours in motion';
       default:
         return 'Classic ${label.replaceAll(' (default)', '').toLowerCase()} accent';
     }
@@ -143,6 +148,7 @@ extension AppColorSeedX on AppColorSeed {
       case AppColorSeed.solarFlare:
       case AppColorSeed.emeraldMirage:
       case AppColorSeed.royalAmethyst:
+      case AppColorSeed.rainbow:
         return true;
       default:
         return false;
@@ -179,6 +185,8 @@ extension AppColorSeedX on AppColorSeed {
         return const Color(0xFF34D399); // premium emerald
       case AppColorSeed.royalAmethyst:
         return const Color(0xFFA78BFA); // premium amethyst violet
+      case AppColorSeed.rainbow:
+        return const Color(0xFF38BDF8); // rainbow accent (readable sky)
     }
   }
 
@@ -239,6 +247,16 @@ extension AppColorSeedX on AppColorSeed {
           Color(0xFFE879F9),
           Color(0xFF60A5FA),
         ];
+      case AppColorSeed.rainbow:
+        return const [
+          Color(0xFFFF3B30),
+          Color(0xFFFF9500),
+          Color(0xFFFFCC00),
+          Color(0xFF34C759),
+          Color(0xFF007AFF),
+          Color(0xFF5856D6),
+          Color(0xFFAF52DE),
+        ];
       default:
         return [color, color.withValues(alpha: 0.72)];
     }
@@ -275,6 +293,8 @@ extension AppColorSeedX on AppColorSeed {
         return const Color(0xFF04140F);
       case AppColorSeed.royalAmethyst:
         return const Color(0xFF0E0A1F);
+      case AppColorSeed.rainbow:
+        return const Color(0xFF0A0A12);
     }
   }
 
@@ -294,6 +314,8 @@ extension AppColorSeedX on AppColorSeed {
         return const Color(0xFF0A2018);
       case AppColorSeed.royalAmethyst:
         return const Color(0xFF181030);
+      case AppColorSeed.rainbow:
+        return const Color(0xFF14141F);
       default:
         return Colors.white;
     }
@@ -353,6 +375,8 @@ extension AppColorSeedX on AppColorSeed {
       case 'crimsonEmber':
       case 'crimson_ember':
         return AppColorSeed.solarFlare;
+      case 'rainbow':
+        return AppColorSeed.rainbow;
       default:
         return AppColorSeed.green;
     }

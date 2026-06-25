@@ -580,6 +580,35 @@ class AppVisualTheme {
           motionStyle: AppPremiumMotionStyle.aurora,
           motionDuration: Duration(seconds: 18),
         );
+      case AppColorSeed.rainbow:
+        return const AppVisualTheme(
+          seed: AppColorSeed.rainbow,
+          premium: true,
+          background: Color(0xFF0A0A12),
+          surface: Color(0xFF101019),
+          cardColor: Color(0xFF14141F),
+          appBarColor: Color(0xFF0A0A12),
+          navBarColor: Color(0xF2101019),
+          inputFillColor: Color(0xFF13131D),
+          borderColor: Color(0x9938BDF8),
+          primaryAccent: Color(0xFF38BDF8),
+          secondaryAccent: Color(0xFFFF9500),
+          glowColor: Color(0x8838BDF8),
+          onSurface: Color(0xFFF6F7FB),
+          onDark: Color(0xFFF6F7FB),
+          onMuted: Color(0xFFD2D6E2),
+          gradient: [
+            Color(0xFFFF3B30),
+            Color(0xFFFF9500),
+            Color(0xFFFFCC00),
+            Color(0xFF34C759),
+            Color(0xFF007AFF),
+            Color(0xFF5856D6),
+            Color(0xFFAF52DE),
+          ],
+          motionStyle: AppPremiumMotionStyle.aurora,
+          motionDuration: Duration(seconds: 6),
+        );
       default:
         return AppVisualTheme.fromSeed(AppColorSeed.green);
     }
