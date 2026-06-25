@@ -169,6 +169,15 @@ final class ScannerPlugin {
                         ))
                         return
                     }
+                    if let pipelineError = err as? InferencePipeline.PipelineError,
+                       case .dualSilhouetteFailed(let reason, let debug) = pipelineError {
+                        safeResult(FlutterError(
+                            code: "DUAL_SILHOUETTE_FAILED",
+                            message: reason,
+                            details: debug
+                        ))
+                        return
+                    }
                     safeResult(FlutterError(
                         code: "VIDEO_INFERENCE_FAILED",
                         message: err.localizedDescription,

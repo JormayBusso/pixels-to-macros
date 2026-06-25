@@ -66,6 +66,7 @@ final class InferencePipeline {
         case segmentationFailed(Error)
         case volumeFailed
         case model3DExportFailed(String)
+        case dualSilhouetteFailed(String, String)
 
         var errorDescription: String? {
             switch self {
@@ -76,6 +77,8 @@ final class InferencePipeline {
             case .volumeFailed:          return "Volume calculation failed"
             case .model3DExportFailed(let reason):
                 return "3D scan failed. Please rescan. (\(reason))"
+            case .dualSilhouetteFailed(let reason, _):
+                return "Dual-silhouette reconstruction failed. (\(reason))"
             }
         }
     }
@@ -227,25 +230,51 @@ final class InferencePipeline {
         // through DepthFusion. Generate an estimated 3-D object from the
         // segmentation mask, plate/intrinsics scale, and food shape priors.
         if !recorder.hasDepthData {
-            // Real side-view silhouette (dominant path): when the user reaches
-            // side view, segment the latest side frame and reduce each side mask
-            // to a vertical profile. The monocular estimator uses that profile
-            // to carve the top-mask footprint into a two-silhouette visual hull.
-            let sideProfiles = recorder.sideFrame.map { frame in
-                autoreleasepool { extractSideProfiles(from: frame, topFrame: topFrame) }
-            } ?? []
-            // Legacy scalar fallback only runs if side-profile extraction fails.
-            let measuredHeightCm = sideProfiles.isEmpty ? recorder.sideFrame.flatMap {
-                frame in autoreleasepool { measureSideHeightCm(frame) }
-            } : nil
+            // ── Dual-silhouette gate (MANDATORY — no single-silhouette fallback) ──
+            // A monocular reconstruction requires BOTH a valid top silhouette
+            // and a valid side silhouette. We retry side segmentation +
+            // silhouette extraction + alignment up to 3 times; if it still fails
+            // we throw `dualSilhouetteFailed` (the UI shows actionable guidance
+            // and a Retry button) instead of exporting a degraded single-view
+            // shape. There is no centroid/sphere/dome/single-view fallback.
+            guard let sideFrame = recorder.sideFrame else {
+                let dbg = dualSilhouetteDebugJSON(
+                    topValid: true, sideValid: false, alignment: 0,
+                    segConfTop: segments.map { $0.confidence }.max() ?? 0,
+                    segConfSide: 0, attempt: 1, reason: "missing_side_view")
+                print("[DUALHULL] \(dbg)")
+                throw PipelineError.dualSilhouetteFailed("missing_side_view", dbg)
+            }
+            var sideProfiles: [MonocularVolumeEstimator.SideProfile] = []
+            var lastDebug = ""
+            var lastReason = "side_silhouette_invalid"
+            var accepted = false
+            let maxAttempts = 3
+            for attempt in 1...maxAttempts {
+                sideProfiles = autoreleasepool {
+                    extractSideProfiles(from: sideFrame, topFrame: topFrame)
+                }
+                let check = monocularEstimator.validateDualSilhouette(
+                    segments: segments, sideProfiles: sideProfiles)
+                lastDebug = dualSilhouetteDebugJSON(
+                    topValid: check.topValid, sideValid: check.sideValid,
+                    alignment: check.alignmentScore, segConfTop: check.segConfTop,
+                    segConfSide: check.segConfSide, attempt: attempt, reason: check.reason)
+                print("[DUALHULL] \(lastDebug)")
+                if check.valid { accepted = true; break }
+                lastReason = check.reason
+            }
+            if !accepted {
+                throw PipelineError.dualSilhouetteFailed(lastReason, lastDebug)
+            }
             let estimate = try monocularEstimator.estimate(
                 segments: segments,
                 topFrame: topFrame,
-                sideFrame: recorder.sideFrame,
+                sideFrame: sideFrame,
                 sideProfiles: sideProfiles,
                 maskWidth: preprocessor.modelInputWidth,
                 maskHeight: preprocessor.modelInputHeight,
-                measuredHeightCm: measuredHeightCm,
+                measuredHeightCm: nil,
                 preprocessedRGB: preprocessedRGB,
                 tableDistanceCm: recorder.tableDistanceCm
             )
@@ -505,6 +534,29 @@ final class InferencePipeline {
         }
 
         return true
+    }
+
+    /// Per-attempt dual-silhouette diagnostics. Emitted to the log and returned
+    /// to Flutter (as the FlutterError details) so the failure UI can explain
+    /// what to fix. Mirrors the fields the spec requires.
+    private func dualSilhouetteDebugJSON(
+        topValid: Bool, sideValid: Bool, alignment: Double,
+        segConfTop: Float, segConfSide: Float, attempt: Int, reason: String
+    ) -> String {
+        let dict: [String: Any] = [
+            "top_silhouette_valid": topValid,
+            "side_silhouette_valid": sideValid,
+            "alignment_score": (alignment * 1000).rounded() / 1000,
+            "segmentation_confidence_top": (Double(segConfTop) * 1000).rounded() / 1000,
+            "segmentation_confidence_side": (Double(segConfSide) * 1000).rounded() / 1000,
+            "attempt_number": attempt,
+            "failure_reason": reason,
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: dict),
+           let s = String(data: data, encoding: .utf8) {
+            return s
+        }
+        return "{\"failure_reason\":\"\(reason)\",\"attempt_number\":\(attempt)}"
     }
 
     /// Extract real side-view silhouette profiles for the monocular visual-hull

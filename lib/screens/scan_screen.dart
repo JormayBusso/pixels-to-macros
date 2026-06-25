@@ -922,12 +922,19 @@ class _BottomPanel extends StatelessWidget {
     if (scanState == ScanState.depthFailed) {
       return l10n.cameraSessionFailedTitle;
     }
+    if (scanResult.failureKind == ScanFailureKind.dualSilhouetteFailed) {
+      return "Couldn't build a 3D scan";
+    }
     return scanResult.failureKind == ScanFailureKind.reconstructionFailed
         ? l10n.scan3dFailed
         : l10n.scanAnalysisFailed;
   }
 
   String _scanErrorBody(AppLocalizations l10n) {
+    if (scanResult.failureKind == ScanFailureKind.dualSilhouetteFailed) {
+      return 'We need a clear top AND side view of the food to build the '
+          'model. Please scan again:';
+    }
     switch (scanState) {
       case ScanState.depthFailed:
         return l10n.cameraSessionFailedBody;
@@ -1111,7 +1118,11 @@ class _BottomPanel extends StatelessWidget {
               style: const TextStyle(color: Colors.white70, fontSize: 13),
               textAlign: TextAlign.center,
             ),
-            if (!isNoFood && sessionErrorDetail != null) ...[
+            if (scanResult.failureKind ==
+                ScanFailureKind.dualSilhouetteFailed) ...[
+              const SizedBox(height: 12),
+              const _DualSilhouetteTips(),
+            ] else if (!isNoFood && sessionErrorDetail != null) ...[
               const SizedBox(height: 8),
               _ScanErrorBox(error: sessionErrorDetail!),
             ] else if (!isNoFood && scanResult.error != null) ...[
@@ -1314,6 +1325,55 @@ class _InfoChipDark extends StatelessWidget {
             label,
             style: const TextStyle(fontSize: 11, color: Colors.white54),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Actionable failure card shown when dual-silhouette reconstruction fails.
+/// Plain-language tips only (no technical jargon), per the scan UX spec.
+class _DualSilhouetteTips extends StatelessWidget {
+  const _DualSilhouetteTips();
+
+  static const List<(IconData, String)> _tips = [
+    (Icons.wb_sunny_outlined, 'Use even lighting — avoid glare and deep shadows'),
+    (Icons.center_focus_strong, 'Keep the whole food centred and fully in frame'),
+    (Icons.pan_tool_outlined, "Hold steady — don't move the food between shots"),
+    (Icons.lens_blur, 'Wipe the lens and use a plain, uncluttered background'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final tip in _tips)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(tip.$1, size: 16, color: Colors.white70),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      tip.$2,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 12.5, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

@@ -11,6 +11,7 @@ enum ScanFailureKind {
   noFood,
   analysisFailed,
   reconstructionFailed,
+  dualSilhouetteFailed,
 }
 
 /// Holds the results of the most recent scan.
@@ -236,6 +237,9 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
   ScanFailureKind _classifyFailure(Object error) {
     if (error is PlatformException) {
       if (error.code == 'NO_FOOD_DETECTED') return ScanFailureKind.noFood;
+      if (error.code == 'DUAL_SILHOUETTE_FAILED') {
+        return ScanFailureKind.dualSilhouetteFailed;
+      }
       final message = '${error.message ?? ''} ${error.details ?? ''}'
           .toLowerCase();
       if (_looksLikeNoFoodFailure(message)) return ScanFailureKind.noFood;

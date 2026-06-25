@@ -652,6 +652,71 @@ final class MonocularVolumeEstimator {
         return profile
     }
 
+    struct DualSilhouetteCheck {
+        let valid: Bool
+        let topValid: Bool
+        let sideValid: Bool
+        let alignmentScore: Double
+        let segConfTop: Float
+        let segConfSide: Float
+        let reason: String
+    }
+
+    /// Dual-silhouette gate. A monocular reconstruction is only accepted when a
+    /// valid TOP silhouette AND a valid SIDE silhouette both exist for the
+    /// primary (largest) food and their alignment/consistency clears threshold.
+    /// There is NO single-silhouette fallback: when this returns valid == false
+    /// the caller retries the pipeline or surfaces a failure to the user instead
+    /// of exporting a degraded single-view shape.
+    func validateDualSilhouette(
+        segments: [SegmentationService.SegmentedObject],
+        sideProfiles: [SideProfile]
+    ) -> DualSilhouetteCheck {
+        let minTopPixels = 650
+        let alignmentThreshold = 0.35
+        let confidenceThreshold: Float = 0.30
+
+        // Primary = the largest segment (what the user frames and evaluates).
+        guard let primaryIdx = segments.indices.max(by: {
+            segments[$0].pixelCount < segments[$1].pixelCount
+        }) else {
+            return DualSilhouetteCheck(valid: false, topValid: false, sideValid: false,
+                alignmentScore: 0, segConfTop: 0, segConfSide: 0, reason: "no_top_silhouette")
+        }
+        let primary = segments[primaryIdx]
+        let segConfTop = primary.confidence
+        let topValid = primary.pixelCount >= minTopPixels && segConfTop >= confidenceThreshold
+        if !topValid {
+            return DualSilhouetteCheck(valid: false, topValid: false, sideValid: false,
+                alignmentScore: 0, segConfTop: segConfTop, segConfSide: 0,
+                reason: "top_silhouette_invalid")
+        }
+
+        // Match + usability-filter the side profile for the primary using the
+        // SAME gates the mesh uses, so validation and reconstruction agree.
+        let match = sideProfileMatch(for: primary, index: primaryIdx, in: sideProfiles, excluding: [])
+        guard let profile = usableSideProfile(match?.profile, for: primary.label) else {
+            return DualSilhouetteCheck(valid: false, topValid: true, sideValid: false,
+                alignmentScore: 0, segConfTop: segConfTop,
+                segConfSide: match?.profile.confidence ?? 0,
+                reason: sideProfiles.isEmpty ? "missing_side_silhouette" : "side_silhouette_invalid")
+        }
+        let segConfSide = profile.confidence
+        // Alignment/consistency score blends side confidence with how much real
+        // side-mask substance backs it (a thin/sparse side mask is unreliable).
+        let alignmentScore = min(1.0,
+            Double(profile.confidence) * 0.7 +
+            0.3 * min(1.0, Double(profile.pixelCount) / 4000.0))
+        if alignmentScore < alignmentThreshold {
+            return DualSilhouetteCheck(valid: false, topValid: true, sideValid: true,
+                alignmentScore: alignmentScore, segConfTop: segConfTop, segConfSide: segConfSide,
+                reason: "alignment_below_threshold")
+        }
+        return DualSilhouetteCheck(valid: true, topValid: true, sideValid: true,
+            alignmentScore: alignmentScore, segConfTop: segConfTop, segConfSide: segConfSide,
+            reason: "ok")
+    }
+
     /// Exponential moving average on the final per-food volume, keyed by label
     /// and persisted for the app session. Repeated scans of the same food
     /// converge to a stable value (removing the 20-30% capture-to-capture
