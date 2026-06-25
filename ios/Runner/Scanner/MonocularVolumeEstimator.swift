@@ -1056,68 +1056,47 @@ final class MonocularVolumeEstimator {
             let t = max(0.0, min(1.0, x))
             return t * t * (3.0 - 2.0 * t)
         }
-        var cornerB = [Float](repeating: 0, count: (gr + 1) * cornerCols)
-        var cornerH = [Float](repeating: 0, count: (gr + 1) * cornerCols)
         let transverseStrength = transverseRoundnessStrength(for: label)
-        for rr in 0...gr {
-            for cc in 0...gc {
-                let n = cornerCells(rr, cc)
-                if n == 0 { continue }
-                let heightFraction: Float
-                let bottomFraction: Float
-                if let sideProfile, !sideProfile.normalizedHeights.isEmpty {
-                    let axisU = sideProfile.topAxis == .columns
-                        ? Double(cc) / Double(max(gc, 1))
-                        : Double(rr) / Double(max(gr, 1))
-                    let bounds = sideProfile.sampleBounds(axisU)
-                    let sideBottom = Float(bounds.bottom)
-                    let sideTop = Float(bounds.top)
-                    let sideLimit = max(0, sideTop - sideBottom)
-                    // Taper boundary corners toward the plate instead of
-                    // holding them at 72% height. The old floor created a near-
-                    // vertical wall around the whole silhouette, which read as a
-                    // cube/cylinder; tapering rounds the rim so the side contour
-                    // and footprint blend into a real food shape.
-                    let silhouetteEdge: Float = n >= 4 ? 1.0 : Float(n) / 4.0
-                    let boundedBottom = max(0, min(max(0, sideTop - 0.035), sideBottom))
-                    let transverseFalloff: Float
-                    if transverseStrength > 0 {
-                        let transverseCoord = sideProfile.topAxis == .columns ? Float(rr) : Float(cc)
-                        let transverseCenter = sideProfile.topAxis == .columns ? cgR : cgC
-                        let transverseExtent = sideProfile.topAxis == .columns ? Float(gr) : Float(gc)
-                        let radius = transverseCoord >= transverseCenter
-                            ? max(0.5, transverseExtent - transverseCenter)
-                            : max(0.5, transverseCenter)
-                        let transverseRho = min(1.0, abs(transverseCoord - transverseCenter) / radius)
-                        let roundFalloff = sqrt(max(0.0, 1.0 - transverseRho * transverseRho))
-                        transverseFalloff = 1.0 - transverseStrength * (1.0 - roundFalloff)
-                    } else {
-                        transverseFalloff = 1.0
-                    }
-                    let roundedTop = sideBottom + sideLimit * transverseFalloff
-                    let undersideLift = sideLimit * (1.0 - transverseFalloff) * (0.18 + 0.10 * transverseStrength)
-                    let liftedBottom = min(max(0, roundedTop - 0.035), boundedBottom + undersideLift)
-                    bottomFraction = liftedBottom * silhouetteEdge
-                    heightFraction = max(
-                        bottomFraction + 0.035 * silhouetteEdge,
-                        roundedTop * silhouetteEdge
-                    )
-                } else {
-                    // No side silhouette: the vertical profile is driven ONLY by
-                    // the TOP silhouette distance transform (`edgeDist`, 0 at the
-                    // outline). No centroid sphere/dome and no food prior — round
-                    // foods get an outline-following cap, box foods a flat top
-                    // with a tapered rim, and the base sits flat on the plate.
-                    bottomFraction = 0
-                    let nd = min(1.0, edgeDist[corner(rr, cc)] / maxEdgeDist)
-                    let topShape: Float = transverseStrength > 0
-                        ? sqrt(nd)               // round food: outline-following cap
-                        : smoothstep01(nd * 3.0) // box food: flat top, tapered rim
-                    heightFraction = max(0.02, topShape)
+
+        // ── True two-silhouette voxel visual hull ─────────────────────────
+        // A voxel is SOLID only where the TOP silhouette (top-mask occupancy)
+        // AND the SIDE silhouette (side-profile bottom/top along the matched
+        // axis) both contain it. The carved solid's top and side outlines then
+        // match the two captured photos exactly — a closed rounded body, not a
+        // draped height-field with a flat bottom. Round foods additionally
+        // round the unobserved transverse axis, still bounded by the top mask.
+        let vny = 30
+        @inline(__always) func hullSolid(_ ci: Int, _ ri: Int, _ yj: Int) -> Bool {
+            if yj < 0 || yj >= vny { return false }
+            if !isOn(ri, ci) { return false }
+            let y01 = (Float(yj) + 0.5) / Float(vny)
+            if let sideProfile, !sideProfile.normalizedHeights.isEmpty {
+                let axisU = sideProfile.topAxis == .columns
+                    ? Double(ci) / Double(max(gc - 1, 1))
+                    : Double(ri) / Double(max(gr - 1, 1))
+                let b = sideProfile.sampleBounds(axisU)
+                var bottom = Float(b.bottom)
+                var top = Float(b.top)
+                if top <= bottom { return false }
+                if transverseStrength > 0 {
+                    let tCoord = sideProfile.topAxis == .columns ? Float(ri) : Float(ci)
+                    let tCenter = sideProfile.topAxis == .columns ? cgR : cgC
+                    let tExtent = sideProfile.topAxis == .columns ? Float(gr) : Float(gc)
+                    let radius = tCoord >= tCenter ? max(0.5, tExtent - tCenter) : max(0.5, tCenter)
+                    let tRho = min(1.0, abs(tCoord - tCenter) / radius)
+                    let falloff = sqrt(max(0.0, 1.0 - tRho * tRho))
+                    let mid = (bottom + top) * 0.5
+                    let halfH = (top - bottom) * 0.5 * (1.0 - transverseStrength * (1.0 - falloff))
+                    bottom = mid - halfH
+                    top = mid + halfH
                 }
-                cornerB[corner(rr, cc)] = max(0.0, min(h * 0.80, h * bottomFraction))
-                cornerH[corner(rr, cc)] = max(0.0, h * heightFraction)
+                return y01 >= bottom && y01 <= top
             }
+            // No side silhouette: extrude the top silhouette with a distance-
+            // transform cap (round) or flat top (box); base sits on the plate.
+            let nd = min(1.0, edgeDist[corner(ri, ci)] / maxEdgeDist)
+            let topShape: Float = transverseStrength > 0 ? sqrt(nd) : smoothstep01(nd * 3.0)
+            return y01 <= max(0.02, topShape)
         }
 
         @inline(__always) func cornerX(_ cc: Int) -> Float {
@@ -1156,56 +1135,53 @@ final class MonocularVolumeEstimator {
             faces += [ia, ib, ic, ia, ic, id2]
         }
 
-        for r in 0..<gr {
-            for c in 0..<gc where on[cell(r, c)] {
-                let x0 = cornerX(c), x1 = cornerX(c + 1)
-                let z0 = cornerZ(r), z1 = cornerZ(r + 1)
-                let yTL = cornerH[corner(r, c)]
-                let yTR = cornerH[corner(r, c + 1)]
-                let yBL = cornerH[corner(r + 1, c)]
-                let yBR = cornerH[corner(r + 1, c + 1)]
-                let bTL = cornerB[corner(r, c)]
-                let bTR = cornerB[corner(r, c + 1)]
-                let bBL = cornerB[corner(r + 1, c)]
-                let bBR = cornerB[corner(r + 1, c + 1)]
-
-                // Top surface (shared corner heights → smooth & watertight).
-                addQuad(
-                    SIMD3<Float>(x0, yTL, z0), SIMD3<Float>(x0, yBL, z1),
-                    SIMD3<Float>(x1, yBR, z1), SIMD3<Float>(x1, yTR, z0)
-                )
-                // Bottom/underside follows the lower side contour when present
-                // and is flat only in the fallback path.
-                addQuad(
-                    SIMD3<Float>(x0, bTL, z0), SIMD3<Float>(x1, bTR, z0),
-                    SIMD3<Float>(x1, bBR, z1), SIMD3<Float>(x0, bBL, z1)
-                )
-                // Skirt walls only on silhouette edges, meeting the rounded top.
-                if !isOn(r - 1, c) {
-                    addQuad(
-                        SIMD3<Float>(x0, bTL, z0), SIMD3<Float>(x0, yTL, z0),
-                        SIMD3<Float>(x1, yTR, z0), SIMD3<Float>(x1, bTR, z0)
-                    )
-                }
-                if !isOn(r + 1, c) {
-                    addQuad(
-                        SIMD3<Float>(x1, bBR, z1), SIMD3<Float>(x1, yBR, z1),
-                        SIMD3<Float>(x0, yBL, z1), SIMD3<Float>(x0, bBL, z1)
-                    )
-                }
-                if !isOn(r, c - 1) {
-                    addQuad(
-                        SIMD3<Float>(x0, bBL, z1), SIMD3<Float>(x0, yBL, z1),
-                        SIMD3<Float>(x0, yTL, z0), SIMD3<Float>(x0, bTL, z0)
-                    )
-                }
-                if !isOn(r, c + 1) {
-                    addQuad(
-                        SIMD3<Float>(x1, bTR, z0), SIMD3<Float>(x1, yTR, z0),
-                        SIMD3<Float>(x1, yBR, z1), SIMD3<Float>(x1, bBR, z1)
-                    )
+        @inline(__always) func vy(_ yj: Int) -> Float { (Float(yj) / Float(vny)) * h }
+        for ri in 0..<gr {
+            for ci in 0..<gc where on[cell(ri, ci)] {
+                let x0 = cornerX(ci), x1 = cornerX(ci + 1)
+                let z0 = cornerZ(ri), z1 = cornerZ(ri + 1)
+                for yj in 0..<vny where hullSolid(ci, ri, yj) {
+                    let y0 = vy(yj), y1 = vy(yj + 1)
+                    // Emit a quad for each face bordering empty space, with
+                    // outward-facing winding so normals point out of the solid.
+                    if !hullSolid(ci + 1, ri, yj) {
+                        addQuad(SIMD3<Float>(x1, y0, z1), SIMD3<Float>(x1, y0, z0),
+                                SIMD3<Float>(x1, y1, z0), SIMD3<Float>(x1, y1, z1))
+                    }
+                    if !hullSolid(ci - 1, ri, yj) {
+                        addQuad(SIMD3<Float>(x0, y0, z0), SIMD3<Float>(x0, y0, z1),
+                                SIMD3<Float>(x0, y1, z1), SIMD3<Float>(x0, y1, z0))
+                    }
+                    if !hullSolid(ci, ri + 1, yj) {
+                        addQuad(SIMD3<Float>(x0, y0, z1), SIMD3<Float>(x0, y1, z1),
+                                SIMD3<Float>(x1, y1, z1), SIMD3<Float>(x1, y0, z1))
+                    }
+                    if !hullSolid(ci, ri - 1, yj) {
+                        addQuad(SIMD3<Float>(x1, y0, z0), SIMD3<Float>(x1, y1, z0),
+                                SIMD3<Float>(x0, y1, z0), SIMD3<Float>(x0, y0, z0))
+                    }
+                    if !hullSolid(ci, ri, yj + 1) {
+                        addQuad(SIMD3<Float>(x0, y1, z0), SIMD3<Float>(x1, y1, z0),
+                                SIMD3<Float>(x1, y1, z1), SIMD3<Float>(x0, y1, z1))
+                    }
+                    if !hullSolid(ci, ri, yj - 1) {
+                        addQuad(SIMD3<Float>(x0, y0, z1), SIMD3<Float>(x1, y0, z1),
+                                SIMD3<Float>(x1, y0, z0), SIMD3<Float>(x0, y0, z0))
+                    }
                 }
             }
+        }
+        // Guarantee non-empty geometry so the viewer always has something.
+        if faces.isEmpty {
+            let x0 = cornerX(gc / 2), x1 = cornerX(gc / 2 + 1)
+            let z0 = cornerZ(gr / 2), z1 = cornerZ(gr / 2 + 1)
+            let y1 = max(0.005, h * 0.4)
+            addQuad(SIMD3<Float>(x0, 0, z0), SIMD3<Float>(x1, 0, z0),
+                    SIMD3<Float>(x1, y1, z0), SIMD3<Float>(x0, y1, z0))
+            addQuad(SIMD3<Float>(x0, 0, z1), SIMD3<Float>(x0, y1, z1),
+                    SIMD3<Float>(x1, y1, z1), SIMD3<Float>(x1, 0, z1))
+            addQuad(SIMD3<Float>(x0, y1, z0), SIMD3<Float>(x0, y1, z1),
+                    SIMD3<Float>(x1, y1, z1), SIMD3<Float>(x1, y1, z0))
         }
 
         let color = dominantColor(topFrame: topFrame, mask: mask, footprint: footprint, maskWidth: maskWidth, maskHeight: maskHeight)
