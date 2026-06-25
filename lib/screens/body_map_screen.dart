@@ -192,7 +192,21 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                   borderRadius: BorderRadius.circular(19),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                        color: Theme.of(context).scaffoldBackgroundColor),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Theme.of(context).scaffoldBackgroundColor,
+                          Color.alphaBlend(
+                            Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.10),
+                            Theme.of(context).scaffoldBackgroundColor,
+                          ),
+                        ],
+                      ),
+                    ),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final cw = constraints.maxWidth;
@@ -228,16 +242,19 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                                       Positioned.fromRect(
                                         rect: Rect.fromLTWH(img.left, img.top,
                                             img.width, img.height),
-                                        child: Image.asset(
-                                          'assets/E25E5E96-362D-4B79-9469-6128EBAF2201_1_102_a.jpeg',
-                                          fit: BoxFit.fill,
+                                        child: Opacity(
+                                          opacity: 0.42,
+                                          child: Image.asset(
+                                            'assets/E25E5E96-362D-4B79-9469-6128EBAF2201_1_102_a.jpeg',
+                                            fit: BoxFit.fill,
+                                          ),
                                         ),
                                       ),
                                       Positioned.fromRect(
                                         rect: Rect.fromLTWH(img.left, img.top,
                                             img.width, img.height),
                                         child: Opacity(
-                                          opacity: 0.30,
+                                          opacity: 0.82,
                                           child: InteractiveBodyMapSvg(
                                             rawSvg: rawSvg,
                                             organScores: organScores100,

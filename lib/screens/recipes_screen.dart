@@ -22,6 +22,15 @@ import '../theme/app_theme.dart';
 import '../widgets/tour_keys.dart';
 import 'create_meal_screen.dart';
 
+/// Localizes the ingredient words inside a recipe name to the app language
+/// while leaving proper dish names (unknown words such as "Sushi") unchanged.
+String _localizeRecipeName(BuildContext context, Recipe r) =>
+    IngredientLocalizer.localize(
+      r.name,
+      targetLang: AppLocalizations.of(context).locale.languageCode,
+      sourceLang: r.language,
+    );
+
 class RecipesScreen extends ConsumerStatefulWidget {
   const RecipesScreen({super.key});
 
@@ -874,7 +883,7 @@ class _RecipeCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      recipe.name,
+                      _localizeRecipeName(context, recipe),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -1185,7 +1194,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     background: _RecipeImage(path: r.image!, overlay: true),
                   )
                 : null,
-            title: Text(r.name, style: const TextStyle(fontSize: 15)),
+            title: Text(_localizeRecipeName(context, r),
+                style: const TextStyle(fontSize: 15)),
           ),
           SliverPadding(
             padding: const EdgeInsets.all(20),
@@ -2680,7 +2690,7 @@ class _CurrentRecipeMini extends StatelessWidget {
                         fontSize: 10,
                         color: context.appMutedTextColor,
                         fontWeight: FontWeight.w600)),
-                Text(recipe.name,
+                Text(_localizeRecipeName(context, recipe),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -2757,7 +2767,7 @@ class _SwapCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      r.name,
+                      _localizeRecipeName(context, r),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(

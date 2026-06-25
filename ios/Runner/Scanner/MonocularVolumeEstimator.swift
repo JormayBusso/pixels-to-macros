@@ -958,6 +958,47 @@ final class MonocularVolumeEstimator {
             }
         }
         let maxR = sqrt(maxR2)
+        // Distance transform of the top silhouette over the corner lattice: 0 on
+        // the outline, growing inward (two-pass chamfer). The no-side-profile
+        // fallback shapes its vertical profile from THIS instead of a centroid
+        // sphere, so the cap follows the real outline rather than a generic dome.
+        var edgeDist = [Float](repeating: 0, count: (gr + 1) * cornerCols)
+        let bigDist = Float((gr + 1) + (gc + 1))
+        for rr in 0...gr {
+            for cc in 0...gc {
+                edgeDist[corner(rr, cc)] = cornerCells(rr, cc) >= 4 ? bigDist : 0
+            }
+        }
+        for rr in 0...gr {
+            for cc in 0...gc {
+                let idx = corner(rr, cc)
+                if edgeDist[idx] == 0 { continue }
+                var d = edgeDist[idx]
+                if rr > 0 { d = min(d, edgeDist[corner(rr - 1, cc)] + 1) }
+                if cc > 0 { d = min(d, edgeDist[corner(rr, cc - 1)] + 1) }
+                if rr > 0 && cc > 0 { d = min(d, edgeDist[corner(rr - 1, cc - 1)] + 1.41421) }
+                if rr > 0 && cc < gc { d = min(d, edgeDist[corner(rr - 1, cc + 1)] + 1.41421) }
+                edgeDist[idx] = d
+            }
+        }
+        for rr in stride(from: gr, through: 0, by: -1) {
+            for cc in stride(from: gc, through: 0, by: -1) {
+                let idx = corner(rr, cc)
+                if edgeDist[idx] == 0 { continue }
+                var d = edgeDist[idx]
+                if rr < gr { d = min(d, edgeDist[corner(rr + 1, cc)] + 1) }
+                if cc < gc { d = min(d, edgeDist[corner(rr, cc + 1)] + 1) }
+                if rr < gr && cc < gc { d = min(d, edgeDist[corner(rr + 1, cc + 1)] + 1.41421) }
+                if rr < gr && cc > 0 { d = min(d, edgeDist[corner(rr + 1, cc - 1)] + 1.41421) }
+                edgeDist[idx] = d
+            }
+        }
+        var maxEdgeDist: Float = 0.0001
+        for v in edgeDist where v > maxEdgeDist { maxEdgeDist = v }
+        @inline(__always) func smoothstep01(_ x: Float) -> Float {
+            let t = max(0.0, min(1.0, x))
+            return t * t * (3.0 - 2.0 * t)
+        }
         @inline(__always) func fallbackBottomFraction(rho: Float, dome: Float, edge: Float) -> Float {
             let l = label.lowercased()
             if l.contains("soup") || l.contains("sauce") || l.contains("yogurt") ||
@@ -1027,15 +1068,18 @@ final class MonocularVolumeEstimator {
                         roundedTop * silhouetteEdge
                     )
                 } else {
+                    // No usable side silhouette: drive the vertical profile from
+                    // the TOP silhouette's distance transform (`edgeDist`, 0 at
+                    // the outline) instead of a centroid sphere. The cap follows
+                    // the real outline — an oblong tomato yields an oblong cap, a
+                    // loaf keeps a flat top with a tapered rim — so no generic
+                    // dome/sphere overrides the measured silhouette shape.
                     bottomFraction = fallbackBottomFraction(rho: rho, dome: dome, edge: edge)
-                    // Box-like foods (bread, toast, stacked slices, rice) must
-                    // keep a flat top instead of a spherical dome, otherwise a
-                    // loaf reconstructs as a rounded blob. Only genuinely round
-                    // foods (tomato/apple/…) use the full dome.
+                    let nd = min(1.0, edgeDist[corner(rr, cc)] / maxEdgeDist)
                     let topShape: Float = transverseStrength > 0
-                        ? dome
-                        : (0.82 + 0.18 * dome)
-                    heightFraction = max(bottomFraction + 0.035 * edge, topShape * edge)
+                        ? sqrt(nd)               // round food: outline-following cap
+                        : smoothstep01(nd * 3.0) // box food: flat top, tapered rim
+                    heightFraction = max(bottomFraction + 0.02, topShape)
                 }
                 cornerB[corner(rr, cc)] = max(0.0, min(h * 0.80, h * bottomFraction))
                 cornerH[corner(rr, cc)] = max(0.0, h * heightFraction)
