@@ -124,6 +124,17 @@ final class MonocularVolumeEstimator {
     /// tracked camera-to-table distance (see `tableDistanceCm`).
     static var useMetricDepthVolume = false
 
+    /// P2 temporal stabilization state. Keyed by lowercased food label and kept
+    /// for the app session so repeated captures of the same food converge to a
+    /// stable volume instead of jittering 20-30% per capture.
+    private struct VolumeSmoother {
+        var volumeCm3: Double
+        var samples: Int
+    }
+    private static var volumeHistory: [String: VolumeSmoother] = [:]
+    private static let volumeSmoothingAlpha = 0.5
+    private static let volumeResetBandFraction = 0.35
+
     func estimate(
         segments: [SegmentationService.SegmentedObject],
         topFrame: FrameCaptureService.CapturedFrame,
@@ -297,8 +308,12 @@ final class MonocularVolumeEstimator {
                     scale.source, scale.pixelsPerCm, heightCm, volumeCm3
                 )
             }
+            // P2 temporal stabilization: converge repeated captures of the same
+            // food to a stable volume (EMA + out-of-band reset).
+            let smoothing = smoothedVolume(label: seg.label, volumeCm3: volumeCm3)
+            let finalVolumeCm3 = smoothing.volumeCm3
             let densityEstimate = estimatedDensityGPerCm3(for: seg.label)
-            let weightEstimateG = volumeCm3 * densityEstimate
+            let weightEstimateG = finalVolumeCm3 * densityEstimate
             let guardrailText = guardrailUpperCm3.map {
                 return String(
                     format: " guard=%@%.0fcm³",
@@ -335,7 +350,7 @@ final class MonocularVolumeEstimator {
                 depthCm,
                 heightCm,
                 rawVolumeCm3,
-                volumeCm3,
+                finalVolumeCm3,
                 densityEstimate,
                 weightEstimateG,
                 fallbackUsed ? "true" : "false",
@@ -355,8 +370,8 @@ final class MonocularVolumeEstimator {
                 widthCm: widthCm,
                 depthCm: depthCm,
                 heightCm: heightCm,
-                volumeCm3: volumeCm3,
-                voxelCount: max(seg.pixelCount, Int(volumeCm3.rounded())),
+                volumeCm3: finalVolumeCm3,
+                voxelCount: max(seg.pixelCount, Int(finalVolumeCm3.rounded())),
                 topFrame: topFrame,
                 maskWidth: maskWidth,
                 maskHeight: maskHeight,
@@ -364,13 +379,13 @@ final class MonocularVolumeEstimator {
             )
             objects.append(object)
 
-            let roundedVolume = round(volumeCm3 * 10) / 10
+            let roundedVolume = round(finalVolumeCm3 * 10) / 10
             let roundedConfidence = round(confidence * 1000) / 1000
             // Component confidences so the diagnostics screen can explain WHY a
             // scan scored the way it did (scale vs segmentation vs silhouette).
-            let scaleConfidence = scaleSourceConfidence(scale.source)
+            let scaleConfidence = scale.confidence
             let silhouetteConfidence = sideApplied ? Double(profile?.confidence ?? 0.0) : 0.0
-            let lowConfidence = roundedConfidence < 0.66 || scale.source == "default_plate"
+            let lowConfidence = roundedConfidence < 0.62 || scale.source == "intrinsic_default"
             var row: [String: Any] = [
                 "id": id,
                 "label": seg.label,
@@ -390,6 +405,8 @@ final class MonocularVolumeEstimator {
                 "frames_used": sideFrame == nil ? 1 : 2,
                 "scan_mode": scanMode,
                 "scale_source": scale.source,
+                "scale_fallback_reason": scale.fallbackReason ?? "none",
+                "overall_scan_confidence": roundedConfidence,
                 "estimated": true,
                 "footprint_area_cm2": round(areaCm2 * 10) / 10,
                 "height_cm": round(heightCm * 10) / 10,
@@ -399,6 +416,9 @@ final class MonocularVolumeEstimator {
                 "volume_guardrail_applied": guardrailApplied,
                 "side_view_applied": sideApplied,
                 "fallback_used": fallbackUsed,
+                "temporal_smoothing_applied": smoothing.applied,
+                "temporal_samples": smoothing.samples,
+                "pre_smoothing_volume_cm3": round(volumeCm3 * 10) / 10,
             ]
             if let guardrailUpperCm3 {
                 row["guardrail_upper_cm3"] = round(guardrailUpperCm3 * 10) / 10
@@ -435,6 +455,8 @@ final class MonocularVolumeEstimator {
     private struct ScaleEstimate {
         let pixelsPerCm: Double
         let source: String
+        let confidence: Double
+        let fallbackReason: String?
     }
 
     private func estimateScale(
@@ -444,56 +466,54 @@ final class MonocularVolumeEstimator {
         tableDistanceCm: Double? = nil
     ) -> ScaleEstimate {
         let imageWidth = CVPixelBufferGetWidth(topFrame.pixelBuffer)
+        // Plate detection is used ONLY to recover the preprocessing crop
+        // fraction (the mask is a scaleFill crop of the frame) and, below, for
+        // a debug-only validation log. Plate diameter is NEVER a scale source:
+        // its ±20% circle-fit swing cubed into the ~2x volume variance, so it
+        // was removed from scaling entirely.
         let plate = plateDetector.detect(in: topFrame.pixelBuffer)
         let cropWidthPx = max(1.0, Double(plate.rect.width) * Double(imageWidth))
         let fx = Double(topFrame.cameraIntrinsics.columns.0.x)
 
-        // Prefer the ARKit horizontal-plane camera-to-table distance whenever
-        // it is available. Plate circle-fitting swings ±20% with glare, shadow
-        // and viewing angle, and because volume scales with distance cubed that
-        // noise compounds into the ~2x footprint/weight swings seen on repeated
-        // scans of the same food. The measured plane distance is metrically
-        // stable, so it now takes priority over plate detection.
-        if let tableDistanceCm, fx > 1 {
+        // Deterministic single-source hierarchy — no blending, no weighted
+        // fusion. Exactly one source is selected per scan:
+        //   PRIMARY  : ARKit tracked plane distance (metrically stable)
+        //   FALLBACK : camera-intrinsic estimate at the guided hold distance
+        //   LAST     : default-plate geometry only when intrinsics are missing
+        if let tableDistanceCm, fx > 1, tableDistanceCm > 1.0 {
             let cmPerImagePx = tableDistanceCm / fx
             let cmPerMaskPx = cmPerImagePx * cropWidthPx / Double(maskWidth)
+            let pxPerCm = max(1.0 / max(cmPerMaskPx, 0.0001), 1.0)
+            logScaleValidation(chosenPxPerCm: pxPerCm, plateDetected: plate.detected,
+                               maskWidth: maskWidth, maskHeight: maskHeight, source: "arkit_plane")
             return ScaleEstimate(
-                pixelsPerCm: max(1.0 / max(cmPerMaskPx, 0.0001), 1.0),
-                source: "arkit_plane")
-        }
-
-        if plate.detected {
-            // The preprocessor crops the plate to the model input. In mask
-            // space, the plate spans most of the shorter dimension.
-            let pxPerCm = Double(min(maskWidth, maskHeight)) / Double(PlateDetector.defaultDiameterCm)
-            return ScaleEstimate(pixelsPerCm: max(pxPerCm, 1.0), source: "plate")
+                pixelsPerCm: pxPerCm,
+                source: "arkit_plane",
+                confidence: 0.82,
+                fallbackReason: nil)
         }
 
         if fx > 1 {
-            // No plane and no plate: fall back to the 30 cm guided-distance
-            // assumption at the camera intrinsics.
-            let distanceCm = guidedDistanceCm
-            let cmPerImagePx = distanceCm / fx
+            let cmPerImagePx = guidedDistanceCm / fx
             let cmPerMaskPx = cmPerImagePx * cropWidthPx / Double(maskWidth)
+            let pxPerCm = max(1.0 / max(cmPerMaskPx, 0.0001), 1.0)
+            logScaleValidation(chosenPxPerCm: pxPerCm, plateDetected: plate.detected,
+                               maskWidth: maskWidth, maskHeight: maskHeight, source: "intrinsic_guided")
             return ScaleEstimate(
-                pixelsPerCm: max(1.0 / max(cmPerMaskPx, 0.0001), 1.0),
-                source: "30cm_intrinsics")
+                pixelsPerCm: pxPerCm,
+                source: "intrinsic_guided",
+                confidence: 0.60,
+                fallbackReason: tableDistanceCm == nil ? "no_arkit_plane" : "arkit_plane_below_threshold")
         }
 
-        // Last resort: assume the crop covers a default dinner plate.
+        // Degenerate last resort (camera intrinsics unavailable — effectively
+        // never on a real ARFrame). Uses default-plate geometry purely so the
+        // mesh can still be exported; flagged as the lowest confidence source.
         return ScaleEstimate(
             pixelsPerCm: max(Double(min(maskWidth, maskHeight)) / Double(PlateDetector.defaultDiameterCm), 1.0),
-            source: "default_plate"
-        )
-    }
-
-    private func scaleSourceConfidence(_ source: String) -> Double {
-        switch source {
-        case "arkit_plane": return 0.80
-        case "plate": return 0.78
-        case "30cm_intrinsics": return 0.66
-        default: return 0.58
-        }
+            source: "intrinsic_default",
+            confidence: 0.50,
+            fallbackReason: "no_camera_intrinsics")
     }
 
     private func confidenceForScale(
@@ -501,9 +521,12 @@ final class MonocularVolumeEstimator {
         segmentConfidence: Float,
         sideFrame: FrameCaptureService.CapturedFrame?
     ) -> Double {
-        let scaleConfidence = scaleSourceConfidence(scale.source)
+        // Deterministic blend of the per-source scale confidence with the
+        // segmentation confidence. The floor is low enough that genuinely poor
+        // captures surface as low confidence (the consistency engine flags
+        // them) instead of being clamped into the "acceptable" band.
         let sideBonus = sideFrame == nil ? 0.0 : 0.04
-        return min(0.86, max(0.62, scaleConfidence * 0.65 + Double(segmentConfidence) * 0.35 + sideBonus))
+        return min(0.90, max(0.40, scale.confidence * 0.6 + Double(segmentConfidence) * 0.4 + sideBonus))
     }
 
     // MARK: - Food priors
@@ -629,6 +652,43 @@ final class MonocularVolumeEstimator {
         return profile
     }
 
+    /// Exponential moving average on the final per-food volume, keyed by label
+    /// and persisted for the app session. Repeated scans of the same food
+    /// converge to a stable value (removing the 20-30% capture-to-capture
+    /// jitter from independently-segmented frames). A capture differing from the
+    /// running estimate by more than `volumeResetBandFraction` is treated as a
+    /// genuinely different food and resets the smoother, so distinct foods are
+    /// never blended together. Masks cannot be pixel-aligned across separate
+    /// guided captures, so smoothing is applied to the derived volume — the
+    /// quantity that drives the reported weight.
+    private func smoothedVolume(label: String, volumeCm3: Double) -> (volumeCm3: Double, samples: Int, applied: Bool) {
+        let key = label.lowercased()
+        let alpha = MonocularVolumeEstimator.volumeSmoothingAlpha
+        if let prev = MonocularVolumeEstimator.volumeHistory[key], prev.samples > 0, prev.volumeCm3 > 0 {
+            let jump = abs(volumeCm3 - prev.volumeCm3) / max(prev.volumeCm3, 0.0001)
+            if jump > MonocularVolumeEstimator.volumeResetBandFraction {
+                MonocularVolumeEstimator.volumeHistory[key] = VolumeSmoother(volumeCm3: volumeCm3, samples: 1)
+                return (volumeCm3, 1, false)
+            }
+            let smoothed = prev.volumeCm3 * (1 - alpha) + volumeCm3 * alpha
+            MonocularVolumeEstimator.volumeHistory[key] = VolumeSmoother(volumeCm3: smoothed, samples: prev.samples + 1)
+            return (smoothed, prev.samples + 1, true)
+        }
+        MonocularVolumeEstimator.volumeHistory[key] = VolumeSmoother(volumeCm3: volumeCm3, samples: 1)
+        return (volumeCm3, 1, false)
+    }
+
+    /// Plate-vs-chosen scale agreement, logged for debugging only. Plate scale
+    /// NEVER influences the returned `ScaleEstimate`; this just records how far
+    /// a (noisy) plate-diameter assumption would have diverged from the
+    /// deterministic source actually used.
+    private func logScaleValidation(chosenPxPerCm: Double, plateDetected: Bool, maskWidth: Int, maskHeight: Int, source: String) {
+        guard plateDetected else { return }
+        let platePxPerCm = Double(min(maskWidth, maskHeight)) / Double(PlateDetector.defaultDiameterCm)
+        let ratio = platePxPerCm / max(chosenPxPerCm, 0.0001)
+        print("[ScaleValidation] source=\(source) chosen=\(String(format: "%.2f", chosenPxPerCm))px/cm plate=\(String(format: "%.2f", platePxPerCm))px/cm ratio=\(String(format: "%.2f", ratio)) (plate used for validation only, never scaling)")
+    }
+
     private func stabilizeFootprint(
         label: String,
         scaleSource: String,
@@ -648,9 +708,9 @@ final class MonocularVolumeEstimator {
         let factor = envelope.maxLateralCm / max(lateral, 0.0001)
         let softenedFactor: Double
         switch scaleSource {
-        case "plate":
-            // Plate scale is usually trustworthy; trim only truly implausible
-            // masks while preserving unusually large foods.
+        case "arkit_plane":
+            // ARKit plane distance is metrically stable; trim only truly
+            // implausible masks while preserving unusually large foods.
             softenedFactor = max(factor, 0.78)
         default:
             // AR plane/fallback scale at macro distances is noisier. Apply the
@@ -1124,7 +1184,7 @@ final class MonocularVolumeEstimator {
         // Bound the work to roughly 50x50 mask samples regardless of food size.
         let stride = max(1, Int((Double(max(rows, cols)) / 50.0).rounded(.up)))
 
-        var rSum = 0.0, gSum = 0.0, bSum = 0.0, n = 0.0
+        var samples: [(r: Double, g: Double, b: Double, lum: Double)] = []
         var mr = minR
         while mr <= maxRow {
             var mc = minC
@@ -1134,22 +1194,28 @@ final class MonocularVolumeEstimator {
                     let y = min(max(Int((Double(mr) / Double(maskHeight)) * Double(h)), 0), h - 1)
                     let off = y * rowBytes + x * 4
                     let r = Double(ptr[off + 2]), g = Double(ptr[off + 1]), b = Double(ptr[off + 0])
-                    // Skip near-white specular highlights and near-black shadows
-                    // so the average reflects the real food hue, not glare.
-                    let maxc = max(r, max(g, b)), minc = min(r, min(g, b))
-                    if maxc < 248 && minc > 16 {
-                        rSum += r; gSum += g; bSum += b; n += 1
-                    }
+                    let lum = 0.299 * r + 0.587 * g + 0.114 * b
+                    samples.append((r, g, b, lum))
                 }
                 mc += stride
             }
             mr += stride
         }
-        if n >= 8 {
+        // Keep only the central 5-95% luminance band so specular highlights and
+        // cast shadows cannot wash out or darken the dominant hue, then take the
+        // trimmed mean of that band as the representative food colour.
+        if samples.count >= 8 {
+            samples.sort { $0.lum < $1.lum }
+            let lo = Int(Double(samples.count) * 0.05)
+            let hi = max(lo + 1, Int(Double(samples.count) * 0.95))
+            let band = samples[lo..<min(hi, samples.count)]
+            var rSum = 0.0, gSum = 0.0, bSum = 0.0
+            for s in band { rSum += s.r; gSum += s.g; bSum += s.b }
+            let n = Double(band.count)
             return [
-                UInt8(min(255.0, (rSum / n).rounded())),
-                UInt8(min(255.0, (gSum / n).rounded())),
-                UInt8(min(255.0, (bSum / n).rounded()))
+                UInt8(min(255.0, max(0.0, (rSum / n).rounded()))),
+                UInt8(min(255.0, max(0.0, (gSum / n).rounded()))),
+                UInt8(min(255.0, max(0.0, (bSum / n).rounded())))
             ]
         }
         return sampleColor(topFrame: topFrame, centroid: footprint.centroid, maskWidth: maskWidth, maskHeight: maskHeight)

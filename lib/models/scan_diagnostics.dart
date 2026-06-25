@@ -19,6 +19,13 @@ class FoodDiagnostic {
     this.densityGCm3,
     this.pixelsPerCm,
     this.confidence,
+    this.scaleConfidence,
+    this.segmentationConfidence,
+    this.silhouetteConfidence,
+    this.lowConfidence,
+    this.fallbackReason,
+    this.temporalSmoothingApplied,
+    this.temporalSamples,
     this.voxelCount,
     this.pixelCount,
     this.framesUsed,
@@ -41,6 +48,13 @@ class FoodDiagnostic {
   final double? densityGCm3;
   final double? pixelsPerCm;
   final double? confidence;
+  final double? scaleConfidence;
+  final double? segmentationConfidence;
+  final double? silhouetteConfidence;
+  final bool? lowConfidence;
+  final String? fallbackReason;
+  final bool? temporalSmoothingApplied;
+  final int? temporalSamples;
   final int? voxelCount;
   final int? pixelCount;
   final int? framesUsed;
@@ -68,6 +82,13 @@ class FoodDiagnostic {
       densityGCm3: _d(m['density_g_cm3']),
       pixelsPerCm: _d(m['pixels_per_cm']),
       confidence: _d(m['confidence']),
+      scaleConfidence: _d(m['scale_confidence']),
+      segmentationConfidence: _d(m['segmentation_confidence']),
+      silhouetteConfidence: _d(m['silhouette_confidence']),
+      lowConfidence: _b(m['low_confidence']),
+      fallbackReason: m['scale_fallback_reason'] as String?,
+      temporalSmoothingApplied: _b(m['temporal_smoothing_applied']),
+      temporalSamples: _i(m['temporal_samples']),
       voxelCount: _i(m['voxel_count']),
       pixelCount: _i(m['pixel_count']),
       framesUsed: _i(m['frames_used']),
@@ -165,7 +186,17 @@ class ScanDiagnostics {
             'height=${f.heightCm?.toStringAsFixed(1) ?? '-'} cm');
       }
       b.writeln('    scale:     ${f.scaleSource ?? '-'}'
-          '${f.pixelsPerCm != null ? ' (${f.pixelsPerCm} px/cm)' : ''}');
+          '${f.pixelsPerCm != null ? ' (${f.pixelsPerCm} px/cm)' : ''}'
+          '${f.fallbackReason != null && f.fallbackReason != 'none' ? ' fallback=${f.fallbackReason}' : ''}');
+      b.writeln('    confidence: overall=${f.confidence?.toStringAsFixed(2) ?? '-'} '
+          'scale=${f.scaleConfidence?.toStringAsFixed(2) ?? '-'} '
+          'seg=${f.segmentationConfidence?.toStringAsFixed(2) ?? '-'} '
+          'sil=${f.silhouetteConfidence?.toStringAsFixed(2) ?? '-'}'
+          '${f.lowConfidence == true ? ' LOW' : ''}');
+      if (f.temporalSmoothingApplied == true) {
+        b.writeln(
+            '    temporal:  smoothed across ${f.temporalSamples ?? '-'} scans');
+      }
       b.writeln('    views:     side=${f.sideViewApplied ?? false} '
           'fallback=${f.fallbackUsed ?? false} bothViews=${f.usedBothViews}');
       if (f.guardrailApplied == true) {

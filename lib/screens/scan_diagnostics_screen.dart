@@ -228,7 +228,22 @@ class _FoodRow extends StatelessWidget {
           kv(
               'scale',
               '${f.scaleSource ?? '-'}'
-                  '${f.pixelsPerCm != null ? '  (${f.pixelsPerCm} px/cm)' : ''}'),
+                  '${f.pixelsPerCm != null ? '  (${f.pixelsPerCm} px/cm)' : ''}'
+                  '${f.fallbackReason != null && f.fallbackReason != 'none' ? '  · fallback: ${f.fallbackReason}' : ''}'),
+          if (f.confidence != null ||
+              f.scaleConfidence != null ||
+              f.segmentationConfidence != null ||
+              f.silhouetteConfidence != null)
+            kv(
+                'confidence',
+                'overall ${f.confidence?.toStringAsFixed(2) ?? '-'} · '
+                    'scale ${f.scaleConfidence?.toStringAsFixed(2) ?? '-'} · '
+                    'seg ${f.segmentationConfidence?.toStringAsFixed(2) ?? '-'} · '
+                    'sil ${f.silhouetteConfidence?.toStringAsFixed(2) ?? '-'}'
+                    '${f.lowConfidence == true ? '  ⚠ LOW' : ''}'),
+          if (f.temporalSmoothingApplied == true)
+            kv('temporal',
+                'smoothed across ${f.temporalSamples ?? '-'} scans'),
           kv(
               'views',
               'side=${f.sideViewApplied ?? false} · '
