@@ -89,6 +89,29 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     'bell pepper': 'pepper',
     'red pepper': 'pepper',
     'green pepper': 'pepper',
+    // Food-101 / classifier vocabulary -> canonical DB base foods. The fuzzy
+    // resolver catches shared-word cases ("smoked salmon" -> "salmon"); these
+    // cover composite dish names that share no word with a base food.
+    'smoked salmon': 'salmon',
+    'salmon fillet': 'salmon',
+    'french toast': 'bread',
+    'garlic bread': 'bread',
+    'avocado toast': 'bread',
+    'club sandwich': 'sandwich',
+    'open sandwich': 'bread',
+    'omelette': 'egg',
+    'omelet': 'egg',
+    'deviled eggs': 'egg',
+    'sushi': 'rice',
+    'risotto': 'rice',
+    'guacamole': 'avocado',
+    'hamburger': 'beef',
+    'cheeseburger': 'beef',
+    'spaghetti bolognese': 'pasta',
+    'spaghetti carbonara': 'pasta',
+    'macaroni': 'pasta',
+    'mashed potatoes': 'potato',
+    'baked potato': 'potato',
   };
 
   // Labels that are NOT foods — model noise, non-food objects, or sentence fragments.
@@ -182,7 +205,7 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
           continue;
         }
 
-        final foodData = await db.getFoodByLabel(label);
+        final foodData = await db.getFoodByLabelFuzzy(label);
         final double calMin;
         final double calMax;
 

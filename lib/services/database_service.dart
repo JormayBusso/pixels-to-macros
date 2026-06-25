@@ -4386,6 +4386,73 @@ class DatabaseService {
     return FoodData.fromMap(rows.first);
   }
 
+  /// Short, low-signal words that must not drive a fuzzy food match on their
+  /// own (cooking styles, articles, fillers). A shared "salmon" is meaningful;
+  /// a shared "fried" is not.
+  static const Set<String> _fuzzyStopWords = {
+    'and', 'the', 'with', 'for', 'raw', 'hot', 'cold', 'mini', 'big',
+    'fried', 'baked', 'grilled', 'roast', 'roasted', 'boiled', 'steamed',
+    'fresh', 'whole', 'plain', 'sweet', 'sour', 'spicy', 'mixed', 'sliced',
+    'half', 'piece', 'plate', 'bowl', 'cup', 'dish', 'meal', 'food', 'side',
+  };
+
+  /// Pure, testable fuzzy matcher: pick the food-database [candidates] label
+  /// that best matches a recognised [query] by shared content words. This is
+  /// what lets "smoked salmon" resolve to "salmon" and "club sandwich" to
+  /// "sandwich" so a recognised-but-unlisted food still gets real nutrition
+  /// instead of a generic fallback. Returns null when nothing meaningful
+  /// overlaps (so we never silently mislabel an unrelated food).
+  static String? bestFuzzyLabelMatch(String query, Iterable<String> candidates) {
+    final q = query.toLowerCase().trim();
+    if (q.isEmpty) return null;
+    Set<String> contentTokens(String s) => s
+        .split(RegExp(r'[^a-z]+'))
+        .where((t) => t.length >= 3 && !_fuzzyStopWords.contains(t))
+        .toSet();
+    final qTokens = contentTokens(q);
+    if (qTokens.isEmpty) return null;
+
+    String? best;
+    int bestScore = 0;
+    for (final candidate in candidates) {
+      final c = candidate.toLowerCase().trim();
+      if (c.isEmpty) continue;
+      if (c == q) return candidate; // exact (case-insensitive) wins outright
+      final cTokens = contentTokens(c);
+      final shared = qTokens.intersection(cTokens);
+      if (shared.isEmpty) continue;
+      var score = shared.fold<int>(0, (sum, t) => sum + t.length);
+      // Favour generic single-word base foods ("salmon") that the query just
+      // specialises ("smoked salmon"), so we map to the canonical DB entry.
+      if (cTokens.length == 1 && shared.length == cTokens.length) score += 2;
+      final better = score > bestScore ||
+          (score == bestScore && best != null && c.length < best!.length);
+      if (better) {
+        bestScore = score;
+        best = candidate;
+      }
+    }
+    // Require at least one solid (>=3 char) shared content word.
+    return bestScore >= 3 ? best : null;
+  }
+
+  /// Resolve a recognised scan label to nutrition data, tolerating wording the
+  /// food database does not list verbatim: exact match first, then a shared
+  /// content-word fuzzy match against all known foods.
+  Future<FoodData?> getFoodByLabelFuzzy(String label) async {
+    final exact = await getFoodByLabel(label);
+    if (exact != null) return exact;
+    final db = await database;
+    final rows = await db.query('food_data', columns: ['label']);
+    final labels = rows
+        .map((r) => r['label'] as String? ?? '')
+        .where((l) => l.isNotEmpty)
+        .toList(growable: false);
+    final match = bestFuzzyLabelMatch(label, labels);
+    if (match == null) return null;
+    return getFoodByLabel(match);
+  }
+
   Future<int> insertFood(FoodData food) async {
     final db = await database;
     return db.insert('food_data', food.toMap(),

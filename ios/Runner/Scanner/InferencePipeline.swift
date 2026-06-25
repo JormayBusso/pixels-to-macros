@@ -952,8 +952,14 @@ final class InferencePipeline {
         }
         defer { foodClassifier.unload() }
 
-        let topK = 3
-        let confidenceFloor: Float = 0.30
+        let topK = 4
+        // Floor below which a classifier guess is ignored entirely.
+        let confidenceFloor: Float = 0.22
+        // A confident dedicated-classifier guess overrides the segmentation
+        // label outright; a weaker guess only overrides when the segmentation
+        // itself was unsure, so a US-centric Food-101 misfire can't clobber a
+        // confident food-trained YOLO label.
+        let strongOverride: Float = 0.45
         let order = segments.indices.sorted {
             segments[$0].pixelCount > segments[$1].pixelCount
         }
@@ -967,6 +973,12 @@ final class InferencePipeline {
                 guard let (label, confidence) = try foodClassifier.classify(
                     pixelBuffer: frame, regionOfInterest: roi
                 ), confidence >= confidenceFloor else { continue }
+                let segmentationUnsure = segment.confidence < strongOverride
+                let classifierStrong = confidence >= strongOverride
+                guard classifierStrong || segmentationUnsure else {
+                    print("[Classifier] kept \(segment.label) (conf \(String(format: "%.2f", segment.confidence))) over weak guess \(label) (\(String(format: "%.2f", confidence)))")
+                    continue
+                }
                 updated[index] = SegmentationService.SegmentedObject(
                     label: label,
                     classIndex: segment.classIndex,
