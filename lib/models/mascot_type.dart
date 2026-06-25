@@ -73,6 +73,9 @@ enum AppColorSeed {
   geminiAI,
   midnightNeon,
   solarFlare,
+  emeraldMirage,
+  royalAmethyst,
+  crimsonEmber,
 }
 
 extension AppColorSeedX on AppColorSeed {
@@ -104,6 +107,12 @@ extension AppColorSeedX on AppColorSeed {
         return 'Premium Midnight';
       case AppColorSeed.solarFlare:
         return 'Premium Solar';
+      case AppColorSeed.emeraldMirage:
+        return 'Premium Emerald';
+      case AppColorSeed.royalAmethyst:
+        return 'Premium Amethyst';
+      case AppColorSeed.crimsonEmber:
+        return 'Premium Crimson';
     }
   }
 
@@ -119,6 +128,12 @@ extension AppColorSeedX on AppColorSeed {
         return 'Deep and electric';
       case AppColorSeed.solarFlare:
         return 'Warm and cinematic';
+      case AppColorSeed.emeraldMirage:
+        return 'Lush emerald and teal';
+      case AppColorSeed.royalAmethyst:
+        return 'Regal violet and indigo';
+      case AppColorSeed.crimsonEmber:
+        return 'Bold crimson and ember';
       default:
         return 'Classic ${label.replaceAll(' (default)', '').toLowerCase()} accent';
     }
@@ -131,6 +146,9 @@ extension AppColorSeedX on AppColorSeed {
       case AppColorSeed.geminiAI:
       case AppColorSeed.midnightNeon:
       case AppColorSeed.solarFlare:
+      case AppColorSeed.emeraldMirage:
+      case AppColorSeed.royalAmethyst:
+      case AppColorSeed.crimsonEmber:
         return true;
       default:
         return false;
@@ -163,6 +181,12 @@ extension AppColorSeedX on AppColorSeed {
         return const Color(0xFF00E5FF); // midnight neon cyan
       case AppColorSeed.solarFlare:
         return const Color(0xFFFF7A45); // premium solar orange
+      case AppColorSeed.emeraldMirage:
+        return const Color(0xFF34D399); // premium emerald
+      case AppColorSeed.royalAmethyst:
+        return const Color(0xFFA78BFA); // premium amethyst violet
+      case AppColorSeed.crimsonEmber:
+        return const Color(0xFFFB5E5E); // premium crimson
     }
   }
 
@@ -207,6 +231,30 @@ extension AppColorSeedX on AppColorSeed {
           Color(0xFFFF4F8B),
           Color(0xFF7C3AED),
         ];
+      case AppColorSeed.emeraldMirage:
+        return const [
+          Color(0xFF34D399),
+          Color(0xFF2DD4BF),
+          Color(0xFF22D3EE),
+          Color(0xFFA3E635),
+          Color(0xFF6EE7B7),
+        ];
+      case AppColorSeed.royalAmethyst:
+        return const [
+          Color(0xFFA78BFA),
+          Color(0xFF818CF8),
+          Color(0xFFC084FC),
+          Color(0xFFE879F9),
+          Color(0xFF60A5FA),
+        ];
+      case AppColorSeed.crimsonEmber:
+        return const [
+          Color(0xFFFB5E5E),
+          Color(0xFFFF7A45),
+          Color(0xFFFFB020),
+          Color(0xFFFF4F8B),
+          Color(0xFFE11D48),
+        ];
       default:
         return [color, color.withValues(alpha: 0.72)];
     }
@@ -239,6 +287,12 @@ extension AppColorSeedX on AppColorSeed {
         return const Color(0xFF020617);
       case AppColorSeed.solarFlare:
         return const Color(0xFF171008);
+      case AppColorSeed.emeraldMirage:
+        return const Color(0xFF04140F);
+      case AppColorSeed.royalAmethyst:
+        return const Color(0xFF0E0A1F);
+      case AppColorSeed.crimsonEmber:
+        return const Color(0xFF1A0808);
     }
   }
 
@@ -254,6 +308,12 @@ extension AppColorSeedX on AppColorSeed {
         return const Color(0xFF071126);
       case AppColorSeed.solarFlare:
         return const Color(0xFF24170C);
+      case AppColorSeed.emeraldMirage:
+        return const Color(0xFF0A2018);
+      case AppColorSeed.royalAmethyst:
+        return const Color(0xFF181030);
+      case AppColorSeed.crimsonEmber:
+        return const Color(0xFF2A0E0E);
       default:
         return Colors.white;
     }
@@ -304,6 +364,15 @@ extension AppColorSeedX on AppColorSeed {
       case 'sunsetIntelligence':
       case 'sunset_intelligence':
         return AppColorSeed.solarFlare;
+      case 'emeraldMirage':
+      case 'emerald_mirage':
+        return AppColorSeed.emeraldMirage;
+      case 'royalAmethyst':
+      case 'royal_amethyst':
+        return AppColorSeed.royalAmethyst;
+      case 'crimsonEmber':
+      case 'crimson_ember':
+        return AppColorSeed.crimsonEmber;
       default:
         return AppColorSeed.green;
     }

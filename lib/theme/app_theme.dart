@@ -526,6 +526,87 @@ class AppVisualTheme {
           motionStyle: AppPremiumMotionStyle.aurora,
           motionDuration: Duration(seconds: 7),
         );
+      case AppColorSeed.emeraldMirage:
+        return const AppVisualTheme(
+          seed: AppColorSeed.emeraldMirage,
+          premium: true,
+          background: Color(0xFF04140F),
+          surface: Color(0xFF071A14),
+          cardColor: Color(0xFF0A2018),
+          appBarColor: Color(0xFF04140F),
+          navBarColor: Color(0xF2071A14),
+          inputFillColor: Color(0xFF081D16),
+          borderColor: Color(0x9934D399),
+          primaryAccent: Color(0xFF34D399),
+          secondaryAccent: Color(0xFF2DD4BF),
+          glowColor: Color(0x8834D399),
+          onSurface: Color(0xFFECFDF5),
+          onDark: Color(0xFFECFDF5),
+          onMuted: Color(0xFFA7D8C7),
+          gradient: [
+            Color(0xFF34D399),
+            Color(0xFF2DD4BF),
+            Color(0xFF22D3EE),
+            Color(0xFFA3E635),
+            Color(0xFF6EE7B7),
+          ],
+          motionStyle: AppPremiumMotionStyle.aurora,
+          motionDuration: Duration(seconds: 14),
+        );
+      case AppColorSeed.royalAmethyst:
+        return const AppVisualTheme(
+          seed: AppColorSeed.royalAmethyst,
+          premium: true,
+          background: Color(0xFF0E0A1F),
+          surface: Color(0xFF140E2B),
+          cardColor: Color(0xFF181030),
+          appBarColor: Color(0xFF0E0A1F),
+          navBarColor: Color(0xF2140E2B),
+          inputFillColor: Color(0xFF150F2D),
+          borderColor: Color(0x99A78BFA),
+          primaryAccent: Color(0xFFA78BFA),
+          secondaryAccent: Color(0xFFE879F9),
+          glowColor: Color(0x88A78BFA),
+          onSurface: Color(0xFFF5F3FF),
+          onDark: Color(0xFFF5F3FF),
+          onMuted: Color(0xFFCBC2E8),
+          gradient: [
+            Color(0xFFA78BFA),
+            Color(0xFF818CF8),
+            Color(0xFFC084FC),
+            Color(0xFFE879F9),
+            Color(0xFF60A5FA),
+          ],
+          motionStyle: AppPremiumMotionStyle.aurora,
+          motionDuration: Duration(seconds: 18),
+        );
+      case AppColorSeed.crimsonEmber:
+        return const AppVisualTheme(
+          seed: AppColorSeed.crimsonEmber,
+          premium: true,
+          background: Color(0xFF1A0808),
+          surface: Color(0xFF210A0A),
+          cardColor: Color(0xFF2A0E0E),
+          appBarColor: Color(0xFF1A0808),
+          navBarColor: Color(0xF2210A0A),
+          inputFillColor: Color(0xFF230C0C),
+          borderColor: Color(0x99FB5E5E),
+          primaryAccent: Color(0xFFFB5E5E),
+          secondaryAccent: Color(0xFFFFA94D),
+          glowColor: Color(0x88FB5E5E),
+          onSurface: Color(0xFFFFF1F1),
+          onDark: Color(0xFFFFF1F1),
+          onMuted: Color(0xFFE7B8B8),
+          gradient: [
+            Color(0xFFFB5E5E),
+            Color(0xFFFF7A45),
+            Color(0xFFFFB020),
+            Color(0xFFFF4F8B),
+            Color(0xFFE11D48),
+          ],
+          motionStyle: AppPremiumMotionStyle.pulse,
+          motionDuration: Duration(seconds: 7),
+        );
       default:
         return AppVisualTheme.fromSeed(AppColorSeed.green);
     }

@@ -933,11 +933,12 @@ final class MonocularVolumeEstimator {
         // follows the food outline while keeping vertex counts small.
         let bboxW = max(1, footprint.maxCol - footprint.minCol + 1)
         let bboxH = max(1, footprint.maxRow - footprint.minRow + 1)
-        // Higher silhouette sampling resolution. The previous 36-cell cap made
-        // the height field coarse enough that even smooth shading left a blocky
-        // outline; 56 keeps the reconstructed top/side contour crisp without an
-        // unbounded vertex count.
-        let maxCells = 56
+        // Higher silhouette sampling resolution = the reconstructed mesh tracks
+        // the real top/side contour more tightly (finer rim, crisper outline)
+        // for a more accurate 3D object. 80 cells stays well within a safe
+        // vertex budget for the viewer/exporter while noticeably sharpening the
+        // hull versus the previous 56-cell grid. Volume math is unaffected.
+        let maxCells = 80
         let step = max(1, Int((Double(max(bboxW, bboxH)) / Double(maxCells)).rounded(.up)))
         let gc = max(1, Int((Double(bboxW) / Double(step)).rounded(.up)))
         let gr = max(1, Int((Double(bboxH) / Double(step)).rounded(.up)))
