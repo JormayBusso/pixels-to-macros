@@ -78,18 +78,24 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   /// Stability (0..1) at/above which the phone is considered "still enough" to
   /// capture, and the number of consecutive aligned+stable polls required
-  /// before the shutter fires. These are intentionally forgiving: we want a
-  /// sharp-enough frame, not a lab-tripod frame, and brief hand tremors should
-  /// slow the shutter rather than restarting the whole capture.
-  static const double _stableThreshold = 0.35;
-  static const double _softStableThreshold = 0.22;
-  static const int _requiredHoldTicks = 3;
+  /// before the shutter fires. Auto-capture is STRICT (see pitch tolerance
+  /// below), so we also demand a steadier hold for a crisp square-on frame.
+  static const double _stableThreshold = 0.45;
+  static const double _softStableThreshold = 0.30;
+  static const int _requiredHoldTicks = 4;
 
-  /// Pitch thresholds (radians).
-  /// Top-view:  pitch < -80° = -1.396 rad → phone is nearly flat / pointing straight down.
-  /// Side-view: pitch > -10° = -0.175 rad → phone is nearly vertical (upright).
-  static const double _topViewThreshold = -1.309; // -75° — near-horizontal
-  static const double _sideViewThreshold = -0.300; // -17° — near-vertical
+  /// STRICT alignment. The auto-shutter fires ONLY when the phone is essentially
+  /// perfectly oriented — camera pointing exactly straight DOWN for the top view
+  /// (pitch -90°) and exactly HORIZONTAL for the side view (pitch 0°), both in
+  /// landscape. A square-on side view is what makes the measured food height
+  /// (and therefore the volume) accurate: any tilt foreshortens the silhouette
+  /// and inflates the height. `_perfectAlignRad` is the largest pitch error that
+  /// still counts as 100% aligned (~2.9°); the on-screen meter then falls off
+  /// over a ~22° band so it reads 99-100% only when the shot is truly square-on.
+  static const double _perfectAlignRad = 0.050; // ~2.9° = "100% aligned"
+  static const double _alignFalloffRad = 0.384; // ~22° meter falloff band
+  static const double _topViewTargetRad = -1.5707963267948966; // -90° straight down
+  static const double _sideViewTargetRad = 0.0; // 0° perfectly horizontal
 
   @override
   void initState() {
@@ -347,11 +353,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     bool aligned;
     double alignmentScore;
     if (state == ScanState.waitingForTopView || state == ScanState.captureTop) {
-      aligned = pitch < _topViewThreshold; // straight down
-      alignmentScore = _alignmentForTop(pitch);
+      final error = (pitch - _topViewTargetRad).abs();
+      aligned = error <= _perfectAlignRad; // exactly straight down
+      alignmentScore = _alignmentScoreFor(error);
     } else if (state == ScanState.moveSide || state == ScanState.captureSide) {
-      aligned = pitch > _sideViewThreshold; // upright side view
-      alignmentScore = _alignmentForSide(pitch);
+      final error = (pitch - _sideViewTargetRad).abs();
+      aligned = error <= _perfectAlignRad; // exactly horizontal (two-sided)
+      alignmentScore = _alignmentScoreFor(error);
     } else {
       aligned = false;
       alignmentScore = 0.0;
@@ -398,14 +406,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   double get _holdProgress =>
       (_stableHoldTicks / _requiredHoldTicks).clamp(0.0, 1.0);
 
-  double _alignmentForTop(double pitch) {
-    final error = (pitch + 1.5707963267948966).abs();
-    return (1.0 - error / 1.0471975511965976).clamp(0.0, 1.0).toDouble();
-  }
-
-  double _alignmentForSide(double pitch) {
-    final error = pitch.abs();
-    return (1.0 - error / 1.0471975511965976).clamp(0.0, 1.0).toDouble();
+  /// Alignment meter (0..1): 1.0 only within [_perfectAlignRad] of the perfect
+  /// orientation, then linear down to 0 across [_alignFalloffRad]. This is what
+  /// the overlay shows as "top/side view: NN% aligned"; the auto-shutter itself
+  /// fires on the strict boolean (error <= _perfectAlignRad), not this meter.
+  double _alignmentScoreFor(double error) {
+    if (error <= _perfectAlignRad) return 1.0;
+    final t = (error - _perfectAlignRad) / (_alignFalloffRad - _perfectAlignRad);
+    return (1.0 - t).clamp(0.0, 1.0).toDouble();
   }
 
   // ── Guided dual-photo capture ──────────────────────────────────────────────

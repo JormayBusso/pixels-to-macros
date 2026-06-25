@@ -699,7 +699,10 @@ final class DepthFusion {
 ///      midpoints (gives a smoother surface than marching cubes).
 ///   3. For every grid edge that crosses the boundary, emit a quad
 ///      (two triangles) joining the 4 cells that share that edge.
-fileprivate enum SurfaceNets {
+/// Naive Surface Nets dual-contouring mesher. Used by the LiDAR voxel-fusion
+/// path AND (module-internal) by the monocular visual-hull path to extract a
+/// smooth iso-surface from the same voxel occupancy instead of blocky faces.
+enum SurfaceNets {
 
     struct Mesh {
         var vertices: [SIMD3<Float>]
