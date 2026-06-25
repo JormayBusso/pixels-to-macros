@@ -42,12 +42,15 @@ class GroceryNotifier extends StateNotifier<GroceryState> {
   }
 
   /// Add multiple items in a single batch, then reload once.
-  Future<void> addItems(List<({String name, String? category, int quantity})> items) async {
+  Future<void> addItems(
+      List<({String name, String? category, int quantity, String? unit})>
+          items) async {
     for (final entry in items) {
       final item = GroceryItem(
         name: entry.name,
         category: entry.category,
         quantity: entry.quantity,
+        unit: entry.unit,
         createdAt: DateTime.now(),
       );
       await DatabaseService.instance.insertGroceryItem(item);
@@ -76,6 +79,12 @@ class GroceryNotifier extends StateNotifier<GroceryState> {
 
   Future<void> clearChecked() async {
     await DatabaseService.instance.clearCheckedGroceryItems();
+    await load();
+  }
+
+  /// Remove every item from the grocery list.
+  Future<void> clearAll() async {
+    await DatabaseService.instance.clearAllGroceryItems();
     await load();
   }
 }

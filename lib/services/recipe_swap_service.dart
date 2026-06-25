@@ -52,6 +52,29 @@ class RecipeSwapService {
     required Set<String> pantryNames,
     Set<String> usedRecipeIds = const <String>{},
   }) {
+    final ranked = rankSwaps(
+      current: current,
+      candidates: candidates,
+      intent: intent,
+      goal: goal,
+      pantryNames: pantryNames,
+      usedRecipeIds: usedRecipeIds,
+      limit: 1,
+    );
+    return ranked.isEmpty ? null : ranked.first;
+  }
+
+  /// Full ranked list of swap alternatives (best first), so the UI can let the
+  /// user browse the WHOLE valid selection for a slot instead of a single pick.
+  static List<Recipe> rankSwaps({
+    required Recipe? current,
+    required List<Recipe> candidates,
+    required SmartSwapIntent intent,
+    required NutritionGoalType goal,
+    required Set<String> pantryNames,
+    Set<String> usedRecipeIds = const <String>{},
+    int limit = 24,
+  }) {
     final pool = candidates
         .where((recipe) => recipe.id != current?.id)
         .where((recipe) => !usedRecipeIds.contains(recipe.id))
@@ -59,7 +82,7 @@ class RecipeSwapService {
     final usable = pool.isNotEmpty
         ? pool
         : candidates.where((recipe) => recipe.id != current?.id).toList();
-    if (usable.isEmpty) return null;
+    if (usable.isEmpty) return const <Recipe>[];
 
     usable.sort((a, b) {
       final scoreB = _score(
@@ -78,7 +101,7 @@ class RecipeSwapService {
       );
       return scoreB.compareTo(scoreA);
     });
-    return usable.first;
+    return usable.take(limit).toList();
   }
 
   static double pantryMatchRatio(Recipe recipe, Set<String> pantryNames) {

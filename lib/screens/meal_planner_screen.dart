@@ -328,52 +328,80 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     final plan = ref.read(mealPlanProvider);
     if (plan.assignments.isEmpty) return;
 
-    // Aggregate ingredients across all assigned recipes
-    final ingredientMap = <String, _AggIngredient>{};
-    for (final recipe in plan.assignments.values) {
+    // Days that actually have a meal planned.
+    final daysWithMeals = <int>{
+      for (final key in plan.assignments.keys)
+        int.tryParse(key.split('_').first) ?? 1,
+    }.toList()
+      ..sort();
+
+    // Ask how many people each planned day is cooking for.
+    final people = await showDialog<Map<int, int>>(
+      context: context,
+      builder: (_) => _PeoplePerDayDialog(days: daysWithMeals),
+    );
+    if (people == null || !context.mounted) return;
+
+    // Aggregate REAL purchase quantities. Each planned slot is one serving, so
+    // per-ingredient grams = recipe ingredient grams / recipe servings, scaled
+    // by that slot's portion multiplier and the people cooking that day. Summed
+    // across the week and keyed by a normalised name.
+    final gramsByItem = <String, double>{};
+    final displayName = <String, String>{};
+    plan.assignments.forEach((key, recipe) {
+      final day = int.tryParse(key.split('_').first) ?? 1;
+      final portion = plan.portionMultipliers[key] ?? 1.0;
+      final ppl = (people[day] ?? 1).clamp(1, 50);
+      final factor = portion * ppl;
+      final servings = recipe.servings <= 0 ? 1 : recipe.servings;
       for (final ing in recipe.ingredients) {
-        final key = ing.name.toLowerCase().trim();
-        if (ingredientMap.containsKey(key)) {
-          ingredientMap[key] = _AggIngredient(
-            name: ingredientMap[key]!.name,
-            totalGrams: ingredientMap[key]!.totalGrams + ing.grams,
-            count: ingredientMap[key]!.count + 1,
-          );
-        } else {
-          ingredientMap[key] = _AggIngredient(
-            name: ing.name,
-            totalGrams: ing.grams,
-            count: 1,
-          );
-        }
+        final nm = _normaliseGroceryIngredient(ing.name);
+        final k = nm.toLowerCase().trim();
+        gramsByItem[k] =
+            (gramsByItem[k] ?? 0) + (ing.grams / servings) * factor;
+        displayName.putIfAbsent(k, () => nm);
       }
-    }
+    });
 
-    if (!context.mounted) return;
+    final aggs = <_AggIngredient>[];
+    gramsByItem.forEach((k, grams) {
+      final line = _groceryLine(displayName[k] ?? k, grams);
+      if (line != null) {
+        aggs.add(_AggIngredient(
+          name: line.name,
+          quantity: line.quantity,
+          unit: line.unit,
+          totalGrams: grams,
+        ));
+      }
+    });
 
-    // Show preview bottom sheet
+    if (!context.mounted || aggs.isEmpty) return;
+
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _GroceryPreviewSheet(
-        ingredients: ingredientMap.values.toList(),
+        ingredients: aggs,
+        onClearList: () async {
+          await ref.read(groceryProvider.notifier).clearAll();
+        },
         onAdd: () async {
           final notifier = ref.read(groceryProvider.notifier);
-          // Normalise egg-white → eggs before adding to the grocery list
-          final items = ingredientMap.values.map((agg) {
-            final normalised = _normaliseGroceryIngredient(agg.name);
-            return (
-              name: normalised,
-              category: _guessCategory(normalised),
-              quantity: agg.servingQty,
-            );
-          }).toList();
+          final items = aggs
+              .map((agg) => (
+                    name: agg.name,
+                    category: _guessCategory(agg.name),
+                    quantity: agg.quantity,
+                    unit: agg.unit.isEmpty ? null : agg.unit,
+                  ))
+              .toList();
           await notifier.addItems(items);
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(l10n.itemsAdded(ingredientMap.length)),
+                content: Text(l10n.itemsAdded(aggs.length)),
                 backgroundColor: AppTheme.green600,
               ),
             );
@@ -384,14 +412,50 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     );
   }
 
-  /// Merge partial-egg ingredients into whole eggs, etc.
+  /// Normalise an ingredient name into a single grocery key. Collapses egg
+  /// variants and all garlic variants so quantities aggregate correctly and we
+  /// can convert them to natural purchase units (cloves, pieces).
   static String _normaliseGroceryIngredient(String name) {
     final l = name.toLowerCase().trim();
-    // egg white / egg yolk / egg whites → eggs
     if (RegExp(r'\begg\s*(white|yolk|whites|yolks)\b').hasMatch(l)) {
       return 'eggs';
     }
+    if (l == 'egg' || l == 'eggs') return 'eggs';
+    if (l.contains('garlic')) return 'garlic';
     return name;
+  }
+
+  /// Convert summed grams for a (normalised) ingredient into a purchasable
+  /// quantity + unit, e.g. garlic -> cloves, eggs -> pieces, everything else
+  /// -> grams rounded to a sensible amount. Returns null for trace/"to taste"
+  /// amounts and for water (not something you shop for).
+  static ({int quantity, String unit, String name})? _groceryLine(
+      String name, double grams) {
+    final l = name.toLowerCase().trim();
+    if (l == 'water' || grams < 1) return null;
+    if (l == 'garlic') {
+      var cloves = (grams / 5).round();
+      cloves = cloves.clamp(1, 40);
+      return (
+        quantity: cloves,
+        unit: cloves == 1 ? 'clove' : 'cloves',
+        name: 'garlic'
+      );
+    }
+    if (l == 'eggs') {
+      final n = (grams / 50).round().clamp(1, 60);
+      return (quantity: n, unit: n == 1 ? 'pc' : 'pcs', name: 'eggs');
+    }
+    int g;
+    if (grams < 50) {
+      g = (grams / 5).round() * 5;
+    } else if (grams < 500) {
+      g = (grams / 10).round() * 10;
+    } else {
+      g = (grams / 25).round() * 25;
+    }
+    if (g < 1) g = 1;
+    return (quantity: g, unit: 'g', name: name);
   }
 
   String _guessCategory(String name) {
@@ -955,15 +1019,45 @@ class _MealSlotRow extends ConsumerWidget {
       await _pickDifferentRecipe(context, ref, goal);
       return;
     }
-    await ref.read(mealPlanProvider.notifier).smartSwapSlot(
+    // Intent chosen → show the FULL ranked alternative list for that intent so
+    // the user can browse the whole valid selection (not a single auto-swap).
+    final ranked = await ref.read(mealPlanProvider.notifier).swapCandidates(
           dayIndex,
           mealType,
           goal,
           intent: choice.intent,
-          dailyCalorieGoal: prefs.dailyCalorieGoal,
           dietaryRestrictions: prefs.dietaryRestrictions,
           pantryNames: pantryNames,
+          limit: 30,
         );
+    if (!context.mounted) return;
+    if (ranked.isEmpty) {
+      await ref.read(mealPlanProvider.notifier).smartSwapSlot(
+            dayIndex,
+            mealType,
+            goal,
+            intent: choice.intent,
+            dailyCalorieGoal: prefs.dailyCalorieGoal,
+            dietaryRestrictions: prefs.dietaryRestrictions,
+            pantryNames: pantryNames,
+          );
+      return;
+    }
+    final picked = await showModalBottomSheet<Recipe>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _PickRecipeSheet(candidates: ranked, mealType: mealType),
+    );
+    if (picked != null) {
+      await ref.read(mealPlanProvider.notifier).assignRecipe(
+            dayIndex,
+            mealType,
+            picked,
+            goal: goal,
+            dailyCalorieGoal: prefs.dailyCalorieGoal,
+          );
+    }
   }
 
   void _openDetail(BuildContext context, Recipe recipe) {
@@ -1309,22 +1403,119 @@ class _MacroBadge extends StatelessWidget {
 
 class _AggIngredient {
   final String name;
+  final int quantity;
+  final String unit;
   final double totalGrams;
-  final int count;
-  const _AggIngredient(
-      {required this.name, required this.totalGrams, required this.count});
+  const _AggIngredient({
+    required this.name,
+    required this.quantity,
+    required this.unit,
+    required this.totalGrams,
+  });
 
-  int get servingQty => count.clamp(1, 99);
+  String get amountLabel => unit.isEmpty ? '$quantity' : '$quantity $unit';
+}
+
+/// Lets the user choose how many people each planned day is cooking for, so the
+/// grocery quantities are multiplied accurately per day.
+class _PeoplePerDayDialog extends StatefulWidget {
+  const _PeoplePerDayDialog({required this.days});
+  final List<int> days;
+
+  @override
+  State<_PeoplePerDayDialog> createState() => _PeoplePerDayDialogState();
+}
+
+class _PeoplePerDayDialogState extends State<_PeoplePerDayDialog> {
+  late final Map<int, int> _counts = {for (final d in widget.days) d: 1};
+
+  void _setAll(int value) => setState(() {
+        for (final d in widget.days) {
+          _counts[d] = value;
+        }
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: context.appSurfaceColor,
+      title: const Text('How many people?'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Set how many people each planned day cooks for. Grocery '
+                'amounts are multiplied accordingly.',
+                style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
+              ),
+              const SizedBox(height: 8),
+              ...widget.days.map((d) {
+                final label = kWeekDays[(d - 1).clamp(0, 6)];
+                return Row(
+                  children: [
+                    Expanded(child: Text(label)),
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      onPressed: _counts[d]! > 1
+                          ? () => setState(() => _counts[d] = _counts[d]! - 1)
+                          : null,
+                    ),
+                    SizedBox(
+                      width: 22,
+                      child: Text('${_counts[d]}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      onPressed: _counts[d]! < 20
+                          ? () => setState(() => _counts[d] = _counts[d]! + 1)
+                          : null,
+                    ),
+                  ],
+                );
+              }),
+              const Divider(),
+              Row(
+                children: [
+                  const Expanded(child: Text('Set all days')),
+                  TextButton(onPressed: () => _setAll(1), child: const Text('1')),
+                  TextButton(onPressed: () => _setAll(2), child: const Text('2')),
+                  TextButton(onPressed: () => _setAll(4), child: const Text('4')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _counts),
+          child: const Text('Generate'),
+        ),
+      ],
+    );
+  }
 }
 
 class _GroceryPreviewSheet extends StatelessWidget {
   const _GroceryPreviewSheet({
     required this.ingredients,
     required this.onAdd,
+    required this.onClearList,
   });
 
   final List<_AggIngredient> ingredients;
   final VoidCallback onAdd;
+  final Future<void> Function() onClearList;
 
   @override
   Widget build(BuildContext context) {
@@ -1392,31 +1583,18 @@ class _GroceryPreviewSheet extends StatelessWidget {
                         ),
                         shape: BoxShape.circle,
                       ),
-                      child: Center(
-                        child: Text(
-                          '${agg.servingQty}×',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.green700,
-                          ),
-                        ),
-                      ),
+                      child: const Icon(Icons.shopping_basket_outlined,
+                          size: 16, color: AppTheme.green700),
                     ),
                     title: Text(agg.name,
                         style: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w500)),
-                    subtitle: agg.totalGrams > 0
-                        ? Text(
-                            l10n.gramsTotal(agg.totalGrams.round()),
-                            style: const TextStyle(
-                                fontSize: 11, color: AppTheme.gray400),
-                          )
-                        : null,
                     trailing: Text(
-                      l10n.usedCount(agg.count),
-                      style: const TextStyle(
-                          fontSize: 10, color: AppTheme.gray400),
+                      agg.amountLabel,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: context.primary600),
                     ),
                   );
                 },
@@ -1426,15 +1604,37 @@ class _GroceryPreviewSheet extends StatelessWidget {
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: FilledButton.icon(
-                  onPressed: onAdd,
-                  icon: const Icon(Icons.add_shopping_cart_outlined, size: 18),
-                  label: Text(l10n.addItemsToGroceryList(sorted.length)),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: onAdd,
+                      icon: const Icon(Icons.add_shopping_cart_outlined,
+                          size: 18),
+                      label: Text(l10n.addItemsToGroceryList(sorted.length)),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: () async {
+                        await onClearList();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Grocery list emptied')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+                      label: const Text('Empty current grocery list'),
+                      style:
+                          TextButton.styleFrom(foregroundColor: AppTheme.red500),
+                    ),
+                  ],
                 ),
               ),
             ),

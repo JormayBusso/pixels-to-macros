@@ -208,6 +208,44 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     await _autoTuneDayCalories(dayOfWeek, goal, dailyCalorieGoal);
   }
 
+  /// Ranked alternative recipes for a slot (does NOT assign). Powers the Smart
+  /// Swap browser so the user can pick from the WHOLE valid selection instead
+  /// of a single auto-applied result.
+  Future<List<Recipe>> swapCandidates(
+    int dayOfWeek,
+    RecipeMealType mealType,
+    NutritionGoalType goal, {
+    required SmartSwapIntent intent,
+    Set<DietaryRestriction> dietaryRestrictions = const <DietaryRestriction>{},
+    Set<String> pantryNames = const <String>{},
+    int limit = 30,
+  }) async {
+    final key = MealPlanState.slotKey(dayOfWeek, mealType);
+    final current = state.assignments[key];
+    final candidates = await RecipeRepository.instance.query(
+      goal: goal,
+      mealType: mealType,
+      limit: 1000,
+      includeGenerated: true,
+      language: languageCode,
+      dietaryRestrictions: dietaryRestrictions,
+    );
+    if (candidates.isEmpty) return const <Recipe>[];
+    final usedIds = state.assignments.values
+        .where((r) => r.id != current?.id)
+        .map((r) => r.id)
+        .toSet();
+    return RecipeSwapService.rankSwaps(
+      current: current,
+      candidates: candidates,
+      intent: intent,
+      goal: goal,
+      pantryNames: pantryNames,
+      usedRecipeIds: usedIds,
+      limit: limit,
+    );
+  }
+
   Future<void> autoFillWeek({
     required NutritionGoalType goal,
     required int dailyCalorieGoal,

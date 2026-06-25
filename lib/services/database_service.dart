@@ -4950,6 +4950,11 @@ class DatabaseService {
     await db.delete('grocery_list', where: 'checked = 1');
   }
 
+  Future<void> clearAllGroceryItems() async {
+    final db = await database;
+    await db.delete('grocery_list');
+  }
+
   // ── Meal plan ─────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getMealPlanEntries({
