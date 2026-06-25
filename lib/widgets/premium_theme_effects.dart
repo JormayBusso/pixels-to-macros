@@ -216,13 +216,13 @@ class PremiumSurface extends StatelessWidget {
 }
 
 double _premiumGlowExtent(AppVisualTheme visual) {
-  // Tight, premium edge glow — only a few pixels, never a wide halo.
-  return 4;
+  // A tight ~5px halo that hugs the border — professional, never a wide bloom.
+  return 5;
 }
 
-// Slightly larger for Tier 3 AI-active surfaces but still tight (~5-6px).
 double _premiumGlowExtentIntense(AppVisualTheme visual) {
-  return 6;
+  // AI-active surfaces use the same tight 5px halo, just a stronger alpha.
+  return 5;
 }
 
 double _premiumGlowBaseAlpha(AppVisualTheme visual, double pulse) {
@@ -251,30 +251,6 @@ double _premiumGlowBaseAlphaIntense(AppVisualTheme visual, double pulse) {
       return 0.40 + pulse * 0.12;
   }
 }
-
-class _GlowLayer {
-  const _GlowLayer({
-    required this.inflate,
-    required this.strokeExtra,
-    required this.blur,
-    required this.alphaScale,
-  });
-
-  final double inflate;
-  final double strokeExtra;
-  final double blur;
-  final double alphaScale;
-}
-
-const List<_GlowLayer> _glowLayers = [
-  _GlowLayer(inflate: 1.0, strokeExtra: 0.6, blur: 4, alphaScale: 0.5),
-];
-
-// Single soft bloom for Tier 3 AI-active surfaces: ONE tight halo (a few
-// pixels), not stacked concentric rings.
-const List<_GlowLayer> _glowLayersIntense = [
-  _GlowLayer(inflate: 1.4, strokeExtra: 1.2, blur: 5, alphaScale: 0.7),
-];
 
 class PremiumFocusRing extends StatelessWidget {
   const PremiumFocusRing({
@@ -702,25 +678,21 @@ class _PremiumMotionPainter extends CustomPainter {
     final alpha = intense
         ? _premiumGlowBaseAlphaIntense(visual, pulse)
         : _premiumGlowBaseAlpha(visual, pulse);
-    final shaderRect = rect.inflate(contentInset + (intense ? 6 : 4));
-    final layers = intense ? _glowLayersIntense : _glowLayers;
-
-    for (final layer in layers) {
-      final bloom = Paint()
-        ..shader = _premiumSweepShader(
-          visual,
-          shaderRect,
-          phase,
-          alpha: alpha * layer.alphaScale,
-        )
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = borderWidth + layer.strokeExtra
-        ..maskFilter = MaskFilter.blur(BlurStyle.outer, layer.blur);
-      canvas.drawRRect(
-        borderRadius.toRRect(rect.inflate(layer.inflate)),
-        bloom,
-      );
-    }
+    // A single tight bloom that HUGS the moving border. It is painted on the
+    // exact same rounded rect as the border with an OUTER blur, so the glow
+    // starts right at the border edge — no dark gap between border and glow —
+    // and fades out within ~5px for a clean, professional halo.
+    final bloom = Paint()
+      ..shader = _premiumSweepShader(
+        visual,
+        rect.inflate(contentInset),
+        phase,
+        alpha: alpha,
+      )
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth + 0.5
+      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 2.5);
+    canvas.drawRRect(rrect, bloom);
   }
 
   void _paintAurora(Canvas canvas, RRect rrect, Rect rect, double phase) {

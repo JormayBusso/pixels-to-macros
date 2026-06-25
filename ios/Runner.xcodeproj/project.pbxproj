@@ -52,6 +52,7 @@
 		DF0456C669A0C8CB1CA92275 /* PlateDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BB9B00B7CD4C732A187E257 /* PlateDetector.swift */; };
 		E6F3CDF1DB17086AB61A91B6 /* FrameCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE729DB996BF7648B1074CAC /* FrameCaptureService.swift */; };
 		EE30AF551432D7698D48F2B4 /* FoodSegYolo.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = B50E4E3D0C9A5B0F8F413A1D /* FoodSegYolo.mlmodelc */; };
+		EE592D71C88D7676C21623A9 /* MobileCLIPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F70FD3D45DA8AD693BA58B20 /* MobileCLIPService.swift */; };
 		EFF8B23A41BA9547D2527651 /* MonoDepthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A247DD49A22C552B3A3F825 /* MonoDepthService.swift */; };
 		F4268855C1B76226E9EE7CAF /* DepthModeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74BC3714EC9CC09580BECA59 /* DepthModeDetector.swift */; };
 /* End PBXBuildFile section */
@@ -141,6 +142,7 @@
 		ECDA3130CA35D9F91C47196F /* FramePreprocessor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FramePreprocessor.swift; sourceTree = "<group>"; };
 		F457EE21D28F8991FB1794F2 /* YOLOSegmentationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = YOLOSegmentationService.swift; sourceTree = "<group>"; };
 		F484AD302BB78A36A902D2ED /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
+		F70FD3D45DA8AD693BA58B20 /* MobileCLIPService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MobileCLIPService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -206,6 +208,7 @@
 				C54DB78DF1B2697AC7053B30 /* ARMeshVolumeEstimator.swift */,
 				6A247DD49A22C552B3A3F825 /* MonoDepthService.swift */,
 				1216872B75939DD9FC20D1E3 /* MotionStabilityMonitor.swift */,
+				F70FD3D45DA8AD693BA58B20 /* MobileCLIPService.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -556,6 +559,7 @@
 				C6902D46C1904645B9759B61 /* ARMeshVolumeEstimator.swift in Sources */,
 				EFF8B23A41BA9547D2527651 /* MonoDepthService.swift in Sources */,
 				C17EE1400334A1F1CBAEED47 /* MotionStabilityMonitor.swift in Sources */,
+				EE592D71C88D7676C21623A9 /* MobileCLIPService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

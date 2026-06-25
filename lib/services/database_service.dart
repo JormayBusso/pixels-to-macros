@@ -4426,7 +4426,7 @@ class DatabaseService {
       // specialises ("smoked salmon"), so we map to the canonical DB entry.
       if (cTokens.length == 1 && shared.length == cTokens.length) score += 2;
       final better = score > bestScore ||
-          (score == bestScore && best != null && c.length < best!.length);
+          (score == bestScore && best != null && c.length < best.length);
       if (better) {
         bestScore = score;
         best = candidate;

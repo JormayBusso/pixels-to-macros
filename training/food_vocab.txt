@@ -1,0 +1,180 @@
+# Open-vocabulary food labels for MobileCLIP recognition.
+# One food per line. Lines starting with '#' are ignored.
+# Add any food you eat — re-run training/export_mobileclip.py to embed it.
+# These names are matched on device; the app's fuzzy resolver maps them to
+# the nutrition database (e.g. "smoked salmon" -> "salmon").
+
+# Breads & baked
+bread
+white bread
+whole wheat bread
+toast
+baguette
+croissant
+bagel
+pita bread
+tortilla
+naan
+pancake
+waffle
+french toast
+muffin
+croutons
+crackers
+breadsticks
+
+# Eggs & dairy
+egg
+fried egg
+scrambled eggs
+boiled egg
+omelette
+cheese
+cheddar cheese
+mozzarella
+yogurt
+greek yogurt
+butter
+cottage cheese
+milk
+
+# Fish & seafood
+salmon
+smoked salmon
+grilled salmon
+tuna
+shrimp
+fish
+fish fillet
+sardines
+mackerel
+cod
+crab
+mussels
+
+# Meat & poultry
+chicken
+grilled chicken
+fried chicken
+chicken breast
+beef
+steak
+hamburger
+meatballs
+pork
+bacon
+sausage
+ham
+turkey
+lamb
+
+# Pasta, rice & grains
+rice
+white rice
+fried rice
+brown rice
+risotto
+sushi
+pasta
+spaghetti
+spaghetti bolognese
+macaroni
+noodles
+lasagna
+couscous
+quinoa
+oatmeal
+cereal
+
+# Vegetables
+salad
+green salad
+tomato
+cucumber
+carrot
+broccoli
+cauliflower
+spinach
+lettuce
+bell pepper
+onion
+potato
+mashed potatoes
+french fries
+sweet potato
+corn
+peas
+green beans
+mushroom
+avocado
+zucchini
+eggplant
+asparagus
+cabbage
+beetroot
+
+# Fruit
+apple
+banana
+orange
+strawberry
+blueberries
+grapes
+watermelon
+pineapple
+mango
+peach
+pear
+kiwi
+lemon
+plum
+cherries
+raspberries
+
+# Legumes & nuts
+beans
+chickpeas
+lentils
+hummus
+peanut butter
+almonds
+walnuts
+cashews
+
+# Dishes & snacks
+pizza
+sandwich
+club sandwich
+burrito
+taco
+soup
+tomato soup
+stew
+curry
+dumplings
+spring rolls
+fries
+nachos
+popcorn
+chips
+
+# Sweets & desserts
+chocolate
+cookie
+brownie
+cake
+cheesecake
+ice cream
+donut
+pancakes with syrup
+pudding
+fruit salad
+
+# Drinks
+coffee
+tea
+orange juice
+apple juice
+smoothie
+soda
+water

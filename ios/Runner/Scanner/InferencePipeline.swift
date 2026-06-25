@@ -32,6 +32,11 @@ final class InferencePipeline {
     /// unloads before the memory-heavy 3-D phase. Inert until a classifier
     /// `.mlmodelc` is bundled.
     private let foodClassifier = FoodClassifierService()
+    /// Optional open-vocabulary recogniser (MobileCLIP). When its image encoder
+    /// + label-embedding table are bundled, it names crops by nearest food in
+    /// the app vocabulary — covering foods outside the segmenter's class list.
+    /// Runs once per scan and unloads like the classifier. Inert until bundled.
+    private let mobileClip = MobileCLIPService()
     /// Generic Google ML Kit Image Labeler used as (1) a hard food-presence
     /// gate before we trust segmentation, and (2) a label-override hint that
     /// fixes mislabelled foods that the bundled 10-class mini segmentation
@@ -200,6 +205,17 @@ final class InferencePipeline {
         // classifier is bundled, run it ONCE on the top frame over the largest
         // instance crops for higher-accuracy names than whole-frame ML Kit.
         segments = refineLabelsWithClassifier(
+            segments: segments,
+            frame: preprocessedRGB,
+            maskWidth: preprocessor.modelInputWidth,
+            maskHeight: preprocessor.modelInputHeight
+        )
+
+        // Open-vocabulary refinement (MobileCLIP): names crops by nearest food
+        // in the app vocabulary, so composite/regional foods the fixed class
+        // lists miss still get a usable label. Runs after the classifier and
+        // unloads its encoder before the 3-D phase.
+        segments = refineLabelsWithOpenVocab(
             segments: segments,
             frame: preprocessedRGB,
             maskWidth: preprocessor.modelInputWidth,
@@ -991,6 +1007,62 @@ final class InferencePipeline {
             } catch {
                 print("[Classifier] classify failed: \(error)")
                 break // model trouble — stop refining this scan
+            }
+        }
+        return updated
+    }
+
+    /// Open-vocabulary refinement via MobileCLIP. For the few largest instances,
+    /// crop the food region and name it by nearest food in the app vocabulary.
+    /// MobileCLIP's labels are already app-vocabulary words, so the result maps
+    /// straight to nutrition. Bounded to `topK` crops; encoder unloaded after.
+    private func refineLabelsWithOpenVocab(
+        segments: [SegmentationService.SegmentedObject],
+        frame: CVPixelBuffer,
+        maskWidth: Int,
+        maskHeight: Int
+    ) -> [SegmentationService.SegmentedObject] {
+        guard !segments.isEmpty else { return segments }
+        guard mobileClip.isAvailable else {
+            print("[MobileCLIP] unavailable; keeping current labels")
+            return segments
+        }
+        defer { mobileClip.unload() }
+
+        let topK = 4
+        let confidenceFloor: Float = 0.18
+        let strongOverride: Float = 0.40
+        let order = segments.indices.sorted {
+            segments[$0].pixelCount > segments[$1].pixelCount
+        }
+        var updated = segments
+        for index in order.prefix(topK) {
+            let segment = updated[index]
+            guard let roi = Self.regionOfInterest(
+                for: segment.mask, width: maskWidth, height: maskHeight
+            ) else { continue }
+            do {
+                guard let (label, confidence) = try mobileClip.classify(
+                    pixelBuffer: frame, regionOfInterest: roi
+                ), confidence >= confidenceFloor else { continue }
+                let segmentationUnsure = segment.confidence < strongOverride
+                let clipStrong = confidence >= strongOverride
+                guard clipStrong || segmentationUnsure else {
+                    print("[MobileCLIP] kept \(segment.label) over weak guess \(label) (\(String(format: "%.2f", confidence)))")
+                    continue
+                }
+                updated[index] = SegmentationService.SegmentedObject(
+                    label: label,
+                    classIndex: segment.classIndex,
+                    mask: segment.mask,
+                    pixelCount: segment.pixelCount,
+                    centroid: segment.centroid,
+                    confidence: max(segment.confidence, confidence)
+                )
+                print("[MobileCLIP] refined \(segment.label) → \(label) (\(String(format: "%.2f", confidence)))")
+            } catch {
+                print("[MobileCLIP] classify failed: \(error)")
+                break
             }
         }
         return updated
