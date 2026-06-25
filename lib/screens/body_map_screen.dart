@@ -243,7 +243,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                                         rect: Rect.fromLTWH(img.left, img.top,
                                             img.width, img.height),
                                         child: Opacity(
-                                          opacity: 0.42,
+                                          opacity: 0.80,
                                           child: Image.asset(
                                             'assets/E25E5E96-362D-4B79-9469-6128EBAF2201_1_102_a.jpeg',
                                             fit: BoxFit.fill,
@@ -254,7 +254,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                                         rect: Rect.fromLTWH(img.left, img.top,
                                             img.width, img.height),
                                         child: Opacity(
-                                          opacity: 0.82,
+                                          opacity: 0.55,
                                           child: InteractiveBodyMapSvg(
                                             rawSvg: rawSvg,
                                             organScores: organScores100,

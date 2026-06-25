@@ -216,30 +216,13 @@ class PremiumSurface extends StatelessWidget {
 }
 
 double _premiumGlowExtent(AppVisualTheme visual) {
-  switch (visual.seed) {
-    case AppColorSeed.aiAurora:
-      return 10;
-    case AppColorSeed.geminiAI:
-      return 9;
-    case AppColorSeed.liquidGlass:
-      return 7;
-    default:
-      return 8;
-  }
+  // Tight, premium edge glow — only a few pixels, never a wide halo.
+  return 4;
 }
 
-// Larger (but still controlled) glow halo for Tier 3 AI-active surfaces.
+// Slightly larger for Tier 3 AI-active surfaces but still tight (~5-6px).
 double _premiumGlowExtentIntense(AppVisualTheme visual) {
-  switch (visual.seed) {
-    case AppColorSeed.aiAurora:
-      return 18;
-    case AppColorSeed.geminiAI:
-      return 16;
-    case AppColorSeed.liquidGlass:
-      return 13;
-    default:
-      return 15;
-  }
+  return 6;
 }
 
 double _premiumGlowBaseAlpha(AppVisualTheme visual, double pulse) {
@@ -284,17 +267,13 @@ class _GlowLayer {
 }
 
 const List<_GlowLayer> _glowLayers = [
-  _GlowLayer(inflate: 3.2, strokeExtra: 1.0, blur: 10, alphaScale: 0.28),
-  _GlowLayer(inflate: 1.2, strokeExtra: 0.5, blur: 5, alphaScale: 0.38),
+  _GlowLayer(inflate: 1.0, strokeExtra: 0.6, blur: 4, alphaScale: 0.5),
 ];
 
-// Soft, continuous bloom for Tier 3 AI-active surfaces. Layers are closely
-// spaced with wide overlapping blur so they read as ONE halo, not stacked
-// concentric lines.
+// Single soft bloom for Tier 3 AI-active surfaces: ONE tight halo (a few
+// pixels), not stacked concentric rings.
 const List<_GlowLayer> _glowLayersIntense = [
-  _GlowLayer(inflate: 1.5, strokeExtra: 1.6, blur: 16, alphaScale: 0.55),
-  _GlowLayer(inflate: 4.0, strokeExtra: 2.6, blur: 24, alphaScale: 0.40),
-  _GlowLayer(inflate: 7.0, strokeExtra: 3.4, blur: 34, alphaScale: 0.26),
+  _GlowLayer(inflate: 1.4, strokeExtra: 1.2, blur: 5, alphaScale: 0.7),
 ];
 
 class PremiumFocusRing extends StatelessWidget {
@@ -515,12 +494,12 @@ List<Color> _premiumColorAnchors(AppVisualTheme visual) {
   switch (visual.seed) {
     case AppColorSeed.aiAurora:
       return const [
-        Color(0xFF5E9BFF),
-        Color(0xFF7FD8FF),
-        Color(0xFFB57BFF),
-        Color(0xFFFF6FC8),
-        Color(0xFF67F0E0),
-        Color(0xFF8FC4FF),
+        Color(0xFF7C5CFF),
+        Color(0xFFB152FF),
+        Color(0xFFFF5FA2),
+        Color(0xFFFF8A5B),
+        Color(0xFF38E0D0),
+        Color(0xFF4FA8FF),
       ];
     case AppColorSeed.geminiAI:
       return const [
@@ -711,7 +690,7 @@ class _PremiumMotionPainter extends CustomPainter {
     final alpha = intense
         ? _premiumGlowBaseAlphaIntense(visual, pulse)
         : _premiumGlowBaseAlpha(visual, pulse);
-    final shaderRect = rect.inflate(contentInset + (intense ? 16 : 8));
+    final shaderRect = rect.inflate(contentInset + (intense ? 6 : 4));
     final layers = intense ? _glowLayersIntense : _glowLayers;
 
     for (final layer in layers) {

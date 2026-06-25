@@ -1127,9 +1127,11 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                               onPressed: _showSmartSuggestSheet,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: context.isPremiumTheme
-                                    ? context.visualTheme.primaryAccent
+                                    ? context.visualTheme.cardColor
                                     : context.primary500,
-                                foregroundColor: Colors.white,
+                                foregroundColor: context.isPremiumTheme
+                                    ? context.visualTheme.primaryAccent
+                                    : Colors.white,
                                 minimumSize: const Size.fromHeight(44),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),

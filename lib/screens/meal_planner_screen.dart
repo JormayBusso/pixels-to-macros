@@ -492,9 +492,11 @@ class _PlannerActionBar extends ConsumerWidget {
                 label: Text(l10n.mealPlanAutopilot),
                 style: FilledButton.styleFrom(
                   backgroundColor: context.isPremiumTheme
-                      ? context.visualTheme.primaryAccent
+                      ? context.visualTheme.cardColor
                       : context.primary500,
-                  foregroundColor: Colors.white,
+                  foregroundColor: context.isPremiumTheme
+                      ? context.visualTheme.primaryAccent
+                      : Colors.white,
                   minimumSize: const Size.fromHeight(42),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

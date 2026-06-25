@@ -181,17 +181,19 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                   const SizedBox(height: 12),
                   Text(
                     '${avgTotal.round()} kcal',
-                    style: const TextStyle(
-                      fontSize: 32,
+                    style: TextStyle(
+                      fontSize: 38,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.gray900,
+                      color: context.isPremiumTheme
+                          ? context.visualTheme.primaryAccent
+                          : AppTheme.gray900,
                     ),
                   ),
                   Text(
                     '± ${margin.round()} kcal',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: AppTheme.gray400,
+                      color: context.appMutedTextColor,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -600,72 +602,76 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
-      child: Stack(
-        children: [
-          Image.file(
-            File(topPath),
-            height: 240,
-            width: double.infinity,
-            fit: BoxFit.cover,
-          ),
-          Positioned(
-            left: 14,
-            top: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.view_in_ar,
-                      size: 16, color: Color(0xFF86EFAC)),
-                  const SizedBox(width: 6),
-                  Text(
-                    '3D Scan — ${_scan.foods.length} item${_scan.foods.length == 1 ? '' : 's'}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
+      child: GestureDetector(
+        onTap: modelPath != null ? openModel : null,
+        child: Stack(
+          children: [
+            Image.file(
+              File(topPath),
+              height: 240,
+              width: double.infinity,
+              fit: BoxFit.cover,
             ),
-          ),
-          if (sidePath != null)
             Positioned(
-              right: 12,
-              bottom: 12,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  File(sidePath),
-                  width: 112,
-                  height: 72,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          if (modelPath != null)
-            Positioned(
-              right: 12,
+              left: 14,
               top: 12,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.black.withValues(alpha: 0.62),
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                onPressed: openModel,
-                icon: const Icon(Icons.view_in_ar, size: 16),
-                label: const Text('3D'),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.view_in_ar,
+                        size: 16, color: Color(0xFF86EFAC)),
+                    const SizedBox(width: 6),
+                    Text(
+                      '3D Scan — ${_scan.foods.length} item${_scan.foods.length == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-        ],
+            if (sidePath != null)
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    File(sidePath),
+                    width: 112,
+                    height: 72,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            if (modelPath != null)
+              Positioned(
+                right: 12,
+                top: 12,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.62),
+                    foregroundColor: Colors.white,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                  onPressed: openModel,
+                  icon: const Icon(Icons.threed_rotation, size: 18),
+                  label: const Text('View 3D'),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
