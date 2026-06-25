@@ -167,6 +167,22 @@ final class MonocularVolumeEstimator {
         let fxMask = fxImg > 1 ? fxImg * Double(maskWidth) / (cropWFrac * Double(imageW)) : 0
         let fyMask = fyImg > 1 ? fyImg * Double(maskHeight) / (cropHFrac * Double(imageH)) : 0
 
+        // Elevation of the SIDE camera's optical axis above/below horizontal. A
+        // true side shot looks horizontally (~0 rad). When the phone is tilted
+        // to look down at the food, the silhouette captures part of the top
+        // surface too, so its vertical extent over-reads the real height by
+        // ~depth·sin(elevation). We measure the angle here and de-project the
+        // height in the side-profile branch below. ARKit's camera looks down its
+        // -z, so the world-up component of -columns.2 is sin(elevation).
+        let sideElevationRad: Double = {
+            guard let sideFrame else { return 0 }
+            let f = sideFrame.cameraTransform.columns.2
+            let fx = Double(-f.x), fy = Double(-f.y), fz = Double(-f.z)
+            let len = (fx * fx + fy * fy + fz * fz).squareRoot()
+            guard len > 0.0001 else { return 0 }
+            return asin(min(1.0, abs(fy) / len))
+        }()
+
         // Metric monocular depth (gated): when `MonoDepth.mlmodelc` is bundled
         // and we have the preprocessed RGB the segmenter used, predict a depth
         // grid aligned to the mask so each food's height above the table can be
@@ -247,14 +263,39 @@ final class MonocularVolumeEstimator {
                 print("[MonocularEstimator] depth food#\(idx) \(seg.label): meanH=\(String(format: "%.2f", dr.meanHeightCm))cm peakH=\(String(format: "%.2f", dr.peakHeightCm))cm cov=\(String(format: "%.2f", dr.coverage)) vol=\(String(format: "%.1f", dr.volumeCm3))cm3")
             } else if let profile {
                 let topAxisCm = profile.topAxis == .columns ? widthCm : depthCm
-                let rawHeightCm = max(0.5, profile.aspectRatio * topAxisCm)
+                let apparentHeightCm = max(0.5, profile.aspectRatio * topAxisCm)
+                // De-foreshorten: a tilted side view adds the foreshortened
+                // footprint depth (the axis perpendicular to what the side view
+                // sees) to the apparent height. Remove that term using the
+                // measured side-camera elevation. Clamp so we only ever REDUCE
+                // the known over-read (never below 65% of the apparent height),
+                // and skip it for near-true side shots (elevation < ~6°).
+                let alongViewCm = profile.topAxis == .columns ? depthCm : widthCm
+                var rawHeightCm = apparentHeightCm
+                var deforeshortened = false
+                if sideElevationRad > 0.10 {
+                    let deprojected = (apparentHeightCm - alongViewCm * sin(sideElevationRad))
+                        / max(0.2, cos(sideElevationRad))
+                    let clamped = min(apparentHeightCm, max(apparentHeightCm * 0.65, deprojected))
+                    if clamped < apparentHeightCm - 0.05 {
+                        rawHeightCm = clamped
+                        deforeshortened = true
+                    }
+                }
                 heightCm = boundedHeightCm(
                     rawHeightCm: rawHeightCm,
                     label: seg.label,
                     priorBoundCm: priorBoundCm,
                     lateralBoundCm: lateralBoundCm
                 )
-                let shapeFactor = sideProfileShapeFactor(profile, fallback: prior.shapeFactor)
+                // Only lift the round-produce fill factor when we actually
+                // shortened the height, so a perfect (untilted) side shot keeps
+                // its original volume instead of being inflated.
+                let shapeFactor = sideProfileShapeFactor(
+                    profile,
+                    fallback: prior.shapeFactor,
+                    roundness: deforeshortened ? transverseRoundnessStrength(for: seg.label) : 0
+                )
                 rawVolumeCm3 = areaCm2 * heightCm * shapeFactor
                 let bounded = boundedVolumeCm3(
                     rawVolumeCm3: rawVolumeCm3,
@@ -628,12 +669,21 @@ final class MonocularVolumeEstimator {
         return base
     }
 
-    private func sideProfileShapeFactor(_ profile: SideProfile, fallback: Double) -> Double {
+    private func sideProfileShapeFactor(
+        _ profile: SideProfile,
+        fallback: Double,
+        roundness: Float = 0
+    ) -> Double {
         // Treat the side silhouette as the primary geometric evidence. The
         // prior only provides a light stabiliser after `usableSideProfile(...)`
         // has accepted the mask, so the side view visibly changes both volume
         // and mesh shape instead of being blended into a generic dome.
-        let silhouetteFactor = min(0.92, max(0.38, profile.meanNormalizedHeight * 0.88))
+        // Round produce (tomato, apple, orange…) fills its footprint×height box
+        // FULLER than an ellipsoid, so once the height is de-foreshortened we
+        // lift the silhouette multiplier for those foods to keep the volume
+        // realistic instead of under-reading it.
+        let silhouetteGain = roundness > 0 ? 1.0 : 0.88
+        let silhouetteFactor = min(0.92, max(0.38, profile.meanNormalizedHeight * silhouetteGain))
         return min(0.92, max(0.38, fallback * 0.15 + silhouetteFactor * 0.85))
     }
 
@@ -1012,10 +1062,11 @@ final class MonocularVolumeEstimator {
         let bboxH = max(1, footprint.maxRow - footprint.minRow + 1)
         // Higher silhouette sampling resolution = the reconstructed mesh tracks
         // the real top/side contour more tightly (finer rim, crisper outline)
-        // for a more accurate 3D object. 80 cells stays well within a safe
-        // vertex budget for the viewer/exporter while noticeably sharpening the
-        // hull versus the previous 56-cell grid. Volume math is unaffected.
-        let maxCells = 80
+        // for a more accurate 3D object, and finer voxels mean the post-hull
+        // smoothing reads as a curved surface rather than visible cubes. 100
+        // cells stays within a safe vertex budget for the viewer/exporter.
+        // Volume math is unaffected (volume comes from the side-profile path).
+        let maxCells = 100
         let step = max(1, Int((Double(max(bboxW, bboxH)) / Double(maxCells)).rounded(.up)))
         let gc = max(1, Int((Double(bboxW) / Double(step)).rounded(.up)))
         let gr = max(1, Int((Double(bboxH) / Double(step)).rounded(.up)))
@@ -1142,7 +1193,7 @@ final class MonocularVolumeEstimator {
         // match the two captured photos exactly — a closed rounded body, not a
         // draped height-field with a flat bottom. Round foods additionally
         // round the unobserved transverse axis, still bounded by the top mask.
-        let vny = 30
+        let vny = 40
         @inline(__always) func hullSolid(_ ci: Int, _ ri: Int, _ yj: Int) -> Bool {
             if yj < 0 || yj >= vny { return false }
             if !isOn(ri, ci) { return false }
@@ -1265,12 +1316,15 @@ final class MonocularVolumeEstimator {
         // exact top + side silhouettes. The contact base (vertices on the table
         // plane) is pinned so the food stays grounded with a crisp footprint
         // while the body and rim curve naturally — rounded food gets round edges.
-        let basePin = max(Float(0.0006), h * 0.03)
+        // Only the single bottom voxel layer is pinned so the whole body (not
+        // just the top) rounds, and more smoothing passes remove the cubes
+        // without changing the two-silhouette hull occupancy.
+        let basePin = max(Float(0.0004), h / Float(vny) * 0.75)
         var pinnedBase = [Bool](repeating: false, count: vertices.count)
         for vi in 0..<vertices.count where vertices[vi].y <= basePin {
             pinnedBase[vi] = true
         }
-        taubinSmooth(&vertices, faces: faces, iterations: 8, pinned: pinnedBase)
+        taubinSmooth(&vertices, faces: faces, iterations: 20, pinned: pinnedBase)
 
         let color = dominantColor(topFrame: topFrame, mask: mask, footprint: footprint, maskWidth: maskWidth, maskHeight: maskHeight)
         var colors: [UInt8] = []

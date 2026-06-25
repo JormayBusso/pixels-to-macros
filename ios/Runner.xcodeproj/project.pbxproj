@@ -8,9 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		00F929A0E1900BAC819B1489 /* CoreML.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 106E69CAAEAFA6A5B66AD4AC /* CoreML.framework */; };
+		13D0DA49CB82FB919FBE2CEF /* FoodLabelEmbeddings.json in Resources */ = {isa = PBXBuildFile; fileRef = 4FB0E776E8798D8FBA77E5F8 /* FoodLabelEmbeddings.json */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		1B6DD6317DD3145FB6028C45 /* MonoDepth.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 514F71439B0203B75E0C0B36 /* MonoDepth.mlmodelc */; };
 		24CBC83F2DA4A19876130207 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6CAAE6E0DFEB32AB337D33B7 /* CoreVideo.framework */; };
+		27B29D7E4DBFF6FC59C1F730 /* MobileCLIPImage.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 3508969D79D9F959C92F711C /* MobileCLIPImage.mlmodelc */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3325C11CF380F60DC2317633 /* SegmentationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753DB09FA42E27044AE313AF /* SegmentationService.swift */; };
 		354025B4414946373AE0E35E /* YOLOSegmentationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F457EE21D28F8991FB1794F2 /* YOLOSegmentationService.swift */; };
@@ -93,9 +95,11 @@
 		2B31312A6A0EAC58E824D6DC /* BarcodeScannerPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BarcodeScannerPlugin.swift; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3508969D79D9F959C92F711C /* MobileCLIPImage.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = MobileCLIPImage.mlmodelc; sourceTree = "<group>"; };
 		37F48EF5C5BB2FDE9E14640F /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		45253471A282FCFFF61F56CE /* ModelIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ModelIO.framework; path = System/Library/Frameworks/ModelIO.framework; sourceTree = SDKROOT; };
+		4FB0E776E8798D8FBA77E5F8 /* FoodLabelEmbeddings.json */ = {isa = PBXFileReference; includeInIndex = 1; path = FoodLabelEmbeddings.json; sourceTree = "<group>"; };
 		514F71439B0203B75E0C0B36 /* MonoDepth.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = MonoDepth.mlmodelc; sourceTree = "<group>"; };
 		5662700E76C7838BA72BC7D1 /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
 		5D01C0FF0017F00000000000 /* MonocularVolumeEstimator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonocularVolumeEstimator.swift; sourceTree = "<group>"; };
@@ -279,6 +283,8 @@
 				10DECEA94831997726B8E2B7 /* FoodSegmentationLabels.json */,
 				B50E4E3D0C9A5B0F8F413A1D /* FoodSegYolo.mlmodelc */,
 				514F71439B0203B75E0C0B36 /* MonoDepth.mlmodelc */,
+				3508969D79D9F959C92F711C /* MobileCLIPImage.mlmodelc */,
+				4FB0E776E8798D8FBA77E5F8 /* FoodLabelEmbeddings.json */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -400,6 +406,8 @@
 				DA7869F3377AA0498695AD5D /* FoodSegmentationLabels.json in Resources */,
 				EE30AF551432D7698D48F2B4 /* FoodSegYolo.mlmodelc in Resources */,
 				1B6DD6317DD3145FB6028C45 /* MonoDepth.mlmodelc in Resources */,
+				27B29D7E4DBFF6FC59C1F730 /* MobileCLIPImage.mlmodelc in Resources */,
+				13D0DA49CB82FB919FBE2CEF /* FoodLabelEmbeddings.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
