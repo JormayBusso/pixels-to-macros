@@ -232,26 +232,26 @@ double _premiumGlowExtent(AppVisualTheme visual) {
 double _premiumGlowExtentIntense(AppVisualTheme visual) {
   switch (visual.seed) {
     case AppColorSeed.aiAurora:
-      return 22;
-    case AppColorSeed.geminiAI:
-      return 20;
-    case AppColorSeed.liquidGlass:
-      return 16;
-    default:
       return 18;
+    case AppColorSeed.geminiAI:
+      return 16;
+    case AppColorSeed.liquidGlass:
+      return 13;
+    default:
+      return 15;
   }
 }
 
 double _premiumGlowBaseAlpha(AppVisualTheme visual, double pulse) {
   switch (visual.seed) {
     case AppColorSeed.aiAurora:
-      return 0.20 + pulse * 0.04;
+      return 0.28 + pulse * 0.06;
     case AppColorSeed.geminiAI:
-      return 0.16 + pulse * 0.03;
+      return 0.22 + pulse * 0.05;
     case AppColorSeed.liquidGlass:
-      return 0.12 + pulse * 0.025;
-    default:
       return 0.16 + pulse * 0.035;
+    default:
+      return 0.22 + pulse * 0.05;
   }
 }
 
@@ -259,13 +259,13 @@ double _premiumGlowBaseAlpha(AppVisualTheme visual, double pulse) {
 double _premiumGlowBaseAlphaIntense(AppVisualTheme visual, double pulse) {
   switch (visual.seed) {
     case AppColorSeed.aiAurora:
-      return 0.42 + pulse * 0.12;
+      return 0.46 + pulse * 0.14;
     case AppColorSeed.geminiAI:
-      return 0.34 + pulse * 0.10;
+      return 0.40 + pulse * 0.12;
     case AppColorSeed.liquidGlass:
-      return 0.26 + pulse * 0.08;
+      return 0.30 + pulse * 0.10;
     default:
-      return 0.34 + pulse * 0.10;
+      return 0.40 + pulse * 0.12;
   }
 }
 
@@ -288,11 +288,13 @@ const List<_GlowLayer> _glowLayers = [
   _GlowLayer(inflate: 1.2, strokeExtra: 0.5, blur: 5, alphaScale: 0.38),
 ];
 
-// Richer bloom (more layers, wider blur) for Tier 3 AI-active surfaces.
+// Soft, continuous bloom for Tier 3 AI-active surfaces. Layers are closely
+// spaced with wide overlapping blur so they read as ONE halo, not stacked
+// concentric lines.
 const List<_GlowLayer> _glowLayersIntense = [
-  _GlowLayer(inflate: 11, strokeExtra: 2.6, blur: 30, alphaScale: 0.34),
-  _GlowLayer(inflate: 6, strokeExtra: 1.6, blur: 18, alphaScale: 0.50),
-  _GlowLayer(inflate: 2.6, strokeExtra: 0.9, blur: 10, alphaScale: 0.70),
+  _GlowLayer(inflate: 1.5, strokeExtra: 1.6, blur: 16, alphaScale: 0.55),
+  _GlowLayer(inflate: 4.0, strokeExtra: 2.6, blur: 24, alphaScale: 0.40),
+  _GlowLayer(inflate: 7.0, strokeExtra: 3.4, blur: 34, alphaScale: 0.26),
 ];
 
 class PremiumFocusRing extends StatelessWidget {
@@ -513,12 +515,12 @@ List<Color> _premiumColorAnchors(AppVisualTheme visual) {
   switch (visual.seed) {
     case AppColorSeed.aiAurora:
       return const [
-        Color(0xFF74A9FF),
-        Color(0xFF9BC8FF),
-        Color(0xFFC4B5FD),
-        Color(0xFFFFA8DD),
-        Color(0xFFA5F3FC),
-        Color(0xFFB8D8FF),
+        Color(0xFF5E9BFF),
+        Color(0xFF7FD8FF),
+        Color(0xFFB57BFF),
+        Color(0xFFFF6FC8),
+        Color(0xFF67F0E0),
+        Color(0xFF8FC4FF),
       ];
     case AppColorSeed.geminiAI:
       return const [
@@ -551,22 +553,22 @@ List<Color> _premiumColorAnchors(AppVisualTheme visual) {
 double _premiumSaturationScale(AppVisualTheme visual) {
   switch (visual.seed) {
     case AppColorSeed.geminiAI:
-      return 0.96;
+      return 1.04;
     case AppColorSeed.liquidGlass:
       return 0.44;
     case AppColorSeed.aiAurora:
-      return 1.08;
+      return 1.32;
     default:
-      return 1.04;
+      return 1.08;
   }
 }
 
 double _premiumLightnessScale(AppVisualTheme visual) {
   switch (visual.seed) {
     case AppColorSeed.aiAurora:
-      return 1.05;
+      return 1.08;
     case AppColorSeed.geminiAI:
-      return 1.02;
+      return 1.04;
     case AppColorSeed.liquidGlass:
       return 1.08;
     default:

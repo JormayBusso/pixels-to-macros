@@ -1409,8 +1409,9 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
                     fontWeight: FontWeight.w700,
                     color: _diabetesBlue)),
             const SizedBox(height: 4),
-            const Text('1 unit of insulin covers how many grams of carbs?',
-                style: TextStyle(fontSize: 12, color: AppTheme.gray600)),
+            Text('1 unit of insulin covers how many grams of carbs?',
+                style:
+                    TextStyle(fontSize: 12, color: context.appMutedTextColor)),
             const SizedBox(height: 8),
             _FieldRow(
               controller: _icrCtrl,
@@ -1429,7 +1430,7 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
             Text(
               '1 unit of insulin lowers your blood glucose by how much '
               '($unitLabel)? Used for correction doses.',
-              style: const TextStyle(fontSize: 12, color: AppTheme.gray600),
+              style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
             ),
             const SizedBox(height: 8),
             _FieldRow(
@@ -1446,8 +1447,9 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
                     fontWeight: FontWeight.w700,
                     color: _diabetesBlue)),
             const SizedBox(height: 4),
-            const Text('Your goal blood glucose for correction calculations.',
-                style: TextStyle(fontSize: 12, color: AppTheme.gray600)),
+            Text('Your goal blood glucose for correction calculations.',
+                style:
+                    TextStyle(fontSize: 12, color: context.appMutedTextColor)),
             const SizedBox(height: 8),
             _FieldRow(
               controller: _targetCtrl,
@@ -1473,14 +1475,16 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
                   Icon(Icons.health_and_safety_outlined,
                       color: Colors.amber.shade800, size: 18),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Confirm your ICR, ISF and target with your healthcare '
                       'provider and review them regularly — they change over '
                       'time. Always measure your blood glucose correctly and '
                       'double-check every dose before injecting.',
                       style: TextStyle(
-                          fontSize: 11, color: AppTheme.gray700, height: 1.3),
+                          fontSize: 11,
+                          color: context.appTextColor,
+                          height: 1.3),
                     ),
                   ),
                 ],
@@ -1495,10 +1499,10 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
                     fontWeight: FontWeight.w700,
                     color: _diabetesBlue)),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'An optional, safety-gated insulin estimate. Off by default. '
               'Requires a settings survey, consent, and review every 90 days.',
-              style: TextStyle(fontSize: 12, color: AppTheme.gray600),
+              style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
             ),
             const SizedBox(height: 8),
             Builder(
@@ -1853,12 +1857,30 @@ class _NutritionGoalPickerCard extends ConsumerWidget {
               runSpacing: 8,
               children: NutritionGoalType.values.map((goal) {
                 final selected = current == goal;
+                final premium = context.isPremiumTheme;
                 return ChoiceChip(
                   avatar:
                       Text(goal.emoji, style: const TextStyle(fontSize: 16)),
                   label: Text(goal.label),
                   selected: selected,
-                  selectedColor: goal.lightColor,
+                  backgroundColor: premium ? context.appSubtleFillColor : null,
+                  selectedColor: premium
+                      ? context.visualTheme.primaryAccent
+                          .withValues(alpha: 0.85)
+                      : goal.lightColor,
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: selected
+                        ? (premium ? Colors.white : goal.color)
+                        : context.appTextColor,
+                  ),
+                  side: BorderSide(
+                    color: selected
+                        ? (premium
+                            ? context.visualTheme.primaryAccent
+                            : goal.color)
+                        : context.appBorderColor,
+                  ),
                   onSelected: (_) async {
                     final calories = GoalDefaults.caloriesForProfile(
                       goal,
@@ -2024,9 +2046,10 @@ class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
             Center(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [0.15, 0.40, 0.65, 0.90].map((p) {
                   return SizedBox(
-                    width: 72,
+                    width: 78,
                     child: GoalMascotWidget(
                       goalType: prefs.nutritionGoal,
                       progress: p,

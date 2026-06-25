@@ -111,9 +111,11 @@ class _DualPhotoCaptureOverlayState extends State<DualPhotoCaptureOverlay>
     final visualTheme = context.visualTheme;
     final successColor =
         visualTheme.premium ? visualTheme.primaryAccent : AppTheme.green500;
+    final idleFrameColor =
+        visualTheme.premium ? visualTheme.primaryAccent : Colors.white;
     final frameColor = confirming
         ? successColor
-        : (widget.aligned ? successColor : Colors.white);
+        : (widget.aligned ? successColor : idleFrameColor);
 
     return Stack(
       children: [
@@ -429,7 +431,7 @@ class _GuidancePanel extends StatelessWidget {
           borderWidth: 3.0,
           animate: aligned && !confirming,
           child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            padding: const EdgeInsets.fromLTRB(14, 9, 14, 9),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.62),
               borderRadius: BorderRadius.circular(22),
@@ -445,14 +447,14 @@ class _GuidancePanel extends StatelessWidget {
                     radius: 36,
                     padding: const EdgeInsets.all(3),
                     child: SizedBox(
-                      width: 64,
-                      height: 64,
+                      width: 54,
+                      height: 54,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
                           SizedBox(
-                            width: 64,
-                            height: 64,
+                            width: 54,
+                            height: 54,
                             child: CircularProgressIndicator(
                               value:
                                   aligned ? holdProgress.clamp(0.0, 1.0) : null,
@@ -464,18 +466,17 @@ class _GuidancePanel extends StatelessWidget {
                             ),
                           ),
                           Container(
-                            width: 46,
-                            height: 46,
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: aligned
-                                  ? accentColor.withValues(alpha: 0.92)
-                                  : Colors.white.withValues(alpha: 0.88),
+                              color: accentColor.withValues(
+                                  alpha: aligned ? 0.95 : 0.82),
                             ),
                             child: Icon(
                               confirming ? Icons.check : Icons.camera_alt,
-                              color: Colors.black87,
-                              size: 21,
+                              color: Colors.white,
+                              size: 19,
                             ),
                           ),
                         ],

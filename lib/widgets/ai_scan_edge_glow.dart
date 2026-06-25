@@ -141,6 +141,7 @@ class _EdgeGlowPainter extends CustomPainter {
     final rect = Offset.zero & size;
     final center = rect.center;
     final phase = progress * 2 * math.pi;
+    final i = intensity.clamp(0.0, 1.0);
 
     // Flowing sweep of the theme colours around the border. Duplicate the first
     // colour at the end so the sweep wraps seamlessly.
@@ -149,52 +150,70 @@ class _EdgeGlowPainter extends CustomPainter {
       transform: GradientRotation(phase),
     ).createShader(rect);
 
-    // Edge-hugging frame just inside the screen bounds.
-    final inset = 1.5;
+    // Clip to the screen so nothing can ever bleed past the edges.
+    canvas.save();
+    canvas.clipRect(rect);
+
+    // Inset the frame well inside the screen edges. Devices have rounded
+    // display corners, so a frame flush to the edge gets visually "cut" at the
+    // corners and looks like it spills off-screen. Sitting it ~14px in with a
+    // generous corner radius keeps the whole band visible and contained.
+    const margin = 0.0;
     final frame = RRect.fromRectAndRadius(
-      rect.deflate(inset),
-      const Radius.circular(34),
+      rect.deflate(margin),
+      const Radius.circular(52),
     );
 
-    // Outer soft bloom — wide blurred stroke kept close to the edge so the glow
-    // reads as an aura on the border rather than a wash over the whole screen.
-    final bloom = Paint()
-      ..shader = shader
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 30 * intensity
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18)
-      ..color = Colors.white.withValues(alpha: 0.42 * opacity * intensity);
+    // Layered inward bloom: wide & soft → dense & bright → hot core band. The
+    // strokes are centred on the inset frame so the glow spreads inward; the
+    // outward half stays within the margin and is clipped flush.
     canvas.saveLayer(rect, Paint());
-    canvas.drawRRect(frame, bloom);
+    const blooms = <({double width, double blur, double alpha})>[
+      (width: 30, blur: 8, alpha: 0.30),
+      (width: 20, blur: 6, alpha: 0.55),
+      (width: 10, blur: 4, alpha: 0.85),
+    ];
+    for (final b in blooms) {
+      final paint = Paint()
+        ..shader = shader
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = b.width * i
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, b.blur)
+        ..color = Colors.white.withValues(alpha: b.alpha * opacity);
+      canvas.drawRRect(frame, paint);
+    }
     canvas.restore();
 
-    // Crisp inner edge line for a defined, premium border.
+    // Crisp, vivid inner edge line for a defined premium border.
     final line = Paint()
       ..shader = shader
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.4
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2)
-      ..color = Colors.white.withValues(alpha: 0.85 * opacity);
+      ..strokeWidth = 3.0
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.0)
+      ..color = Colors.white.withValues(alpha: 0.96 * opacity);
     canvas.drawRRect(frame, line);
 
-    // Subtle corner accents that brighten as the sweep passes — the part that
-    // makes the effect feel "alive" like Siri without a gaming RGB look.
+    // Gentle pulsing corner accents (additive) that brighten as the sweep
+    // passes — kept small and inset so they read as energy, not stray blobs.
     final accent = Paint()
       ..shader = shader
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 7 * intensity
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6)
-      ..color = Colors.white.withValues(alpha: 0.30 * opacity * intensity);
-    for (var i = 0; i < 4; i++) {
-      final a = phase + i * math.pi / 2;
+      ..strokeWidth = 12 * i
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14)
+      ..blendMode = BlendMode.plus
+      ..color = Colors.white.withValues(alpha: 0.22 * opacity * i);
+    for (var c = 0; c < 4; c++) {
+      final a = phase + c * math.pi / 2;
       final pulse = 0.5 + 0.5 * math.sin(a);
-      if (pulse < 0.55) continue;
+      if (pulse < 0.5) continue;
       final corner = Offset(
-        center.dx + (i == 0 || i == 3 ? 1 : -1) * (size.width / 2 - 20),
-        center.dy + (i < 2 ? -1 : 1) * (size.height / 2 - 20),
+        center.dx + (c == 0 || c == 3 ? 1 : -1) * (size.width / 2 - margin - 6),
+        center.dy + (c < 2 ? -1 : 1) * (size.height / 2 - margin - 6),
       );
-      canvas.drawCircle(corner, 26 * pulse * intensity, accent);
+      canvas.drawCircle(corner, 44 * pulse * i, accent);
     }
+
+    canvas.restore();
   }
 
   @override

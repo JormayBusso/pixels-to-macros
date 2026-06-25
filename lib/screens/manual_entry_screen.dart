@@ -543,6 +543,12 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                         });
                       }
                     },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: context.isPremiumTheme
+                          ? context.visualTheme.primaryAccent
+                          : context.primary500,
+                      foregroundColor: Colors.white,
+                    ),
                     child: Text(AppLocalizations.of(context).addToLog),
                   ),
                 ),
@@ -959,6 +965,13 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                                 label: Text(
                                     '+ Log Food (${_selectedLabels.length})'),
                                 onPressed: _save,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: premium
+                                      ? visualTheme.primaryAccent
+                                      : context.primary500,
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size.fromHeight(48),
+                                ),
                               ),
                             ),
                           ],
@@ -1178,27 +1191,36 @@ class _TabToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final premium = context.isPremiumTheme;
+    final activeColor =
+        premium ? context.visualTheme.primaryAccent : context.primary600;
+    final inactiveBg = premium ? context.appSubtleFillColor : AppTheme.gray100;
+    final inactiveBorder = premium ? context.appBorderColor : AppTheme.gray100;
+    final inactiveFg = premium ? context.appMutedTextColor : AppTheme.gray600;
+    final inactiveIcon = premium ? context.appMutedTextColor : AppTheme.gray400;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: active ? context.primary600 : AppTheme.gray100,
+          color: active ? activeColor : inactiveBg,
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: active ? activeColor : inactiveBorder,
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon,
-                size: 16, color: active ? Colors.white : AppTheme.gray400),
+            Icon(icon, size: 16, color: active ? Colors.white : inactiveIcon),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: active ? Colors.white : AppTheme.gray600,
+                color: active ? Colors.white : inactiveFg,
               ),
             ),
           ],

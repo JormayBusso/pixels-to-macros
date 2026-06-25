@@ -576,15 +576,30 @@ class _GoalTypePage extends StatelessWidget {
               childAspectRatio: 1.1,
               children: NutritionGoalType.values.map((goal) {
                 final isSelected = goal == selected;
+                final premium = context.isPremiumTheme;
+                final selectedFill = premium
+                    ? context.visualTheme.primaryAccent.withValues(alpha: 0.22)
+                    : goal.lightColor;
+                final unselectedFill =
+                    premium ? context.appSubtleFillColor : Colors.white;
+                final selectedBorder =
+                    premium ? context.visualTheme.primaryAccent : goal.color;
+                final labelColor = isSelected
+                    ? (premium ? context.appTextColor : goal.color)
+                    : (premium ? context.appMutedTextColor : AppTheme.gray600);
                 return GestureDetector(
                   onTap: () => onSelect(goal),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
-                      color: isSelected ? goal.lightColor : Colors.white,
+                      color: isSelected ? selectedFill : unselectedFill,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isSelected ? goal.color : AppTheme.gray300,
+                        color: isSelected
+                            ? selectedBorder
+                            : (premium
+                                ? context.appBorderColor
+                                : AppTheme.gray300),
                         width: isSelected ? 2.5 : 1,
                       ),
                       boxShadow: [
@@ -606,7 +621,7 @@ class _GoalTypePage extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: isSelected ? goal.color : AppTheme.gray600,
+                            color: labelColor,
                           ),
                         ),
                       ],

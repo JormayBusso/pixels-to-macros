@@ -16,6 +16,7 @@ import '../providers/scroll_trigger_provider.dart';
 import '../providers/tab_navigation_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/database_service.dart';
+import '../services/scan_media_resolver.dart';
 import '../theme/app_theme.dart';
 import '../widgets/drink_sheet.dart';
 import '../widgets/goal_mascot_widget.dart';
@@ -792,9 +793,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         final selected = scan.id != null &&
                             _selectedScanIds.contains(scan.id);
 
-                        final thumbPath = scan.topImagePath ?? scan.imagePath;
-                        final hasThumb =
-                            thumbPath != null && File(thumbPath).existsSync();
+                        final thumbPath = ScanMediaResolver.resolve(
+                            scan.topImagePath ?? scan.imagePath);
+                        final hasThumb = thumbPath != null;
 
                         final card = GestureDetector(
                           onTap: () {
@@ -1287,10 +1288,10 @@ class _SelectableSectionHeader extends StatelessWidget {
         Expanded(
           child: Text(
             l10n.selectedCount(selectedCount),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: AppTheme.gray700,
+              color: context.appTextColor,
             ),
           ),
         ),

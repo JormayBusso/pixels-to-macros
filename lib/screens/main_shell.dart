@@ -365,7 +365,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                       animate: premium,
                       borderRadius: BorderRadius.circular(18),
                       padding: const EdgeInsets.all(3),
-                      borderWidth: 3.0,
+                      borderWidth: 3.4,
                       child: FloatingActionButton.extended(
                         key: TourKeys.speechFab,
                         heroTag: 'voice',
@@ -411,9 +411,10 @@ class _MainShellState extends ConsumerState<MainShell> {
                     // ── Manual Log ────────────────────────────────────────
                     PremiumMotionSurface(
                       enabled: premium,
+                      animate: premium,
                       borderRadius: BorderRadius.circular(18),
                       padding: const EdgeInsets.all(3),
-                      borderWidth: 3.0,
+                      borderWidth: 3.4,
                       child: FloatingActionButton.extended(
                         key: TourKeys.manualFab,
                         heroTag: 'manual',

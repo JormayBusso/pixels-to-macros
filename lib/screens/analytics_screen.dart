@@ -67,11 +67,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             ),
             icon: const Icon(Icons.auto_stories_outlined),
           ),
-          IconButton(
-            tooltip: l10n.refresh,
-            onPressed: _load,
-            icon: const Icon(Icons.refresh),
-          ),
         ],
       ),
       body: analytics.loading && analytics.days.isEmpty
@@ -519,10 +514,10 @@ class _StatTile extends StatelessWidget {
             text: TextSpan(children: [
               TextSpan(
                 text: value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.gray900,
+                  color: context.appTextColor,
                 ),
               ),
               if (unit.isNotEmpty)
@@ -884,17 +879,17 @@ class _InsightCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('• ',
+                  Text('• ',
                       style: TextStyle(
                           fontSize: 13,
-                          color: AppTheme.gray700,
+                          color: context.appTextColor,
                           fontWeight: FontWeight.w700)),
                   Expanded(
                     child: Text(
                       m,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12.5,
-                        color: AppTheme.gray700,
+                        color: context.appTextColor,
                         height: 1.4,
                       ),
                     ),
@@ -1064,10 +1059,10 @@ class _CardShell extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.gray900,
+                    color: context.appTextColor,
                   ),
                 ),
               ),

@@ -3,6 +3,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'dart:convert';
+import 'dart:io';
 
 import '../core/constants.dart';
 import '../models/bolus_audit_record.dart';
@@ -4445,6 +4446,82 @@ class DatabaseService {
       await txn.delete('scan_results',
           where: 'id IN ($placeholders)', whereArgs: scanIds);
     });
+  }
+
+  /// Storage optimization: heavy scan assets (top/side capture images and the
+  /// exported 3-D model) are only useful for the current day's review. Once the
+  /// day has rolled over we delete those files and clear their path columns,
+  /// while KEEPING the scan row, detected foods, macros and nutrition data.
+  ///
+  /// Returns the number of scans whose media was purged.
+  Future<int> purgeExpiredScanMedia() async {
+    final db = await database;
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+
+    final rows = await db.query(
+      'scan_results',
+      columns: [
+        'id',
+        'image_path',
+        'top_image_path',
+        'side_image_path',
+        'model_path',
+      ],
+      where: 'timestamp < ? AND '
+          '(image_path IS NOT NULL OR top_image_path IS NOT NULL OR '
+          'side_image_path IS NOT NULL OR model_path IS NOT NULL)',
+      whereArgs: [startOfToday.toIso8601String()],
+    );
+    if (rows.isEmpty) return 0;
+
+    String? docsPath;
+    try {
+      docsPath = (await getApplicationDocumentsDirectory()).path;
+    } catch (_) {
+      docsPath = null;
+    }
+
+    void deleteMedia(Object? stored) {
+      if (stored is! String || stored.isEmpty) return;
+      final candidates = <String>[stored];
+      if (docsPath != null) {
+        final name = stored.split('/').last;
+        if (name.isNotEmpty) {
+          candidates.add('$docsPath/$name');
+          candidates.add('$docsPath/scan_captures/$name');
+        }
+      }
+      for (final path in candidates) {
+        try {
+          final file = File(path);
+          if (file.existsSync()) file.deleteSync();
+        } catch (_) {
+          // Best-effort cleanup; ignore individual failures.
+        }
+      }
+    }
+
+    var cleaned = 0;
+    for (final row in rows) {
+      deleteMedia(row['image_path']);
+      deleteMedia(row['top_image_path']);
+      deleteMedia(row['side_image_path']);
+      deleteMedia(row['model_path']);
+      await db.update(
+        'scan_results',
+        {
+          'image_path': null,
+          'top_image_path': null,
+          'side_image_path': null,
+          'model_path': null,
+        },
+        where: 'id = ?',
+        whereArgs: [row['id']],
+      );
+      cleaned++;
+    }
+    return cleaned;
   }
 
   Future<void> updateDetectedFood(

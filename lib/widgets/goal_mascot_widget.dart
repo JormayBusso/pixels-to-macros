@@ -268,16 +268,23 @@ class _ImageMascot extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: Text(
-            stages.labels[s],
-            key: ValueKey(s),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              color: isBest ? context.primary700 : AppTheme.gray700,
+        // Clamp the label's text scaling so a large global font size can't
+        // blow up the label and change the mascot card height / wrap awkwardly.
+        MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.1,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Text(
+              stages.labels[s],
+              key: ValueKey(s),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: isBest ? context.primary700 : context.appTextColor,
+              ),
             ),
           ),
         ),

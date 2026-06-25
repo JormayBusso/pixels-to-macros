@@ -7,6 +7,7 @@ import '../../core/diabetes/glucose_conversion.dart';
 import '../../models/insulin_settings.dart';
 import '../../providers/diabetes_provider.dart';
 import '../../services/diabetes/diabetes_safety_validator.dart';
+import '../../theme/app_theme.dart';
 import 'bolus_setup_screen.dart' show kDiabetesBlue;
 
 /// Diabetes Insulin Settings Survey.
@@ -154,21 +155,6 @@ class _InsulinSettingsSurveyScreenState
             onChanged: (v) => setState(() => _usesCgm = v),
             title: const Text('I use a continuous glucose monitor (CGM)'),
           ),
-          _section('Glucose targets (${_unit.label})'),
-          _numField(_targetCtrl, 'Target glucose'),
-          _numField(_hypoCtrl, 'Low (hypo) threshold'),
-          _numField(_hyperCtrl, 'High (hyper) threshold — optional'),
-          _section('Insulin-to-carb ratios (g carb per unit)'),
-          for (var i = 0; i < _windows.length; i++)
-            _numField(_icrCtrls[i], _windows[i].label),
-          _section('Correction factors / ISF (${_unit.label} per unit)'),
-          for (var i = 0; i < _windows.length; i++)
-            _numField(_isfCtrls[i], _windows[i].label),
-          _section('Insulin action & limits'),
-          _numField(_diaCtrl, 'Insulin action duration (hours)'),
-          _numField(_maxBolusCtrl, 'Maximum single bolus (units)'),
-          const SizedBox(height: 8),
-          _incrementPicker(),
           _section('Calculator components'),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -176,6 +162,8 @@ class _InsulinSettingsSurveyScreenState
             value: _mealBolusEnabled,
             onChanged: (v) => setState(() => _mealBolusEnabled = v),
             title: const Text('Enable meal bolus'),
+            subtitle: const Text(
+                'Covers the carbs in a meal using your carb ratios.'),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -193,6 +181,25 @@ class _InsulinSettingsSurveyScreenState
             subtitle: const Text(
                 'Uses your logged insulin doses and action duration.'),
           ),
+          _section('Glucose targets (${_unit.label})'),
+          _numField(_targetCtrl, 'Target glucose'),
+          _numField(_hypoCtrl, 'Low (hypo) threshold'),
+          _numField(_hyperCtrl, 'High (hyper) threshold — optional'),
+          if (_mealBolusEnabled) ...[
+            _section('Insulin-to-carb ratios (g carb per unit)'),
+            for (var i = 0; i < _windows.length; i++)
+              _numField(_icrCtrls[i], _windows[i].label),
+          ],
+          if (_correctionEnabled) ...[
+            _section('Correction factors / ISF (${_unit.label} per unit)'),
+            for (var i = 0; i < _windows.length; i++)
+              _numField(_isfCtrls[i], _windows[i].label),
+          ],
+          _section('Insulin action & limits'),
+          _numField(_diaCtrl, 'Insulin action duration (hours)'),
+          _numField(_maxBolusCtrl, 'Maximum single bolus (units)'),
+          const SizedBox(height: 8),
+          _incrementPicker(),
           const SizedBox(height: 16),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
@@ -265,7 +272,13 @@ class _InsulinSettingsSurveyScreenState
 
     // Required-field checks specific to enabling the calculator.
     final missing = <String>[];
-    if (candidate.icrBlocks.isEmpty) missing.add('at least one ICR');
+    if (_mealBolusEnabled && candidate.icrBlocks.isEmpty) {
+      missing.add('at least one ICR');
+    }
+    if (!_mealBolusEnabled && !_correctionEnabled) {
+      missing
+          .add('at least one calculator component (meal bolus or correction)');
+    }
     if (candidate.maxSingleBolusUnits == null) missing.add('maximum bolus');
     if (_correctionEnabled && candidate.targetGlucoseMgdl == null) {
       missing.add('target glucose');
@@ -379,6 +392,8 @@ class _InsulinSettingsSurveyScreenState
           const SizedBox(width: 12),
           DropdownButton<double>(
             value: _increment,
+            dropdownColor:
+                context.isPremiumTheme ? context.visualTheme.cardColor : null,
             items: const [
               DropdownMenuItem(value: 0.1, child: Text('0.1 u')),
               DropdownMenuItem(value: 0.5, child: Text('0.5 u')),
@@ -406,6 +421,8 @@ class _InsulinSettingsSurveyScreenState
           child: DropdownButton<T>(
             isExpanded: true,
             value: value,
+            dropdownColor:
+                context.isPremiumTheme ? context.visualTheme.cardColor : null,
             items: [
               for (final v in values)
                 DropdownMenuItem(value: v, child: Text(labelOf(v))),

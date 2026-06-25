@@ -1463,11 +1463,11 @@ class AppLocalizations {
       });
 
   String get mealPlanAutopilot => _t({
-        'en': 'Autopilot',
-        'pl': 'Autopilot',
-        'nl': 'Autopilot',
-        'es': 'Piloto automático',
-        'de': 'Autopilot',
+        'en': 'AI Planner',
+        'pl': 'Planer AI',
+        'nl': 'AI-planner',
+        'es': 'Planificador IA',
+        'de': 'KI-Planer',
       });
 
   String get mealPlanAutopilotDone => _t({
@@ -1566,11 +1566,11 @@ class AppLocalizations {
       });
 
   String get smartSwap => _t({
-        'en': 'Smart Swap',
-        'pl': 'Inteligentna zamiana',
-        'nl': 'Slim wisselen',
-        'es': 'Cambio inteligente',
-        'de': 'Intelligent tauschen',
+        'en': 'AI Swap',
+        'pl': 'Zamiana AI',
+        'nl': 'AI-wissel',
+        'es': 'Cambio IA',
+        'de': 'KI-Tausch',
       });
 
   String get smartSwapSubtitle => _t({
@@ -2772,6 +2772,14 @@ class AppLocalizations {
         'nl': 'Scandetails',
         'es': 'Detalles del escaneo',
         'de': 'Scan-Details',
+      });
+
+  String get logFood => _t({
+        'en': 'Log food',
+        'pl': 'Zapisz jedzenie',
+        'nl': 'Voedsel loggen',
+        'es': 'Registrar comida',
+        'de': 'Essen erfassen',
       });
 
   String get removeThisItem => _t({

@@ -288,7 +288,12 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     try {
       _available = await _speech.initialize(
         onError: (e) {
-          if (mounted) setState(() => _error = e.errorMsg);
+          if (!mounted) return;
+          // Ignore late/transient plugin errors once we already have a usable
+          // result — otherwise a code like "error_no_match" overwrites a
+          // perfectly good transcript with a cryptic, scary message.
+          if (_parsed.isNotEmpty || _transcript.trim().isNotEmpty) return;
+          setState(() => _error = _friendlySpeechError(e.errorMsg));
         },
         onStatus: (status) {
           if (status == 'done' || status == 'notListening') {
@@ -303,6 +308,31 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       }
     }
     if (mounted) setState(() {});
+  }
+
+  /// Turns raw speech-plugin error codes (e.g. "error_no_match") into clear,
+  /// reassuring guidance instead of an alarming "unknown error".
+  String _friendlySpeechError(String code) {
+    final c = code.toLowerCase();
+    if (c.contains('no_match') ||
+        c.contains('nomatch') ||
+        c.contains('speech_timeout') ||
+        c.contains('timeout')) {
+      return 'I didn\'t catch that. Tap the mic and clearly say the food and '
+          'amount, e.g. "a banana" or "200 grams of chicken".';
+    }
+    if (c.contains('permission') || c.contains('denied')) {
+      return 'Microphone or speech permission is off. Enable it in your phone '
+          'settings to use voice logging.';
+    }
+    if (c.contains('network')) {
+      return 'Voice recognition needs a connection right now. Check your '
+          'network and try again.';
+    }
+    if (c.contains('busy')) {
+      return 'The microphone is busy. Wait a moment, then try again.';
+    }
+    return 'I couldn\'t process that audio. Please try again.';
   }
 
   void _startListening() {
@@ -367,7 +397,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
             _error = null;
           }
         } catch (e) {
-          _error = 'Failed to parse speech: $e';
+          _error = 'Something went wrong reading that. Please try again.';
           _parsed = [];
         }
       }

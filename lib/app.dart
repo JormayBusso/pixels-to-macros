@@ -38,12 +38,22 @@ class PixelsToMacrosApp extends ConsumerWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        // Apply user-selected font scale to every screen in the app
+        // Apply user-selected font scale to every screen in the app, and let
+        // a tap on any empty area dismiss the keyboard app-wide (so every edit
+        // field / settings screen can hide the keyboard without a dedicated
+        // button).
         builder: (ctx, child) => MediaQuery(
           data: MediaQuery.of(ctx).copyWith(
             textScaler: TextScaler.linear(fontScale),
           ),
-          child: child!,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              final focus = FocusManager.instance.primaryFocus;
+              if (focus != null && focus.hasFocus) focus.unfocus();
+            },
+            child: child!,
+          ),
         ),
         home: const IntroVideoScreen(nextScreen: _AppGate()),
       );

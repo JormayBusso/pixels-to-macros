@@ -39,10 +39,10 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
     _weightCtrl = TextEditingController(
       text: widget.food.volumeCm3.round().toString(),
     );
-    _calMinCtrl = TextEditingController(
-        text: widget.food.caloriesMin.round().toString());
-    _calMaxCtrl = TextEditingController(
-        text: widget.food.caloriesMax.round().toString());
+    _calMinCtrl =
+        TextEditingController(text: widget.food.caloriesMin.round().toString());
+    _calMaxCtrl =
+        TextEditingController(text: widget.food.caloriesMax.round().toString());
     _loadSuggestions();
   }
 
@@ -182,7 +182,9 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
             Container(
               constraints: const BoxConstraints(maxHeight: 200),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.isPremiumTheme
+                    ? context.visualTheme.cardColor
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: context.primary200),
               ),
@@ -265,7 +267,9 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
   List<FoodData> get _filteredSuggestions {
     final q = _labelCtrl.text.toLowerCase();
     if (q.isEmpty) return _suggestions;
-    return _suggestions.where((f) => f.label.toLowerCase().contains(q)).toList();
+    return _suggestions
+        .where((f) => f.label.toLowerCase().contains(q))
+        .toList();
   }
 
   FoodData? _foodForLabel([String? label]) {

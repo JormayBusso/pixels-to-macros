@@ -366,6 +366,11 @@ final class MonocularVolumeEstimator {
 
             let roundedVolume = round(volumeCm3 * 10) / 10
             let roundedConfidence = round(confidence * 1000) / 1000
+            // Component confidences so the diagnostics screen can explain WHY a
+            // scan scored the way it did (scale vs segmentation vs silhouette).
+            let scaleConfidence = scaleSourceConfidence(scale.source)
+            let silhouetteConfidence = sideApplied ? Double(profile?.confidence ?? 0.0) : 0.0
+            let lowConfidence = roundedConfidence < 0.66 || scale.source == "default_plate"
             var row: [String: Any] = [
                 "id": id,
                 "label": seg.label,
@@ -375,6 +380,10 @@ final class MonocularVolumeEstimator {
                 "pixel_count": seg.pixelCount,
                 "confidence": roundedConfidence,
                 "confidence_score": roundedConfidence,
+                "scale_confidence": round(scaleConfidence * 1000) / 1000,
+                "segmentation_confidence": round(Double(seg.confidence) * 1000) / 1000,
+                "silhouette_confidence": round(silhouetteConfidence * 1000) / 1000,
+                "low_confidence": lowConfidence,
                 "silhouette_height_px": round(heightCm * scale.pixelsPerCm * 10) / 10,
                 "pixels_per_cm": round(scale.pixelsPerCm * 100) / 100,
                 "density_source": "label_prior",
@@ -434,7 +443,25 @@ final class MonocularVolumeEstimator {
         maskHeight: Int,
         tableDistanceCm: Double? = nil
     ) -> ScaleEstimate {
+        let imageWidth = CVPixelBufferGetWidth(topFrame.pixelBuffer)
         let plate = plateDetector.detect(in: topFrame.pixelBuffer)
+        let cropWidthPx = max(1.0, Double(plate.rect.width) * Double(imageWidth))
+        let fx = Double(topFrame.cameraIntrinsics.columns.0.x)
+
+        // Prefer the ARKit horizontal-plane camera-to-table distance whenever
+        // it is available. Plate circle-fitting swings ±20% with glare, shadow
+        // and viewing angle, and because volume scales with distance cubed that
+        // noise compounds into the ~2x footprint/weight swings seen on repeated
+        // scans of the same food. The measured plane distance is metrically
+        // stable, so it now takes priority over plate detection.
+        if let tableDistanceCm, fx > 1 {
+            let cmPerImagePx = tableDistanceCm / fx
+            let cmPerMaskPx = cmPerImagePx * cropWidthPx / Double(maskWidth)
+            return ScaleEstimate(
+                pixelsPerCm: max(1.0 / max(cmPerMaskPx, 0.0001), 1.0),
+                source: "arkit_plane")
+        }
+
         if plate.detected {
             // The preprocessor crops the plate to the model input. In mask
             // space, the plate spans most of the shorter dimension.
@@ -442,19 +469,15 @@ final class MonocularVolumeEstimator {
             return ScaleEstimate(pixelsPerCm: max(pxPerCm, 1.0), source: "plate")
         }
 
-        let imageWidth = CVPixelBufferGetWidth(topFrame.pixelBuffer)
-        let cropWidthPx = max(1.0, Double(plate.rect.width) * Double(imageWidth))
-        let fx = Double(topFrame.cameraIntrinsics.columns.0.x)
         if fx > 1 {
-            // cm per full-image pixel at the camera-to-table distance = D / fx.
-            // D comes from ARKit horizontal-plane tracking when available (works
-            // at any hold distance on non-LiDAR); otherwise we fall back to the
-            // 30 cm guided-distance assumption.
-            let distanceCm = tableDistanceCm ?? guidedDistanceCm
+            // No plane and no plate: fall back to the 30 cm guided-distance
+            // assumption at the camera intrinsics.
+            let distanceCm = guidedDistanceCm
             let cmPerImagePx = distanceCm / fx
             let cmPerMaskPx = cmPerImagePx * cropWidthPx / Double(maskWidth)
-            let source = tableDistanceCm != nil ? "arkit_plane" : "30cm_intrinsics"
-            return ScaleEstimate(pixelsPerCm: max(1.0 / max(cmPerMaskPx, 0.0001), 1.0), source: source)
+            return ScaleEstimate(
+                pixelsPerCm: max(1.0 / max(cmPerMaskPx, 0.0001), 1.0),
+                source: "30cm_intrinsics")
         }
 
         // Last resort: assume the crop covers a default dinner plate.
@@ -464,18 +487,21 @@ final class MonocularVolumeEstimator {
         )
     }
 
+    private func scaleSourceConfidence(_ source: String) -> Double {
+        switch source {
+        case "arkit_plane": return 0.80
+        case "plate": return 0.78
+        case "30cm_intrinsics": return 0.66
+        default: return 0.58
+        }
+    }
+
     private func confidenceForScale(
         _ scale: ScaleEstimate,
         segmentConfidence: Float,
         sideFrame: FrameCaptureService.CapturedFrame?
     ) -> Double {
-        let scaleConfidence: Double
-        switch scale.source {
-        case "arkit_plane": scaleConfidence = 0.80
-        case "plate": scaleConfidence = 0.78
-        case "30cm_intrinsics": scaleConfidence = 0.66
-        default: scaleConfidence = 0.58
-        }
+        let scaleConfidence = scaleSourceConfidence(scale.source)
         let sideBonus = sideFrame == nil ? 0.0 : 0.04
         return min(0.86, max(0.62, scaleConfidence * 0.65 + Double(segmentConfidence) * 0.35 + sideBonus))
     }
@@ -942,7 +968,14 @@ final class MonocularVolumeEstimator {
                     )
                 } else {
                     bottomFraction = fallbackBottomFraction(rho: rho, dome: dome, edge: edge)
-                    heightFraction = max(bottomFraction + 0.035 * edge, dome * edge)
+                    // Box-like foods (bread, toast, stacked slices, rice) must
+                    // keep a flat top instead of a spherical dome, otherwise a
+                    // loaf reconstructs as a rounded blob. Only genuinely round
+                    // foods (tomato/apple/…) use the full dome.
+                    let topShape: Float = transverseStrength > 0
+                        ? dome
+                        : (0.82 + 0.18 * dome)
+                    heightFraction = max(bottomFraction + 0.035 * edge, topShape * edge)
                 }
                 cornerB[corner(rr, cc)] = max(0.0, min(h * 0.80, h * bottomFraction))
                 cornerH[corner(rr, cc)] = max(0.0, h * heightFraction)
@@ -1037,7 +1070,7 @@ final class MonocularVolumeEstimator {
             }
         }
 
-        let color = sampleColor(topFrame: topFrame, centroid: centroid, maskWidth: maskWidth, maskHeight: maskHeight)
+        let color = dominantColor(topFrame: topFrame, mask: mask, footprint: footprint, maskWidth: maskWidth, maskHeight: maskHeight)
         var colors: [UInt8] = []
         colors.reserveCapacity(vertices.count * 3)
         for _ in vertices {
@@ -1059,6 +1092,67 @@ final class MonocularVolumeEstimator {
             volumeCm3: volumeCm3,
             preserveCreases: true
         )
+    }
+
+    /// Robust dominant colour of the food. Averages many in-mask pixels from
+    /// the decoded top frame, rejecting specular highlights and deep shadows so
+    /// a single glare/shadow pixel can't skew the whole mesh. This is what makes
+    /// a tomato render red, a banana yellow and bread brown instead of a generic
+    /// tint. Falls back to the centroid pixel, then a neutral beige.
+    private func dominantColor(
+        topFrame: FrameCaptureService.CapturedFrame,
+        mask: [[UInt8]],
+        footprint: Footprint,
+        maskWidth: Int,
+        maskHeight: Int
+    ) -> [UInt8] {
+        guard let buffer = Food3DTextureBaker.bgraCopy(of: topFrame.pixelBuffer) else {
+            return [210, 170, 120]
+        }
+        CVPixelBufferLockBaseAddress(buffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
+
+        let w = CVPixelBufferGetWidth(buffer)
+        let h = CVPixelBufferGetHeight(buffer)
+        let rowBytes = CVPixelBufferGetBytesPerRow(buffer)
+        guard let base = CVPixelBufferGetBaseAddress(buffer) else { return [210, 170, 120] }
+        let ptr = base.assumingMemoryBound(to: UInt8.self)
+
+        let minR = max(0, footprint.minRow), maxRow = min(maskHeight - 1, footprint.maxRow)
+        let minC = max(0, footprint.minCol), maxCol = min(maskWidth - 1, footprint.maxCol)
+        let rows = max(1, maxRow - minR + 1), cols = max(1, maxCol - minC + 1)
+        // Bound the work to roughly 50x50 mask samples regardless of food size.
+        let stride = max(1, Int((Double(max(rows, cols)) / 50.0).rounded(.up)))
+
+        var rSum = 0.0, gSum = 0.0, bSum = 0.0, n = 0.0
+        var mr = minR
+        while mr <= maxRow {
+            var mc = minC
+            while mc <= maxCol {
+                if mask[mr][mc] == 1 {
+                    let x = min(max(Int((Double(mc) / Double(maskWidth)) * Double(w)), 0), w - 1)
+                    let y = min(max(Int((Double(mr) / Double(maskHeight)) * Double(h)), 0), h - 1)
+                    let off = y * rowBytes + x * 4
+                    let r = Double(ptr[off + 2]), g = Double(ptr[off + 1]), b = Double(ptr[off + 0])
+                    // Skip near-white specular highlights and near-black shadows
+                    // so the average reflects the real food hue, not glare.
+                    let maxc = max(r, max(g, b)), minc = min(r, min(g, b))
+                    if maxc < 248 && minc > 16 {
+                        rSum += r; gSum += g; bSum += b; n += 1
+                    }
+                }
+                mc += stride
+            }
+            mr += stride
+        }
+        if n >= 8 {
+            return [
+                UInt8(min(255.0, (rSum / n).rounded())),
+                UInt8(min(255.0, (gSum / n).rounded())),
+                UInt8(min(255.0, (bSum / n).rounded()))
+            ]
+        }
+        return sampleColor(topFrame: topFrame, centroid: footprint.centroid, maskWidth: maskWidth, maskHeight: maskHeight)
     }
 
     private func sampleColor(

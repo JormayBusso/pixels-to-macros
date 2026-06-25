@@ -62,7 +62,7 @@ class NutrientWheelWidget extends ConsumerWidget {
                         Icon(Icons.radar_outlined, color: context.primary700),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -71,15 +71,15 @@ class NutrientWheelWidget extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
-                            color: AppTheme.gray900,
+                            color: context.appTextColor,
                           ),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
                           'Targets from today\'s logged foods',
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppTheme.gray400,
+                            color: context.appMutedTextColor,
                           ),
                         ),
                       ],
@@ -566,7 +566,10 @@ class _WheelWithLabels extends StatelessWidget {
         children: [
           CustomPaint(
             size: const Size(_boxSize, _boxSize),
-            painter: _WheelPainter(nutrients: nutrients),
+            painter: _WheelPainter(
+              nutrients: nutrients,
+              trackColor: context.appBorderColor,
+            ),
             child: Center(
               child: Container(
                 width: 104,
@@ -625,9 +628,10 @@ class _WheelWithLabels extends StatelessWidget {
 }
 
 class _WheelPainter extends CustomPainter {
-  const _WheelPainter({required this.nutrients});
+  const _WheelPainter({required this.nutrients, required this.trackColor});
 
   final List<_NutrientInfo> nutrients;
+  final Color trackColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -646,7 +650,7 @@ class _WheelPainter extends CustomPainter {
 
       // Track (background arc): flat caps so there is no dot at the start.
       final basePaint = Paint()
-        ..color = AppTheme.gray200
+        ..color = trackColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.butt;
@@ -674,7 +678,8 @@ class _WheelPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WheelPainter oldDelegate) =>
-      oldDelegate.nutrients != nutrients;
+      oldDelegate.nutrients != nutrients ||
+      oldDelegate.trackColor != trackColor;
 }
 
 class _NutrientWheelDetails extends StatelessWidget {
@@ -712,7 +717,7 @@ class _NutrientWheelDetails extends StatelessWidget {
           child: _StatBox(
             label: 'Tracked',
             value: '$total',
-            color: AppTheme.gray700,
+            color: context.appTextColor,
           ),
         ),
       ],
@@ -736,7 +741,7 @@ class _StatBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: AppTheme.gray100,
+        color: context.appSubtleFillColor,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -756,10 +761,10 @@ class _StatBox extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: AppTheme.gray400,
+              color: context.appMutedTextColor,
             ),
           ),
         ],
@@ -800,7 +805,7 @@ class _WheelDetailSheet extends StatelessWidget {
                 child: Icon(Icons.radar_outlined, color: context.primary700),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -809,13 +814,14 @@ class _WheelDetailSheet extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
-                        color: AppTheme.gray900,
+                        color: context.appTextColor,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       'Today\'s vitamin and mineral coverage',
-                      style: TextStyle(fontSize: 12, color: AppTheme.gray400),
+                      style: TextStyle(
+                          fontSize: 12, color: context.appMutedTextColor),
                     ),
                   ],
                 ),
@@ -824,7 +830,7 @@ class _WheelDetailSheet extends StatelessWidget {
               IconButton(
                 onPressed: () => Navigator.of(context).maybePop(),
                 icon: const Icon(Icons.close),
-                color: AppTheme.gray500,
+                color: context.appMutedTextColor,
               ),
             ],
           ),
@@ -849,12 +855,12 @@ class _WheelDetailSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Nutrient-specific guidance',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: AppTheme.gray900,
+              color: context.appTextColor,
             ),
           ),
           const SizedBox(height: 8),

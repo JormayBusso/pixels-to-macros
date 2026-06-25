@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/glucose_spike_model.dart';
 import '../theme/app_theme.dart';
@@ -12,8 +13,10 @@ import 'premium_theme_effects.dart';
 /// - Spike curve (area chart)
 /// - Peak time marker
 /// - Severity badge
+/// - Insulin pre-bolus timing guidance
+/// - A dismissable "covers the meal only" insulin warning
 /// - Medical disclaimer
-class GlucoseSpikeCard extends StatelessWidget {
+class GlucoseSpikeCard extends StatefulWidget {
   const GlucoseSpikeCard({
     super.key,
     required this.mealItems,
@@ -22,7 +25,43 @@ class GlucoseSpikeCard extends StatelessWidget {
   final List<MealItemInput> mealItems;
 
   @override
+  State<GlucoseSpikeCard> createState() => _GlucoseSpikeCardState();
+}
+
+class _GlucoseSpikeCardState extends State<GlucoseSpikeCard> {
+  // Persisted so a dismissal survives restarts. The warning re-appears once
+  // the stored timestamp passes (~1 month later).
+  static const _dismissKey = 'glucose_meal_warning_dismissed_until';
+  bool _warningHidden = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDismiss();
+  }
+
+  Future<void> _loadDismiss() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final until = prefs.getInt(_dismissKey) ?? 0;
+      if (mounted && DateTime.now().millisecondsSinceEpoch < until) {
+        setState(() => _warningHidden = true);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _dismissForMonth() async {
+    setState(() => _warningHidden = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final until = DateTime.now().add(const Duration(days: 30));
+      await prefs.setInt(_dismissKey, until.millisecondsSinceEpoch);
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final mealItems = widget.mealItems;
     final curve = GlucoseSpikeModel.predict(mealItems);
     final summary = GlucoseSpikeModel.summarize(curve);
 
@@ -131,6 +170,111 @@ class GlucoseSpikeCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          // ── Insulin pre-bolus timing guidance ───────────────────────
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: context.primary500.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(8),
+              border:
+                  Border.all(color: context.primary500.withValues(alpha: 0.28)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.schedule, size: 15, color: context.primary600),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'When to take insulin',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: context.appTextColor,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Glucose is expected to peak about '
+                        '${summary.peakAtMinute} min after eating. '
+                        'Rapid-acting insulin (e.g. aspart/lispro) usually '
+                        'starts working in ~15 min and peaks around 1–2 h, so '
+                        'many people inject ~15 min before a carb-rich meal so '
+                        'it lines up with the rise. Always use the timing your '
+                        'clinician set for you.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          height: 1.35,
+                          color: context.appMutedTextColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!_warningHidden) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
+              decoration: BoxDecoration(
+                color: AppTheme.amber100
+                    .withValues(alpha: context.isPremiumTheme ? 0.16 : 1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: AppTheme.amber500.withValues(alpha: 0.42)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          size: 16, color: Colors.amber.shade800),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Any insulin amount here covers only the carbs in '
+                          'this meal. It does NOT account for your current '
+                          'blood sugar — measure your glucose and adjust your '
+                          'dose accordingly. Never dose from this estimate '
+                          'alone.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            height: 1.35,
+                            fontWeight: FontWeight.w600,
+                            color: context.appTextColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _dismissForMonth,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: const Size(0, 32),
+                        foregroundColor: Colors.amber.shade900,
+                      ),
+                      child: const Text(
+                        "Don't show for a month",
+                        style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           // Disclaimer
           Container(

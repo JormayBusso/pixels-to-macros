@@ -13,6 +13,7 @@ import '../providers/grocery_provider.dart';
 import '../providers/history_provider.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/premium_theme_effects.dart';
 
 /// Screen for managing a personal grocery shopping list.
 ///
@@ -1099,16 +1100,42 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          OutlinedButton.icon(
+                          FilledButton.icon(
                             icon: const Icon(Icons.add, size: 18),
                             label: Text(l10n.addToGroceryList),
                             onPressed: _showAddDialog,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: context.isPremiumTheme
+                                  ? context.visualTheme.primaryAccent
+                                  : context.primary500,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(44),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 10),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.auto_awesome, size: 18),
-                            label: Text(l10n.scanReceipt),
-                            onPressed: _showSmartSuggestSheet,
+                          PremiumMotionSurface(
+                            borderRadius: BorderRadius.circular(12),
+                            glow: true,
+                            animate: true,
+                            borderWidth: 3.4,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.auto_awesome, size: 18),
+                              label: Text(l10n.scanReceipt),
+                              onPressed: _showSmartSuggestSheet,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: context.isPremiumTheme
+                                    ? context.visualTheme.primaryAccent
+                                    : context.primary500,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size.fromHeight(44),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),

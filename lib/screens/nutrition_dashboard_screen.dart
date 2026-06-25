@@ -450,17 +450,18 @@ class _SummaryCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Today's Intake",
-                    style: TextStyle(fontSize: 12, color: AppTheme.gray400),
+                    style: TextStyle(
+                        fontSize: 12, color: context.appMutedTextColor),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '$calories kcal',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.gray900,
+                      color: context.appTextColor,
                     ),
                   ),
                   Text(
@@ -507,10 +508,10 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 16, 4),
       child: Text(
         title.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: AppTheme.gray400,
+          color: context.appMutedTextColor,
           letterSpacing: 1.0,
         ),
       ),
@@ -797,16 +798,17 @@ class _NutrientRowState extends State<_NutrientRow> {
                 Expanded(
                   child: Text(
                     widget.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.gray700,
+                      color: context.appTextColor,
                     ),
                   ),
                 ),
                 Text(
                   '${_fmt(widget.current)} / ${_fmt(widget.drv)} ${widget.unit}',
-                  style: const TextStyle(fontSize: 11, color: AppTheme.gray400),
+                  style:
+                      TextStyle(fontSize: 11, color: context.appMutedTextColor),
                 ),
                 const SizedBox(width: 8),
                 SizedBox(

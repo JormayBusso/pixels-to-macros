@@ -21,7 +21,7 @@ import '../services/perf_monitor.dart';
 import '../core/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confidence_badge.dart';
-import '../widgets/generated_food_preview.dart';
+import '../widgets/ai_scan_processing_view.dart';
 import '../widgets/dual_photo_capture_overlay.dart';
 import '../widgets/ai_scan_edge_glow.dart';
 import '../models/scan_diagnostics.dart';
@@ -60,7 +60,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       0; // consecutive aligned+stable polls before auto-shutter
   String _detectedDepthMode = 'unknown';
   ScanResult? _savedScanResult;
-  List<DetectedFood> _buildPreviewFoods = const [];
   bool _launched3DViewer = false;
   bool _orientationReady = false;
   int? _sessionGeneration; // generation counter for safe stop()
@@ -537,11 +536,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       }
     } else {
       final successfulResult = result;
-      if (mounted) {
-        setState(() {
-          _buildPreviewFoods = List<DetectedFood>.from(successfulResult.foods);
-        });
-      }
       if (!mounted) return;
       DebugLog.instance.log(
           'Scan',
@@ -694,7 +688,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _sessionStarted = false;
     _sessionErrorDetail = null;
     _launched3DViewer = false;
-    _buildPreviewFoods = const [];
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();
     _startSession();
@@ -766,13 +759,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               top: MediaQuery.of(context).padding.top + 104,
               left: 16,
               right: 16,
-              child: GeneratedFoodPreview(
-                foods: _buildPreviewFoods,
-                isBuilding: true,
+              child: AiScanProcessingView(
                 height: 250,
-                title: _buildPreviewFoods.isEmpty
-                    ? l10n.building3dPreview
-                    : l10n.refining3dFoodModel,
+                label: l10n.building3dPreview,
               ),
             ),
 
@@ -1054,6 +1043,24 @@ class _BottomPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+            // Primary action: the scan is already saved to the diary on
+            // completion. This opens the logged meal's details — which, for
+            // diabetes users, includes the glucose-spike + insulin-timing
+            // insight — or just confirms and returns home.
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: onViewDetails ?? onClose,
+                icon: const Icon(Icons.check_circle_outline),
+                label: Text(AppLocalizations.of(context).logFood),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: context.primary500,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -1068,11 +1075,13 @@ class _BottomPanel extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: onViewDetails ?? onClose,
-                    child: Text(onViewDetails != null
-                        ? AppLocalizations.of(context).scanDetails
-                        : AppLocalizations.of(context).done),
+                  child: OutlinedButton(
+                    onPressed: onClose,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      side: const BorderSide(color: Colors.white24),
+                    ),
+                    child: Text(AppLocalizations.of(context).done),
                   ),
                 ),
               ],

@@ -19,6 +19,7 @@ import '../services/database_service.dart';
 import '../services/recipe_repository.dart';
 import '../services/recipe_swap_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/premium_theme_effects.dart';
 import 'recipes_screen.dart';
 
 /// Converts a [CustomMeal] to a [Recipe] for use in the meal planner UI.
@@ -137,7 +138,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                     const TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
             Text(
               'Week ${plan.weekNumber}, ${plan.year}',
-              style: const TextStyle(fontSize: 11, color: AppTheme.gray500),
+              style: TextStyle(fontSize: 11, color: context.appMutedTextColor),
             ),
           ],
         ),
@@ -284,12 +285,17 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
           dailyCalorieGoal: prefs.dailyCalorieGoal,
           dietaryRestrictions: prefs.dietaryRestrictions,
           pantryNames: pantryNames,
+          // Re-running the AI planner reshuffles the entire week so every day
+          // gets a fresh, different set of dishes.
+          replaceExisting: true,
         );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(l10n.mealPlanAutopilotDone),
-        backgroundColor: AppTheme.green600,
+        backgroundColor: context.isPremiumTheme
+            ? context.visualTheme.primaryAccent
+            : AppTheme.green600,
       ),
     );
   }
@@ -475,14 +481,24 @@ class _PlannerActionBar extends ConsumerWidget {
       child: Row(
         children: [
           Expanded(
-            child: FilledButton.icon(
-              onPressed: onAutopilot,
-              icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-              label: Text(l10n.mealPlanAutopilot),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(42),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            child: PremiumMotionSurface(
+              borderRadius: BorderRadius.circular(12),
+              glow: true,
+              animate: true,
+              borderWidth: 3.4,
+              child: FilledButton.icon(
+                onPressed: onAutopilot,
+                icon: const Icon(Icons.auto_awesome, size: 18),
+                label: Text(l10n.mealPlanAutopilot),
+                style: FilledButton.styleFrom(
+                  backgroundColor: context.isPremiumTheme
+                      ? context.visualTheme.primaryAccent
+                      : context.primary500,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(42),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -494,15 +510,20 @@ class _PlannerActionBar extends ConsumerWidget {
               avatar: Icon(
                 Icons.kitchen_outlined,
                 size: 17,
-                color: pantryMode ? context.primary700 : AppTheme.gray500,
+                color:
+                    pantryMode ? context.primary700 : context.appMutedTextColor,
               ),
               label: Text(
                 pantryMode
                     ? '${l10n.pantryMode} (${pantry.availableItems.length})'
                     : l10n.pantryMode,
               ),
+              labelStyle: TextStyle(color: context.appTextColor),
+              backgroundColor: context.appSubtleFillColor,
               selected: pantryMode,
-              selectedColor: context.primary100,
+              selectedColor: context.primary500.withValues(alpha: 0.20),
+              checkmarkColor: context.primary700,
+              side: BorderSide(color: context.appBorderColor),
               onSelected: (value) async {
                 ref.read(pantryModeProvider.notifier).state = value;
                 if (!value) return;
@@ -868,18 +889,24 @@ class _MealSlotRow extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      // Swap recipe button
-                      GestureDetector(
-                        onTap: () => _showSmartSwapSheet(context, ref, goal),
-                        child: Container(
-                          margin: const EdgeInsets.all(8),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: context.primary500.withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
+                      // Swap recipe button (AI Swap)
+                      PremiumMotionSurface(
+                        borderRadius: BorderRadius.circular(40),
+                        glow: true,
+                        animate: true,
+                        borderWidth: 3.4,
+                        child: GestureDetector(
+                          onTap: () => _showSmartSwapSheet(context, ref, goal),
+                          child: Container(
+                            margin: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: context.primary500.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.auto_awesome,
+                                size: 24, color: context.primary500),
                           ),
-                          child: Icon(Icons.swap_horiz_rounded,
-                              size: 26, color: context.primary500),
                         ),
                       ),
                     ],
