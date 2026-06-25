@@ -34,6 +34,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   String _transcript = '';
   List<_ParsedFood> _parsed = [];
   String? _error;
+  bool _lowConfidence = false;
   List<FoodData> _allFoods = [];
 
   // ── Save as meal ───────────────────────────────────────────────
@@ -56,6 +57,38 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       c.dispose();
     }
     _gramControllers.clear();
+  }
+
+  /// Remove a parsed item before logging (e.g. a mishear). Controllers are
+  /// keyed by row index, so dispose them all and let them rebuild.
+  void _removeParsed(int index) {
+    if (index < 0 || index >= _parsed.length) return;
+    setState(() {
+      _disposeGramControllers();
+      final next = [..._parsed]..removeAt(index);
+      _parsed = next;
+    });
+  }
+
+  /// Let the user search and assign the correct food for a row — used both to
+  /// fix an "Unknown" item and to correct a wrong match before logging.
+  Future<void> _resolveParsed(int index) async {
+    if (index < 0 || index >= _parsed.length) return;
+    final picked = await showModalBottomSheet<FoodData>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _VoiceFoodSearchSheet(foods: _allFoods),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      final old = _parsed[index];
+      final grams = old.grams <= 0 ? 100.0 : old.grams;
+      _disposeGramControllers();
+      final next = [..._parsed];
+      next[index] = _ParsedFood(food: picked, grams: grams);
+      _parsed = next;
+    });
   }
 
   static const _foodAliases = {
@@ -346,6 +379,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
       _listening = true;
       _transcript = '';
       _parsed = [];
+      _lowConfidence = false;
     });
     try {
       // Use the app language for speech recognition
@@ -387,6 +421,10 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
           // New parse → row indices change; drop stale grams controllers.
           _disposeGramControllers();
           _parsed = _parseTranscript(_transcript);
+          _lowConfidence = result.hasConfidenceRating &&
+              result.confidence > 0 &&
+              result.confidence < 0.55 &&
+              _parsed.isNotEmpty;
           if (_parsed.isEmpty) {
             _error = _transcript.trim().isEmpty
                 ? 'I didn\'t catch anything. Tap the mic and say e.g. '
@@ -399,6 +437,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         } catch (e) {
           _error = 'Something went wrong reading that. Please try again.';
           _parsed = [];
+          _lowConfidence = false;
         }
       }
     });
@@ -1162,6 +1201,33 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
 
                   // ── Parsed foods ────────────────────────────────────────
                   if (_parsed.isNotEmpty) ...[
+                    if (_lowConfidence)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: Colors.amber.withValues(alpha: 0.45)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline,
+                                size: 16, color: Colors.amber.shade800),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Heard with low confidence — please double-check '
+                                'the items below.',
+                                style: TextStyle(
+                                    fontSize: 12, color: context.appTextColor),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -1182,6 +1248,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                                     : Colors.white)
                                 : AppTheme.red100,
                             child: ListTile(
+                              onTap: () => _resolveParsed(i),
                               leading: Icon(
                                 matched
                                     ? Icons.check_circle
@@ -1205,33 +1272,65 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                               ),
                               subtitle: Text(
                                 matched
-                                    ? '${p.grams.round()} g  •  ${(p.food!.kcalPer100g * p.grams / 100).round()} kcal'
-                                    : 'Not found in database',
+                                    ? '${p.grams.round()} g  •  ${(p.food!.kcalPer100g * p.grams / 100).round()} kcal  •  tap to change'
+                                    : 'Not found — tap to search the food',
                                 style: const TextStyle(fontSize: 12),
                               ),
                               trailing: matched
-                                  ? SizedBox(
-                                      width: 60,
-                                      child: TextField(
-                                        keyboardType: TextInputType.number,
-                                        controller: _gramController(i, p.grams),
-                                        onChanged: (v) {
-                                          final g = double.tryParse(v);
-                                          if (g != null) {
-                                            setState(() => _parsed[i] =
-                                                _ParsedFood(
-                                                    food: p.food, grams: g));
-                                          }
-                                        },
-                                        decoration: const InputDecoration(
-                                          isDense: true,
-                                          suffixText: 'g',
-                                          border: OutlineInputBorder(),
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: 56,
+                                          child: TextField(
+                                            keyboardType: TextInputType.number,
+                                            controller:
+                                                _gramController(i, p.grams),
+                                            onChanged: (v) {
+                                              final g = double.tryParse(v);
+                                              if (g != null) {
+                                                setState(() => _parsed[i] =
+                                                    _ParsedFood(
+                                                        food: p.food,
+                                                        grams: g));
+                                              }
+                                            },
+                                            decoration: const InputDecoration(
+                                              isDense: true,
+                                              suffixText: 'g',
+                                              border: OutlineInputBorder(),
+                                            ),
+                                            style: const TextStyle(fontSize: 13),
+                                          ),
                                         ),
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
+                                        IconButton(
+                                          icon: const Icon(Icons.close,
+                                              size: 18),
+                                          tooltip: 'Remove',
+                                          color: context.appMutedTextColor,
+                                          onPressed: () => _removeParsed(i),
+                                        ),
+                                      ],
                                     )
-                                  : null,
+                                  : Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.search,
+                                              size: 18),
+                                          tooltip: 'Search food',
+                                          color: Colors.red.shade400,
+                                          onPressed: () => _resolveParsed(i),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.close,
+                                              size: 18),
+                                          tooltip: 'Remove',
+                                          color: Colors.red.shade400,
+                                          onPressed: () => _removeParsed(i),
+                                        ),
+                                      ],
+                                    ),
                             ),
                           ),
                         );
@@ -1365,6 +1464,100 @@ class _ParsedFood {
   final String? query;
   final double grams;
   const _ParsedFood({this.food, this.query, required this.grams});
+}
+
+/// Search-and-pick sheet used to fix an unrecognised voice item or correct a
+/// wrong match before logging.
+class _VoiceFoodSearchSheet extends StatefulWidget {
+  const _VoiceFoodSearchSheet({required this.foods});
+  final List<FoodData> foods;
+
+  @override
+  State<_VoiceFoodSearchSheet> createState() => _VoiceFoodSearchSheetState();
+}
+
+class _VoiceFoodSearchSheetState extends State<_VoiceFoodSearchSheet> {
+  final _ctrl = TextEditingController();
+  String _q = '';
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = _q.toLowerCase().trim();
+    final matches = q.isEmpty
+        ? widget.foods.take(40).toList()
+        : (widget.foods
+            .where((f) => f.label.toLowerCase().contains(q))
+            .toList()
+          ..sort((a, b) => a.label
+              .toLowerCase()
+              .indexOf(q)
+              .compareTo(b.label.toLowerCase().indexOf(q))))
+            .take(60)
+            .toList();
+    return DraggableScrollableSheet(
+      initialChildSize: 0.72,
+      maxChildSize: 0.95,
+      minChildSize: 0.5,
+      expand: false,
+      builder: (_, ctrl) => Container(
+        decoration: BoxDecoration(
+          color: context.appSurfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.gray300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextField(
+                controller: _ctrl,
+                autofocus: true,
+                onChanged: (v) => setState(() => _q = v),
+                decoration: InputDecoration(
+                  hintText: 'Search food…',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+              ),
+            ),
+            Expanded(
+              child: matches.isEmpty
+                  ? const Center(child: Text('No matching food'))
+                  : ListView.builder(
+                      controller: ctrl,
+                      itemCount: matches.length,
+                      itemBuilder: (_, i) {
+                        final f = matches[i];
+                        return ListTile(
+                          title: Text(f.label),
+                          subtitle:
+                              Text('${f.kcalPer100g.round()} kcal / 100 g'),
+                          onTap: () => Navigator.pop(context, f),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Prominent, scrollable, selectable error box with a copy button.
