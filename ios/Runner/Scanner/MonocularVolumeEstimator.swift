@@ -949,15 +949,6 @@ final class MonocularVolumeEstimator {
         // Centroid in corner coordinates (cell centre r sits at corner r + 0.5).
         let cgR = Float((centroid.row - Double(footprint.minRow)) / Double(step)) + 0.5
         let cgC = Float((centroid.col - Double(footprint.minCol)) / Double(step)) + 0.5
-        var maxR2: Float = 0.5
-        for rr in 0...gr {
-            for cc in 0...gc where cornerCells(rr, cc) > 0 {
-                let dr = Float(rr) - cgR, dc = Float(cc) - cgC
-                let d2 = dr * dr + dc * dc
-                if d2 > maxR2 { maxR2 = d2 }
-            }
-        }
-        let maxR = sqrt(maxR2)
         // Distance transform of the top silhouette over the corner lattice: 0 on
         // the outline, growing inward (two-pass chamfer). The no-side-profile
         // fallback shapes its vertical profile from THIS instead of a centroid
@@ -999,22 +990,6 @@ final class MonocularVolumeEstimator {
             let t = max(0.0, min(1.0, x))
             return t * t * (3.0 - 2.0 * t)
         }
-        @inline(__always) func fallbackBottomFraction(rho: Float, dome: Float, edge: Float) -> Float {
-            let l = label.lowercased()
-            if l.contains("soup") || l.contains("sauce") || l.contains("yogurt") ||
-                l.contains("rice") || l.contains("pasta") || l.contains("noodle") ||
-                l.contains("salad") || l.contains("bread") || l.contains("toast") {
-                return 0
-            }
-            if l.contains("banana") {
-                return min(0.18, 0.08 + 0.10 * dome) * edge
-            }
-            if l.contains("tomato") || l.contains("apple") || l.contains("orange") ||
-                l.contains("peach") || l.contains("plum") || l.contains("egg") {
-                return min(0.24, 0.14 * dome + 0.04 * (1.0 - rho)) * edge
-            }
-            return min(0.16, 0.08 * dome + 0.03 * (1.0 - rho)) * edge
-        }
         var cornerB = [Float](repeating: 0, count: (gr + 1) * cornerCols)
         var cornerH = [Float](repeating: 0, count: (gr + 1) * cornerCols)
         let transverseStrength = transverseRoundnessStrength(for: label)
@@ -1022,12 +997,6 @@ final class MonocularVolumeEstimator {
             for cc in 0...gc {
                 let n = cornerCells(rr, cc)
                 if n == 0 { continue }
-                let dr = Float(rr) - cgR, dc = Float(cc) - cgC
-                let rho = min(1.0, sqrt(dr * dr + dc * dc) / maxR)
-                let dome = sqrt(max(0.0, 1.0 - rho * rho))
-                // Corners on the silhouette edge taper toward the plate so the
-                // rim rounds off rather than dropping as a vertical cliff.
-                let edge: Float = n >= 4 ? 1.0 : Float(n) / 4.0
                 let heightFraction: Float
                 let bottomFraction: Float
                 if let sideProfile, !sideProfile.normalizedHeights.isEmpty {
@@ -1068,18 +1037,17 @@ final class MonocularVolumeEstimator {
                         roundedTop * silhouetteEdge
                     )
                 } else {
-                    // No usable side silhouette: drive the vertical profile from
-                    // the TOP silhouette's distance transform (`edgeDist`, 0 at
-                    // the outline) instead of a centroid sphere. The cap follows
-                    // the real outline — an oblong tomato yields an oblong cap, a
-                    // loaf keeps a flat top with a tapered rim — so no generic
-                    // dome/sphere overrides the measured silhouette shape.
-                    bottomFraction = fallbackBottomFraction(rho: rho, dome: dome, edge: edge)
+                    // No side silhouette: the vertical profile is driven ONLY by
+                    // the TOP silhouette distance transform (`edgeDist`, 0 at the
+                    // outline). No centroid sphere/dome and no food prior — round
+                    // foods get an outline-following cap, box foods a flat top
+                    // with a tapered rim, and the base sits flat on the plate.
+                    bottomFraction = 0
                     let nd = min(1.0, edgeDist[corner(rr, cc)] / maxEdgeDist)
                     let topShape: Float = transverseStrength > 0
                         ? sqrt(nd)               // round food: outline-following cap
                         : smoothstep01(nd * 3.0) // box food: flat top, tapered rim
-                    heightFraction = max(bottomFraction + 0.02, topShape)
+                    heightFraction = max(0.02, topShape)
                 }
                 cornerB[corner(rr, cc)] = max(0.0, min(h * 0.80, h * bottomFraction))
                 cornerH[corner(rr, cc)] = max(0.0, h * heightFraction)
