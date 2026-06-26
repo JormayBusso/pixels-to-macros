@@ -1953,7 +1953,7 @@ class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [0.15, 0.40, 0.65, 0.90].map((p) {
+                children: [0.15, 0.45, 0.75, 1.0].map((p) {
                   return SizedBox(
                     width: 78,
                     child: GoalMascotWidget(
@@ -1961,6 +1961,7 @@ class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
                       progress: p,
                       stressLevel: p,
                       mascotOverride: current,
+                      size: 60,
                     ),
                   );
                 }).toList(),

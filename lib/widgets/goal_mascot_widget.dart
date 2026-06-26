@@ -17,6 +17,7 @@ class GoalMascotWidget extends StatelessWidget {
   final double stressLevel;
   final MascotType mascotOverride;
   final VoidCallback? onTap;
+  final double size;
 
   const GoalMascotWidget({
     super.key,
@@ -25,6 +26,7 @@ class GoalMascotWidget extends StatelessWidget {
     this.stressLevel = 0,
     this.mascotOverride = MascotType.auto,
     this.onTap,
+    this.size = 120,
   });
 
   MascotType get _effectiveMascot {
@@ -58,18 +60,21 @@ class GoalMascotWidget extends StatelessWidget {
         return _ImageMascot(
           stages: const _MascotStages.gorilla(),
           progress: progress,
+          size: size,
           onTap: onTap,
         );
       case MascotType.plant:
         return _ImageMascot(
           stages: const _MascotStages.plant(),
           progress: progress,
+          size: size,
           onTap: onTap,
         );
       case MascotType.flame:
         return _ImageMascot(
           stages: const _MascotStages.flame(),
           progress: progress,
+          size: size,
           onTap: onTap,
         );
       case MascotType.sugar:
@@ -77,12 +82,14 @@ class GoalMascotWidget extends StatelessWidget {
           stages: const _MascotStages.sugar(),
           progress: stressLevel,
           invertStage: true,
+          size: size,
           onTap: onTap,
         );
       case MascotType.auto:
         return _ImageMascot(
           stages: const _MascotStages.plant(),
           progress: progress,
+          size: size,
           onTap: onTap,
         );
     }
@@ -191,12 +198,14 @@ class _ImageMascot extends StatelessWidget {
   /// When true, high progress = lower stage (e.g. pancreas: high stress → worse).
   final bool invertStage;
   final VoidCallback? onTap;
+  final double size;
 
   const _ImageMascot({
     required this.stages,
     required this.progress,
     this.invertStage = false,
     this.onTap,
+    this.size = 120,
   });
 
   int get _stage {
@@ -228,8 +237,8 @@ class _ImageMascot extends StatelessWidget {
         AnimatedContainer(
           duration: const Duration(milliseconds: 600),
           curve: Curves.easeInOut,
-          width: 120,
-          height: 120,
+          width: size,
+          height: size,
           // clipBehavior ensures the image never bleeds outside the circle.
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
@@ -252,7 +261,7 @@ class _ImageMascot extends StatelessWidget {
           // Padding gives a consistent inset so every mascot image is
           // comfortably inside the circle with no clipping at the edges.
           child: Padding(
-            padding: const EdgeInsets.all(10),
+            padding: EdgeInsets.all(size * 0.083),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 500),
               child: Image.asset(
