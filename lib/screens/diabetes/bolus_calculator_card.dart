@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/app_localizations.dart';
 import '../../core/diabetes/diabetes_constants.dart';
-import '../../core/diabetes/diabetes_safety_copy.dart';
+import '../../core/diabetes/diabetes_safety_copy.dart' show generateCalculationId;
 import '../../core/diabetes/glucose_conversion.dart';
 import '../../models/bolus_audit_record.dart';
 import '../../models/bolus_models.dart';
@@ -92,11 +93,11 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(Icons.calculate_outlined, color: kDiabetesBlue),
-              SizedBox(width: 8),
-              Text('Bolus estimate',
-                  style: TextStyle(
+            children: [
+              const Icon(Icons.calculate_outlined, color: kDiabetesBlue),
+              const SizedBox(width: 8),
+              Text(AppLocalizations.of(context).bolusEstimate,
+                  style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                       color: kDiabetesBlue)),
@@ -104,7 +105,7 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
           ),
           const SizedBox(height: 4),
           Text(
-            DiabetesSafetyCopy.generalDisclaimer,
+            AppLocalizations.of(context).diabetesGeneralDisclaimer,
             style:
                 TextStyle(fontSize: 11, color: context.appMutedTextColor, height: 1.4),
           ),
@@ -115,9 +116,9 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
             ],
-            decoration: const InputDecoration(
-              labelText: 'Meal carbohydrates (g)',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).mealCarbohydratesG,
+              border: const OutlineInputBorder(),
               isDense: true,
             ),
             onChanged: (_) => _clearResult(),
@@ -127,7 +128,7 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,
-              title: const Text('Add correction for current glucose'),
+              title: Text(AppLocalizations.of(context).addCorrectionForGlucose),
               value: _includeCorrection,
               activeColor: kDiabetesBlue,
               onChanged: (v) {
@@ -149,8 +150,8 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
                         FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                       ],
                       decoration: InputDecoration(
-                        labelText:
-                            'Current glucose (${isMmol ? 'mmol/L' : 'mg/dL'})',
+                        labelText: AppLocalizations.of(context)
+                            .currentGlucoseUnit(isMmol ? 'mmol/L' : 'mg/dL'),
                         border: const OutlineInputBorder(),
                         isDense: true,
                       ),
@@ -167,8 +168,9 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
                     },
                     child: Text(
                       _glucoseReadingAt == null
-                          ? 'Set time'
-                          : 'Now (${_fmtTime(_glucoseReadingAt!)})',
+                          ? AppLocalizations.of(context).setTime
+                          : AppLocalizations.of(context)
+                              .nowTime(_fmtTime(_glucoseReadingAt!)),
                     ),
                   ),
                 ],
@@ -178,10 +180,10 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,
-              title: const Text('Subtract insulin-on-board (IOB)'),
-              subtitle: const Text(
-                'Uses confirmed recent doses you logged.',
-                style: TextStyle(fontSize: 11),
+              title: Text(AppLocalizations.of(context).subtractIob),
+              subtitle: Text(
+                AppLocalizations.of(context).subtractIobCardDesc,
+                style: const TextStyle(fontSize: 11),
               ),
               value: _includeIob,
               activeColor: kDiabetesBlue,
@@ -199,7 +201,7 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
               minimumSize: const Size.fromHeight(46),
             ),
             onPressed: _calculate,
-            child: const Text('Calculate estimate'),
+            child: Text(AppLocalizations.of(context).calculateEstimate),
           ),
           if (_result != null) ...[
             const SizedBox(height: 16),
@@ -220,10 +222,9 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
         color: AppTheme.amber100,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Text(
-        'Bolus estimate is unavailable until you review and confirm your '
-        'insulin settings.',
-        style: TextStyle(fontSize: 12.5, color: AppTheme.amber700),
+      child: Text(
+        AppLocalizations.of(context).bolusUnavailableUntilReview,
+        style: const TextStyle(fontSize: 12.5, color: AppTheme.amber700),
       ),
     );
   }
@@ -320,6 +321,7 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
 
   // ── Result display ──────────────────────────────────────────────────────────
   Widget _resultSection(BolusResult result, InsulinSettings settings) {
+    final l10n = AppLocalizations.of(context);
     if (result.blocked) {
       return _blockedBox(result);
     }
@@ -340,27 +342,27 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Estimated bolus based on your saved settings:',
-                style: TextStyle(fontSize: 12.5, color: AppTheme.gray700),
+              Text(
+                l10n.estimatedBolusLabel,
+                style: const TextStyle(fontSize: 12.5, color: AppTheme.gray700),
               ),
               const SizedBox(height: 4),
               Text(
-                '${_fmtUnits(b.roundedBolusUnits)} units',
+                l10n.bolusUnitsValue(_fmtUnits(b.roundedBolusUnits)),
                 style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
                     color: AppTheme.green700),
               ),
-              const Text(
-                'You are responsible for confirming this dose.',
-                style: TextStyle(fontSize: 11, color: AppTheme.gray600),
+              Text(
+                l10n.responsibleForDose,
+                style: const TextStyle(fontSize: 11, color: AppTheme.gray600),
               ),
             ],
           ),
         ),
         const SizedBox(height: 12),
-        ...result.warnings.map((w) => _warningBox(w.message)),
+        ...result.warnings.map((w) => _warningBox(w.localizedMessage(l10n))),
         const SizedBox(height: 4),
         _breakdownTable(b, unit),
         const SizedBox(height: 12),
@@ -370,9 +372,9 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
           controlAffinity: ListTileControlAffinity.leading,
           value: _finalConfirmed,
           activeColor: kDiabetesBlue,
-          title: const Text(
-            DiabetesSafetyCopy.finalResponsibilityConfirmation,
-            style: TextStyle(fontSize: 12.5),
+          title: Text(
+            l10n.diabetesFinalResponsibility,
+            style: const TextStyle(fontSize: 12.5),
           ),
           onChanged: (v) => setState(() => _finalConfirmed = v ?? false),
         ),
@@ -385,38 +387,39 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
               ? () => _openDoseLog(b.roundedBolusUnits, settings)
               : null,
           icon: const Icon(Icons.edit_note),
-          label: const Text('Log the dose I actually took'),
+          label: Text(l10n.logDoseITook),
         ),
       ],
     );
   }
 
   Widget _breakdownTable(BolusBreakdown b, String unit) {
+    final l10n = AppLocalizations.of(context);
     String g(double? mgdl) => mgdl == null
         ? '—'
         : GlucoseConversion.formatForDisplay(mgdl,
             unitIsMmol: unit == 'mmol/L');
 
     final rows = <(String, String)>[
-      ('Meal carbs', '${_fmtUnits(b.mealCarbsG)} g'),
+      (l10n.bdMealCarbs, '${_fmtUnits(b.mealCarbsG)} g'),
       if (b.icrUsed != null)
-        ('Insulin-to-carb ratio used', '1u : ${_fmtUnits(b.icrUsed!)} g'),
-      ('Meal component', '${_fmtUnits(b.mealBolusUnits)} u'),
+        (l10n.bdIcrUsed, '1u : ${_fmtUnits(b.icrUsed!)} g'),
+      (l10n.bdMealComponent, '${_fmtUnits(b.mealBolusUnits)} u'),
       if (b.currentGlucoseMgdl != null)
-        ('Current glucose', '${g(b.currentGlucoseMgdl)} $unit'),
+        (l10n.bdCurrentGlucose, '${g(b.currentGlucoseMgdl)} $unit'),
       if (b.targetGlucoseMgdl != null)
-        ('Target glucose', '${g(b.targetGlucoseMgdl)} $unit'),
+        (l10n.bdTargetGlucose, '${g(b.targetGlucoseMgdl)} $unit'),
       if (b.isfUsed != null)
-        ('Correction factor used', '1u : ${g(b.isfUsed)} $unit'),
-      ('Correction component', '${_fmtUnits(b.correctionUnits)} u'),
-      ('Insulin-on-board subtracted', '${_fmtUnits(b.iobUnits)} u'),
-      ('Raw total', '${_fmtUnits(b.rawBolusUnits)} u'),
+        (l10n.bdCorrectionFactorUsed, '1u : ${g(b.isfUsed)} $unit'),
+      (l10n.bdCorrectionComponent, '${_fmtUnits(b.correctionUnits)} u'),
+      (l10n.bdIobSubtracted, '${_fmtUnits(b.iobUnits)} u'),
+      (l10n.bdRawTotal, '${_fmtUnits(b.rawBolusUnits)} u'),
       (
-        'Rounded (to ${_fmtUnits(b.minIncrement)} u)',
+        l10n.bdRoundedTo(_fmtUnits(b.minIncrement)),
         '${_fmtUnits(b.roundedBolusUnits)} u'
       ),
-      ('Max single bolus', '${_fmtUnits(b.maxSingleBolusUnits)} u'),
-      ('Time block', b.timeBlockLabel),
+      (l10n.bdMaxSingleBolus, '${_fmtUnits(b.maxSingleBolusUnits)} u'),
+      (l10n.bdTimeBlock, b.timeBlockLabel),
     ];
 
     return Container(
@@ -427,10 +430,11 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
       ),
       child: Column(
         children: [
-          const Align(
+          Align(
             alignment: Alignment.centerLeft,
-            child: Text('How this was calculated',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+            child: Text(l10n.howThisCalculated,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700, fontSize: 13)),
           ),
           const SizedBox(height: 8),
           ...rows.map(
@@ -457,6 +461,7 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
   }
 
   Widget _blockedBox(BolusResult result) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -467,12 +472,12 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.block, color: AppTheme.red700, size: 20),
-              SizedBox(width: 8),
-              Text('No estimate shown',
-                  style: TextStyle(
+              const Icon(Icons.block, color: AppTheme.red700, size: 20),
+              const SizedBox(width: 8),
+              Text(l10n.noEstimateShown,
+                  style: const TextStyle(
                       fontWeight: FontWeight.w800, color: AppTheme.red700)),
             ],
           ),
@@ -480,7 +485,7 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
           ...result.blockReasons.map(
             (r) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Text('• ${r.message}',
+              child: Text('• ${r.localizedMessage(l10n)}',
                   style: const TextStyle(
                       fontSize: 12.5, color: AppTheme.red700, height: 1.35)),
             ),
@@ -488,7 +493,7 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
           ...result.warnings.map(
             (w) => Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text(w.message,
+              child: Text(w.localizedMessage(l10n),
                   style: const TextStyle(
                       fontSize: 12, color: AppTheme.gray700, height: 1.35)),
             ),
@@ -599,6 +604,7 @@ class _InsulinDoseLogSheetState extends ConsumerState<InsulinDoseLogSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
@@ -606,12 +612,12 @@ class _InsulinDoseLogSheetState extends ConsumerState<InsulinDoseLogSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Log insulin dose',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+          Text(l10n.logInsulinDose,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w800, fontSize: 18)),
           const SizedBox(height: 4),
           Text(
-            'Enter the dose you actually took. This is used for '
-            'insulin-on-board and history.',
+            l10n.enterDoseDesc,
             style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
           ),
           const SizedBox(height: 14),
@@ -621,18 +627,18 @@ class _InsulinDoseLogSheetState extends ConsumerState<InsulinDoseLogSheet> {
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
             ],
-            decoration: const InputDecoration(
-              labelText: 'Units taken',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: l10n.unitsTaken,
+              border: const OutlineInputBorder(),
               isDense: true,
             ),
           ),
           const SizedBox(height: 10),
           TextField(
             controller: _notesCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Notes (optional)',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: l10n.notesOptional,
+              border: const OutlineInputBorder(),
               isDense: true,
             ),
           ),
@@ -643,8 +649,8 @@ class _InsulinDoseLogSheetState extends ConsumerState<InsulinDoseLogSheet> {
             controlAffinity: ListTileControlAffinity.leading,
             value: _confirmed,
             activeColor: kDiabetesBlue,
-            title: const Text('I confirm I took this dose',
-                style: TextStyle(fontSize: 13)),
+            title: Text(l10n.iConfirmTookDose,
+                style: const TextStyle(fontSize: 13)),
             onChanged: (v) => setState(() => _confirmed = v ?? false),
           ),
           const SizedBox(height: 4),
@@ -654,7 +660,7 @@ class _InsulinDoseLogSheetState extends ConsumerState<InsulinDoseLogSheet> {
               minimumSize: const Size.fromHeight(46),
             ),
             onPressed: _confirmed ? _save : null,
-            child: const Text('Save dose'),
+            child: Text(l10n.saveDose),
           ),
         ],
       ),
@@ -662,12 +668,13 @@ class _InsulinDoseLogSheetState extends ConsumerState<InsulinDoseLogSheet> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     final units = double.tryParse(_unitsCtrl.text.trim());
     if (units == null ||
         units <= 0 ||
         units > DiabetesConstants.maxMaxSingleBolusUnits) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid number of units.')),
+        SnackBar(content: Text(l10n.enterValidUnits)),
       );
       return;
     }
@@ -682,7 +689,7 @@ class _InsulinDoseLogSheetState extends ConsumerState<InsulinDoseLogSheet> {
     if (!mounted) return;
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Dose logged.')),
+      SnackBar(content: Text(l10n.doseLogged)),
     );
   }
 }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/diabetes/diabetes_safety_copy.dart';
+import '../../core/app_localizations.dart';
 import '../../core/diabetes/glucose_conversion.dart';
 import '../../models/insulin_settings.dart';
 import '../../providers/diabetes_provider.dart';
@@ -129,23 +129,24 @@ class _InsulinSettingsSurveyScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Insulin Settings Survey'),
+        title: Text(l10n.insulinSettingsSurvey),
         backgroundColor: kDiabetesBlue,
         foregroundColor: Colors.white,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _section('General'),
+          _section(l10n.diabetesGeneralSection),
           _unitToggle(),
           const SizedBox(height: 12),
           _enumDropdown<DiabetesType>(
-            label: 'Diabetes type',
+            label: l10n.diabetesTypeField,
             value: _type,
             values: DiabetesType.values,
-            labelOf: (t) => t.label,
+            labelOf: (t) => l10n.diabetesTypeLabel(t.name),
             onChanged: (v) => setState(() => _type = v),
           ),
           SwitchListTile(
@@ -153,51 +154,49 @@ class _InsulinSettingsSurveyScreenState
             activeThumbColor: kDiabetesBlue,
             value: _usesCgm,
             onChanged: (v) => setState(() => _usesCgm = v),
-            title: const Text('I use a continuous glucose monitor (CGM)'),
+            title: Text(l10n.usesCgm),
           ),
-          _section('Calculator components'),
+          _section(l10n.calculatorComponents),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             activeThumbColor: kDiabetesBlue,
             value: _mealBolusEnabled,
             onChanged: (v) => setState(() => _mealBolusEnabled = v),
-            title: const Text('Enable meal bolus'),
-            subtitle: const Text(
-                'Covers the carbs in a meal using your carb ratios.'),
+            title: Text(l10n.enableMealBolus),
+            subtitle: Text(l10n.enableMealBolusDesc),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             activeThumbColor: kDiabetesBlue,
             value: _correctionEnabled,
             onChanged: (v) => setState(() => _correctionEnabled = v),
-            title: const Text('Enable correction dose'),
+            title: Text(l10n.enableCorrectionDose),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             activeThumbColor: kDiabetesBlue,
             value: _iobEnabled,
             onChanged: (v) => setState(() => _iobEnabled = v),
-            title: const Text('Subtract insulin-on-board (IOB)'),
-            subtitle: const Text(
-                'Uses your logged insulin doses and action duration.'),
+            title: Text(l10n.subtractIob),
+            subtitle: Text(l10n.subtractIobSurveyDesc),
           ),
-          _section('Glucose targets (${_unit.label})'),
-          _numField(_targetCtrl, 'Target glucose'),
-          _numField(_hypoCtrl, 'Low (hypo) threshold'),
-          _numField(_hyperCtrl, 'High (hyper) threshold — optional'),
+          _section(l10n.glucoseTargetsSection(_unit.label)),
+          _numField(_targetCtrl, l10n.targetGlucoseField),
+          _numField(_hypoCtrl, l10n.lowHypoThreshold),
+          _numField(_hyperCtrl, l10n.highHyperThreshold),
           if (_mealBolusEnabled) ...[
-            _section('Insulin-to-carb ratios (g carb per unit)'),
+            _section(l10n.icrSection),
             for (var i = 0; i < _windows.length; i++)
-              _numField(_icrCtrls[i], _windows[i].label),
+              _numField(_icrCtrls[i], _windowLabel(l10n, i)),
           ],
           if (_correctionEnabled) ...[
-            _section('Correction factors / ISF (${_unit.label} per unit)'),
+            _section(l10n.isfSection(_unit.label)),
             for (var i = 0; i < _windows.length; i++)
-              _numField(_isfCtrls[i], _windows[i].label),
+              _numField(_isfCtrls[i], _windowLabel(l10n, i)),
           ],
-          _section('Insulin action & limits'),
-          _numField(_diaCtrl, 'Insulin action duration (hours)'),
-          _numField(_maxBolusCtrl, 'Maximum single bolus (units)'),
+          _section(l10n.insulinActionLimits),
+          _numField(_diaCtrl, l10n.insulinActionDurationHours),
+          _numField(_maxBolusCtrl, l10n.maxSingleBolusUnitsField),
           const SizedBox(height: 8),
           _incrementPicker(),
           const SizedBox(height: 16),
@@ -207,9 +206,9 @@ class _InsulinSettingsSurveyScreenState
             controlAffinity: ListTileControlAffinity.leading,
             value: _confirmed,
             onChanged: (v) => setState(() => _confirmed = v ?? false),
-            title: const Text(
-              DiabetesSafetyCopy.settingsSourceConfirmation,
-              style: TextStyle(fontSize: 12, height: 1.4),
+            title: Text(
+              l10n.diabetesSettingsSourceConfirmation,
+              style: const TextStyle(fontSize: 12, height: 1.4),
             ),
           ),
           const SizedBox(height: 8),
@@ -219,7 +218,7 @@ class _InsulinSettingsSurveyScreenState
               minimumSize: const Size.fromHeight(48),
             ),
             onPressed: _confirmed ? _save : null,
-            child: const Text('Validate & save settings'),
+            child: Text(l10n.validateAndSaveSettings),
           ),
           const SizedBox(height: 24),
         ],
@@ -227,7 +226,26 @@ class _InsulinSettingsSurveyScreenState
     );
   }
 
+  String _windowLabel(AppLocalizations l10n, int i) => switch (i) {
+        0 => l10n.windowOvernight,
+        1 => l10n.windowDaytime,
+        _ => l10n.windowEvening,
+      };
+
+  String _issueText(AppLocalizations l10n, ValidationIssue e) {
+    final code = e.code;
+    if (code == null) return e.message;
+    String? label;
+    if (e.labelKey == 'icr') {
+      label = l10n.validatorLabelIcr;
+    } else if (e.labelKey == 'isf') {
+      label = l10n.validatorLabelIsf;
+    }
+    return l10n.validatorMessage(code, label: label);
+  }
+
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     final base = ref.read(insulinSettingsProvider);
 
     List<InsulinTimeBlock> blocks(
@@ -273,38 +291,37 @@ class _InsulinSettingsSurveyScreenState
     // Required-field checks specific to enabling the calculator.
     final missing = <String>[];
     if (_mealBolusEnabled && candidate.icrBlocks.isEmpty) {
-      missing.add('at least one ICR');
+      missing.add(l10n.missingAtLeastOneIcr);
     }
     if (!_mealBolusEnabled && !_correctionEnabled) {
-      missing
-          .add('at least one calculator component (meal bolus or correction)');
+      missing.add(l10n.missingComponent);
     }
-    if (candidate.maxSingleBolusUnits == null) missing.add('maximum bolus');
+    if (candidate.maxSingleBolusUnits == null) missing.add(l10n.missingMaxBolus);
     if (_correctionEnabled && candidate.targetGlucoseMgdl == null) {
-      missing.add('target glucose');
+      missing.add(l10n.missingTargetGlucose);
     }
     if (_correctionEnabled && candidate.isfBlocks.isEmpty) {
-      missing.add('at least one correction factor');
+      missing.add(l10n.missingCorrectionFactor);
     }
     if (_iobEnabled && candidate.insulinActionDurationHours == null) {
-      missing.add('insulin action duration');
+      missing.add(l10n.missingActionDuration);
     }
 
     if (result.hasErrors || missing.isNotEmpty) {
       final msgs = <String>[
-        ...result.errors.map((e) => e.message),
-        if (missing.isNotEmpty) 'Please provide: ${missing.join(', ')}.',
+        ...result.errors.map((e) => _issueText(l10n, e)),
+        if (missing.isNotEmpty) l10n.pleaseProvide(missing.join(', ')),
       ];
       if (mounted) {
         showDialog<void>(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('Please fix your settings'),
+            title: Text(l10n.pleaseFixSettings),
             content: Text(msgs.join('\n\n')),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
+                child: Text(l10n.ok),
               ),
             ],
           ),
@@ -317,16 +334,17 @@ class _InsulinSettingsSurveyScreenState
       final proceed = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('Please confirm'),
-          content: Text(result.warnings.map((w) => w.message).join('\n\n')),
+          title: Text(l10n.pleaseConfirmTitle),
+          content: Text(
+              result.warnings.map((w) => _issueText(l10n, w)).join('\n\n')),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Go back'),
+              child: Text(l10n.goBack),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Confirm'),
+              child: Text(l10n.confirm),
             ),
           ],
         ),
@@ -337,7 +355,7 @@ class _InsulinSettingsSurveyScreenState
     await ref.read(insulinSettingsProvider.notifier).completeSurvey(candidate);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bolus Calculator Mode enabled.')),
+        SnackBar(content: Text(l10n.bolusCalculatorEnabledMsg)),
       );
       Navigator.of(context).pop();
     }
@@ -372,7 +390,7 @@ class _InsulinSettingsSurveyScreenState
 
   Widget _unitToggle() => Row(
         children: [
-          const Text('Blood glucose unit:'),
+          Text(AppLocalizations.of(context).bloodGlucoseUnitColon),
           const SizedBox(width: 12),
           SegmentedButton<BgUnit>(
             segments: const [
@@ -388,7 +406,7 @@ class _InsulinSettingsSurveyScreenState
 
   Widget _incrementPicker() => Row(
         children: [
-          const Text('Rounding increment:'),
+          Text(AppLocalizations.of(context).roundingIncrement),
           const SizedBox(width: 12),
           DropdownButton<double>(
             value: _increment,

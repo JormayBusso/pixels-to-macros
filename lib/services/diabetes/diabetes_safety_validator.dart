@@ -12,10 +12,17 @@ enum ValidationSeverity {
 
 /// A single validation finding with a human-readable, non-sensitive message.
 class ValidationIssue {
-  const ValidationIssue(this.severity, this.message, {this.field});
+  const ValidationIssue(this.severity, this.message,
+      {this.field, this.code, this.labelKey});
   final ValidationSeverity severity;
   final String message;
   final String? field;
+
+  /// Stable code for localization (maps to AppLocalizations.validatorMessage).
+  final String? code;
+
+  /// Optional label key ('icr'/'isf') for messages that interpolate a label.
+  final String? labelKey;
 
   bool get isError => severity == ValidationSeverity.error;
   bool get isWarning => severity == ValidationSeverity.warning;
@@ -79,7 +86,7 @@ class DiabetesSafetyValidator {
           target > DiabetesConstants.maxTargetGlucoseMgdl) {
         issues.add(const ValidationIssue(ValidationSeverity.error,
             'Target glucose is outside a safe range.',
-            field: 'target'));
+            field: 'target', code: 'targetOutOfRange'));
       }
     }
 
@@ -90,7 +97,7 @@ class DiabetesSafetyValidator {
           dia > DiabetesConstants.maxActionDurationHours) {
         issues.add(const ValidationIssue(ValidationSeverity.error,
             'Insulin action duration is outside a safe range.',
-            field: 'actionDuration'));
+            field: 'actionDuration', code: 'actionDurationOutOfRange'));
       }
     }
 
@@ -101,7 +108,7 @@ class DiabetesSafetyValidator {
           maxBolus > DiabetesConstants.maxMaxSingleBolusUnits) {
         issues.add(const ValidationIssue(ValidationSeverity.error,
             'Maximum single bolus is outside a safe range.',
-            field: 'maxBolus'));
+            field: 'maxBolus', code: 'maxBolusOutOfRange'));
       }
     }
 
@@ -110,7 +117,7 @@ class DiabetesSafetyValidator {
     if (inc != null && !DiabetesConstants.allowedBolusIncrements.contains(inc)) {
       issues.add(const ValidationIssue(ValidationSeverity.error,
           'Bolus rounding increment is not a supported value.',
-          field: 'increment'));
+          field: 'increment', code: 'incrementUnsupported'));
     }
 
     // Hypo/hyper thresholds sanity (hypo below hyper).
@@ -119,7 +126,7 @@ class DiabetesSafetyValidator {
     if (hypo != null && hyper != null && hypo >= hyper) {
       issues.add(const ValidationIssue(ValidationSeverity.error,
           'Low threshold must be below the high threshold.',
-          field: 'thresholds'));
+          field: 'thresholds', code: 'thresholdsInverted'));
     }
 
     return ValidationResult(issues);
@@ -138,16 +145,16 @@ class DiabetesSafetyValidator {
       if (b.value <= 0) {
         issues.add(ValidationIssue(ValidationSeverity.error,
             'A $label value must be greater than zero.',
-            field: field));
+            field: field, code: 'valueNotPositive', labelKey: field));
       } else if (b.value < min || b.value > max) {
         issues.add(ValidationIssue(ValidationSeverity.error,
             'A $label value is outside a safe range.',
-            field: field));
+            field: field, code: 'valueOutOfRange', labelKey: field));
       }
       if (b.startMinute < 0 || b.endMinute > 1439 || b.startMinute > b.endMinute) {
         issues.add(ValidationIssue(ValidationSeverity.error,
             'A $label time block has an invalid time range.',
-            field: field));
+            field: field, code: 'invalidTimeRange', labelKey: field));
       }
     }
     // Overlap detection (O(n^2) — block counts are tiny).
@@ -156,7 +163,7 @@ class DiabetesSafetyValidator {
         if (blocks[i].overlaps(blocks[j])) {
           issues.add(ValidationIssue(ValidationSeverity.error,
               'Your $label time blocks overlap. Fix them before continuing.',
-              field: field));
+              field: field, code: 'blocksOverlap', labelKey: field));
         }
       }
     }
@@ -170,7 +177,7 @@ class DiabetesSafetyValidator {
       return ValidationResult([
         const ValidationIssue(ValidationSeverity.error,
             'The glucose value looks out of range.',
-            field: 'glucose'),
+            field: 'glucose', code: 'glucoseOutOfRange'),
       ]);
     }
     return ValidationResult.ok();
@@ -182,21 +189,21 @@ class DiabetesSafetyValidator {
       return ValidationResult([
         const ValidationIssue(ValidationSeverity.error,
             'Enter a carbohydrate amount greater than zero.',
-            field: 'carbs'),
+            field: 'carbs', code: 'carbsNotPositive'),
       ]);
     }
     if (carbsG > DiabetesConstants.maxPlausibleMealCarbsG) {
       return ValidationResult([
         const ValidationIssue(ValidationSeverity.error,
             'The carbohydrate amount looks out of range.',
-            field: 'carbs'),
+            field: 'carbs', code: 'carbsOutOfRange'),
       ]);
     }
     if (carbsG > DiabetesConstants.suspiciousMealCarbsG) {
       return ValidationResult([
         const ValidationIssue(ValidationSeverity.warning,
             'The carbohydrate amount is unusually high. Please double-check it.',
-            field: 'carbs'),
+            field: 'carbs', code: 'carbsUnusuallyHigh'),
       ]);
     }
     return ValidationResult.ok();

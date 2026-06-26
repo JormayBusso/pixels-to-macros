@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/diabetes/diabetes_safety_copy.dart';
+import '../../core/app_localizations.dart';
 import '../../providers/diabetes_provider.dart';
 import '../../theme/app_theme.dart';
 import 'insulin_settings_survey_screen.dart';
@@ -37,7 +37,7 @@ class _BolusSetupScreenState extends ConsumerState<BolusSetupScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bolus Calculator Mode'),
+        title: Text(AppLocalizations.of(context).bolusCalculatorMode),
         backgroundColor: kDiabetesBlue,
         foregroundColor: Colors.white,
       ),
@@ -54,9 +54,8 @@ class _BolusSetupScreenState extends ConsumerState<BolusSetupScreen> {
               activeThumbColor: kDiabetesBlue,
               value: settings.usesInsulin,
               onChanged: (v) => notifier.setUsesInsulin(v),
-              title: const Text('I use insulin'),
-              subtitle: const Text(
-                  'Required before the bolus calculator can be offered.'),
+              title: Text(AppLocalizations.of(context).iUseInsulin),
+              subtitle: Text(AppLocalizations.of(context).iUseInsulinDesc),
             ),
           ),
 
@@ -68,20 +67,21 @@ class _BolusSetupScreenState extends ConsumerState<BolusSetupScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    children: const [
-                      Icon(Icons.info_outline, color: kDiabetesBlue, size: 20),
-                      SizedBox(width: 8),
-                      Text('Before you enable',
-                          style: TextStyle(
+                    children: [
+                      const Icon(Icons.info_outline,
+                          color: kDiabetesBlue, size: 20),
+                      const SizedBox(width: 8),
+                      Text(AppLocalizations.of(context).beforeYouEnable,
+                          style: const TextStyle(
                               fontWeight: FontWeight.w700, fontSize: 15)),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  const Text(DiabetesSafetyCopy.beforeEnabling,
-                      style:
-                          TextStyle(fontSize: 13, color: AppTheme.gray700, height: 1.4)),
+                  Text(AppLocalizations.of(context).diabetesBeforeEnabling,
+                      style: const TextStyle(
+                          fontSize: 13, color: AppTheme.gray700, height: 1.4)),
                   const SizedBox(height: 12),
-                  Text(DiabetesSafetyCopy.generalDisclaimer,
+                  Text(AppLocalizations.of(context).diabetesGeneralDisclaimer,
                       style:
                           TextStyle(fontSize: 12, color: context.appMutedTextColor, height: 1.4)),
                   const SizedBox(height: 12),
@@ -91,9 +91,9 @@ class _BolusSetupScreenState extends ConsumerState<BolusSetupScreen> {
                       color: AppTheme.amber100,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text(
-                      DiabetesSafetyCopy.regulatoryNotice,
-                      style: TextStyle(
+                    child: Text(
+                      AppLocalizations.of(context).diabetesRegulatoryNotice,
+                      style: const TextStyle(
                           fontSize: 11, color: AppTheme.amber700, height: 1.4),
                     ),
                   ),
@@ -105,9 +105,10 @@ class _BolusSetupScreenState extends ConsumerState<BolusSetupScreen> {
                     value: _consentAccepted,
                     onChanged: (v) =>
                         setState(() => _consentAccepted = v ?? false),
-                    title: const Text(
-                      DiabetesSafetyCopy.settingsSourceConfirmation,
-                      style: TextStyle(fontSize: 12, height: 1.4),
+                    title: Text(
+                      AppLocalizations.of(context)
+                          .diabetesSettingsSourceConfirmation,
+                      style: const TextStyle(fontSize: 12, height: 1.4),
                     ),
                   ),
                 ],
@@ -122,7 +123,7 @@ class _BolusSetupScreenState extends ConsumerState<BolusSetupScreen> {
               ),
               onPressed: _consentAccepted ? _continueToSurvey : null,
               icon: const Icon(Icons.assignment_outlined),
-              label: const Text('Continue to insulin settings survey'),
+              label: Text(AppLocalizations.of(context).continueToSurvey),
             ),
 
             if (settings.bolusCalculatorEnabled) ...[
@@ -134,7 +135,8 @@ class _BolusSetupScreenState extends ConsumerState<BolusSetupScreen> {
                 ),
                 onPressed: () => notifier.disableBolusCalculator(),
                 icon: const Icon(Icons.block),
-                label: const Text('Disable Bolus Calculator Mode'),
+                label:
+                    Text(AppLocalizations.of(context).disableBolusCalculatorMode),
               ),
             ],
           ],
@@ -164,13 +166,13 @@ class _BolusSetupScreenState extends ConsumerState<BolusSetupScreen> {
             const Icon(Icons.warning_amber_rounded,
                 color: AppTheme.red700, size: 22),
             const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'High-risk feature. This calculator can suggest insulin doses '
-                'from your settings. A wrong dose can be dangerous. It is not a '
-                'medical device and does not replace your care plan.',
-                style: TextStyle(
-                    fontSize: 12.5, color: AppTheme.red700, height: 1.4),
+            Expanded(
+              child: Builder(
+                builder: (context) => Text(
+                  AppLocalizations.of(context).highRiskFeature,
+                  style: const TextStyle(
+                      fontSize: 12.5, color: AppTheme.red700, height: 1.4),
+                ),
               ),
             ),
           ],

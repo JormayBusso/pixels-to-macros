@@ -4990,6 +4990,1237 @@ class AppLocalizations {
         'de': 'Überspringen — ich stelle das später in den Einstellungen ein',
       });
 
+  // ── Diabetes / Bolus calculator: generic ──
+  String get confirm => _t({
+        'en': 'Confirm',
+        'pl': 'Potwierdź',
+        'nl': 'Bevestigen',
+        'es': 'Confirmar',
+        'de': 'Bestätigen',
+      });
+
+  String get goBack => _t({
+        'en': 'Go back',
+        'pl': 'Wróć',
+        'nl': 'Terug',
+        'es': 'Volver',
+        'de': 'Zurück',
+      });
+
+  String get diabetesGeneralSection => _t({
+        'en': 'General',
+        'pl': 'Ogólne',
+        'nl': 'Algemeen',
+        'es': 'General',
+        'de': 'Allgemein',
+      });
+
+  String diabetesTypeLabel(String key) {
+    switch (key) {
+      case 'type1':
+        return _t({
+          'en': 'Type 1',
+          'pl': 'Typ 1',
+          'nl': 'Type 1',
+          'es': 'Tipo 1',
+          'de': 'Typ 1',
+        });
+      case 'type2':
+        return _t({
+          'en': 'Type 2',
+          'pl': 'Typ 2',
+          'nl': 'Type 2',
+          'es': 'Tipo 2',
+          'de': 'Typ 2',
+        });
+      case 'gestational':
+        return _t({
+          'en': 'Gestational',
+          'pl': 'Ciążowa',
+          'nl': 'Zwangerschapsdiabetes',
+          'es': 'Gestacional',
+          'de': 'Schwangerschaftsdiabetes',
+        });
+      case 'other':
+        return other;
+      case 'preferNotToSay':
+      default:
+        return preferNotToSay;
+    }
+  }
+
+  // ── Insulin settings survey ──
+  String get insulinSettingsSurvey => _t({
+        'en': 'Insulin Settings Survey',
+        'pl': 'Ankieta ustawień insuliny',
+        'nl': 'Vragenlijst insuline-instellingen',
+        'es': 'Cuestionario de ajustes de insulina',
+        'de': 'Fragebogen zu Insulineinstellungen',
+      });
+
+  String get diabetesTypeField => _t({
+        'en': 'Diabetes type',
+        'pl': 'Typ cukrzycy',
+        'nl': 'Type diabetes',
+        'es': 'Tipo de diabetes',
+        'de': 'Diabetes-Typ',
+      });
+
+  String get usesCgm => _t({
+        'en': 'I use a continuous glucose monitor (CGM)',
+        'pl': 'Używam ciągłego monitora glukozy (CGM)',
+        'nl': 'Ik gebruik een continue glucosemonitor (CGM)',
+        'es': 'Uso un monitor continuo de glucosa (MCG)',
+        'de': 'Ich nutze ein kontinuierliches Glukosemesssystem (CGM)',
+      });
+
+  String get calculatorComponents => _t({
+        'en': 'Calculator components',
+        'pl': 'Składniki kalkulatora',
+        'nl': 'Rekenmachineonderdelen',
+        'es': 'Componentes de la calculadora',
+        'de': 'Rechner-Komponenten',
+      });
+
+  String get enableMealBolus => _t({
+        'en': 'Enable meal bolus',
+        'pl': 'Włącz bolus na posiłek',
+        'nl': 'Maaltijdbolus inschakelen',
+        'es': 'Activar bolo de comida',
+        'de': 'Mahlzeitenbolus aktivieren',
+      });
+
+  String get enableMealBolusDesc => _t({
+        'en': 'Covers the carbs in a meal using your carb ratios.',
+        'pl': 'Pokrywa węglowodany w posiłku na podstawie Twoich przeliczników.',
+        'nl': 'Dekt de koolhydraten in een maaltijd op basis van je ratio\'s.',
+        'es': 'Cubre los carbohidratos de una comida usando tus ratios.',
+        'de': 'Deckt die Kohlenhydrate einer Mahlzeit anhand deiner Faktoren ab.',
+      });
+
+  String get enableCorrectionDose => _t({
+        'en': 'Enable correction dose',
+        'pl': 'Włącz dawkę korekcyjną',
+        'nl': 'Correctiedosis inschakelen',
+        'es': 'Activar dosis de corrección',
+        'de': 'Korrekturdosis aktivieren',
+      });
+
+  String get subtractIob => _t({
+        'en': 'Subtract insulin-on-board (IOB)',
+        'pl': 'Odejmij insulinę aktywną (IOB)',
+        'nl': 'Insuline-on-board (IOB) aftrekken',
+        'es': 'Restar insulina activa (IOB)',
+        'de': 'Insulin-on-Board (IOB) abziehen',
+      });
+
+  String get subtractIobSurveyDesc => _t({
+        'en': 'Uses your logged insulin doses and action duration.',
+        'pl': 'Korzysta z zapisanych dawek insuliny i czasu działania.',
+        'nl': 'Gebruikt je geregistreerde insulinedoses en werkingsduur.',
+        'es': 'Usa tus dosis de insulina registradas y la duración de acción.',
+        'de': 'Verwendet deine erfassten Insulindosen und die Wirkdauer.',
+      });
+
+  String get subtractIobCardDesc => _t({
+        'en': 'Uses confirmed recent doses you logged.',
+        'pl': 'Korzysta z potwierdzonych, niedawno zapisanych dawek.',
+        'nl': 'Gebruikt bevestigde recente doses die je hebt geregistreerd.',
+        'es': 'Usa las dosis recientes confirmadas que registraste.',
+        'de': 'Verwendet bestätigte kürzlich erfasste Dosen.',
+      });
+
+  String glucoseTargetsSection(String unit) => _t({
+        'en': 'Glucose targets ($unit)',
+        'pl': 'Cele glikemii ($unit)',
+        'nl': 'Glucosestreefwaarden ($unit)',
+        'es': 'Objetivos de glucosa ($unit)',
+        'de': 'Glukoseziele ($unit)',
+      });
+
+  String get targetGlucoseField => _t({
+        'en': 'Target glucose',
+        'pl': 'Docelowa glikemia',
+        'nl': 'Streefglucose',
+        'es': 'Glucosa objetivo',
+        'de': 'Zielglukose',
+      });
+
+  String get lowHypoThreshold => _t({
+        'en': 'Low (hypo) threshold',
+        'pl': 'Próg niski (hipoglikemia)',
+        'nl': 'Lage (hypo) drempel',
+        'es': 'Umbral bajo (hipo)',
+        'de': 'Niedrigschwelle (Hypo)',
+      });
+
+  String get highHyperThreshold => _t({
+        'en': 'High (hyper) threshold — optional',
+        'pl': 'Próg wysoki (hiperglikemia) — opcjonalnie',
+        'nl': 'Hoge (hyper) drempel — optioneel',
+        'es': 'Umbral alto (hiper): opcional',
+        'de': 'Hochschwelle (Hyper) — optional',
+      });
+
+  String get icrSection => _t({
+        'en': 'Insulin-to-carb ratios (g carb per unit)',
+        'pl': 'Przeliczniki insulina-węglowodany (g węgl. na jednostkę)',
+        'nl': 'Insuline-koolhydraatratio\'s (g koolhydraat per eenheid)',
+        'es': 'Ratios insulina-carbohidratos (g de carbohidrato por unidad)',
+        'de': 'Insulin-Kohlenhydrat-Faktoren (g KH pro Einheit)',
+      });
+
+  String isfSection(String unit) => _t({
+        'en': 'Correction factors / ISF ($unit per unit)',
+        'pl': 'Współczynniki korekcyjne / ISF ($unit na jednostkę)',
+        'nl': 'Correctiefactoren / ISF ($unit per eenheid)',
+        'es': 'Factores de corrección / ISF ($unit por unidad)',
+        'de': 'Korrekturfaktoren / ISF ($unit pro Einheit)',
+      });
+
+  String get insulinActionLimits => _t({
+        'en': 'Insulin action & limits',
+        'pl': 'Działanie insuliny i limity',
+        'nl': 'Insulinewerking en limieten',
+        'es': 'Acción de la insulina y límites',
+        'de': 'Insulinwirkung & Grenzwerte',
+      });
+
+  String get insulinActionDurationHours => _t({
+        'en': 'Insulin action duration (hours)',
+        'pl': 'Czas działania insuliny (godziny)',
+        'nl': 'Werkingsduur insuline (uren)',
+        'es': 'Duración de acción de la insulina (horas)',
+        'de': 'Insulinwirkdauer (Stunden)',
+      });
+
+  String get maxSingleBolusUnitsField => _t({
+        'en': 'Maximum single bolus (units)',
+        'pl': 'Maksymalny pojedynczy bolus (jednostki)',
+        'nl': 'Maximale enkele bolus (eenheden)',
+        'es': 'Bolo único máximo (unidades)',
+        'de': 'Maximaler Einzelbolus (Einheiten)',
+      });
+
+  String get validateAndSaveSettings => _t({
+        'en': 'Validate & save settings',
+        'pl': 'Sprawdź i zapisz ustawienia',
+        'nl': 'Instellingen valideren en opslaan',
+        'es': 'Validar y guardar ajustes',
+        'de': 'Einstellungen prüfen & speichern',
+      });
+
+  String get pleaseFixSettings => _t({
+        'en': 'Please fix your settings',
+        'pl': 'Popraw swoje ustawienia',
+        'nl': 'Corrigeer je instellingen',
+        'es': 'Corrige tus ajustes',
+        'de': 'Bitte korrigiere deine Einstellungen',
+      });
+
+  String get pleaseConfirmTitle => _t({
+        'en': 'Please confirm',
+        'pl': 'Potwierdź',
+        'nl': 'Bevestig',
+        'es': 'Confirma',
+        'de': 'Bitte bestätigen',
+      });
+
+  String get bolusCalculatorEnabledMsg => _t({
+        'en': 'Bolus Calculator Mode enabled.',
+        'pl': 'Tryb kalkulatora bolusa włączony.',
+        'nl': 'Bolusrekenmodus ingeschakeld.',
+        'es': 'Modo calculadora de bolo activado.',
+        'de': 'Bolusrechner-Modus aktiviert.',
+      });
+
+  String get bloodGlucoseUnitColon => _t({
+        'en': 'Blood glucose unit:',
+        'pl': 'Jednostka glikemii:',
+        'nl': 'Bloedglucose-eenheid:',
+        'es': 'Unidad de glucosa:',
+        'de': 'Blutzuckereinheit:',
+      });
+
+  String get roundingIncrement => _t({
+        'en': 'Rounding increment:',
+        'pl': 'Krok zaokrąglania:',
+        'nl': 'Afrondingsstap:',
+        'es': 'Incremento de redondeo:',
+        'de': 'Rundungsschritt:',
+      });
+
+  String get windowOvernight => _t({
+        'en': 'Overnight (00:00–10:59)',
+        'pl': 'Noc (00:00–10:59)',
+        'nl': '\'s Nachts (00:00–10:59)',
+        'es': 'Noche (00:00–10:59)',
+        'de': 'Nachts (00:00–10:59)',
+      });
+
+  String get windowDaytime => _t({
+        'en': 'Daytime (11:00–16:59)',
+        'pl': 'Dzień (11:00–16:59)',
+        'nl': 'Overdag (11:00–16:59)',
+        'es': 'Día (11:00–16:59)',
+        'de': 'Tagsüber (11:00–16:59)',
+      });
+
+  String get windowEvening => _t({
+        'en': 'Evening (17:00–23:59)',
+        'pl': 'Wieczór (17:00–23:59)',
+        'nl': 'Avond (17:00–23:59)',
+        'es': 'Tarde (17:00–23:59)',
+        'de': 'Abend (17:00–23:59)',
+      });
+
+  String pleaseProvide(String items) => _t({
+        'en': 'Please provide: $items.',
+        'pl': 'Podaj: $items.',
+        'nl': 'Geef op: $items.',
+        'es': 'Indica: $items.',
+        'de': 'Bitte angeben: $items.',
+      });
+
+  String get missingAtLeastOneIcr => _t({
+        'en': 'at least one ICR',
+        'pl': 'co najmniej jeden przelicznik ICR',
+        'nl': 'ten minste één ICR',
+        'es': 'al menos un ICR',
+        'de': 'mindestens ein ICR',
+      });
+
+  String get missingComponent => _t({
+        'en': 'at least one calculator component (meal bolus or correction)',
+        'pl': 'co najmniej jeden składnik kalkulatora (bolus na posiłek lub korekcja)',
+        'nl': 'ten minste één rekenonderdeel (maaltijdbolus of correctie)',
+        'es': 'al menos un componente de la calculadora (bolo de comida o corrección)',
+        'de': 'mindestens eine Rechner-Komponente (Mahlzeitenbolus oder Korrektur)',
+      });
+
+  String get missingMaxBolus => _t({
+        'en': 'maximum bolus',
+        'pl': 'maksymalny bolus',
+        'nl': 'maximale bolus',
+        'es': 'bolo máximo',
+        'de': 'maximaler Bolus',
+      });
+
+  String get missingTargetGlucose => _t({
+        'en': 'target glucose',
+        'pl': 'docelowa glikemia',
+        'nl': 'streefglucose',
+        'es': 'glucosa objetivo',
+        'de': 'Zielglukose',
+      });
+
+  String get missingCorrectionFactor => _t({
+        'en': 'at least one correction factor',
+        'pl': 'co najmniej jeden współczynnik korekcyjny',
+        'nl': 'ten minste één correctiefactor',
+        'es': 'al menos un factor de corrección',
+        'de': 'mindestens ein Korrekturfaktor',
+      });
+
+  String get missingActionDuration => _t({
+        'en': 'insulin action duration',
+        'pl': 'czas działania insuliny',
+        'nl': 'werkingsduur insuline',
+        'es': 'duración de acción de la insulina',
+        'de': 'Insulinwirkdauer',
+      });
+
+  // ── Diabetes review screen ──
+  String get insulinSettingsReview => _t({
+        'en': 'Insulin Settings Review',
+        'pl': 'Przegląd ustawień insuliny',
+        'nl': 'Controle insuline-instellingen',
+        'es': 'Revisión de ajustes de insulina',
+        'de': 'Überprüfung der Insulineinstellungen',
+      });
+
+  String get lastReviewed => _t({
+        'en': 'Last reviewed',
+        'pl': 'Ostatni przegląd',
+        'nl': 'Laatst gecontroleerd',
+        'es': 'Última revisión',
+        'de': 'Zuletzt überprüft',
+      });
+
+  String get nextReviewDue => _t({
+        'en': 'Next review due',
+        'pl': 'Następny przegląd',
+        'nl': 'Volgende controle',
+        'es': 'Próxima revisión',
+        'de': 'Nächste Überprüfung fällig',
+      });
+
+  String get reminderSnoozedUntil => _t({
+        'en': 'Reminder snoozed until',
+        'pl': 'Przypomnienie odłożone do',
+        'nl': 'Herinnering uitgesteld tot',
+        'es': 'Recordatorio pospuesto hasta',
+        'de': 'Erinnerung verschoben bis',
+      });
+
+  String get confirmSettingsCorrect => _t({
+        'en': 'Confirm my settings are still correct',
+        'pl': 'Potwierdź, że moje ustawienia są nadal poprawne',
+        'nl': 'Bevestig dat mijn instellingen nog kloppen',
+        'es': 'Confirmar que mis ajustes siguen siendo correctos',
+        'de': 'Bestätigen, dass meine Einstellungen noch korrekt sind',
+      });
+
+  String get updateInsulinSettings => _t({
+        'en': 'Update my insulin settings',
+        'pl': 'Zaktualizuj moje ustawienia insuliny',
+        'nl': 'Mijn insuline-instellingen bijwerken',
+        'es': 'Actualizar mis ajustes de insulina',
+        'de': 'Meine Insulineinstellungen aktualisieren',
+      });
+
+  String reviewKeepsSafe(int days) => _t({
+        'en': 'Reviewing your settings regularly keeps the calculator safe. Confirming marks them current for the next $days days.',
+        'pl': 'Regularny przegląd ustawień utrzymuje bezpieczeństwo kalkulatora. Potwierdzenie oznacza je jako aktualne na kolejne $days dni.',
+        'nl': 'Door je instellingen regelmatig te controleren blijft de rekenmodule veilig. Bevestigen markeert ze als actueel voor de komende $days dagen.',
+        'es': 'Revisar tus ajustes con regularidad mantiene la calculadora segura. Confirmar los marca como vigentes durante los próximos $days días.',
+        'de': 'Regelmäßiges Überprüfen deiner Einstellungen hält den Rechner sicher. Mit dem Bestätigen gelten sie für die nächsten $days Tage als aktuell.',
+      });
+
+  String get reviewStatusCurrent => _t({
+        'en': 'Current',
+        'pl': 'Aktualne',
+        'nl': 'Actueel',
+        'es': 'Vigente',
+        'de': 'Aktuell',
+      });
+
+  String get reviewStatusCurrentDetail => _t({
+        'en': 'Your settings are reviewed and the calculator is available.',
+        'pl': 'Twoje ustawienia są sprawdzone, a kalkulator jest dostępny.',
+        'nl': 'Je instellingen zijn gecontroleerd en de rekenmodule is beschikbaar.',
+        'es': 'Tus ajustes están revisados y la calculadora está disponible.',
+        'de': 'Deine Einstellungen sind überprüft und der Rechner ist verfügbar.',
+      });
+
+  String get reviewStatusSnoozed => _t({
+        'en': 'Review due (reminder snoozed)',
+        'pl': 'Przegląd wymagany (przypomnienie odłożone)',
+        'nl': 'Controle nodig (herinnering uitgesteld)',
+        'es': 'Revisión pendiente (recordatorio pospuesto)',
+        'de': 'Überprüfung fällig (Erinnerung verschoben)',
+      });
+
+  String get reviewStatusSnoozedDetail => _t({
+        'en': 'A review is due. The reminder is snoozed, but the calculator stays disabled until you review.',
+        'pl': 'Przegląd jest wymagany. Przypomnienie jest odłożone, ale kalkulator pozostaje wyłączony do czasu przeglądu.',
+        'nl': 'Een controle is nodig. De herinnering is uitgesteld, maar de rekenmodule blijft uitgeschakeld tot je controleert.',
+        'es': 'Hay una revisión pendiente. El recordatorio está pospuesto, pero la calculadora permanece desactivada hasta que la revises.',
+        'de': 'Eine Überprüfung ist fällig. Die Erinnerung ist verschoben, aber der Rechner bleibt deaktiviert, bis du überprüfst.',
+      });
+
+  String get reviewStatusOverdue => _t({
+        'en': 'Overdue',
+        'pl': 'Zaległe',
+        'nl': 'Te laat',
+        'es': 'Vencida',
+        'de': 'Überfällig',
+      });
+
+  String get reviewStatusOverdueDetail => _t({
+        'en': 'Your settings review is overdue. Bolus calculations are disabled until you review and confirm.',
+        'pl': 'Przegląd ustawień jest zaległy. Obliczenia bolusa są wyłączone do czasu przeglądu i potwierdzenia.',
+        'nl': 'Je instellingencontrole is te laat. Bolusberekeningen zijn uitgeschakeld tot je controleert en bevestigt.',
+        'es': 'La revisión de tus ajustes está vencida. Los cálculos de bolo están desactivados hasta que revises y confirmes.',
+        'de': 'Die Überprüfung deiner Einstellungen ist überfällig. Bolusberechnungen sind deaktiviert, bis du überprüfst und bestätigst.',
+      });
+
+  String get reviewStatusNotCompleted => _t({
+        'en': 'Not completed',
+        'pl': 'Nieukończone',
+        'nl': 'Niet voltooid',
+        'es': 'No completada',
+        'de': 'Nicht abgeschlossen',
+      });
+
+  String get reviewStatusNotCompletedDetail => _t({
+        'en': 'Complete the insulin settings survey to use the calculator.',
+        'pl': 'Wypełnij ankietę ustawień insuliny, aby korzystać z kalkulatora.',
+        'nl': 'Vul de vragenlijst voor insuline-instellingen in om de rekenmodule te gebruiken.',
+        'es': 'Completa el cuestionario de ajustes de insulina para usar la calculadora.',
+        'de': 'Fülle den Fragebogen zu Insulineinstellungen aus, um den Rechner zu nutzen.',
+      });
+
+  String reviewStatusLabel(String label) => _t({
+        'en': 'Status: $label',
+        'pl': 'Status: $label',
+        'nl': 'Status: $label',
+        'es': 'Estado: $label',
+        'de': 'Status: $label',
+      });
+
+  String get insulinReviewNeeded => _t({
+        'en': 'Insulin settings review needed',
+        'pl': 'Wymagany przegląd ustawień insuliny',
+        'nl': 'Controle insuline-instellingen nodig',
+        'es': 'Se necesita revisar los ajustes de insulina',
+        'de': 'Überprüfung der Insulineinstellungen erforderlich',
+      });
+
+  String get bolusDisabledUntilReview => _t({
+        'en': 'For safety, the bolus calculator is disabled until you review and confirm your insulin settings.',
+        'pl': 'Ze względów bezpieczeństwa kalkulator bolusa jest wyłączony do czasu przeglądu i potwierdzenia ustawień insuliny.',
+        'nl': 'Voor de veiligheid is de bolusrekenmodule uitgeschakeld tot je je insuline-instellingen controleert en bevestigt.',
+        'es': 'Por seguridad, la calculadora de bolo está desactivada hasta que revises y confirmes tus ajustes de insulina.',
+        'de': 'Aus Sicherheitsgründen ist der Bolusrechner deaktiviert, bis du deine Insulineinstellungen überprüfst und bestätigst.',
+      });
+
+  String get reviewNow => _t({
+        'en': 'Review now',
+        'pl': 'Przejrzyj teraz',
+        'nl': 'Nu controleren',
+        'es': 'Revisar ahora',
+        'de': 'Jetzt überprüfen',
+      });
+
+  String get remindTomorrow => _t({
+        'en': 'Remind me tomorrow',
+        'pl': 'Przypomnij jutro',
+        'nl': 'Herinner me morgen',
+        'es': 'Recordármelo mañana',
+        'de': 'Morgen erinnern',
+      });
+
+  String get inTwoDays => _t({
+        'en': 'In 2 days',
+        'pl': 'Za 2 dni',
+        'nl': 'Over 2 dagen',
+        'es': 'En 2 días',
+        'de': 'In 2 Tagen',
+      });
+
+  String get inOneWeek => _t({
+        'en': 'In 1 week',
+        'pl': 'Za tydzień',
+        'nl': 'Over 1 week',
+        'es': 'En 1 semana',
+        'de': 'In 1 Woche',
+      });
+
+  // ── Bolus setup screen ──
+  String get iUseInsulin => _t({
+        'en': 'I use insulin',
+        'pl': 'Używam insuliny',
+        'nl': 'Ik gebruik insuline',
+        'es': 'Uso insulina',
+        'de': 'Ich verwende Insulin',
+      });
+
+  String get iUseInsulinDesc => _t({
+        'en': 'Required before the bolus calculator can be offered.',
+        'pl': 'Wymagane, zanim kalkulator bolusa stanie się dostępny.',
+        'nl': 'Vereist voordat de bolusrekenmodule kan worden aangeboden.',
+        'es': 'Necesario antes de poder ofrecer la calculadora de bolo.',
+        'de': 'Erforderlich, bevor der Bolusrechner angeboten werden kann.',
+      });
+
+  String get beforeYouEnable => _t({
+        'en': 'Before you enable',
+        'pl': 'Zanim włączysz',
+        'nl': 'Voordat je inschakelt',
+        'es': 'Antes de activar',
+        'de': 'Bevor du aktivierst',
+      });
+
+  String get continueToSurvey => _t({
+        'en': 'Continue to insulin settings survey',
+        'pl': 'Przejdź do ankiety ustawień insuliny',
+        'nl': 'Doorgaan naar vragenlijst insuline-instellingen',
+        'es': 'Continuar al cuestionario de ajustes de insulina',
+        'de': 'Weiter zum Fragebogen zu Insulineinstellungen',
+      });
+
+  String get disableBolusCalculatorMode => _t({
+        'en': 'Disable Bolus Calculator Mode',
+        'pl': 'Wyłącz tryb kalkulatora bolusa',
+        'nl': 'Bolusrekenmodus uitschakelen',
+        'es': 'Desactivar modo calculadora de bolo',
+        'de': 'Bolusrechner-Modus deaktivieren',
+      });
+
+  String get highRiskFeature => _t({
+        'en': 'High-risk feature. This calculator can suggest insulin doses from your settings. A wrong dose can be dangerous. It is not a medical device and does not replace your care plan.',
+        'pl': 'Funkcja wysokiego ryzyka. Ten kalkulator może sugerować dawki insuliny na podstawie Twoich ustawień. Błędna dawka może być niebezpieczna. To nie jest wyrób medyczny i nie zastępuje Twojego planu leczenia.',
+        'nl': 'Functie met hoog risico. Deze rekenmodule kan insulinedoses voorstellen op basis van je instellingen. Een verkeerde dosis kan gevaarlijk zijn. Het is geen medisch hulpmiddel en vervangt je zorgplan niet.',
+        'es': 'Función de alto riesgo. Esta calculadora puede sugerir dosis de insulina a partir de tus ajustes. Una dosis incorrecta puede ser peligrosa. No es un dispositivo médico y no sustituye tu plan de tratamiento.',
+        'de': 'Hochrisiko-Funktion. Dieser Rechner kann anhand deiner Einstellungen Insulindosen vorschlagen. Eine falsche Dosis kann gefährlich sein. Es ist kein Medizinprodukt und ersetzt nicht deinen Behandlungsplan.',
+      });
+
+  // ── Bolus calculator card ──
+  String get bolusEstimate => _t({
+        'en': 'Bolus estimate',
+        'pl': 'Szacowany bolus',
+        'nl': 'Bolusschatting',
+        'es': 'Estimación de bolo',
+        'de': 'Bolusschätzung',
+      });
+
+  String get mealCarbohydratesG => _t({
+        'en': 'Meal carbohydrates (g)',
+        'pl': 'Węglowodany posiłku (g)',
+        'nl': 'Koolhydraten maaltijd (g)',
+        'es': 'Carbohidratos de la comida (g)',
+        'de': 'Kohlenhydrate der Mahlzeit (g)',
+      });
+
+  String get addCorrectionForGlucose => _t({
+        'en': 'Add correction for current glucose',
+        'pl': 'Dodaj korekcję dla aktualnej glikemii',
+        'nl': 'Correctie voor huidige glucose toevoegen',
+        'es': 'Añadir corrección para la glucosa actual',
+        'de': 'Korrektur für aktuelle Glukose hinzufügen',
+      });
+
+  String currentGlucoseUnit(String unit) => _t({
+        'en': 'Current glucose ($unit)',
+        'pl': 'Aktualna glikemia ($unit)',
+        'nl': 'Huidige glucose ($unit)',
+        'es': 'Glucosa actual ($unit)',
+        'de': 'Aktuelle Glukose ($unit)',
+      });
+
+  String get setTime => _t({
+        'en': 'Set time',
+        'pl': 'Ustaw czas',
+        'nl': 'Tijd instellen',
+        'es': 'Ajustar hora',
+        'de': 'Zeit einstellen',
+      });
+
+  String nowTime(String time) => _t({
+        'en': 'Now ($time)',
+        'pl': 'Teraz ($time)',
+        'nl': 'Nu ($time)',
+        'es': 'Ahora ($time)',
+        'de': 'Jetzt ($time)',
+      });
+
+  String get calculateEstimate => _t({
+        'en': 'Calculate estimate',
+        'pl': 'Oblicz szacunek',
+        'nl': 'Schatting berekenen',
+        'es': 'Calcular estimación',
+        'de': 'Schätzung berechnen',
+      });
+
+  String get bolusUnavailableUntilReview => _t({
+        'en': 'Bolus estimate is unavailable until you review and confirm your insulin settings.',
+        'pl': 'Szacowany bolus jest niedostępny do czasu przeglądu i potwierdzenia ustawień insuliny.',
+        'nl': 'Bolusschatting is niet beschikbaar tot je je insuline-instellingen controleert en bevestigt.',
+        'es': 'La estimación de bolo no está disponible hasta que revises y confirmes tus ajustes de insulina.',
+        'de': 'Die Bolusschätzung ist nicht verfügbar, bis du deine Insulineinstellungen überprüfst und bestätigst.',
+      });
+
+  String get estimatedBolusLabel => _t({
+        'en': 'Estimated bolus based on your saved settings:',
+        'pl': 'Szacowany bolus na podstawie zapisanych ustawień:',
+        'nl': 'Geschatte bolus op basis van je opgeslagen instellingen:',
+        'es': 'Bolo estimado según tus ajustes guardados:',
+        'de': 'Geschätzter Bolus basierend auf deinen gespeicherten Einstellungen:',
+      });
+
+  String bolusUnitsValue(String value) => _t({
+        'en': '$value units',
+        'pl': '$value jednostek',
+        'nl': '$value eenheden',
+        'es': '$value unidades',
+        'de': '$value Einheiten',
+      });
+
+  String get responsibleForDose => _t({
+        'en': 'You are responsible for confirming this dose.',
+        'pl': 'Odpowiadasz za potwierdzenie tej dawki.',
+        'nl': 'Jij bent verantwoordelijk voor het bevestigen van deze dosis.',
+        'es': 'Eres responsable de confirmar esta dosis.',
+        'de': 'Du bist für die Bestätigung dieser Dosis verantwortlich.',
+      });
+
+  String get logDoseITook => _t({
+        'en': 'Log the dose I actually took',
+        'pl': 'Zapisz dawkę, którą faktycznie przyjąłem/przyjęłam',
+        'nl': 'Registreer de dosis die ik echt heb genomen',
+        'es': 'Registrar la dosis que realmente tomé',
+        'de': 'Tatsächlich genommene Dosis protokollieren',
+      });
+
+  String get howThisCalculated => _t({
+        'en': 'How this was calculated',
+        'pl': 'Jak to obliczono',
+        'nl': 'Hoe dit is berekend',
+        'es': 'Cómo se calculó esto',
+        'de': 'So wurde dies berechnet',
+      });
+
+  String get noEstimateShown => _t({
+        'en': 'No estimate shown',
+        'pl': 'Nie pokazano szacunku',
+        'nl': 'Geen schatting getoond',
+        'es': 'No se muestra estimación',
+        'de': 'Keine Schätzung angezeigt',
+      });
+
+  // breakdown table labels
+  String get bdMealCarbs => _t({
+        'en': 'Meal carbs',
+        'pl': 'Węglowodany posiłku',
+        'nl': 'Maaltijdkoolhydraten',
+        'es': 'Carbohidratos de la comida',
+        'de': 'Mahlzeit-Kohlenhydrate',
+      });
+
+  String get bdIcrUsed => _t({
+        'en': 'Insulin-to-carb ratio used',
+        'pl': 'Użyty przelicznik insulina-węglowodany',
+        'nl': 'Gebruikte insuline-koolhydraatratio',
+        'es': 'Ratio insulina-carbohidratos usado',
+        'de': 'Verwendeter Insulin-KH-Faktor',
+      });
+
+  String get bdMealComponent => _t({
+        'en': 'Meal component',
+        'pl': 'Składnik posiłkowy',
+        'nl': 'Maaltijdcomponent',
+        'es': 'Componente de comida',
+        'de': 'Mahlzeitenanteil',
+      });
+
+  String get bdCurrentGlucose => _t({
+        'en': 'Current glucose',
+        'pl': 'Aktualna glikemia',
+        'nl': 'Huidige glucose',
+        'es': 'Glucosa actual',
+        'de': 'Aktuelle Glukose',
+      });
+
+  String get bdTargetGlucose => _t({
+        'en': 'Target glucose',
+        'pl': 'Docelowa glikemia',
+        'nl': 'Streefglucose',
+        'es': 'Glucosa objetivo',
+        'de': 'Zielglukose',
+      });
+
+  String get bdCorrectionFactorUsed => _t({
+        'en': 'Correction factor used',
+        'pl': 'Użyty współczynnik korekcyjny',
+        'nl': 'Gebruikte correctiefactor',
+        'es': 'Factor de corrección usado',
+        'de': 'Verwendeter Korrekturfaktor',
+      });
+
+  String get bdCorrectionComponent => _t({
+        'en': 'Correction component',
+        'pl': 'Składnik korekcyjny',
+        'nl': 'Correctiecomponent',
+        'es': 'Componente de corrección',
+        'de': 'Korrekturanteil',
+      });
+
+  String get bdIobSubtracted => _t({
+        'en': 'Insulin-on-board subtracted',
+        'pl': 'Odjęta insulina aktywna',
+        'nl': 'Insuline-on-board afgetrokken',
+        'es': 'Insulina activa restada',
+        'de': 'Abgezogenes Insulin-on-Board',
+      });
+
+  String get bdRawTotal => _t({
+        'en': 'Raw total',
+        'pl': 'Suma surowa',
+        'nl': 'Ruw totaal',
+        'es': 'Total bruto',
+        'de': 'Rohsumme',
+      });
+
+  String bdRoundedTo(String inc) => _t({
+        'en': 'Rounded (to $inc u)',
+        'pl': 'Zaokrąglone (do $inc j.)',
+        'nl': 'Afgerond (op $inc e.)',
+        'es': 'Redondeado (a $inc u)',
+        'de': 'Gerundet (auf $inc E.)',
+      });
+
+  String get bdMaxSingleBolus => _t({
+        'en': 'Max single bolus',
+        'pl': 'Maks. pojedynczy bolus',
+        'nl': 'Max. enkele bolus',
+        'es': 'Bolo único máx.',
+        'de': 'Max. Einzelbolus',
+      });
+
+  String get bdTimeBlock => _t({
+        'en': 'Time block',
+        'pl': 'Blok czasowy',
+        'nl': 'Tijdblok',
+        'es': 'Bloque horario',
+        'de': 'Zeitblock',
+      });
+
+  String get logInsulinDose => _t({
+        'en': 'Log insulin dose',
+        'pl': 'Zapisz dawkę insuliny',
+        'nl': 'Insulinedosis registreren',
+        'es': 'Registrar dosis de insulina',
+        'de': 'Insulindosis protokollieren',
+      });
+
+  String get enterDoseDesc => _t({
+        'en': 'Enter the dose you actually took. This is used for insulin-on-board calculations and your records.',
+        'pl': 'Wpisz dawkę, którą faktycznie przyjąłeś/aś. Służy do obliczeń insuliny aktywnej i Twoich zapisów.',
+        'nl': 'Voer de dosis in die je echt hebt genomen. Dit wordt gebruikt voor IOB-berekeningen en je registratie.',
+        'es': 'Introduce la dosis que realmente tomaste. Se usa para los cálculos de insulina activa y tu historial.',
+        'de': 'Gib die tatsächlich genommene Dosis ein. Sie wird für IOB-Berechnungen und deine Aufzeichnungen verwendet.',
+      });
+
+  String get unitsTaken => _t({
+        'en': 'Units taken',
+        'pl': 'Przyjęte jednostki',
+        'nl': 'Genomen eenheden',
+        'es': 'Unidades tomadas',
+        'de': 'Genommene Einheiten',
+      });
+
+  String get notesOptional => _t({
+        'en': 'Notes (optional)',
+        'pl': 'Notatki (opcjonalnie)',
+        'nl': 'Notities (optioneel)',
+        'es': 'Notas (opcional)',
+        'de': 'Notizen (optional)',
+      });
+
+  String get iConfirmTookDose => _t({
+        'en': 'I confirm I took this dose',
+        'pl': 'Potwierdzam, że przyjąłem/przyjęłam tę dawkę',
+        'nl': 'Ik bevestig dat ik deze dosis heb genomen',
+        'es': 'Confirmo que tomé esta dosis',
+        'de': 'Ich bestätige, dass ich diese Dosis genommen habe',
+      });
+
+  String get saveDose => _t({
+        'en': 'Save dose',
+        'pl': 'Zapisz dawkę',
+        'nl': 'Dosis opslaan',
+        'es': 'Guardar dosis',
+        'de': 'Dosis speichern',
+      });
+
+  String get enterValidUnits => _t({
+        'en': 'Enter a valid number of units.',
+        'pl': 'Wpisz prawidłową liczbę jednostek.',
+        'nl': 'Voer een geldig aantal eenheden in.',
+        'es': 'Introduce un número de unidades válido.',
+        'de': 'Gib eine gültige Anzahl an Einheiten ein.',
+      });
+
+  String get doseLogged => _t({
+        'en': 'Dose logged.',
+        'pl': 'Dawka zapisana.',
+        'nl': 'Dosis geregistreerd.',
+        'es': 'Dosis registrada.',
+        'de': 'Dosis protokolliert.',
+      });
+
+  // ── Diabetes safety copy ──
+  String get diabetesGeneralDisclaimer => _t({
+        'en': 'This insulin estimate is calculated from settings you entered. It is not a substitute for medical advice. Incorrect settings, carb counts, glucose readings, or insulin history can cause dangerous low or high glucose. Always follow your diabetes care plan.',
+        'pl': 'Ten szacunek insuliny jest obliczany na podstawie wprowadzonych ustawień. Nie zastępuje porady lekarskiej. Błędne ustawienia, liczby węglowodanów, odczyty glikemii lub historia insuliny mogą powodować niebezpieczną hipo- lub hiperglikemię. Zawsze przestrzegaj swojego planu leczenia cukrzycy.',
+        'nl': 'Deze insulineschatting is berekend op basis van de instellingen die je hebt ingevoerd. Het is geen vervanging voor medisch advies. Onjuiste instellingen, koolhydraattellingen, glucosewaarden of insulinegeschiedenis kunnen gevaarlijke lage of hoge glucose veroorzaken. Volg altijd je diabeteszorgplan.',
+        'es': 'Esta estimación de insulina se calcula a partir de los ajustes que introdujiste. No sustituye el consejo médico. Unos ajustes, recuentos de carbohidratos, lecturas de glucosa o historial de insulina incorrectos pueden provocar una glucosa peligrosamente baja o alta. Sigue siempre tu plan de tratamiento de la diabetes.',
+        'de': 'Diese Insulinschätzung wird aus den von dir eingegebenen Einstellungen berechnet. Sie ersetzt keine ärztliche Beratung. Falsche Einstellungen, Kohlenhydratangaben, Glukosewerte oder Insulinverläufe können gefährlich niedrige oder hohe Glukosewerte verursachen. Befolge stets deinen Diabetes-Behandlungsplan.',
+      });
+
+  String get diabetesBeforeEnabling => _t({
+        'en': 'Only use this feature if your insulin-to-carb ratio, correction factor, target glucose, and insulin action duration were provided by your clinician, diabetes educator, pump, or official care plan.',
+        'pl': 'Korzystaj z tej funkcji tylko wtedy, gdy Twój przelicznik insulina-węglowodany, współczynnik korekcyjny, docelowa glikemia i czas działania insuliny zostały podane przez lekarza, edukatora diabetologicznego, pompę lub oficjalny plan leczenia.',
+        'nl': 'Gebruik deze functie alleen als je insuline-koolhydraatratio, correctiefactor, streefglucose en werkingsduur van insuline zijn opgegeven door je arts, diabetesverpleegkundige, pomp of officieel zorgplan.',
+        'es': 'Usa esta función solo si tu ratio insulina-carbohidratos, factor de corrección, glucosa objetivo y duración de acción de la insulina fueron proporcionados por tu médico, educador en diabetes, bomba o plan de tratamiento oficial.',
+        'de': 'Nutze diese Funktion nur, wenn dein Insulin-KH-Faktor, Korrekturfaktor, Zielglukose und Insulinwirkdauer von deinem Arzt, Diabetesberater, deiner Pumpe oder einem offiziellen Behandlungsplan stammen.',
+      });
+
+  String get diabetesRegulatoryNotice => _t({
+        'en': 'Depending on where you live, an insulin calculator may be regulated as medical-device software. This feature is provided for informational support only and has not been cleared or certified as a medical device.',
+        'pl': 'W zależności od miejsca zamieszkania kalkulator insuliny może być regulowany jako oprogramowanie wyrobu medycznego. Ta funkcja służy wyłącznie celom informacyjnym i nie została dopuszczona ani certyfikowana jako wyrób medyczny.',
+        'nl': 'Afhankelijk van waar je woont, kan een insulinerekenmachine gereguleerd zijn als software voor medische hulpmiddelen. Deze functie is alleen bedoeld als informatieve ondersteuning en is niet goedgekeurd of gecertificeerd als medisch hulpmiddel.',
+        'es': 'Según dónde vivas, una calculadora de insulina puede estar regulada como software de dispositivo médico. Esta función se ofrece solo como apoyo informativo y no ha sido autorizada ni certificada como dispositivo médico.',
+        'de': 'Je nach Wohnort kann ein Insulinrechner als Medizinprodukte-Software reguliert sein. Diese Funktion dient nur zur informativen Unterstützung und ist nicht als Medizinprodukt zugelassen oder zertifiziert.',
+      });
+
+  String get diabetesSettingsSourceConfirmation => _t({
+        'en': 'I understand this app does not replace medical advice. I confirm that the insulin settings I entered are from my clinician, insulin pump, diabetes educator, or official diabetes care plan. I understand incorrect settings can cause dangerous low or high blood glucose.',
+        'pl': 'Rozumiem, że ta aplikacja nie zastępuje porady lekarskiej. Potwierdzam, że wprowadzone ustawienia insuliny pochodzą od mojego lekarza, pompy insulinowej, edukatora diabetologicznego lub oficjalnego planu leczenia cukrzycy. Rozumiem, że błędne ustawienia mogą powodować niebezpieczną hipo- lub hiperglikemię.',
+        'nl': 'Ik begrijp dat deze app geen vervanging is voor medisch advies. Ik bevestig dat de insuline-instellingen die ik heb ingevoerd afkomstig zijn van mijn arts, insulinepomp, diabetesverpleegkundige of officieel diabeteszorgplan. Ik begrijp dat onjuiste instellingen gevaarlijk lage of hoge bloedglucose kunnen veroorzaken.',
+        'es': 'Entiendo que esta app no sustituye el consejo médico. Confirmo que los ajustes de insulina que introduje provienen de mi médico, bomba de insulina, educador en diabetes o plan de tratamiento oficial. Entiendo que unos ajustes incorrectos pueden provocar una glucosa peligrosamente baja o alta.',
+        'de': 'Mir ist bewusst, dass diese App keine ärztliche Beratung ersetzt. Ich bestätige, dass die von mir eingegebenen Insulineinstellungen von meinem Arzt, meiner Insulinpumpe, meinem Diabetesberater oder einem offiziellen Behandlungsplan stammen. Mir ist bewusst, dass falsche Einstellungen gefährlich niedrige oder hohe Blutzuckerwerte verursachen können.',
+      });
+
+  String get diabetesFinalResponsibility => _t({
+        'en': 'I understand this is calculated from my saved settings and I am responsible for confirming my dose.',
+        'pl': 'Rozumiem, że jest to obliczane na podstawie moich zapisanych ustawień i odpowiadam za potwierdzenie swojej dawki.',
+        'nl': 'Ik begrijp dat dit wordt berekend op basis van mijn opgeslagen instellingen en dat ik verantwoordelijk ben voor het bevestigen van mijn dosis.',
+        'es': 'Entiendo que esto se calcula a partir de mis ajustes guardados y que soy responsable de confirmar mi dosis.',
+        'de': 'Mir ist bewusst, dass dies aus meinen gespeicherten Einstellungen berechnet wird und ich für die Bestätigung meiner Dosis verantwortlich bin.',
+      });
+
+  // ── Bolus block reasons ──
+  String bolusBlock(String key) {
+    switch (key) {
+      case 'calculatorDisabled':
+        return _t({
+          'en': 'Bolus Calculator Mode is turned off. Enable it in diabetes settings.',
+          'pl': 'Tryb kalkulatora bolusa jest wyłączony. Włącz go w ustawieniach cukrzycy.',
+          'nl': 'Bolusrekenmodus is uitgeschakeld. Schakel deze in bij diabetesinstellingen.',
+          'es': 'El modo calculadora de bolo está desactivado. Actívalo en los ajustes de diabetes.',
+          'de': 'Der Bolusrechner-Modus ist ausgeschaltet. Aktiviere ihn in den Diabetes-Einstellungen.',
+        });
+      case 'surveyIncomplete':
+        return _t({
+          'en': 'Complete the Diabetes Insulin Settings Survey before using the calculator.',
+          'pl': 'Wypełnij ankietę ustawień insuliny przed użyciem kalkulatora.',
+          'nl': 'Vul de vragenlijst voor insuline-instellingen in voordat je de rekenmodule gebruikt.',
+          'es': 'Completa el cuestionario de ajustes de insulina antes de usar la calculadora.',
+          'de': 'Fülle den Fragebogen zu Insulineinstellungen aus, bevor du den Rechner verwendest.',
+        });
+      case 'consentMissing':
+        return _t({
+          'en': 'You must accept the safety confirmation before using the calculator.',
+          'pl': 'Musisz zaakceptować potwierdzenie bezpieczeństwa przed użyciem kalkulatora.',
+          'nl': 'Je moet de veiligheidsbevestiging accepteren voordat je de rekenmodule gebruikt.',
+          'es': 'Debes aceptar la confirmación de seguridad antes de usar la calculadora.',
+          'de': 'Du musst die Sicherheitsbestätigung akzeptieren, bevor du den Rechner verwendest.',
+        });
+      case 'settingsStale':
+        return _t({
+          'en': 'Your insulin settings have not been reviewed in over 90 days. For safety, bolus calculations are disabled until you review and confirm your settings.',
+          'pl': 'Twoje ustawienia insuliny nie były przeglądane od ponad 90 dni. Ze względów bezpieczeństwa obliczenia bolusa są wyłączone do czasu przeglądu i potwierdzenia ustawień.',
+          'nl': 'Je insuline-instellingen zijn al meer dan 90 dagen niet gecontroleerd. Voor de veiligheid zijn bolusberekeningen uitgeschakeld tot je je instellingen controleert en bevestigt.',
+          'es': 'Tus ajustes de insulina no se han revisado en más de 90 días. Por seguridad, los cálculos de bolo están desactivados hasta que revises y confirmes tus ajustes.',
+          'de': 'Deine Insulineinstellungen wurden seit über 90 Tagen nicht überprüft. Aus Sicherheitsgründen sind Bolusberechnungen deaktiviert, bis du deine Einstellungen überprüfst und bestätigst.',
+        });
+      case 'surveyOverdue':
+        return _t({
+          'en': 'Your insulin settings review is overdue. For safety, bolus calculations are disabled until you review and confirm them.',
+          'pl': 'Przegląd ustawień insuliny jest zaległy. Ze względów bezpieczeństwa obliczenia bolusa są wyłączone do czasu ich przeglądu i potwierdzenia.',
+          'nl': 'De controle van je insuline-instellingen is te laat. Voor de veiligheid zijn bolusberekeningen uitgeschakeld tot je ze controleert en bevestigt.',
+          'es': 'La revisión de tus ajustes de insulina está vencida. Por seguridad, los cálculos de bolo están desactivados hasta que los revises y confirmes.',
+          'de': 'Die Überprüfung deiner Insulineinstellungen ist überfällig. Aus Sicherheitsgründen sind Bolusberechnungen deaktiviert, bis du sie überprüfst und bestätigst.',
+        });
+      case 'glucoseUnitMissing':
+        return _t({
+          'en': 'Your blood-glucose unit is not set. Set mg/dL or mmol/L in settings.',
+          'pl': 'Jednostka glikemii nie jest ustawiona. Ustaw mg/dL lub mmol/L w ustawieniach.',
+          'nl': 'Je bloedglucose-eenheid is niet ingesteld. Stel mg/dL of mmol/L in bij instellingen.',
+          'es': 'Tu unidad de glucosa no está configurada. Configura mg/dL o mmol/L en los ajustes.',
+          'de': 'Deine Blutzuckereinheit ist nicht festgelegt. Stelle mg/dL oder mmol/L in den Einstellungen ein.',
+        });
+      case 'icrMissingForTimeBlock':
+        return _t({
+          'en': 'No insulin-to-carb ratio is configured for the current time. Meal bolus cannot be calculated.',
+          'pl': 'Brak skonfigurowanego przelicznika insulina-węglowodany dla bieżącej pory. Nie można obliczyć bolusa na posiłek.',
+          'nl': 'Er is geen insuline-koolhydraatratio ingesteld voor het huidige tijdstip. Maaltijdbolus kan niet worden berekend.',
+          'es': 'No hay un ratio insulina-carbohidratos configurado para la hora actual. No se puede calcular el bolo de comida.',
+          'de': 'Für die aktuelle Uhrzeit ist kein Insulin-KH-Faktor konfiguriert. Der Mahlzeitenbolus kann nicht berechnet werden.',
+        });
+      case 'isfMissingForTimeBlock':
+        return _t({
+          'en': 'No correction factor is configured for the current time. Correction bolus cannot be calculated.',
+          'pl': 'Brak skonfigurowanego współczynnika korekcyjnego dla bieżącej pory. Nie można obliczyć bolusa korekcyjnego.',
+          'nl': 'Er is geen correctiefactor ingesteld voor het huidige tijdstip. Correctiebolus kan niet worden berekend.',
+          'es': 'No hay un factor de corrección configurado para la hora actual. No se puede calcular el bolo de corrección.',
+          'de': 'Für die aktuelle Uhrzeit ist kein Korrekturfaktor konfiguriert. Der Korrekturbolus kann nicht berechnet werden.',
+        });
+      case 'targetGlucoseMissing':
+        return _t({
+          'en': 'No target glucose is configured. Correction bolus cannot be calculated.',
+          'pl': 'Brak skonfigurowanej docelowej glikemii. Nie można obliczyć bolusa korekcyjnego.',
+          'nl': 'Er is geen streefglucose ingesteld. Correctiebolus kan niet worden berekend.',
+          'es': 'No hay glucosa objetivo configurada. No se puede calcular el bolo de corrección.',
+          'de': 'Es ist keine Zielglukose konfiguriert. Der Korrekturbolus kann nicht berechnet werden.',
+        });
+      case 'actionDurationMissing':
+        return _t({
+          'en': 'Insulin action duration is not set, so insulin-on-board cannot be calculated.',
+          'pl': 'Czas działania insuliny nie jest ustawiony, więc nie można obliczyć insuliny aktywnej.',
+          'nl': 'Werkingsduur van insuline is niet ingesteld, dus insuline-on-board kan niet worden berekend.',
+          'es': 'La duración de acción de la insulina no está configurada, por lo que no se puede calcular la insulina activa.',
+          'de': 'Die Insulinwirkdauer ist nicht festgelegt, daher kann das Insulin-on-Board nicht berechnet werden.',
+        });
+      case 'maxBolusMissing':
+        return _t({
+          'en': 'No maximum single bolus is configured. Calculation is disabled for safety.',
+          'pl': 'Brak skonfigurowanego maksymalnego pojedynczego bolusa. Obliczenia są wyłączone ze względów bezpieczeństwa.',
+          'nl': 'Er is geen maximale enkele bolus ingesteld. Berekening is uitgeschakeld voor de veiligheid.',
+          'es': 'No hay un bolo único máximo configurado. El cálculo está desactivado por seguridad.',
+          'de': 'Es ist kein maximaler Einzelbolus konfiguriert. Die Berechnung ist aus Sicherheitsgründen deaktiviert.',
+        });
+      case 'minIncrementMissing':
+        return _t({
+          'en': 'No bolus rounding increment is configured. Calculation is disabled.',
+          'pl': 'Brak skonfigurowanego kroku zaokrąglania bolusa. Obliczenia są wyłączone.',
+          'nl': 'Er is geen afrondingsstap voor de bolus ingesteld. Berekening is uitgeschakeld.',
+          'es': 'No hay un incremento de redondeo de bolo configurado. El cálculo está desactivado.',
+          'de': 'Es ist kein Rundungsschritt für den Bolus konfiguriert. Die Berechnung ist deaktiviert.',
+        });
+      case 'currentGlucoseMissing':
+        return _t({
+          'en': 'A current glucose reading is required for a correction bolus.',
+          'pl': 'Aktualny odczyt glikemii jest wymagany do bolusa korekcyjnego.',
+          'nl': 'Een huidige glucosemeting is vereist voor een correctiebolus.',
+          'es': 'Se requiere una lectura de glucosa actual para un bolo de corrección.',
+          'de': 'Für einen Korrekturbolus ist ein aktueller Glukosewert erforderlich.',
+        });
+      case 'glucoseReadingStale':
+        return _t({
+          'en': 'Your glucose reading is too old. Enter a fresh reading for a correction bolus.',
+          'pl': 'Twój odczyt glikemii jest zbyt stary. Wprowadź świeży odczyt do bolusa korekcyjnego.',
+          'nl': 'Je glucosemeting is te oud. Voer een verse meting in voor een correctiebolus.',
+          'es': 'Tu lectura de glucosa es demasiado antigua. Introduce una lectura reciente para un bolo de corrección.',
+          'de': 'Dein Glukosewert ist zu alt. Gib für einen Korrekturbolus einen aktuellen Wert ein.',
+        });
+      case 'mealCarbsMissingOrInvalid':
+        return _t({
+          'en': 'Enter a valid carbohydrate amount for this meal.',
+          'pl': 'Wprowadź prawidłową ilość węglowodanów dla tego posiłku.',
+          'nl': 'Voer een geldige hoeveelheid koolhydraten in voor deze maaltijd.',
+          'es': 'Introduce una cantidad de carbohidratos válida para esta comida.',
+          'de': 'Gib eine gültige Kohlenhydratmenge für diese Mahlzeit ein.',
+        });
+      case 'iobRequiredButUnavailable':
+        return _t({
+          'en': 'Insulin-on-board is required by your settings but cannot be calculated. Calculation is disabled.',
+          'pl': 'Twoje ustawienia wymagają insuliny aktywnej, ale nie można jej obliczyć. Obliczenia są wyłączone.',
+          'nl': 'Insuline-on-board is vereist door je instellingen maar kan niet worden berekend. Berekening is uitgeschakeld.',
+          'es': 'Tus ajustes requieren insulina activa, pero no se puede calcular. El cálculo está desactivado.',
+          'de': 'Deine Einstellungen erfordern Insulin-on-Board, das jedoch nicht berechnet werden kann. Die Berechnung ist deaktiviert.',
+        });
+      case 'glucoseBelowHypoThreshold':
+        return _t({
+          'en': 'Your glucose is below your configured low threshold. This app cannot recommend insulin. Follow your hypoglycemia care plan.',
+          'pl': 'Twoja glikemia jest poniżej ustawionego progu niskiego. Ta aplikacja nie może zalecać insuliny. Postępuj zgodnie z planem leczenia hipoglikemii.',
+          'nl': 'Je glucose ligt onder je ingestelde lage drempel. Deze app kan geen insuline aanbevelen. Volg je hypoglykemie-zorgplan.',
+          'es': 'Tu glucosa está por debajo del umbral bajo que configuraste. Esta app no puede recomendar insulina. Sigue tu plan de tratamiento de la hipoglucemia.',
+          'de': 'Deine Glukose liegt unter deiner eingestellten Niedrigschwelle. Diese App kann kein Insulin empfehlen. Befolge deinen Hypoglykämie-Behandlungsplan.',
+        });
+      case 'glucoseImplausible':
+        return _t({
+          'en': 'The glucose value looks out of range. Calculation is disabled for safety.',
+          'pl': 'Wartość glikemii wydaje się poza zakresem. Obliczenia są wyłączone ze względów bezpieczeństwa.',
+          'nl': 'De glucosewaarde lijkt buiten bereik. Berekening is uitgeschakeld voor de veiligheid.',
+          'es': 'El valor de glucosa parece estar fuera de rango. El cálculo está desactivado por seguridad.',
+          'de': 'Der Glukosewert scheint außerhalb des Bereichs zu liegen. Die Berechnung ist aus Sicherheitsgründen deaktiviert.',
+        });
+      case 'carbsImplausible':
+        return _t({
+          'en': 'The carbohydrate amount looks out of range. Calculation is disabled for safety.',
+          'pl': 'Ilość węglowodanów wydaje się poza zakresem. Obliczenia są wyłączone ze względów bezpieczeństwa.',
+          'nl': 'De hoeveelheid koolhydraten lijkt buiten bereik. Berekening is uitgeschakeld voor de veiligheid.',
+          'es': 'La cantidad de carbohidratos parece estar fuera de rango. El cálculo está desactivado por seguridad.',
+          'de': 'Die Kohlenhydratmenge scheint außerhalb des Bereichs zu liegen. Die Berechnung ist aus Sicherheitsgründen deaktiviert.',
+        });
+      case 'settingInvalid':
+        return _t({
+          'en': 'One of your saved insulin settings is invalid. Review your settings.',
+          'pl': 'Jedno z zapisanych ustawień insuliny jest nieprawidłowe. Przejrzyj swoje ustawienia.',
+          'nl': 'Een van je opgeslagen insuline-instellingen is ongeldig. Controleer je instellingen.',
+          'es': 'Uno de tus ajustes de insulina guardados no es válido. Revisa tus ajustes.',
+          'de': 'Eine deiner gespeicherten Insulineinstellungen ist ungültig. Überprüfe deine Einstellungen.',
+        });
+      case 'maxBolusExceeded':
+      default:
+        return _t({
+          'en': 'The calculated amount exceeds your configured maximum single bolus. This calculation is blocked. Follow your care plan or contact your clinician.',
+          'pl': 'Obliczona ilość przekracza Twój maksymalny pojedynczy bolus. To obliczenie jest zablokowane. Postępuj zgodnie z planem leczenia lub skontaktuj się z lekarzem.',
+          'nl': 'De berekende hoeveelheid overschrijdt je ingestelde maximale enkele bolus. Deze berekening is geblokkeerd. Volg je zorgplan of neem contact op met je arts.',
+          'es': 'La cantidad calculada supera tu bolo único máximo configurado. Este cálculo está bloqueado. Sigue tu plan de tratamiento o contacta con tu médico.',
+          'de': 'Die berechnete Menge überschreitet deinen eingestellten maximalen Einzelbolus. Diese Berechnung ist blockiert. Befolge deinen Behandlungsplan oder wende dich an deinen Arzt.',
+        });
+    }
+  }
+
+  // ── Bolus warnings ──
+  String bolusWarning(String key) {
+    switch (key) {
+      case 'glucoseBelowTargetNoCorrection':
+        return _t({
+          'en': 'Your glucose is below target, so no correction insulin was added.',
+          'pl': 'Twoja glikemia jest poniżej celu, więc nie dodano insuliny korekcyjnej.',
+          'nl': 'Je glucose ligt onder het streefdoel, dus er is geen correctie-insuline toegevoegd.',
+          'es': 'Tu glucosa está por debajo del objetivo, por lo que no se añadió insulina de corrección.',
+          'de': 'Deine Glukose liegt unter dem Zielwert, daher wurde kein Korrekturinsulin hinzugefügt.',
+        });
+      case 'glucoseAboveHyperThreshold':
+        return _t({
+          'en': 'Your glucose is above your configured high threshold. Follow your diabetes care plan and consider checking ketones or contacting a clinician if instructed by your care plan.',
+          'pl': 'Twoja glikemia jest powyżej ustawionego progu wysokiego. Postępuj zgodnie z planem leczenia cukrzycy i rozważ sprawdzenie ketonów lub kontakt z lekarzem, jeśli tak zaleca Twój plan.',
+          'nl': 'Je glucose ligt boven je ingestelde hoge drempel. Volg je diabeteszorgplan en overweeg ketonen te controleren of een arts te raadplegen als je zorgplan dat aangeeft.',
+          'es': 'Tu glucosa está por encima del umbral alto que configuraste. Sigue tu plan de tratamiento de la diabetes y considera comprobar las cetonas o contactar con un médico si tu plan lo indica.',
+          'de': 'Deine Glukose liegt über deiner eingestellten Hochschwelle. Befolge deinen Diabetes-Behandlungsplan und ziehe in Betracht, Ketone zu prüfen oder einen Arzt zu kontaktieren, wenn dein Plan dies vorsieht.',
+        });
+      case 'iobMayBeInaccurate':
+        return _t({
+          'en': 'You logged recent insulin. This estimate subtracts calculated insulin-on-board, but IOB may be inaccurate. Be careful about insulin stacking and follow your care plan.',
+          'pl': 'Zapisałeś/aś niedawną insulinę. Ten szacunek odejmuje obliczoną insulinę aktywną, ale IOB może być niedokładne. Uważaj na nakładanie się dawek insuliny i przestrzegaj planu leczenia.',
+          'nl': 'Je hebt recent insuline geregistreerd. Deze schatting trekt berekende insuline-on-board af, maar IOB kan onnauwkeurig zijn. Wees voorzichtig met insulinestapeling en volg je zorgplan.',
+          'es': 'Registraste insulina reciente. Esta estimación resta la insulina activa calculada, pero la IOB puede ser imprecisa. Ten cuidado con la acumulación de insulina y sigue tu plan de tratamiento.',
+          'de': 'Du hast kürzlich Insulin erfasst. Diese Schätzung zieht berechnetes Insulin-on-Board ab, aber das IOB kann ungenau sein. Achte auf Insulin-Stacking und befolge deinen Behandlungsplan.',
+        });
+      case 'carbsUnusuallyHigh':
+        return _t({
+          'en': 'The carbohydrate amount is unusually high. Please double-check it before relying on this estimate.',
+          'pl': 'Ilość węglowodanów jest niezwykle wysoka. Sprawdź ją dokładnie przed poleganiem na tym szacunku.',
+          'nl': 'De hoeveelheid koolhydraten is ongewoon hoog. Controleer dit goed voordat je op deze schatting vertrouwt.',
+          'es': 'La cantidad de carbohidratos es inusualmente alta. Compruébala bien antes de fiarte de esta estimación.',
+          'de': 'Die Kohlenhydratmenge ist ungewöhnlich hoch. Bitte überprüfe sie genau, bevor du dich auf diese Schätzung verlässt.',
+        });
+      case 'estimateZeroOrNegative':
+      default:
+        return _t({
+          'en': 'Calculated insulin need is zero or negative after considering current glucose and insulin-on-board. Follow your care plan.',
+          'pl': 'Obliczone zapotrzebowanie na insulinę wynosi zero lub jest ujemne po uwzględnieniu aktualnej glikemii i insuliny aktywnej. Postępuj zgodnie z planem leczenia.',
+          'nl': 'De berekende insulinebehoefte is nul of negatief na het meewegen van huidige glucose en insuline-on-board. Volg je zorgplan.',
+          'es': 'La necesidad de insulina calculada es cero o negativa tras considerar la glucosa actual y la insulina activa. Sigue tu plan de tratamiento.',
+          'de': 'Der berechnete Insulinbedarf ist nach Berücksichtigung der aktuellen Glukose und des Insulin-on-Board null oder negativ. Befolge deinen Behandlungsplan.',
+        });
+    }
+  }
+
+  // ── Diabetes settings validator messages ──
+  String validatorMessage(String code, {String? label}) {
+    final lbl = label ?? '';
+    switch (code) {
+      case 'valueNotPositive':
+        return _t({
+          'en': 'A $lbl value must be greater than zero.',
+          'pl': 'Wartość ($lbl) musi być większa od zera.',
+          'nl': 'Een $lbl-waarde moet groter zijn dan nul.',
+          'es': 'Un valor de $lbl debe ser mayor que cero.',
+          'de': 'Ein $lbl-Wert muss größer als null sein.',
+        });
+      case 'valueOutOfRange':
+        return _t({
+          'en': 'A $lbl value is outside a safe range.',
+          'pl': 'Wartość ($lbl) jest poza bezpiecznym zakresem.',
+          'nl': 'Een $lbl-waarde valt buiten een veilig bereik.',
+          'es': 'Un valor de $lbl está fuera de un rango seguro.',
+          'de': 'Ein $lbl-Wert liegt außerhalb eines sicheren Bereichs.',
+        });
+      case 'invalidTimeRange':
+        return _t({
+          'en': 'A $lbl time block has an invalid time range.',
+          'pl': 'Blok czasowy ($lbl) ma nieprawidłowy zakres czasu.',
+          'nl': 'Een $lbl-tijdblok heeft een ongeldig tijdsbereik.',
+          'es': 'Un bloque horario de $lbl tiene un rango de tiempo no válido.',
+          'de': 'Ein $lbl-Zeitblock hat einen ungültigen Zeitbereich.',
+        });
+      case 'blocksOverlap':
+        return _t({
+          'en': 'Your $lbl time blocks overlap. Fix them before continuing.',
+          'pl': 'Twoje bloki czasowe ($lbl) nakładają się. Popraw je przed kontynuacją.',
+          'nl': 'Je $lbl-tijdblokken overlappen. Corrigeer ze voordat je doorgaat.',
+          'es': 'Tus bloques horarios de $lbl se solapan. Corrígelos antes de continuar.',
+          'de': 'Deine $lbl-Zeitblöcke überschneiden sich. Korrigiere sie, bevor du fortfährst.',
+        });
+      case 'targetOutOfRange':
+        return _t({
+          'en': 'Target glucose is outside a safe range.',
+          'pl': 'Docelowa glikemia jest poza bezpiecznym zakresem.',
+          'nl': 'Streefglucose valt buiten een veilig bereik.',
+          'es': 'La glucosa objetivo está fuera de un rango seguro.',
+          'de': 'Die Zielglukose liegt außerhalb eines sicheren Bereichs.',
+        });
+      case 'actionDurationOutOfRange':
+        return _t({
+          'en': 'Insulin action duration is outside a safe range.',
+          'pl': 'Czas działania insuliny jest poza bezpiecznym zakresem.',
+          'nl': 'Werkingsduur van insuline valt buiten een veilig bereik.',
+          'es': 'La duración de acción de la insulina está fuera de un rango seguro.',
+          'de': 'Die Insulinwirkdauer liegt außerhalb eines sicheren Bereichs.',
+        });
+      case 'maxBolusOutOfRange':
+        return _t({
+          'en': 'Maximum single bolus is outside a safe range.',
+          'pl': 'Maksymalny pojedynczy bolus jest poza bezpiecznym zakresem.',
+          'nl': 'Maximale enkele bolus valt buiten een veilig bereik.',
+          'es': 'El bolo único máximo está fuera de un rango seguro.',
+          'de': 'Der maximale Einzelbolus liegt außerhalb eines sicheren Bereichs.',
+        });
+      case 'incrementUnsupported':
+        return _t({
+          'en': 'Bolus rounding increment is not a supported value.',
+          'pl': 'Krok zaokrąglania bolusa nie jest obsługiwaną wartością.',
+          'nl': 'Afrondingsstap voor de bolus is geen ondersteunde waarde.',
+          'es': 'El incremento de redondeo de bolo no es un valor admitido.',
+          'de': 'Der Rundungsschritt für den Bolus ist kein unterstützter Wert.',
+        });
+      case 'thresholdsInverted':
+        return _t({
+          'en': 'Low threshold must be below the high threshold.',
+          'pl': 'Próg niski musi być poniżej progu wysokiego.',
+          'nl': 'De lage drempel moet onder de hoge drempel liggen.',
+          'es': 'El umbral bajo debe estar por debajo del umbral alto.',
+          'de': 'Die Niedrigschwelle muss unter der Hochschwelle liegen.',
+        });
+      case 'glucoseOutOfRange':
+        return _t({
+          'en': 'The glucose value looks out of range.',
+          'pl': 'Wartość glikemii wydaje się poza zakresem.',
+          'nl': 'De glucosewaarde lijkt buiten bereik.',
+          'es': 'El valor de glucosa parece estar fuera de rango.',
+          'de': 'Der Glukosewert scheint außerhalb des Bereichs zu liegen.',
+        });
+      case 'carbsNotPositive':
+        return _t({
+          'en': 'Enter a carbohydrate amount greater than zero.',
+          'pl': 'Wprowadź ilość węglowodanów większą od zera.',
+          'nl': 'Voer een hoeveelheid koolhydraten groter dan nul in.',
+          'es': 'Introduce una cantidad de carbohidratos mayor que cero.',
+          'de': 'Gib eine Kohlenhydratmenge größer als null ein.',
+        });
+      case 'carbsOutOfRange':
+        return _t({
+          'en': 'The carbohydrate amount looks out of range.',
+          'pl': 'Ilość węglowodanów wydaje się poza zakresem.',
+          'nl': 'De hoeveelheid koolhydraten lijkt buiten bereik.',
+          'es': 'La cantidad de carbohidratos parece estar fuera de rango.',
+          'de': 'Die Kohlenhydratmenge scheint außerhalb des Bereichs zu liegen.',
+        });
+      case 'carbsUnusuallyHigh':
+      default:
+        return _t({
+          'en': 'The carbohydrate amount is unusually high. Please double-check it.',
+          'pl': 'Ilość węglowodanów jest niezwykle wysoka. Sprawdź ją dokładnie.',
+          'nl': 'De hoeveelheid koolhydraten is ongewoon hoog. Controleer dit goed.',
+          'es': 'La cantidad de carbohidratos es inusualmente alta. Compruébala bien.',
+          'de': 'Die Kohlenhydratmenge ist ungewöhnlich hoch. Bitte überprüfe sie genau.',
+        });
+    }
+  }
+
+  String get validatorLabelIcr => _t({
+        'en': 'insulin-to-carb ratio',
+        'pl': 'przelicznik insulina-węglowodany',
+        'nl': 'insuline-koolhydraatratio',
+        'es': 'ratio insulina-carbohidratos',
+        'de': 'Insulin-KH-Faktor',
+      });
+
+  String get validatorLabelIsf => _t({
+        'en': 'correction factor',
+        'pl': 'współczynnik korekcyjny',
+        'nl': 'correctiefactor',
+        'es': 'factor de corrección',
+        'de': 'Korrekturfaktor',
+      });
+
   String nutrientName(String key) {
     switch (key) {
       case 'calories':

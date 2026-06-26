@@ -1,4 +1,5 @@
 import 'insulin_dose_log.dart';
+import '../core/app_localizations.dart';
 
 /// Why a bolus calculation is blocked. Each maps to a precise, user-facing
 /// safety message. The presence of ANY blocker means no estimate is shown.
@@ -27,6 +28,9 @@ enum BolusBlockReason {
 }
 
 extension BolusBlockReasonMessage on BolusBlockReason {
+  /// Localized, safety-first copy. Never reveals raw insulin settings.
+  String localizedMessage(AppLocalizations l10n) => l10n.bolusBlock(name);
+
   /// User-facing, safety-first copy. Never reveals raw insulin settings.
   String get message => switch (this) {
         BolusBlockReason.calculatorDisabled =>
@@ -96,6 +100,9 @@ enum BolusWarning {
 }
 
 extension BolusWarningMessage on BolusWarning {
+  /// Localized advisory copy.
+  String localizedMessage(AppLocalizations l10n) => l10n.bolusWarning(name);
+
   String get message => switch (this) {
         BolusWarning.glucoseBelowTargetNoCorrection =>
           'Your glucose is below target, so no correction insulin was added.',

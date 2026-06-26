@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/app_localizations.dart';
 import '../../core/diabetes/diabetes_constants.dart';
 import '../../providers/diabetes_provider.dart';
 import '../../services/diabetes/diabetes_survey_scheduler.dart';
@@ -20,19 +21,22 @@ class DiabetesReviewScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Insulin Settings Review'),
+        title: Text(AppLocalizations.of(context).insulinSettingsReview),
         backgroundColor: kDiabetesBlue,
         foregroundColor: Colors.white,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _statusCard(status),
+          _statusCard(context, status),
           const SizedBox(height: 16),
-          _dateRow(context, 'Last reviewed', s.surveyLastCompletedAt),
-          _dateRow(context, 'Next review due', s.surveyNextDueAt),
+          _dateRow(context, AppLocalizations.of(context).lastReviewed,
+              s.surveyLastCompletedAt),
+          _dateRow(context, AppLocalizations.of(context).nextReviewDue,
+              s.surveyNextDueAt),
           if (s.surveySnoozedUntil != null)
-            _dateRow(context, 'Reminder snoozed until', s.surveySnoozedUntil),
+            _dateRow(context, AppLocalizations.of(context).reminderSnoozedUntil,
+                s.surveySnoozedUntil),
           const SizedBox(height: 20),
           FilledButton.icon(
             style: FilledButton.styleFrom(
@@ -42,7 +46,7 @@ class DiabetesReviewScreen extends ConsumerWidget {
             onPressed: () =>
                 ref.read(insulinSettingsProvider.notifier).markReviewed(),
             icon: const Icon(Icons.verified_outlined),
-            label: const Text('Confirm my settings are still correct'),
+            label: Text(AppLocalizations.of(context).confirmSettingsCorrect),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
@@ -53,13 +57,12 @@ class DiabetesReviewScreen extends ConsumerWidget {
               ),
             ),
             icon: const Icon(Icons.edit_outlined),
-            label: const Text('Update my insulin settings'),
+            label: Text(AppLocalizations.of(context).updateInsulinSettings),
           ),
           const SizedBox(height: 20),
           Text(
-            'Reviewing your settings regularly keeps the calculator safe. '
-            'Confirming marks them current for the next '
-            '${DiabetesConstants.reviewInterval.inDays} days.',
+            AppLocalizations.of(context)
+                .reviewKeepsSafe(DiabetesConstants.reviewInterval.inDays),
             style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
           ),
         ],
@@ -67,33 +70,32 @@ class DiabetesReviewScreen extends ConsumerWidget {
     );
   }
 
-  Widget _statusCard(ReviewStatus status) {
+  Widget _statusCard(BuildContext context, ReviewStatus status) {
+    final l10n = AppLocalizations.of(context);
     final (color, bg, label, detail) = switch (status) {
       ReviewStatus.current => (
         AppTheme.green700,
         AppTheme.green100,
-        'Current',
-        'Your settings are reviewed and the calculator is available.'
+        l10n.reviewStatusCurrent,
+        l10n.reviewStatusCurrentDetail
       ),
       ReviewStatus.snoozed => (
         AppTheme.amber700,
         AppTheme.amber100,
-        'Review due (reminder snoozed)',
-        'A review is due. The reminder is snoozed, but the calculator stays '
-            'disabled until you review.'
+        l10n.reviewStatusSnoozed,
+        l10n.reviewStatusSnoozedDetail
       ),
       ReviewStatus.overdue => (
         AppTheme.red700,
         AppTheme.red100,
-        'Overdue',
-        'Your settings review is overdue. Bolus calculations are disabled '
-            'until you review and confirm.'
+        l10n.reviewStatusOverdue,
+        l10n.reviewStatusOverdueDetail
       ),
       ReviewStatus.neverCompleted => (
         AppTheme.red700,
         AppTheme.red100,
-        'Not completed',
-        'Complete the insulin settings survey to use the calculator.'
+        l10n.reviewStatusNotCompleted,
+        l10n.reviewStatusNotCompletedDetail
       ),
     };
     return Container(
@@ -105,7 +107,7 @@ class DiabetesReviewScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Status: $label',
+          Text(l10n.reviewStatusLabel(label),
               style: TextStyle(
                   fontWeight: FontWeight.w800, fontSize: 15, color: color)),
           const SizedBox(height: 6),
@@ -161,13 +163,13 @@ class DiabetesReviewReminderBanner extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(Icons.event_repeat, color: AppTheme.amber700, size: 20),
-              SizedBox(width: 8),
+            children: [
+              const Icon(Icons.event_repeat, color: AppTheme.amber700, size: 20),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Insulin settings review needed',
-                  style: TextStyle(
+                  AppLocalizations.of(context).insulinReviewNeeded,
+                  style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
                       color: AppTheme.amber700),
@@ -176,10 +178,10 @@ class DiabetesReviewReminderBanner extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
-            'For safety, the bolus calculator is disabled until you review and '
-            'confirm your insulin settings.',
-            style: TextStyle(fontSize: 12, color: AppTheme.gray700, height: 1.4),
+          Text(
+            AppLocalizations.of(context).bolusDisabledUntilReview,
+            style: const TextStyle(
+                fontSize: 12, color: AppTheme.gray700, height: 1.4),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -194,21 +196,21 @@ class DiabetesReviewReminderBanner extends ConsumerWidget {
                     builder: (_) => const DiabetesReviewScreen(),
                   ),
                 ),
-                child: const Text('Review now'),
+                child: Text(AppLocalizations.of(context).reviewNow),
               ),
               OutlinedButton(
                 onPressed: () => notifier.snooze(DiabetesConstants.snoozeOneDay),
-                child: const Text('Remind me tomorrow'),
+                child: Text(AppLocalizations.of(context).remindTomorrow),
               ),
               OutlinedButton(
                 onPressed: () =>
                     notifier.snooze(DiabetesConstants.snoozeTwoDays),
-                child: const Text('In 2 days'),
+                child: Text(AppLocalizations.of(context).inTwoDays),
               ),
               OutlinedButton(
                 onPressed: () =>
                     notifier.snooze(DiabetesConstants.snoozeOneWeek),
-                child: const Text('In 1 week'),
+                child: Text(AppLocalizations.of(context).inOneWeek),
               ),
             ],
           ),
