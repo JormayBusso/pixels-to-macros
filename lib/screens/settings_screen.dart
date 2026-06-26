@@ -553,8 +553,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           },
         ),
         const SizedBox(height: 12),
-        const _DietaryRestrictionsCard(),
-        const SizedBox(height: 12),
         // Diabetes management card — only shown for Diabetes goal
         Consumer(
           builder: (context, ref, _) {
@@ -1903,98 +1901,6 @@ class _NutritionGoalPickerCard extends ConsumerWidget {
                 );
               }).toList(),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DietaryRestrictionsCard extends ConsumerWidget {
-  const _DietaryRestrictionsCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final prefs = ref.watch(userPrefsProvider);
-    final selected = prefs.dietaryRestrictions;
-    final l10n = AppLocalizations.of(context);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.no_food_outlined,
-                    size: 20, color: context.primary600),
-                const SizedBox(width: 8),
-                Text(
-                  l10n.dietaryRestrictions,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              l10n.dietaryRestrictionsDesc,
-              style: const TextStyle(fontSize: 12, color: AppTheme.gray600),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: DietaryRestriction.values.map((restriction) {
-                final isSelected = selected.contains(restriction);
-                return FilterChip(
-                  label: Text(l10n.dietaryRestrictionLabel(restriction.name)),
-                  selected: isSelected,
-                  selectedColor: context.primary100,
-                  checkmarkColor: context.primary700,
-                  onSelected: (_) async {
-                    final updated = {...selected};
-                    if (isSelected) {
-                      updated.remove(restriction);
-                    } else {
-                      updated.add(restriction);
-                    }
-                    await ref.read(userPrefsProvider.notifier).update(
-                          prefs.copyWith(dietaryRestrictions: updated),
-                        );
-                  },
-                );
-              }).toList(),
-            ),
-            if (selected.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              ...selected.map(
-                (restriction) => Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.info_outline,
-                          size: 15, color: context.primary500),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '${l10n.dietaryRestrictionShortLabel(restriction.name)}: ${l10n.dietaryRestrictionDescription(restriction.name)}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.gray600,
-                            height: 1.25,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       ),

@@ -134,6 +134,134 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     );
   }
 
+  /// Dietary restrictions / allergy filter. Writes to the SAME
+  /// `userPrefsProvider` the whole app enforces (recipe queries, meal planner,
+  /// scan alerts), so toggling here hides matching recipes everywhere. The
+  /// control was moved out of Settings into the place it actually affects.
+  Future<void> _showDietarySheet(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: context.appSurfaceColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Consumer(
+        builder: (context, sheetRef, _) {
+          final prefs = sheetRef.watch(userPrefsProvider);
+          final selected = prefs.dietaryRestrictions;
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.no_food_outlined,
+                          size: 20, color: context.primary600),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n.dietaryRestrictions,
+                          style: const TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    l10n.dietaryRestrictionsDesc,
+                    style: TextStyle(
+                        fontSize: 12.5, color: context.appMutedTextColor),
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: DietaryRestriction.values.map((restriction) {
+                      final isSelected = selected.contains(restriction);
+                      return FilterChip(
+                        label: Text(
+                            l10n.dietaryRestrictionLabel(restriction.name)),
+                        selected: isSelected,
+                        selectedColor: context.primary100,
+                        checkmarkColor: context.primary700,
+                        onSelected: (_) async {
+                          final updated = {...selected};
+                          if (isSelected) {
+                            updated.remove(restriction);
+                          } else {
+                            updated.add(restriction);
+                          }
+                          await sheetRef
+                              .read(userPrefsProvider.notifier)
+                              .update(
+                                prefs.copyWith(dietaryRestrictions: updated),
+                              );
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  if (selected.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    ...selected.map(
+                      (restriction) => Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.info_outline,
+                                size: 15, color: context.primary500),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                '${l10n.dietaryRestrictionShortLabel(restriction.name)}: ${l10n.dietaryRestrictionDescription(restriction.name)}',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: context.appMutedTextColor,
+                                  height: 1.25,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.health_and_safety_outlined,
+                          size: 16, color: context.primary600),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Recipes mentioning these ingredients are hidden in '
+                          'recipes, the meal planner and scan alerts. For severe '
+                          'allergies, always double-check ingredient labels.',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: context.appMutedTextColor,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -145,6 +273,44 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.recipes),
+        actions: [
+          // Dietary restrictions / allergy filter — relocated here from Settings
+          // because this is where it visibly takes effect. Writes the SAME
+          // userPrefsProvider the whole app enforces.
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                tooltip: l10n.dietaryRestrictions,
+                icon: const Icon(Icons.no_food_outlined),
+                onPressed: () => _showDietarySheet(context),
+              ),
+              if (dietaryRestrictions.isNotEmpty)
+                Positioned(
+                  top: 8,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    constraints:
+                        const BoxConstraints(minWidth: 16, minHeight: 16),
+                    decoration: BoxDecoration(
+                      color: context.primary500,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '${dietaryRestrictions.length}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(54),
           child: Padding(

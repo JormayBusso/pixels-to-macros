@@ -68,6 +68,12 @@ Recipe _customMealToRecipe(CustomMeal meal, List<FoodData> foods) {
   );
 }
 
+/// The nutrition goal the weekly planner is currently planning for. Defaults to
+/// the user's global goal (null) but can be overridden per session from the
+/// planner's goal chips, so the AI autopilot and Smart Swap pick ONLY recipes
+/// eligible for the chosen goal — exactly like the Recipes screen.
+final plannerGoalProvider = StateProvider<NutritionGoalType?>((ref) => null);
+
 String _localizedGoalLabel(AppLocalizations l10n, NutritionGoalType goal) {
   return switch (goal) {
     NutritionGoalType.muscleGrowth => l10n.muscleGrowth,
@@ -126,6 +132,10 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     final l10n = AppLocalizations.of(context);
     final plan = ref.watch(mealPlanProvider);
     final prefs = ref.watch(userPrefsProvider);
+    // The planner can target any nutrition goal (defaults to the global one);
+    // the AI autopilot + Smart Swap then pick ONLY recipes eligible for it.
+    final selectedGoal =
+        ref.watch(plannerGoalProvider) ?? prefs.nutritionGoal;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -172,15 +182,14 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                   decoration: BoxDecoration(
                     color: context.isPremiumTheme
                         ? context.primary50
-                        : prefs.nutritionGoal.lightColor,
+                        : selectedGoal.lightColor,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color:
-                            prefs.nutritionGoal.color.withValues(alpha: 0.3)),
+                        color: selectedGoal.color.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
-                      Text(prefs.nutritionGoal.emoji,
+                      Text(selectedGoal.emoji,
                           style: const TextStyle(fontSize: 20)),
                       const SizedBox(width: 10),
                       Expanded(
@@ -189,25 +198,51 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                           children: [
                             Text(
                               l10n.personalisedFor(
-                                _localizedGoalLabel(
-                                  l10n,
-                                  prefs.nutritionGoal,
-                                ),
+                                _localizedGoalLabel(l10n, selectedGoal),
                               ),
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: prefs.nutritionGoal.color,
+                                color: selectedGoal.color,
                               ),
                             ),
                             Text(
                               l10n.mealPlannerInstructions,
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppTheme.gray600),
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: context.appMutedTextColor),
                             ),
                           ],
                         ),
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // ── Goal selector (mirrors the Recipes screen): the AI plans
+                // and swaps pull ONLY meals eligible for the chosen goal. ──
+                SizedBox(
+                  height: 38,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      for (final g in NutritionGoalType.values)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(
+                              '${g.emoji} ${_localizedGoalLabel(l10n, g)}',
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                            selected: selectedGoal == g,
+                            showCheckmark: false,
+                            onSelected: (_) => ref
+                                .read(plannerGoalProvider.notifier)
+                                .state = g,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -281,7 +316,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     final pantryNames =
         pantryMode ? ref.read(pantryProvider).availableNames : const <String>{};
     await ref.read(mealPlanProvider.notifier).autoFillWeek(
-          goal: prefs.nutritionGoal,
+          goal: ref.read(plannerGoalProvider) ?? prefs.nutritionGoal,
           dailyCalorieGoal: prefs.dailyCalorieGoal,
           dietaryRestrictions: prefs.dietaryRestrictions,
           pantryNames: pantryNames,
@@ -787,7 +822,7 @@ class _MealSlotRow extends ConsumerWidget {
     final portionMultiplier = plan.portionMultiplierFor(dayIndex, mealType);
     final prefs = ref.watch(userPrefsProvider);
     final l10n = AppLocalizations.of(context);
-    final goal = prefs.nutritionGoal;
+    final goal = ref.watch(plannerGoalProvider) ?? prefs.nutritionGoal;
     final dailyCal = prefs.dailyCalorieGoal;
     final restrictions = prefs.dietaryRestrictions;
     final pantryMode = ref.watch(pantryModeProvider);
@@ -1143,7 +1178,7 @@ class _MealSlotRow extends ConsumerWidget {
     if (picked != null) {
       await ref.read(mealPlanProvider.notifier).assignRecipe(
           dayIndex, mealType, picked,
-          goal: prefs.nutritionGoal, dailyCalorieGoal: prefs.dailyCalorieGoal);
+          goal: goal, dailyCalorieGoal: prefs.dailyCalorieGoal);
     }
   }
 }
