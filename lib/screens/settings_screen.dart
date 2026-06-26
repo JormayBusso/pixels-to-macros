@@ -755,33 +755,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             },
           ),
         ),
-        const SizedBox(height: 12),
-        Card(
-          child: ListTile(
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: context.primary100,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(Icons.document_scanner_outlined,
-                  color: context.primary600),
-            ),
-            title: Text(l10n.replayScanTutorial,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(l10n.replayScanTutorialSubtitle),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              ref.read(userPrefsProvider.notifier).replayScanTutorial();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(l10n.replayScanTutorialSubtitle)),
-                );
-              }
-            },
-          ),
-        ),
         const SizedBox(height: 24),
 
         _SectionHeader(l10n.weeklyReview),
