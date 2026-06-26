@@ -598,7 +598,7 @@ class _WheelWithLabels extends StatelessWidget {
                         height: 1,
                       ),
                     ),
-                    const Text(
+                    Text(
                       'score',
                       style: TextStyle(
                         fontSize: 11,
