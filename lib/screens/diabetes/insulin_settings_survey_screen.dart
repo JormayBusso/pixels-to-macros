@@ -7,7 +7,6 @@ import '../../core/diabetes/glucose_conversion.dart';
 import '../../models/insulin_settings.dart';
 import '../../providers/diabetes_provider.dart';
 import '../../services/diabetes/diabetes_safety_validator.dart';
-import '../../theme/app_theme.dart';
 import 'bolus_setup_screen.dart' show kDiabetesBlue;
 
 /// Diabetes Insulin Settings Survey.
@@ -131,6 +130,7 @@ class _InsulinSettingsSurveyScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(l10n.insulinSettingsSurvey),
         backgroundColor: kDiabetesBlue,
@@ -410,8 +410,7 @@ class _InsulinSettingsSurveyScreenState
           const SizedBox(width: 12),
           DropdownButton<double>(
             value: _increment,
-            dropdownColor:
-                context.isPremiumTheme ? context.visualTheme.cardColor : null,
+            dropdownColor: Colors.white,
             items: const [
               DropdownMenuItem(value: 0.1, child: Text('0.1 u')),
               DropdownMenuItem(value: 0.5, child: Text('0.5 u')),
@@ -439,8 +438,7 @@ class _InsulinSettingsSurveyScreenState
           child: DropdownButton<T>(
             isExpanded: true,
             value: value,
-            dropdownColor:
-                context.isPremiumTheme ? context.visualTheme.cardColor : null,
+            dropdownColor: Colors.white,
             items: [
               for (final v in values)
                 DropdownMenuItem(value: v, child: Text(labelOf(v))),

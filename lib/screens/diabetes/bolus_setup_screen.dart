@@ -36,6 +36,7 @@ class _BolusSetupScreenState extends ConsumerState<BolusSetupScreen> {
     final notifier = ref.read(insulinSettingsProvider.notifier);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).bolusCalculatorMode),
         backgroundColor: kDiabetesBlue,
@@ -83,7 +84,7 @@ class _BolusSetupScreenState extends ConsumerState<BolusSetupScreen> {
                   const SizedBox(height: 12),
                   Text(AppLocalizations.of(context).diabetesGeneralDisclaimer,
                       style:
-                          TextStyle(fontSize: 12, color: context.appMutedTextColor, height: 1.4)),
+                          TextStyle(fontSize: 12, color: AppTheme.gray500, height: 1.4)),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(10),

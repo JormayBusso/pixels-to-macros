@@ -13,7 +13,6 @@ import '../../models/insulin_settings.dart';
 import '../../providers/diabetes_provider.dart';
 import '../../services/diabetes/bolus_calculator_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/premium_theme_effects.dart';
 import 'bolus_setup_screen.dart' show kDiabetesBlue;
 
 /// A meal-time bolus *estimate* card.
@@ -83,12 +82,24 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
 
     final isMmol = settings.glucoseUnit.isMmol;
 
-    return PremiumSurface(
-      // Tier 3 AI-active treatment: the live bolus estimate only renders when
-      // the calculator is fully available (opt-in + survey + consent + review).
-      animate: true,
+    return Container(
+      // Bolus Calculator Mode is intentionally locked to a clean white +
+      // diabetes-blue palette (never the app theme/premium color) so the
+      // safety-critical numbers stay maximally readable in every theme.
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      borderRadius: BorderRadius.circular(14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: kDiabetesBlue.withValues(alpha: 0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -107,7 +118,7 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
           Text(
             AppLocalizations.of(context).diabetesGeneralDisclaimer,
             style:
-                TextStyle(fontSize: 11, color: context.appMutedTextColor, height: 1.4),
+                const TextStyle(fontSize: 11, color: AppTheme.gray500, height: 1.4),
           ),
           const SizedBox(height: 14),
           TextField(
@@ -539,6 +550,10 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (_) => InsulinDoseLogSheet(
         prefillUnits: estimate,
         calculationId: _lastCalculationId,
@@ -618,7 +633,7 @@ class _InsulinDoseLogSheetState extends ConsumerState<InsulinDoseLogSheet> {
           const SizedBox(height: 4),
           Text(
             l10n.enterDoseDesc,
-            style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
+            style: const TextStyle(fontSize: 12, color: AppTheme.gray500),
           ),
           const SizedBox(height: 14),
           TextField(

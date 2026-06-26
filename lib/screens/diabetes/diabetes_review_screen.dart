@@ -20,6 +20,7 @@ class DiabetesReviewScreen extends ConsumerWidget {
     final status = DiabetesSurveyScheduler.statusAt(s, now);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).insulinSettingsReview),
         backgroundColor: kDiabetesBlue,
@@ -63,7 +64,7 @@ class DiabetesReviewScreen extends ConsumerWidget {
           Text(
             AppLocalizations.of(context)
                 .reviewKeepsSafe(DiabetesConstants.reviewInterval.inDays),
-            style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
+            style: TextStyle(fontSize: 12, color: AppTheme.gray500),
           ),
         ],
       ),
@@ -125,7 +126,7 @@ class DiabetesReviewScreen extends ConsumerWidget {
           children: [
             Text(label,
                 style:
-                    TextStyle(fontSize: 13, color: context.appMutedTextColor)),
+                    TextStyle(fontSize: 13, color: AppTheme.gray500)),
             Text(
               date == null ? '—' : _fmtDate(date),
               style: const TextStyle(

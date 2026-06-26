@@ -14,6 +14,7 @@ import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/user_prefs_provider.dart';
+import '../providers/diabetes_provider.dart';
 import '../services/barcode_lookup_service.dart';
 import '../services/database_service.dart';
 import '../services/ingredient_localizer.dart';
@@ -1344,9 +1345,21 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     final r = widget.recipe;
     final ingredientLang = AppLocalizations.of(context).locale.languageCode;
     final prefs = ref.watch(userPrefsProvider);
+    final insulin = ref.watch(insulinSettingsProvider);
     final isDiabetic = prefs.nutritionGoal == NutritionGoalType.diabetes;
-    final icr = prefs.icrGramsPerUnit; // pass raw; 0.0 = not set
-    final bolusUnits = _carbsForServing / (icr <= 0 ? 10.0 : icr);
+    // A suggested meal bolus is ONLY surfaced once the user has actually set
+    // up insulin settings (an ICR) AND accepted the medical-device agreements
+    // via the Bolus Calculator consent flow. Until then we never show or
+    // assume a bolus — no default ICR is invented.
+    final bolusConsented =
+        insulin.bolusCalculatorEnabled && insulin.userConfirmedAt != null;
+    final nowMinute = DateTime.now().hour * 60 + DateTime.now().minute;
+    final activeIcr = insulin.icrForMinute(nowMinute);
+    final icr = (activeIcr != null && activeIcr > 0)
+        ? activeIcr
+        : prefs.icrGramsPerUnit;
+    final showBolus = isDiabetic && bolusConsented && icr > 0;
+    final bolusUnits = showBolus ? _carbsForServing / icr : 0.0;
     return Scaffold(
       backgroundColor: context.appPanelColor,
       body: CustomScrollView(
@@ -1407,7 +1420,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   ),
                 ],
                 // ── Bolus display for diabetics ──
-                if (isDiabetic && r.hasMacros) ...[
+                if (showBolus && r.hasMacros) ...[
                   const SizedBox(height: 12),
                   _BolusCard(
                     carbsG: _carbsForServing,
@@ -1577,13 +1590,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       child: FilledButton.icon(
                         onPressed: () => _logRecipe(
                           context,
-                          isDiabetic: isDiabetic,
+                          isDiabetic: showBolus,
                           bolusUnits: bolusUnits,
                           icr: icr,
                         ),
                         icon: const Icon(Icons.add_circle_outline, size: 18),
                         label: Text(
-                          isDiabetic
+                          showBolus
                               ? 'Log Meal · ${r.caloriesPerServing(r.servings)} kcal · ${bolusUnits.toStringAsFixed(1)}U'
                               : 'Log Meal · ${r.caloriesPerServing(r.servings)} kcal',
                         ),
