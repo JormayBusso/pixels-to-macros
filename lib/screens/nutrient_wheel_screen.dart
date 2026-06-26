@@ -603,7 +603,7 @@ class _WheelWithLabels extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.gray400,
+                        color: context.appMutedTextColor,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -926,9 +926,9 @@ class _WheelDetailRow extends StatelessWidget {
                           ),
                           Text(
                             '${nutrient.fmt(nutrient.current)} / ${nutrient.fmt(nutrient.drv)} ${nutrient.unit}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: AppTheme.gray400,
+                              color: context.appMutedTextColor,
                             ),
                           ),
                         ],
@@ -964,8 +964,8 @@ class _WheelDetailRow extends StatelessWidget {
                         nutrient.status,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 10, color: AppTheme.gray400),
+                        style: TextStyle(
+                            fontSize: 10, color: context.appMutedTextColor),
                       ),
                     ],
                   ),
@@ -975,9 +975,9 @@ class _WheelDetailRow extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               nutrient.role,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: AppTheme.gray600,
+                color: context.appMutedTextColor,
                 height: 1.35,
               ),
             ),
@@ -1041,8 +1041,8 @@ class _SingleNutrientSheet extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       nutrient.targetText,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppTheme.gray400),
+                      style: TextStyle(
+                          fontSize: 12, color: context.appMutedTextColor),
                     ),
                   ],
                 ),
@@ -1051,7 +1051,7 @@ class _SingleNutrientSheet extends StatelessWidget {
               IconButton(
                 onPressed: () => Navigator.of(context).maybePop(),
                 icon: const Icon(Icons.close),
-                color: AppTheme.gray500,
+                color: context.appMutedTextColor,
               ),
             ],
           ),
@@ -1138,10 +1138,10 @@ class _NutrientInfoBlock extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   body,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     height: 1.35,
-                    color: AppTheme.gray600,
+                    color: context.appMutedTextColor,
                   ),
                 ),
               ],

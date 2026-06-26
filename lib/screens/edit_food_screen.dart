@@ -146,9 +146,9 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
                   Text(
                     '${grams.toStringAsFixed(grams >= 10 ? 0 : 1)} g • '
                     '${volume.toStringAsFixed(1)} cm³ volume',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: AppTheme.gray400,
+                      color: context.appMutedTextColor,
                     ),
                   ),
                 ],

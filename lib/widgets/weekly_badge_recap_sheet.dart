@@ -63,9 +63,9 @@ class WeeklyBadgeRecapSheet extends StatelessWidget {
                       Text(
                         _rangeLabel(
                             recap.previousWeekStart, recap.previousWeekEnd),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.gray400,
+                          color: context.appMutedTextColor,
                         ),
                       ),
                     ],
@@ -162,9 +162,9 @@ class _BadgeTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   badge.subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppTheme.gray600,
+                    color: context.appMutedTextColor,
                     height: 1.3,
                   ),
                 ),

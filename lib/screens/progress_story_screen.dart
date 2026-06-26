@@ -225,9 +225,9 @@ class _StoryTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     body,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.gray600,
+                      color: context.appMutedTextColor,
                       height: 1.3,
                     ),
                   ),

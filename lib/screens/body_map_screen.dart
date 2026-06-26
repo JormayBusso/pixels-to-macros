@@ -432,9 +432,9 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
               const SizedBox(height: 16),
               Text(
                 region.explanation,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: AppTheme.gray600,
+                  color: context.appMutedTextColor,
                   height: 1.5,
                 ),
               ),
@@ -465,9 +465,9 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                         width: 100,
                         child: Text(
                           n.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppTheme.gray600,
+                            color: context.appMutedTextColor,
                           ),
                         ),
                       ),
@@ -514,22 +514,24 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                 ),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Text(
                         'Calculating food impact...',
-                        style: TextStyle(fontSize: 12, color: AppTheme.gray600),
+                        style: TextStyle(
+                            fontSize: 12, color: context.appMutedTextColor),
                       ),
                     );
                   }
 
                   final items = snapshot.data ?? const <_FoodContribution>[];
                   if (items.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Text(
                         'No food contributors available yet. Log meals to see which foods drive this color.',
-                        style: TextStyle(fontSize: 12, color: AppTheme.gray600),
+                        style: TextStyle(
+                            fontSize: 12, color: context.appMutedTextColor),
                       ),
                     );
                   }
@@ -555,9 +557,9 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                             const SizedBox(width: 8),
                             Text(
                               '${f.kcal.round()} kcal',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: AppTheme.gray600,
+                                color: context.appMutedTextColor,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -662,10 +664,10 @@ class _BodyMapInsightCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   body,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     height: 1.35,
-                    color: AppTheme.gray600,
+                    color: context.appMutedTextColor,
                   ),
                 ),
               ],
