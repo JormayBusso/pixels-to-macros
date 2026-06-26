@@ -156,6 +156,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showEditFoodSheet(BuildContext context, DetectedFood food) {
+    final l10n = AppLocalizations.of(context);
     final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
     final calController =
         TextEditingController(text: avgCal.round().toString());
@@ -188,9 +189,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             TextField(
               controller: calController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Calories (kcal)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.caloriesKcal,
+                border: const OutlineInputBorder(),
                 suffixText: 'kcal',
               ),
             ),
@@ -509,7 +510,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                     // ── Food breakdown ───────────────────────────────────────
                     _SelectableSectionHeader(
-                      title: 'Today\'s Foods',
+                      title: AppLocalizations.of(context).todaysFoods,
                       selecting: _foodSelecting,
                       selectedCount: _selectedFoodIds.length,
                       onEnterSelection: _enterFoodSelection,
@@ -752,7 +753,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                     // ── Scan history (full list) ───────────────────────────
                     _SelectableSectionHeader(
-                      title: 'Scan History',
+                      title: AppLocalizations.of(context).scanHistory,
                       selecting: _scanSelecting,
                       selectedCount: _selectedScanIds.length,
                       onEnterSelection: _enterScanSelection,
@@ -1804,7 +1805,7 @@ class _HydrationCard extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Daily Water Goal'),
+          title: Text(AppLocalizations.of(context).dailyWaterGoal),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1826,7 +1827,7 @@ class _HydrationCard extends ConsumerWidget {
                 onChanged: (v) => setDialogState(() => tempGoal = v.round()),
               ),
               Text(
-                'Min 2.0 L · Max 3.5 L',
+                AppLocalizations.of(context).waterMinMax,
                 style: TextStyle(fontSize: 11, color: context.appMutedTextColor),
               ),
             ],
@@ -1834,7 +1835,7 @@ class _HydrationCard extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context).cancel),
             ),
             ElevatedButton(
               onPressed: () {
@@ -1843,7 +1844,7 @@ class _HydrationCard extends ConsumerWidget {
                     .setDailyWaterGoal(tempGoal);
                 Navigator.pop(ctx);
               },
-              child: const Text('Save'),
+              child: Text(AppLocalizations.of(context).save),
             ),
           ],
         ),
@@ -1917,7 +1918,7 @@ class _HydrationCard extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${ml.round()} ml ${food.label} logged'),
+        content: Text(AppLocalizations.of(context).waterLogged(ml.round(), food.label)),
         duration: const Duration(seconds: 1),
       ),
     );
@@ -1927,7 +1928,7 @@ class _HydrationCard extends ConsumerWidget {
     ref.read(userPrefsProvider.notifier).removeWater(ml);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('-$ml ml removed'),
+        content: Text(AppLocalizations.of(context).waterRemoved(ml)),
         duration: const Duration(seconds: 1),
       ),
     );
@@ -1955,7 +1956,7 @@ class _WaterButton extends ConsumerWidget {
           ref.read(userPrefsProvider.notifier).addWater(ml);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('+$ml ml added'),
+              content: Text(AppLocalizations.of(context).waterAdded(ml)),
               duration: const Duration(seconds: 1),
             ),
           );

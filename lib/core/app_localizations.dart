@@ -1893,6 +1893,148 @@ class AppLocalizations {
         'de': 'Einheit (optional)',
       });
 
+  String get addGroceryItem => _t({
+        'en': 'Add Grocery Item',
+        'pl': 'Dodaj pozycję',
+        'nl': 'Boodschap toevoegen',
+        'es': 'Agregar artículo',
+        'de': 'Artikel hinzufügen',
+      });
+
+  String groceryCategoryLabel(String key) {
+    switch (key) {
+      case 'Fruits':
+        return _t({'en': 'Fruits', 'pl': 'Owoce', 'nl': 'Fruit', 'es': 'Frutas', 'de': 'Obst'});
+      case 'Vegetables':
+        return _t({'en': 'Vegetables', 'pl': 'Warzywa', 'nl': 'Groenten', 'es': 'Verduras', 'de': 'Gemüse'});
+      case 'Protein':
+        return _t({'en': 'Protein', 'pl': 'Białko', 'nl': 'Eiwitten', 'es': 'Proteína', 'de': 'Protein'});
+      case 'Dairy':
+        return _t({'en': 'Dairy', 'pl': 'Nabiał', 'nl': 'Zuivel', 'es': 'Lácteos', 'de': 'Milchprodukte'});
+      case 'Grains':
+        return _t({'en': 'Grains', 'pl': 'Zboża', 'nl': 'Granen', 'es': 'Cereales', 'de': 'Getreide'});
+      case 'Snacks':
+        return _t({'en': 'Snacks', 'pl': 'Przekąski', 'nl': 'Snacks', 'es': 'Aperitivos', 'de': 'Snacks'});
+      case 'Drinks':
+        return _t({'en': 'Drinks', 'pl': 'Napoje', 'nl': 'Dranken', 'es': 'Bebidas', 'de': 'Getränke'});
+      case 'Other':
+      default:
+        return _t({'en': 'Other', 'pl': 'Inne', 'nl': 'Overig', 'es': 'Otros', 'de': 'Sonstiges'});
+    }
+  }
+
+  String get deleteEntireList => _t({
+        'en': 'Delete entire list?',
+        'pl': 'Usunąć całą listę?',
+        'nl': 'Hele lijst verwijderen?',
+        'es': '¿Eliminar toda la lista?',
+        'de': 'Ganze Liste löschen?',
+      });
+
+  String get deleteAll => _t({
+        'en': 'Delete all',
+        'pl': 'Usuń wszystko',
+        'nl': 'Alles verwijderen',
+        'es': 'Eliminar todo',
+        'de': 'Alle löschen',
+      });
+
+  String get smartGrocerySuggestions => _t({
+        'en': 'Smart Grocery Suggestions',
+        'pl': 'Inteligentne sugestie zakupów',
+        'nl': 'Slimme boodschappensuggesties',
+        'es': 'Sugerencias inteligentes de compra',
+        'de': 'Clevere Einkaufsvorschläge',
+      });
+
+  String get basedOnMealHistory => _t({
+        'en': 'Based on your meal history',
+        'pl': 'Na podstawie historii posiłków',
+        'nl': 'Op basis van je maaltijdgeschiedenis',
+        'es': 'Según tu historial de comidas',
+        'de': 'Basierend auf deinem Mahlzeitenverlauf',
+      });
+
+  String get howOftenShop => _t({
+        'en': 'How often do you shop?',
+        'pl': 'Jak często robisz zakupy?',
+        'nl': 'Hoe vaak doe je boodschappen?',
+        'es': '¿Con qué frecuencia compras?',
+        'de': 'Wie oft kaufst du ein?',
+      });
+
+  String timesPerWeek(int n) => _t({
+        'en': '${n}x/week',
+        'pl': '${n}x/tydz.',
+        'nl': '${n}x/week',
+        'es': '${n}x/semana',
+        'de': '${n}x/Woche',
+      });
+
+  String get noMealHistoryYet => _t({
+        'en': 'No meal history yet',
+        'pl': 'Brak historii posiłków',
+        'nl': 'Nog geen maaltijdgeschiedenis',
+        'es': 'Aún no hay historial de comidas',
+        'de': 'Noch kein Mahlzeitenverlauf',
+      });
+
+  String get stockUpHint => _t({
+        'en': 'You often eat these — stock up!',
+        'pl': 'Często to jesz — zrób zapasy!',
+        'nl': 'Dit eet je vaak — sla in!',
+        'es': 'Comes esto a menudo — ¡abastécete!',
+        'de': 'Das isst du oft — leg dir einen Vorrat an!',
+      });
+
+  String suggestedQtyLabel(String category, int qty) => _t({
+        'en': '$category • suggested qty: $qty',
+        'pl': '$category • sugerowana ilość: $qty',
+        'nl': '$category • voorgestelde hoeveelheid: $qty',
+        'es': '$category • cantidad sugerida: $qty',
+        'de': '$category • empfohlene Menge: $qty',
+      });
+
+  String get scanningIngredients => _t({
+        'en': 'Scanning your ingredients…',
+        'pl': 'Skanowanie składników…',
+        'nl': 'Je ingrediënten scannen…',
+        'es': 'Escaneando tus ingredientes…',
+        'de': 'Zutaten werden gescannt…',
+      });
+
+  String get analyzingFoodTextQty => _t({
+        'en': 'Analyzing food, text and quantities…',
+        'pl': 'Analiza jedzenia, tekstu i ilości…',
+        'nl': 'Eten, tekst en hoeveelheden analyseren…',
+        'es': 'Analizando comida, texto y cantidades…',
+        'de': 'Essen, Text und Mengen werden analysiert…',
+      });
+
+  String foundIngredients(int n) => _t({
+        'en': 'Found $n ingredient${n > 1 ? 's' : ''} you already have!',
+        'pl': 'Znaleziono $n składnik(i), które już masz!',
+        'nl': '$n ingrediënt${n > 1 ? 'en' : ''} gevonden die je al hebt!',
+        'es': '¡Se encontró $n ingrediente${n > 1 ? 's' : ''} que ya tienes!',
+        'de': '$n Zutat${n > 1 ? 'en' : ''} gefunden, die du schon hast!',
+      });
+
+  String get noMatchingGroceryItems => _t({
+        'en': 'No matching grocery items found in the photo. Try scanning closer to the items.',
+        'pl': 'Nie znaleziono pasujących produktów na zdjęciu. Spróbuj zeskanować bliżej.',
+        'nl': 'Geen overeenkomende boodschappen gevonden op de foto. Scan dichter bij de items.',
+        'es': 'No se encontraron artículos coincidentes en la foto. Intenta escanear más cerca.',
+        'de': 'Keine passenden Artikel im Foto gefunden. Versuche, näher zu scannen.',
+      });
+
+  String get couldNotAnalyzePhoto => _t({
+        'en': 'Could not analyze the photo.',
+        'pl': 'Nie udało się przeanalizować zdjęcia.',
+        'nl': 'Kon de foto niet analyseren.',
+        'es': 'No se pudo analizar la foto.',
+        'de': 'Foto konnte nicht analysiert werden.',
+      });
+
   String get weeklyGroceryList => _t({
         'en': 'Weekly Grocery List',
         'pl': 'Tygodniowa lista zakupów',
@@ -3276,6 +3418,62 @@ class AppLocalizations {
         'nl': 'Dagelijks waterdoel',
         'es': 'Objetivo de agua diario',
         'de': 'Tägliches Wasserziel',
+      });
+
+  String get caloriesKcal => _t({
+        'en': 'Calories (kcal)',
+        'pl': 'Kalorie (kcal)',
+        'nl': 'Calorieën (kcal)',
+        'es': 'Calorías (kcal)',
+        'de': 'Kalorien (kcal)',
+      });
+
+  String get todaysFoods => _t({
+        'en': "Today's Foods",
+        'pl': 'Dzisiejsze jedzenie',
+        'nl': 'Voeding van vandaag',
+        'es': 'Comidas de hoy',
+        'de': 'Heutige Mahlzeiten',
+      });
+
+  String get scanHistory => _t({
+        'en': 'Scan History',
+        'pl': 'Historia skanów',
+        'nl': 'Scangeschiedenis',
+        'es': 'Historial de escaneos',
+        'de': 'Scan-Verlauf',
+      });
+
+  String get waterMinMax => _t({
+        'en': 'Min 2.0 L · Max 3.5 L',
+        'pl': 'Min 2,0 L · Maks 3,5 L',
+        'nl': 'Min 2,0 L · Max 3,5 L',
+        'es': 'Mín 2,0 L · Máx 3,5 L',
+        'de': 'Min 2,0 L · Max 3,5 L',
+      });
+
+  String waterLogged(int ml, String label) => _t({
+        'en': '$ml ml $label logged',
+        'pl': 'Zapisano $ml ml $label',
+        'nl': '$ml ml $label gelogd',
+        'es': '$ml ml de $label registrado',
+        'de': '$ml ml $label erfasst',
+      });
+
+  String waterRemoved(int ml) => _t({
+        'en': '-$ml ml removed',
+        'pl': 'Usunięto -$ml ml',
+        'nl': '-$ml ml verwijderd',
+        'es': '-$ml ml eliminado',
+        'de': '-$ml ml entfernt',
+      });
+
+  String waterAdded(int ml) => _t({
+        'en': '+$ml ml added',
+        'pl': 'Dodano +$ml ml',
+        'nl': '+$ml ml toegevoegd',
+        'es': '+$ml ml añadido',
+        'de': '+$ml ml hinzugefügt',
       });
 
   // ── Food Database ──

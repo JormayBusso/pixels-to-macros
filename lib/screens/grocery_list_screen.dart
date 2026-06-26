@@ -86,6 +86,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   }
 
   void _showAddDialog() {
+    final l10n = AppLocalizations.of(context);
     _nameCtrl.clear();
     _selectedCategory = null;
     showModalBottomSheet(
@@ -103,17 +104,17 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Add Grocery Item',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              Text(l10n.addGroceryItem,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 16),
               TextField(
                 controller: _nameCtrl,
                 autofocus: true,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Item name',
-                  prefixIcon: Icon(Icons.shopping_basket_outlined),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.itemName,
+                  prefixIcon: const Icon(Icons.shopping_basket_outlined),
+                  border: const OutlineInputBorder(),
                 ),
                 onSubmitted: (_) {
                   _addItem();
@@ -128,7 +129,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                 children: _categories.map((cat) {
                   final sel = _selectedCategory == cat;
                   return ChoiceChip(
-                    label: Text(cat),
+                    label: Text(l10n.groceryCategoryLabel(cat)),
                     selected: sel,
                     onSelected: (v) =>
                         setSheetState(() => _selectedCategory = v ? cat : null),
@@ -146,7 +147,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                       _selectedCategory = null;
                     });
                   },
-                  child: const Text('Add'),
+                  child: Text(l10n.add),
                 ),
               ),
             ],
@@ -252,11 +253,12 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       imageQuality: 80,
     );
     if (file == null || !mounted) return;
+    final l10n = AppLocalizations.of(context);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Scanning your ingredients…'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(l10n.scanningIngredients),
+        duration: const Duration(seconds: 2),
       ),
     );
 
@@ -309,8 +311,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                'Found $checkedOff ingredient${checkedOff > 1 ? 's' : ''} you already have!'),
+            content: Text(l10n.foundIngredients(checkedOff)),
             backgroundColor: AppTheme.green600,
             duration: const Duration(seconds: 3),
           ),
@@ -318,10 +319,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       } else {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'No matching grocery items found in the photo. Try scanning closer to the items.'),
-            duration: Duration(seconds: 3),
+          SnackBar(
+            content: Text(l10n.noMatchingGroceryItems),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -329,7 +329,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not analyze the photo.')),
+          SnackBar(content: Text(l10n.couldNotAnalyzePhoto)),
         );
       }
     }
@@ -588,9 +588,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       unawaited(_analyzePhotoForFoods(file));
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Analyzing food, text and quantities…'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).analyzingFoodTextQty),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -853,6 +853,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     // Ensure history is fresh before computing suggestions.
     ref.read(historyProvider.notifier).load().then((_) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       final suggestions = _buildSuggestions();
       final selected = <int>{};
 
@@ -894,11 +895,11 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Smart Grocery Suggestions',
+                              Text(l10n.smartGrocerySuggestions,
                                   style: TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.w700)),
-                              Text('Based on your meal history',
+                              Text(l10n.basedOnMealHistory,
                                   style: TextStyle(
                                       fontSize: 12,
                                       color: context.appMutedTextColor)),
@@ -998,7 +999,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                             Icon(Icons.calendar_today,
                                 size: 16, color: context.appMutedTextColor),
                             const SizedBox(width: 8),
-                            Text('How often do you shop?',
+                            Text(l10n.howOftenShop,
                                 style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -1009,7 +1010,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                               underline: const SizedBox.shrink(),
                               items: [1, 2, 3, 4, 5, 7].map((n) {
                                 return DropdownMenuItem(
-                                    value: n, child: Text('${n}x/week'));
+                                    value: n, child: Text(l10n.timesPerWeek(n)));
                               }).toList(),
                               onChanged: (v) {
                                 if (v != null) {
@@ -1035,7 +1036,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                   const Icon(Icons.history_outlined,
                                       size: 40, color: AppTheme.gray300),
                                   const SizedBox(height: 8),
-                                  Text('No meal history yet',
+                                  Text(l10n.noMealHistoryYet,
                                       style: TextStyle(
                                           fontWeight: FontWeight.w600,
                                           color: context.appMutedTextColor)),
@@ -1057,7 +1058,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                               Icon(Icons.recommend_outlined,
                                   size: 16, color: ctx.primary600),
                               SizedBox(width: 6),
-                              Text('You often eat these — stock up!',
+                              Text(l10n.stockUpHint,
                                   style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -1076,7 +1077,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                               title: Text(item.name,
                                   style: const TextStyle(fontSize: 14)),
                               subtitle: Text(
-                                  '${item.category} • suggested qty: ${item.suggestedQty}',
+                                  l10n.suggestedQtyLabel(
+                                      l10n.groceryCategoryLabel(item.category),
+                                      item.suggestedQty),
                                   style: TextStyle(
                                       fontSize: 11,
                                       color: context.appMutedTextColor)),
@@ -1175,7 +1178,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                 final ok = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Delete entire list?'),
+                    title: Text(l10n.deleteEntireList),
                     content: Text(
                       'This removes all ${grocery.items.length} items from '
                       'your grocery list.',
@@ -1190,7 +1193,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                           backgroundColor: AppTheme.red500,
                         ),
                         onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Delete all'),
+                        child: Text(l10n.deleteAll),
                       ),
                     ],
                   ),
@@ -1387,7 +1390,7 @@ class _GroceryTile extends StatelessWidget {
           ),
         ),
         subtitle: item.category != null
-            ? Text(item.category!,
+            ? Text(AppLocalizations.of(context).groceryCategoryLabel(item.category!),
                 style:
                     TextStyle(fontSize: 12, color: context.appMutedTextColor))
             : null,
