@@ -81,6 +81,35 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
               ),
             ),
             if (widget.scanId != null) _IngredientPanel(scanId: widget.scanId!),
+            // Explicit "log" confirmation. The scan is already saved to today's
+            // diary on capture, but users expect a clear button to finish and
+            // log it — this confirms and returns home.
+            Container(
+              width: double.infinity,
+              color: const Color(0xFF141414),
+              padding: EdgeInsets.fromLTRB(
+                  16, 8, 16, 8 + MediaQuery.of(context).padding.bottom),
+              child: FilledButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Logged to today\u2019s diary'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('Log to today\u2019s diary'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF22C55E),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(50),
+                  textStyle: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
           ],
         ),
       ),

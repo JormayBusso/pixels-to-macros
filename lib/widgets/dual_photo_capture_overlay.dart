@@ -160,11 +160,12 @@ class _DualPhotoCaptureOverlayState extends State<DualPhotoCaptureOverlay>
           ),
         ),
 
-        // Primary guidance + stability ring (bottom-center).
+        // Primary guidance + stability ring — a thin bar flush to the bottom
+        // of the (landscape) screen so it never covers the food being framed.
         Positioned(
-          bottom: 20,
-          left: 24,
-          right: 24,
+          bottom: 0,
+          left: 8,
+          right: 8,
           child: _GuidancePanel(
             scanState: widget.scanState,
             aligned: widget.aligned,
@@ -424,17 +425,19 @@ class _GuidancePanel extends StatelessWidget {
         visualTheme.premium ? visualTheme.primaryAccent : AppTheme.green500;
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
+        constraints: const BoxConstraints(maxWidth: 620),
         child: PremiumMotionSurface(
           enabled: visualTheme.premium,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
           borderWidth: 3.0,
           animate: aligned && !confirming,
           child: Container(
-            padding: const EdgeInsets.fromLTRB(14, 9, 14, 9),
+            padding: EdgeInsets.fromLTRB(
+                14, 6, 14, 6 + MediaQuery.of(context).padding.bottom * 0.5),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.62),
-              borderRadius: BorderRadius.circular(22),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(18)),
               border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
             ),
             child: Row(
@@ -444,17 +447,17 @@ class _GuidancePanel extends StatelessWidget {
                   child: PremiumFocusRing(
                     enabled: visualTheme.premium,
                     animate: visualTheme.premium && !confirming,
-                    radius: 36,
+                    radius: 30,
                     padding: const EdgeInsets.all(3),
                     child: SizedBox(
-                      width: 54,
-                      height: 54,
+                      width: 46,
+                      height: 46,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
                           SizedBox(
-                            width: 54,
-                            height: 54,
+                            width: 46,
+                            height: 46,
                             child: CircularProgressIndicator(
                               value:
                                   aligned ? holdProgress.clamp(0.0, 1.0) : null,
@@ -466,8 +469,8 @@ class _GuidancePanel extends StatelessWidget {
                             ),
                           ),
                           Container(
-                            width: 40,
-                            height: 40,
+                            width: 34,
+                            height: 34,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: accentColor.withValues(
@@ -476,7 +479,7 @@ class _GuidancePanel extends StatelessWidget {
                             child: Icon(
                               confirming ? Icons.check : Icons.camera_alt,
                               color: Colors.white,
-                              size: 19,
+                              size: 17,
                             ),
                           ),
                         ],

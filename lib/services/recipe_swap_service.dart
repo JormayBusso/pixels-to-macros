@@ -84,7 +84,46 @@ class RecipeSwapService {
         : candidates.where((recipe) => recipe.id != current?.id).toList();
     if (usable.isEmpty) return const <Recipe>[];
 
-    usable.sort((a, b) {
+    // Directional intents (lower carb / higher protein / faster) must actually
+    // MOVE in the requested direction. A "lower carb" swap may never surface a
+    // higher-carb recipe when a lower one exists — the previous purely-relative
+    // score let a high-carb but otherwise healthy recipe outrank. We now order
+    // the list by the requested axis first and use the composite score only as
+    // a tiebreaker, and prefer candidates that strictly beat the current meal.
+    double axisValue(Recipe r) {
+      final s = r.servings <= 0 ? 1 : r.servings;
+      switch (intent) {
+        case SmartSwapIntent.lowerCarb:
+          return r.carbsPerServing(s); // ascending = fewer carbs first
+        case SmartSwapIntent.higherProtein:
+          return -r.proteinPerServing(s); // ascending = more protein first
+        case SmartSwapIntent.faster:
+          return r.minutes.toDouble(); // ascending = quicker first
+        case SmartSwapIntent.balanced:
+        case SmartSwapIntent.pantryFirst:
+          return 0;
+      }
+    }
+
+    final directional = intent == SmartSwapIntent.lowerCarb ||
+        intent == SmartSwapIntent.faster;
+
+    var ranked = usable;
+    if (directional && current != null) {
+      final currentAxis = axisValue(current);
+      final better =
+          usable.where((r) => axisValue(r) < currentAxis - 1e-6).toList();
+      // Only narrow to the strictly-better pool when it offers real choice;
+      // otherwise rank the full pool by the axis so we still surface the
+      // lowest-carb / highest-protein / fastest options — never random ones.
+      ranked = better.length >= 3 ? better : usable;
+    }
+
+    ranked.sort((a, b) {
+      if (directional) {
+        final cmp = axisValue(a).compareTo(axisValue(b));
+        if (cmp != 0) return cmp;
+      }
       final scoreB = _score(
         recipe: b,
         current: current,
@@ -101,7 +140,7 @@ class RecipeSwapService {
       );
       return scoreB.compareTo(scoreA);
     });
-    return usable.take(limit).toList();
+    return ranked.take(limit).toList();
   }
 
   static double pantryMatchRatio(Recipe recipe, Set<String> pantryNames) {

@@ -1080,6 +1080,39 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
               onPressed: () =>
                   ref.read(groceryProvider.notifier).clearChecked(),
             ),
+          if (grocery.items.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Select all & delete',
+              onPressed: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Delete entire list?'),
+                    content: Text(
+                      'This removes all ${grocery.items.length} items from '
+                      'your grocery list.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: Text(l10n.cancel),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppTheme.red500,
+                        ),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Delete all'),
+                      ),
+                    ],
+                  ),
+                );
+                if (ok == true) {
+                  await ref.read(groceryProvider.notifier).clearAll();
+                }
+              },
+            ),
         ],
       ),
       body: !_loaded

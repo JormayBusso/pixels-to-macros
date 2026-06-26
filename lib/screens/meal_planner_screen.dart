@@ -412,17 +412,51 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     );
   }
 
-  /// Normalise an ingredient name into a single grocery key. Collapses egg
-  /// variants and all garlic variants so quantities aggregate correctly and we
-  /// can convert them to natural purchase units (cloves, pieces).
+  /// Normalise an ingredient name into a single, clean grocery key. Recipe
+  /// ingredient names are scraped freeform phrases ("Warm mustard", "toasted
+  /// sesame oil", "small ripe avocados, sliced"), so we strip preparation notes
+  /// (anything after a comma/parenthesis) and descriptor words (warm, ripe,
+  /// sliced, fresh, …) to leave just the shoppable item ("mustard", "sesame
+  /// oil", "avocados"). Egg and garlic variants collapse so quantities
+  /// aggregate and convert to natural units (cloves, pieces).
+  static const Set<String> _ingredientNoiseWords = {
+    'warm', 'cold', 'hot', 'fresh', 'freshly', 'ripe', 'large', 'small',
+    'medium', 'big', 'extra', 'organic', 'raw', 'cooked', 'boiled', 'baked',
+    'roasted', 'grilled', 'fried', 'toasted', 'chopped', 'sliced', 'diced',
+    'minced', 'grated', 'shredded', 'crushed', 'ground', 'peeled', 'halved',
+    'quartered', 'cubed', 'crumbled', 'melted', 'softened', 'drained', 'rinsed',
+    'dried', 'frozen', 'canned', 'jarred', 'smoked', 'lean', 'boneless',
+    'skinless', 'virgin', 'unsalted', 'salted', 'plain', 'whole', 'light',
+    'optional', 'taste', 'finely', 'roughly', 'thinly', 'thickly', 'good',
+    'quality', 'your', 'favourite', 'favorite', 'some', 'few', 'little',
+    'pinch', 'of', 'a', 'an', 'the', 'for', 'and', 'with', 'into', 'about',
+    'approximately', 'to', 'or', 'plus', 'pieces', 'piece', 'slices', 'slice',
+    'beaten', 'warmed', 'room', 'temperature', 'packed', 'level', 'heaped',
+  };
+
   static String _normaliseGroceryIngredient(String name) {
-    final l = name.toLowerCase().trim();
-    if (RegExp(r'\begg\s*(white|yolk|whites|yolks)\b').hasMatch(l)) {
+    // Drop preparation notes after a comma / parenthesis / "—".
+    var core = name.toLowerCase().split(RegExp(r'[,(\u2013\u2014/]')).first;
+    // Keep only letters/spaces/hyphens, then drop descriptor noise words.
+    final tokens = core
+        .replaceAll(RegExp(r'[^a-z\s-]'), ' ')
+        .split(RegExp(r'\s+'))
+        .where((t) => t.isNotEmpty && !_ingredientNoiseWords.contains(t))
+        .toList();
+    var cleaned = tokens.join(' ').trim();
+    if (cleaned.isEmpty) cleaned = name.toLowerCase().trim();
+
+    if (RegExp(r'\begg\s*(white|yolk|whites|yolks)\b').hasMatch(cleaned)) {
       return 'eggs';
     }
-    if (l == 'egg' || l == 'eggs') return 'eggs';
-    if (l.contains('garlic')) return 'garlic';
-    return name;
+    if (cleaned == 'egg' || cleaned == 'eggs') return 'eggs';
+    if (cleaned.contains('garlic')) return 'garlic';
+
+    // Title-case for a tidy shopping list ("sesame oil" -> "Sesame Oil").
+    return cleaned
+        .split(' ')
+        .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
   }
 
   /// Convert summed grams for a (normalised) ingredient into a purchasable
