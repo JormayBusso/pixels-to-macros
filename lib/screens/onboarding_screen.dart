@@ -616,7 +616,7 @@ class _GoalTypePage extends StatelessWidget {
                         Text(goal.emoji, style: const TextStyle(fontSize: 36)),
                         const SizedBox(height: 6),
                         Text(
-                          goal.label,
+                          AppLocalizations.of(context).nutritionGoalLabel(goal.name),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,
@@ -650,7 +650,7 @@ class _GoalTypePage extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      selected.description,
+                      AppLocalizations.of(context).nutritionGoalDescription(selected.name),
                       style: TextStyle(
                           fontSize: 12, color: selected.color, height: 1.4),
                     ),
@@ -726,7 +726,7 @@ class _ConfirmPage extends StatelessWidget {
                 Text(goalType.emoji, style: const TextStyle(fontSize: 40)),
                 const SizedBox(height: 4),
                 Text(
-                  goalType.label,
+                  AppLocalizations.of(context).nutritionGoalLabel(goalType.name),
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,

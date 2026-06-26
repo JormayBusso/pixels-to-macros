@@ -339,7 +339,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                 ),
                 for (final g in NutritionGoalType.values)
                   _FilterChip(
-                    label: g.label,
+                    label: l10n.nutritionGoalLabel(g.name),
                     emoji: g.emoji,
                     selected: !_showMyMealsTab && query.goal == g,
                     onTap: () {
@@ -365,7 +365,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                 ),
                 for (final m in RecipeMealType.values)
                   _FilterChip(
-                    label: m.label,
+                    label: l10n.recipeMealTypeLabel(m.name),
                     emoji: m.emoji,
                     selected: query.mealType == m,
                     onTap: () =>
@@ -486,7 +486,7 @@ class _SectionHeader extends StatelessWidget {
                   children: [
                     Icon(Icons.add, size: 14, color: context.primary700),
                     const SizedBox(width: 3),
-                    Text('New',
+                    Text(AppLocalizations.of(context).newBadge,
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -566,7 +566,7 @@ class _CustomMealCard extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            'My Meal',
+                            AppLocalizations.of(context).myMeal,
                             style: TextStyle(
                               fontSize: 9,
                               color: context.appMutedTextColor,
@@ -578,7 +578,7 @@ class _CustomMealCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${meal.ingredients.length} ingredient${meal.ingredients.length == 1 ? '' : 's'} · ${meal.mealType.displayName}',
+                      '${AppLocalizations.of(context).ingredientCount(meal.ingredients.length)} · ${meal.mealType.displayName}',
                       style: TextStyle(
                         fontSize: 11,
                         color: context.appMutedTextColor,
@@ -693,7 +693,7 @@ class _CustomMealDetailSheetState
     if (foods.isEmpty) {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No ingredients to log.')));
+          SnackBar(content: Text(AppLocalizations.of(context).noIngredientsToLog)));
       return;
     }
     final scan = ScanResult(
@@ -706,7 +706,7 @@ class _CustomMealDetailSheetState
     if (mounted) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Logged "${widget.meal.name}".')));
+          SnackBar(content: Text(AppLocalizations.of(context).loggedItemNamed(widget.meal.name))));
     }
     setState(() => _saving = false);
   }
@@ -840,7 +840,7 @@ class _CustomMealDetailSheetState
                 children: [
                   Expanded(
                     child: Text(
-                      'Total: ${_totalKcal.round()} kcal',
+                      AppLocalizations.of(context).totalKcalLabel(_totalKcal.round()),
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w700),
                     ),
@@ -852,7 +852,7 @@ class _CustomMealDetailSheetState
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('Log Meal'),
+                        : Text(AppLocalizations.of(context).logMeal),
                   ),
                 ],
               ),
@@ -867,11 +867,11 @@ class _CustomMealDetailSheetState
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Meal?'),
-        content: Text('Remove "${widget.meal.name}" from your saved meals?'),
+        title: Text(AppLocalizations.of(context).deleteMeal),
+        content: Text(AppLocalizations.of(context).removeMealConfirm(widget.meal.name)),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(ctx), child: Text(AppLocalizations.of(context).cancel)),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
@@ -880,7 +880,7 @@ class _CustomMealDetailSheetState
               if (mounted) Navigator.of(context).pop();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(AppLocalizations.of(context).delete),
           ),
         ],
       ),
@@ -1087,7 +1087,7 @@ class _RecipeCard extends StatelessWidget {
                       children: recipe.goals
                           .take(3)
                           .map((g) => _RecipeBadge(
-                                label: g.label,
+                                label: AppLocalizations.of(context).nutritionGoalLabel(g.name),
                                 color: g.color,
                                 compact: true,
                               ))
@@ -1254,7 +1254,7 @@ class _HealthScorePanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Food score',
+                  AppLocalizations.of(context).foodScore,
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
@@ -1397,7 +1397,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   // ── Macro bar (per person, does not change with serving selector) ──
                   Padding(
                     padding: EdgeInsets.only(bottom: 6),
-                    child: Text('Per person',
+                    child: Text(AppLocalizations.of(context).perPerson,
                         style: TextStyle(
                             fontSize: 11, color: context.appMutedTextColor)),
                   ),
@@ -1433,10 +1433,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                           const Icon(Icons.warning_amber_rounded,
                               size: 16, color: AppTheme.amber600),
                           const SizedBox(width: 8),
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Multiple servings: verify portion accuracy before bolusing.',
-                              style: TextStyle(
+                              AppLocalizations.of(context).multipleServingsBolusWarning,
+                              style: const TextStyle(
                                   fontSize: 11, color: AppTheme.amber700),
                             ),
                           ),
@@ -1447,7 +1447,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 ],
                 const SizedBox(height: 24),
                 // ── Ingredients ──
-                Text('Ingredients',
+                Text(AppLocalizations.of(context).ingredients,
                     style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
@@ -1499,7 +1499,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     )),
                 const SizedBox(height: 24),
                 // ── Steps ──
-                Text('Preparation',
+                Text(AppLocalizations.of(context).preparation,
                     style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
@@ -1564,7 +1564,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     OutlinedButton.icon(
                       onPressed: () => _showSwapSheet(context, r),
                       icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                      label: const Text('Swap'),
+                      label: Text(AppLocalizations.of(context).swap),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size(0, 50),
                         shape: RoundedRectangleBorder(
@@ -1714,9 +1714,9 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Barcode scanning requires an internet connection.'),
-          duration: Duration(seconds: 3),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).barcodeNeedsInternet),
+          duration: const Duration(seconds: 3),
         ),
       );
       return;
@@ -2078,7 +2078,7 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
     if (foods.isEmpty) {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No ingredient amounts provided.')));
+          SnackBar(content: Text(AppLocalizations.of(context).noIngredientAmounts)));
       return;
     }
 
@@ -2089,10 +2089,10 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
       widget.onLogged();
       if (mounted) Navigator.of(context).pop();
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Logged recipe.')));
+          .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).loggedRecipe)));
     } catch (e) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed to log recipe: $e')));
+          .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).failedToLogRecipe(e.toString()))));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -2122,14 +2122,14 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                 Row(
                   children: [
                     Expanded(
-                        child: Text('Log: ${widget.recipe.name}',
+                        child: Text(AppLocalizations.of(context).logRecipeTitle(widget.recipe.name),
                             style: const TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.w700))),
                     // Dismiss keyboard button
                     if (keyboardVisible)
                       IconButton(
                         icon: const Icon(Icons.keyboard_hide, size: 22),
-                        tooltip: 'Dismiss keyboard',
+                        tooltip: AppLocalizations.of(context).dismissKeyboard,
                         onPressed: () => FocusScope.of(context).unfocus(),
                       ),
                     IconButton(
@@ -2140,7 +2140,7 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                    'Adjust grams per ingredient (cooking for ${widget.servings})',
+                    AppLocalizations.of(context).adjustGramsCookingFor(widget.servings),
                     style: TextStyle(color: context.appMutedTextColor)),
                 if (widget.isDiabetic) ...[
                   const SizedBox(height: 10),
@@ -2161,11 +2161,10 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                           Icon(Icons.warning_amber_rounded,
                               color: Colors.red.shade600, size: 20),
                           const SizedBox(width: 10),
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Your ICR is not set. Bolus calculations will be inaccurate.\n'
-                              'Go to Settings → Diabetes to set your personal ICR.',
-                              style: TextStyle(fontSize: 12, color: Colors.red),
+                              AppLocalizations.of(context).icrNotSetWarning,
+                              style: const TextStyle(fontSize: 12, color: Colors.red),
                             ),
                           ),
                         ],
@@ -2193,12 +2192,12 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                             OutlinedButton.icon(
                               onPressed: _scanBarcodeForIngredient,
                               icon: const Icon(Icons.qr_code_scanner, size: 18),
-                              label: const Text('Scan Barcode'),
+                              label: Text(AppLocalizations.of(context).scanBarcode),
                             ),
                             OutlinedButton.icon(
                               onPressed: _addIngredient,
                               icon: const Icon(Icons.edit, size: 18),
-                              label: const Text('Add Manually'),
+                              label: Text(AppLocalizations.of(context).addManually),
                             ),
                           ],
                         );
@@ -2223,7 +2222,7 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                                   textInputAction: TextInputAction.done,
                                   decoration: InputDecoration(
                                     hintText: ing.name.isEmpty
-                                        ? 'Ingredient name'
+                                        ? AppLocalizations.of(context).ingredientNameHint
                                         : ing.name,
                                     isDense: true,
                                     contentPadding: const EdgeInsets.symmetric(
@@ -2287,7 +2286,7 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                 Row(
                   children: [
                     Expanded(
-                        child: Text('Total: ${_totalKcal.round()} kcal',
+                        child: Text(AppLocalizations.of(context).totalKcalLabel(_totalKcal.round()),
                             style: const TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.w700))),
                     FilledButton(
@@ -2297,7 +2296,7 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('Log Meal'),
+                          : Text(AppLocalizations.of(context).logMeal),
                     ),
                   ],
                 ),
@@ -2326,7 +2325,7 @@ class _ServingSelector extends StatelessWidget {
       alignment: WrapAlignment.spaceBetween,
       children: [
         Text(
-          'Cooking for',
+          AppLocalizations.of(context).cookingFor,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
@@ -2391,6 +2390,7 @@ class _NutritionTableState extends State<_NutritionTable> {
   Widget build(BuildContext context) {
     final r = widget.recipe;
     final s = widget.servings;
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -2400,40 +2400,40 @@ class _NutritionTableState extends State<_NutritionTable> {
       ),
       child: Column(
         children: [
-          _NutrientRow('Protein', r.proteinPerServing(s), 'g'),
-          _NutrientRow('Carbs', r.carbsPerServing(s), 'g'),
-          _NutrientRow('Fat', r.fatPerServing(s), 'g'),
-          if (r.fiberG > 0) _NutrientRow('Fiber', r.fiberPerServing(s), 'g'),
-          if (r.sugarG > 0) _NutrientRow('Sugar', r.sugarPerServing(s), 'g'),
+          _NutrientRow(l10n.protein, r.proteinPerServing(s), 'g'),
+          _NutrientRow(l10n.carbs, r.carbsPerServing(s), 'g'),
+          _NutrientRow(l10n.fat, r.fatPerServing(s), 'g'),
+          if (r.fiberG > 0) _NutrientRow(l10n.fiber, r.fiberPerServing(s), 'g'),
+          if (r.sugarG > 0) _NutrientRow(l10n.sugar, r.sugarPerServing(s), 'g'),
           if (_expanded) ...[
             const Divider(height: 16),
-            const Align(
+            Align(
               alignment: Alignment.centerLeft,
-              child: Text('Vitamins & Minerals',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+              child: Text(l10n.vitaminsAndMinerals,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
             ),
             const SizedBox(height: 4),
             if (r.vitaminAUg > 0)
-              _NutrientRow('Vitamin A', r.vitaminAUg / s, 'µg'),
+              _NutrientRow(l10n.nutrientName('vitaminA'), r.vitaminAUg / s, 'µg'),
             if (r.vitaminCMg > 0)
-              _NutrientRow('Vitamin C', r.vitaminCMg / s, 'mg'),
+              _NutrientRow(l10n.nutrientName('vitaminC'), r.vitaminCMg / s, 'mg'),
             if (r.vitaminDUg > 0)
-              _NutrientRow('Vitamin D', r.vitaminDUg / s, 'µg'),
+              _NutrientRow(l10n.nutrientName('vitaminD'), r.vitaminDUg / s, 'µg'),
             if (r.vitaminEMg > 0)
-              _NutrientRow('Vitamin E', r.vitaminEMg / s, 'mg'),
+              _NutrientRow(l10n.nutrientName('vitaminE'), r.vitaminEMg / s, 'mg'),
             if (r.vitaminKUg > 0)
-              _NutrientRow('Vitamin K', r.vitaminKUg / s, 'µg'),
+              _NutrientRow(l10n.nutrientName('vitaminK'), r.vitaminKUg / s, 'µg'),
             if (r.vitaminB12Ug > 0)
-              _NutrientRow('Vitamin B12', r.vitaminB12Ug / s, 'µg'),
-            if (r.folateUg > 0) _NutrientRow('Folate', r.folateUg / s, 'µg'),
-            if (r.calciumMg > 0) _NutrientRow('Calcium', r.calciumMg / s, 'mg'),
-            if (r.ironMg > 0) _NutrientRow('Iron', r.ironMg / s, 'mg'),
+              _NutrientRow(l10n.nutrientName('vitaminB12'), r.vitaminB12Ug / s, 'µg'),
+            if (r.folateUg > 0) _NutrientRow(l10n.nutrientName('folateB9'), r.folateUg / s, 'µg'),
+            if (r.calciumMg > 0) _NutrientRow(l10n.nutrientName('calcium'), r.calciumMg / s, 'mg'),
+            if (r.ironMg > 0) _NutrientRow(l10n.nutrientName('iron'), r.ironMg / s, 'mg'),
             if (r.magnesiumMg > 0)
-              _NutrientRow('Magnesium', r.magnesiumMg / s, 'mg'),
+              _NutrientRow(l10n.nutrientName('magnesium'), r.magnesiumMg / s, 'mg'),
             if (r.potassiumMg > 0)
-              _NutrientRow('Potassium', r.potassiumMg / s, 'mg'),
-            if (r.zincMg > 0) _NutrientRow('Zinc', r.zincMg / s, 'mg'),
-            if (r.sodiumMg > 0) _NutrientRow('Sodium', r.sodiumMg / s, 'mg'),
+              _NutrientRow(l10n.nutrientName('potassium'), r.potassiumMg / s, 'mg'),
+            if (r.zincMg > 0) _NutrientRow(l10n.nutrientName('zinc'), r.zincMg / s, 'mg'),
+            if (r.sodiumMg > 0) _NutrientRow(l10n.nutrientName('sodium'), r.sodiumMg / s, 'mg'),
           ],
           const SizedBox(height: 6),
           GestureDetector(
@@ -2442,7 +2442,7 @@ class _NutritionTableState extends State<_NutritionTable> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  _expanded ? 'Show less' : 'Vitamins & minerals',
+                  _expanded ? l10n.showLess : l10n.vitaminsAndMinerals,
                   style:
                       TextStyle(fontSize: 11, color: context.appMutedTextColor),
                 ),
@@ -2724,20 +2724,20 @@ class _AiSwapSheetState extends ConsumerState<_AiSwapSheet> {
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
               child: _CurrentRecipeMini(recipe: widget.current),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Row(
                 children: [
-                  Expanded(child: Divider()),
+                  const Expanded(child: Divider()),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 10),
-                    child: Text('Better alternatives',
-                        style: TextStyle(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Text(AppLocalizations.of(context).betterAlternatives,
+                        style: const TextStyle(
                             fontSize: 11,
                             color: AppTheme.gray400,
                             fontWeight: FontWeight.w600)),
                   ),
-                  Expanded(child: Divider()),
+                  const Expanded(child: Divider()),
                 ],
               ),
             ),
@@ -2745,15 +2745,15 @@ class _AiSwapSheetState extends ConsumerState<_AiSwapSheet> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? Center(child: Text('Error: $_error'))
+                      ? Center(child: Text(AppLocalizations.of(context).errorWithMessage(_error!)))
                       : (_candidates?.isEmpty ?? true)
-                          ? const Center(
+                          ? Center(
                               child: Padding(
-                                padding: EdgeInsets.all(24),
+                                padding: const EdgeInsets.all(24),
                                 child: Text(
-                                  'No better alternatives found for this recipe.',
+                                  AppLocalizations.of(context).noBetterAlternatives,
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(color: AppTheme.gray500),
+                                  style: const TextStyle(color: AppTheme.gray500),
                                 ),
                               ),
                             )
@@ -2850,7 +2850,7 @@ class _CurrentRecipeMini extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Current',
+                Text(AppLocalizations.of(context).currentLabel,
                     style: TextStyle(
                         fontSize: 10,
                         color: context.appMutedTextColor,

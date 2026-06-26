@@ -1846,7 +1846,7 @@ class _NutritionGoalPickerCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              current.description,
+              AppLocalizations.of(context).nutritionGoalDescription(current.name),
               style: TextStyle(fontSize: 13, color: context.appMutedTextColor),
             ),
             const SizedBox(height: 16),
@@ -1859,7 +1859,7 @@ class _NutritionGoalPickerCard extends ConsumerWidget {
                 return ChoiceChip(
                   avatar:
                       Text(goal.emoji, style: const TextStyle(fontSize: 16)),
-                  label: Text(goal.label),
+                  label: Text(AppLocalizations.of(context).nutritionGoalLabel(goal.name)),
                   selected: selected,
                   backgroundColor: premium ? context.appSubtleFillColor : null,
                   selectedColor: premium
@@ -3304,7 +3304,7 @@ class _BodyProfileSettingsInput extends StatelessWidget {
           runSpacing: 8,
           children: MuscleMassLevel.values.map((level) {
             return ChoiceChip(
-              label: Text(level.label),
+              label: Text(AppLocalizations.of(context).muscleMassLevelLabel(level.name)),
               selected: muscleMassLevel == level,
               selectedColor: context.primary100,
               onSelected: (_) => onMuscleChanged(level),
@@ -3313,7 +3313,7 @@ class _BodyProfileSettingsInput extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          muscleMassLevel.description,
+          AppLocalizations.of(context).muscleMassLevelDescription(muscleMassLevel.name),
           style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
         ),
         const SizedBox(height: 4),

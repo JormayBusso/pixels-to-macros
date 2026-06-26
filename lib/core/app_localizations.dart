@@ -4081,6 +4081,495 @@ class AppLocalizations {
         'de': 'Protein macht nur $pct% deiner durchschnittlichen Zufuhr aus. Ziele auf 20–30% für Sättigung und Muskelunterstützung.',
       });
 
+  // ── Recipe meal types & nutrition goals ──
+
+  String recipeMealTypeLabel(String key) {
+    switch (key) {
+      case 'breakfast':
+        return breakfast;
+      case 'lunch':
+        return lunch;
+      case 'dinner':
+        return dinner;
+      case 'snack':
+        return snack;
+      case 'dessert':
+        return dessert;
+      default:
+        return key;
+    }
+  }
+
+  String nutritionGoalLabel(String key) {
+    switch (key) {
+      case 'muscleGrowth':
+        return _t({
+          'en': 'Muscle Growth',
+          'pl': 'Budowa mięśni',
+          'nl': 'Spiergroei',
+          'es': 'Crecimiento muscular',
+          'de': 'Muskelaufbau',
+        });
+      case 'diabetes':
+        return _t({
+          'en': 'Diabetes',
+          'pl': 'Cukrzyca',
+          'nl': 'Diabetes',
+          'es': 'Diabetes',
+          'de': 'Diabetes',
+        });
+      case 'vegan':
+        return _t({
+          'en': 'Vegan Diet',
+          'pl': 'Dieta wegańska',
+          'nl': 'Veganistisch dieet',
+          'es': 'Dieta vegana',
+          'de': 'Vegane Ernährung',
+        });
+      case 'vegetarian':
+        return _t({
+          'en': 'Vegetarian Diet',
+          'pl': 'Dieta wegetariańska',
+          'nl': 'Vegetarisch dieet',
+          'es': 'Dieta vegetariana',
+          'de': 'Vegetarische Ernährung',
+        });
+      case 'pescatarian':
+        return _t({
+          'en': 'Pescatarian',
+          'pl': 'Pesketarianizm',
+          'nl': 'Pescotarisch',
+          'es': 'Pescetariano',
+          'de': 'Pescetarisch',
+        });
+      case 'mediterranean':
+        return _t({
+          'en': 'Mediterranean',
+          'pl': 'Śródziemnomorska',
+          'nl': 'Mediterraan',
+          'es': 'Mediterránea',
+          'de': 'Mediterran',
+        });
+      case 'weightLoss':
+        return _t({
+          'en': 'Weight Loss',
+          'pl': 'Utrata wagi',
+          'nl': 'Gewichtsverlies',
+          'es': 'Pérdida de peso',
+          'de': 'Gewichtsverlust',
+        });
+      case 'keto':
+        return _t({
+          'en': 'Keto',
+          'pl': 'Keto',
+          'nl': 'Keto',
+          'es': 'Keto',
+          'de': 'Keto',
+        });
+      case 'maintain':
+        return _t({
+          'en': 'Maintain Weight',
+          'pl': 'Utrzymanie wagi',
+          'nl': 'Gewicht behouden',
+          'es': 'Mantener peso',
+          'de': 'Gewicht halten',
+        });
+      default:
+        return key;
+    }
+  }
+
+  String nutritionGoalDescription(String key) {
+    switch (key) {
+      case 'muscleGrowth':
+        return _t({
+          'en': 'Build muscle with a calorie surplus and high protein intake.',
+          'pl': 'Buduj mięśnie dzięki nadwyżce kalorycznej i wysokiemu spożyciu białka.',
+          'nl': 'Bouw spieren op met een calorieoverschot en een hoge eiwitinname.',
+          'es': 'Desarrolla músculo con un superávit calórico y una alta ingesta de proteínas.',
+          'de': 'Baue Muskeln mit einem Kalorienüberschuss und hoher Proteinzufuhr auf.',
+        });
+      case 'diabetes':
+        return _t({
+          'en': 'Keep blood sugar stable by managing your daily carbohydrate intake.',
+          'pl': 'Utrzymuj stabilny poziom cukru we krwi, kontrolując dzienne spożycie węglowodanów.',
+          'nl': 'Houd je bloedsuiker stabiel door je dagelijkse koolhydraatinname te beheren.',
+          'es': 'Mantén estable el azúcar en sangre gestionando tu ingesta diaria de carbohidratos.',
+          'de': 'Halte deinen Blutzucker stabil, indem du deine tägliche Kohlenhydratzufuhr steuerst.',
+        });
+      case 'vegan':
+        return _t({
+          'en': 'Track nutrients often missing from plant-based diets: protein, B12, iron, vitamin D.',
+          'pl': 'Śledź składniki często brakujące w dietach roślinnych: białko, B12, żelazo, witaminę D.',
+          'nl': 'Volg voedingsstoffen die vaak ontbreken in plantaardige diëten: eiwit, B12, ijzer, vitamine D.',
+          'es': 'Controla los nutrientes que suelen faltar en las dietas vegetales: proteína, B12, hierro, vitamina D.',
+          'de': 'Verfolge Nährstoffe, die in pflanzlichen Ernährungsformen oft fehlen: Protein, B12, Eisen, Vitamin D.',
+        });
+      case 'vegetarian':
+        return _t({
+          'en': 'Avoid meat and seafood while allowing dairy, eggs, and honey when they fit your plan.',
+          'pl': 'Unikaj mięsa i owoców morza, dopuszczając nabiał, jaja i miód, gdy pasują do planu.',
+          'nl': 'Vermijd vlees en zeevruchten en sta zuivel, eieren en honing toe wanneer ze in je plan passen.',
+          'es': 'Evita la carne y el marisco, permitiendo lácteos, huevos y miel cuando encajen en tu plan.',
+          'de': 'Verzichte auf Fleisch und Meeresfrüchte und erlaube Milchprodukte, Eier und Honig, wenn sie zu deinem Plan passen.',
+        });
+      case 'pescatarian':
+        return _t({
+          'en': 'Vegetarian-style eating that includes fish and seafood for omega-3 fats, iodine, selenium, and complete protein.',
+          'pl': 'Sposób odżywiania w stylu wegetariańskim z rybami i owocami morza dla kwasów omega-3, jodu, selenu i pełnowartościowego białka.',
+          'nl': 'Vegetarisch eten met vis en zeevruchten voor omega 3-vetten, jodium, selenium en complete eiwitten.',
+          'es': 'Alimentación de estilo vegetariano que incluye pescado y marisco para grasas omega-3, yodo, selenio y proteína completa.',
+          'de': 'Vegetarische Ernährung, die Fisch und Meeresfrüchte für Omega-3-Fette, Jod, Selen und vollständiges Protein einschließt.',
+        });
+      case 'mediterranean':
+        return _t({
+          'en': 'A cardiometabolic pattern built around vegetables, legumes, whole grains, fruit, olive oil, nuts, fish, and modest dairy.',
+          'pl': 'Wzorzec kardiometaboliczny oparty na warzywach, roślinach strączkowych, pełnych ziarnach, owocach, oliwie, orzechach, rybach i niewielkiej ilości nabiału.',
+          'nl': 'Een cardiometabool patroon rond groenten, peulvruchten, volle granen, fruit, olijfolie, noten, vis en weinig zuivel.',
+          'es': 'Un patrón cardiometabólico basado en verduras, legumbres, cereales integrales, fruta, aceite de oliva, frutos secos, pescado y lácteos moderados.',
+          'de': 'Ein kardiometabolisches Muster mit Gemüse, Hülsenfrüchten, Vollkorn, Obst, Olivenöl, Nüssen, Fisch und wenig Milchprodukten.',
+        });
+      case 'weightLoss':
+        return _t({
+          'en': 'Lose weight sustainably with a moderate calorie deficit and high protein.',
+          'pl': 'Chudnij trwale dzięki umiarkowanemu deficytowi kalorycznemu i wysokiemu spożyciu białka.',
+          'nl': 'Val duurzaam af met een matig calorietekort en veel eiwit.',
+          'es': 'Pierde peso de forma sostenible con un déficit calórico moderado y mucha proteína.',
+          'de': 'Nimm nachhaltig ab mit einem moderaten Kaloriendefizit und viel Protein.',
+        });
+      case 'keto':
+        return _t({
+          'en': 'Enter and stay in ketosis. Keep daily carbs under 25 g while eating healthy fats.',
+          'pl': 'Wejdź i pozostań w ketozie. Utrzymuj dzienne węglowodany poniżej 25 g, jedząc zdrowe tłuszcze.',
+          'nl': 'Kom in ketose en blijf erin. Houd dagelijkse koolhydraten onder 25 g en eet gezonde vetten.',
+          'es': 'Entra y mantente en cetosis. Mantén los carbohidratos diarios por debajo de 25 g comiendo grasas saludables.',
+          'de': 'Komm in die Ketose und bleib dort. Halte die täglichen Kohlenhydrate unter 25 g und iss gesunde Fette.',
+        });
+      case 'maintain':
+        return _t({
+          'en': 'Maintain your current weight with balanced macros.',
+          'pl': 'Utrzymuj obecną wagę dzięki zbilansowanym makroskładnikom.',
+          'nl': 'Behoud je huidige gewicht met gebalanceerde macro\'s.',
+          'es': 'Mantén tu peso actual con macros equilibrados.',
+          'de': 'Halte dein aktuelles Gewicht mit ausgewogenen Makros.',
+        });
+      default:
+        return key;
+    }
+  }
+
+  String muscleMassLevelLabel(String key) {
+    switch (key) {
+      case 'low':
+        return _t({
+          'en': 'Low',
+          'pl': 'Niska',
+          'nl': 'Laag',
+          'es': 'Baja',
+          'de': 'Niedrig',
+        });
+      case 'average':
+        return _t({
+          'en': 'Average',
+          'pl': 'Przeciętna',
+          'nl': 'Gemiddeld',
+          'es': 'Media',
+          'de': 'Durchschnittlich',
+        });
+      case 'high':
+        return _t({
+          'en': 'High',
+          'pl': 'Wysoka',
+          'nl': 'Hoog',
+          'es': 'Alta',
+          'de': 'Hoch',
+        });
+      case 'veryHigh':
+        return _t({
+          'en': 'Very high',
+          'pl': 'Bardzo wysoka',
+          'nl': 'Zeer hoog',
+          'es': 'Muy alta',
+          'de': 'Sehr hoch',
+        });
+      default:
+        return key;
+    }
+  }
+
+  String muscleMassLevelDescription(String key) {
+    switch (key) {
+      case 'low':
+        return _t({
+          'en': 'Lower lean mass or mostly sedentary right now.',
+          'pl': 'Niższa masa beztłuszczowa lub obecnie głównie siedzący tryb życia.',
+          'nl': 'Lagere vetvrije massa of momenteel vooral zittend.',
+          'es': 'Masa magra baja o vida mayormente sedentaria ahora mismo.',
+          'de': 'Geringere Magermasse oder derzeit überwiegend sitzend.',
+        });
+      case 'average':
+        return _t({
+          'en': 'Typical lean mass for your weight and height.',
+          'pl': 'Typowa masa beztłuszczowa dla Twojej wagi i wzrostu.',
+          'nl': 'Typische vetvrije massa voor je gewicht en lengte.',
+          'es': 'Masa magra típica para tu peso y altura.',
+          'de': 'Typische Magermasse für dein Gewicht und deine Größe.',
+        });
+      case 'high':
+        return _t({
+          'en': 'Clearly muscular or strength training regularly.',
+          'pl': 'Wyraźnie umięśniony lub regularnie trenujący siłowo.',
+          'nl': 'Duidelijk gespierd of regelmatig krachttraining.',
+          'es': 'Claramente musculoso o entrenas fuerza con regularidad.',
+          'de': 'Deutlich muskulös oder regelmäßiges Krafttraining.',
+        });
+      case 'veryHigh':
+        return _t({
+          'en': 'Very muscular athlete/bodybuilding profile.',
+          'pl': 'Profil bardzo umięśnionego sportowca/kulturysty.',
+          'nl': 'Zeer gespierd atleet-/bodybuildingprofiel.',
+          'es': 'Perfil de atleta muy musculoso/culturismo.',
+          'de': 'Sehr muskulöses Athleten-/Bodybuilding-Profil.',
+        });
+      default:
+        return key;
+    }
+  }
+
+  // ── Recipe detail / cards ──
+
+  String get newBadge => _t({
+        'en': 'New',
+        'pl': 'Nowy',
+        'nl': 'Nieuw',
+        'es': 'Nuevo',
+        'de': 'Neu',
+      });
+
+  String get myMeal => _t({
+        'en': 'My Meal',
+        'pl': 'Mój posiłek',
+        'nl': 'Mijn maaltijd',
+        'es': 'Mi comida',
+        'de': 'Meine Mahlzeit',
+      });
+
+  String ingredientCount(int n) => _t({
+        'en': '$n ingredient${n == 1 ? '' : 's'}',
+        'pl': n == 1 ? '$n składnik' : '$n składników',
+        'nl': '$n ingrediënt${n == 1 ? '' : 'en'}',
+        'es': '$n ingrediente${n == 1 ? '' : 's'}',
+        'de': '$n Zutat${n == 1 ? '' : 'en'}',
+      });
+
+  String get perPerson => _t({
+        'en': 'Per person',
+        'pl': 'Na osobę',
+        'nl': 'Per persoon',
+        'es': 'Por persona',
+        'de': 'Pro Person',
+      });
+
+  String get preparation => _t({
+        'en': 'Preparation',
+        'pl': 'Przygotowanie',
+        'nl': 'Bereiding',
+        'es': 'Preparación',
+        'de': 'Zubereitung',
+      });
+
+  String get swap => _t({
+        'en': 'Swap',
+        'pl': 'Zamień',
+        'nl': 'Wisselen',
+        'es': 'Cambiar',
+        'de': 'Tauschen',
+      });
+
+  String get scanBarcode => _t({
+        'en': 'Scan Barcode',
+        'pl': 'Skanuj kod kreskowy',
+        'nl': 'Streepjescode scannen',
+        'es': 'Escanear código',
+        'de': 'Barcode scannen',
+      });
+
+  String get addManually => _t({
+        'en': 'Add Manually',
+        'pl': 'Dodaj ręcznie',
+        'nl': 'Handmatig toevoegen',
+        'es': 'Añadir manualmente',
+        'de': 'Manuell hinzufügen',
+      });
+
+  String get vitaminsAndMinerals => _t({
+        'en': 'Vitamins & minerals',
+        'pl': 'Witaminy i minerały',
+        'nl': 'Vitaminen & mineralen',
+        'es': 'Vitaminas y minerales',
+        'de': 'Vitamine & Mineralstoffe',
+      });
+
+  String get showLess => _t({
+        'en': 'Show less',
+        'pl': 'Pokaż mniej',
+        'nl': 'Minder tonen',
+        'es': 'Mostrar menos',
+        'de': 'Weniger anzeigen',
+      });
+
+  String get betterAlternatives => _t({
+        'en': 'Better alternatives',
+        'pl': 'Lepsze alternatywy',
+        'nl': 'Betere alternatieven',
+        'es': 'Mejores alternativas',
+        'de': 'Bessere Alternativen',
+      });
+
+  String get noBetterAlternatives => _t({
+        'en': 'No better alternatives found for this recipe.',
+        'pl': 'Nie znaleziono lepszych alternatyw dla tego przepisu.',
+        'nl': 'Geen betere alternatieven gevonden voor dit recept.',
+        'es': 'No se encontraron mejores alternativas para esta receta.',
+        'de': 'Keine besseren Alternativen für dieses Rezept gefunden.',
+      });
+
+  String get currentLabel => _t({
+        'en': 'Current',
+        'pl': 'Obecny',
+        'nl': 'Huidig',
+        'es': 'Actual',
+        'de': 'Aktuell',
+      });
+
+  String get cookingFor => _t({
+        'en': 'Cooking for',
+        'pl': 'Gotuję dla',
+        'nl': 'Koken voor',
+        'es': 'Cocinar para',
+        'de': 'Kochen für',
+      });
+
+  String get dismissKeyboard => _t({
+        'en': 'Dismiss keyboard',
+        'pl': 'Ukryj klawiaturę',
+        'nl': 'Toetsenbord sluiten',
+        'es': 'Ocultar teclado',
+        'de': 'Tastatur ausblenden',
+      });
+
+  String get barcodeNeedsInternet => _t({
+        'en': 'Barcode scanning requires an internet connection.',
+        'pl': 'Skanowanie kodu kreskowego wymaga połączenia z internetem.',
+        'nl': 'Streepjescode scannen vereist een internetverbinding.',
+        'es': 'Escanear el código de barras requiere conexión a internet.',
+        'de': 'Das Scannen von Barcodes erfordert eine Internetverbindung.',
+      });
+
+  String get noIngredientsToLog => _t({
+        'en': 'No ingredients to log.',
+        'pl': 'Brak składników do zarejestrowania.',
+        'nl': 'Geen ingrediënten om te loggen.',
+        'es': 'No hay ingredientes para registrar.',
+        'de': 'Keine Zutaten zum Loggen.',
+      });
+
+  String get noIngredientAmounts => _t({
+        'en': 'No ingredient amounts provided.',
+        'pl': 'Nie podano ilości składników.',
+        'nl': 'Geen hoeveelheden ingrediënten opgegeven.',
+        'es': 'No se indicaron cantidades de ingredientes.',
+        'de': 'Keine Zutatenmengen angegeben.',
+      });
+
+  String get loggedRecipe => _t({
+        'en': 'Logged recipe.',
+        'pl': 'Zarejestrowano przepis.',
+        'nl': 'Recept gelogd.',
+        'es': 'Receta registrada.',
+        'de': 'Rezept geloggt.',
+      });
+
+  String failedToLogRecipe(String error) => _t({
+        'en': 'Failed to log recipe: $error',
+        'pl': 'Nie udało się zarejestrować przepisu: $error',
+        'nl': 'Recept loggen mislukt: $error',
+        'es': 'No se pudo registrar la receta: $error',
+        'de': 'Rezept konnte nicht geloggt werden: $error',
+      });
+
+  String loggedItemNamed(String name) => _t({
+        'en': 'Logged "$name".',
+        'pl': 'Zarejestrowano „$name".',
+        'nl': '"$name" gelogd.',
+        'es': 'Se registró "$name".',
+        'de': '"$name" geloggt.',
+      });
+
+  String removeMealConfirm(String name) => _t({
+        'en': 'Remove "$name" from your saved meals?',
+        'pl': 'Usunąć „$name" z zapisanych posiłków?',
+        'nl': '"$name" uit je opgeslagen maaltijden verwijderen?',
+        'es': '¿Eliminar "$name" de tus comidas guardadas?',
+        'de': '"$name" aus deinen gespeicherten Mahlzeiten entfernen?',
+      });
+
+  String logRecipeTitle(String name) => _t({
+        'en': 'Log: $name',
+        'pl': 'Zarejestruj: $name',
+        'nl': 'Loggen: $name',
+        'es': 'Registrar: $name',
+        'de': 'Loggen: $name',
+      });
+
+  String get ingredientNameHint => _t({
+        'en': 'Ingredient name',
+        'pl': 'Nazwa składnika',
+        'nl': 'Naam ingrediënt',
+        'es': 'Nombre del ingrediente',
+        'de': 'Name der Zutat',
+      });
+
+  String totalKcalLabel(int kcal) => _t({
+        'en': 'Total: $kcal kcal',
+        'pl': 'Razem: $kcal kcal',
+        'nl': 'Totaal: $kcal kcal',
+        'es': 'Total: $kcal kcal',
+        'de': 'Gesamt: $kcal kcal',
+      });
+
+  String errorWithMessage(String error) => _t({
+        'en': 'Error: $error',
+        'pl': 'Błąd: $error',
+        'nl': 'Fout: $error',
+        'es': 'Error: $error',
+        'de': 'Fehler: $error',
+      });
+
+  String adjustGramsCookingFor(int servings) => _t({
+        'en': 'Adjust grams per ingredient (cooking for $servings)',
+        'pl': 'Dostosuj gramy na składnik (gotujesz dla $servings)',
+        'nl': 'Pas grammen per ingrediënt aan (koken voor $servings)',
+        'es': 'Ajusta los gramos por ingrediente (cocinas para $servings)',
+        'de': 'Gramm pro Zutat anpassen (Kochen für $servings)',
+      });
+
+  String get multipleServingsBolusWarning => _t({
+        'en': 'Multiple servings: verify portion accuracy before bolusing.',
+        'pl': 'Wiele porcji: zweryfikuj dokładność porcji przed podaniem bolusa.',
+        'nl': 'Meerdere porties: controleer de portienauwkeurigheid vóór het bolussen.',
+        'es': 'Varias porciones: verifica la exactitud de la porción antes de administrar el bolo.',
+        'de': 'Mehrere Portionen: Prüfe die Portionsgenauigkeit vor dem Bolus.',
+      });
+
+  String get icrNotSetWarning => _t({
+        'en': 'Your ICR is not set. Bolus calculations will be inaccurate.\nGo to Settings → Diabetes to set your personal ICR.',
+        'pl': 'Twój wskaźnik ICR nie jest ustawiony. Obliczenia bolusa będą niedokładne.\nPrzejdź do Ustawienia → Cukrzyca, aby ustawić własny ICR.',
+        'nl': 'Je ICR is niet ingesteld. Bolusberekeningen zullen onnauwkeurig zijn.\nGa naar Instellingen → Diabetes om je persoonlijke ICR in te stellen.',
+        'es': 'Tu ICR no está configurado. Los cálculos del bolo serán inexactos.\nVe a Ajustes → Diabetes para configurar tu ICR personal.',
+        'de': 'Dein ICR ist nicht eingestellt. Bolusberechnungen werden ungenau sein.\nGehe zu Einstellungen → Diabetes, um deinen persönlichen ICR festzulegen.',
+      });
+
   String nutrientName(String key) {
     switch (key) {
       case 'calories':
