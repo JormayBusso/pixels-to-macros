@@ -168,7 +168,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Body Map'),
+        title: Text(AppLocalizations.of(context).bodyMap),
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
@@ -378,6 +378,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
     List<DetectedFood> foods,
     NutrientDRV drv,
   ) {
+    final l10n = AppLocalizations.of(context);
     final colorScheme = _scoreColor(score.score);
     showModalBottomSheet<void>(
       context: context,
@@ -410,14 +411,14 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          region.label,
+                          l10n.organLabel(region.name),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         Text(
-                          '${(score.score * 100).round()}% nourished today',
+                          l10n.percentNourished((score.score * 100).round()),
                           style: TextStyle(
                             fontSize: 13,
                             color: colorScheme,
@@ -431,7 +432,7 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                region.explanation,
+                l10n.organExplanation(region.name),
                 style: TextStyle(
                   fontSize: 14,
                   color: context.appMutedTextColor,
@@ -441,18 +442,18 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
               const SizedBox(height: 12),
               _BodyMapInsightCard(
                 icon: Icons.restaurant_menu_outlined,
-                title: 'Best food focus',
-                body: region.foodFocus,
+                title: l10n.bestFoodFocus,
+                body: l10n.organFoodFocus(region.name),
               ),
               const SizedBox(height: 8),
               _BodyMapInsightCard(
                 icon: Icons.monitor_heart_outlined,
-                title: 'Today\'s signal',
-                body: _statusMessage(region, score.score),
+                title: l10n.todaysSignal,
+                body: _statusMessage(l10n, region, score.score),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Key nutrients today',
+              Text(
+                l10n.keyNutrientsToday,
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               ),
               const SizedBox(height: 8),
@@ -827,24 +828,24 @@ extension on _OrganRegion {
       };
 }
 
-String _statusMessage(_OrganRegion region, double score) {
+String _statusMessage(AppLocalizations l10n, _OrganRegion region, double score) {
   final pct = (score * 100).round().clamp(0, 200);
   if (score <= 0) {
-    return 'No meaningful nutrient data has been logged yet, so ${region.label.toLowerCase()} cannot be assessed today.';
+    return l10n.organCoverageNoData(l10n.organLabel(region.name).toLowerCase());
   }
   if (score < 0.50) {
-    return '$pct% coverage: this area is missing several key nutrients today. Add one or two food sources from the list above.';
+    return l10n.organCoverageLow(pct);
   }
   if (score < 0.80) {
-    return '$pct% coverage: improving, but still below the target range for this body part.';
+    return l10n.organCoverageImproving(pct);
   }
   if (score <= 1.15) {
-    return '$pct% coverage: this is in the healthy target zone for today.';
+    return l10n.organCoverageHealthy(pct);
   }
   if (score < 1.55) {
-    return '$pct% coverage: above target. Usually okay short term, but the map starts warning when intake keeps rising.';
+    return l10n.organCoverageAbove(pct);
   }
-  return '$pct% coverage: very high today. Repeated high intake can become unhealthy, especially for fat-soluble vitamins and minerals.';
+  return l10n.organCoverageVeryHigh(pct);
 }
 
 class _OrganScore {

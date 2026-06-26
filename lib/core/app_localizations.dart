@@ -3629,6 +3629,426 @@ class AppLocalizations {
     if (_lang == 'de') return '$n Artikel zur Einkaufsliste hinzugefügt!';
     return '$n items added to your grocery list!';
   }
+
+  // ── Body map ──
+
+  String get bestFoodFocus => _t({
+        'en': 'Best food focus',
+        'pl': 'Najlepszy wybór żywności',
+        'nl': 'Beste voedingsfocus',
+        'es': 'Mejor enfoque alimentario',
+        'de': 'Bester Ernährungsfokus',
+      });
+
+  String get todaysSignal => _t({
+        'en': "Today's signal",
+        'pl': 'Dzisiejszy sygnał',
+        'nl': 'Signaal van vandaag',
+        'es': 'Señal de hoy',
+        'de': 'Heutiges Signal',
+      });
+
+  String get keyNutrientsToday => _t({
+        'en': 'Key nutrients today',
+        'pl': 'Kluczowe składniki dziś',
+        'nl': 'Belangrijkste voedingsstoffen vandaag',
+        'es': 'Nutrientes clave hoy',
+        'de': 'Wichtige Nährstoffe heute',
+      });
+
+  String percentNourished(int pct) => _t({
+        'en': '$pct% nourished today',
+        'pl': '$pct% odżywienia dziś',
+        'nl': '$pct% gevoed vandaag',
+        'es': '$pct% nutrido hoy',
+        'de': '$pct% genährt heute',
+      });
+
+  String organLabel(String key) {
+    switch (key) {
+      case 'brain':
+        return _t({'en': 'Brain', 'pl': 'Mózg', 'nl': 'Hersenen', 'es': 'Cerebro', 'de': 'Gehirn'});
+      case 'eyes':
+        return _t({'en': 'Eyes', 'pl': 'Oczy', 'nl': 'Ogen', 'es': 'Ojos', 'de': 'Augen'});
+      case 'lungs':
+        return _t({'en': 'Lungs', 'pl': 'Płuca', 'nl': 'Longen', 'es': 'Pulmones', 'de': 'Lunge'});
+      case 'heart':
+        return _t({'en': 'Heart', 'pl': 'Serce', 'nl': 'Hart', 'es': 'Corazón', 'de': 'Herz'});
+      case 'liver':
+        return _t({'en': 'Liver', 'pl': 'Wątroba', 'nl': 'Lever', 'es': 'Hígado', 'de': 'Leber'});
+      case 'stomach':
+        return _t({'en': 'Stomach', 'pl': 'Żołądek', 'nl': 'Maag', 'es': 'Estómago', 'de': 'Magen'});
+      case 'intestines':
+        return _t({'en': 'Intestines', 'pl': 'Jelita', 'nl': 'Darmen', 'es': 'Intestinos', 'de': 'Darm'});
+      case 'kidneys':
+        return _t({'en': 'Kidneys', 'pl': 'Nerki', 'nl': 'Nieren', 'es': 'Riñones', 'de': 'Nieren'});
+      case 'bones':
+        return _t({'en': 'Bones', 'pl': 'Kości', 'nl': 'Botten', 'es': 'Huesos', 'de': 'Knochen'});
+      case 'muscles':
+        return _t({'en': 'Muscles', 'pl': 'Mięśnie', 'nl': 'Spieren', 'es': 'Músculos', 'de': 'Muskeln'});
+      case 'skin':
+        return _t({'en': 'Skin', 'pl': 'Skóra', 'nl': 'Huid', 'es': 'Piel', 'de': 'Haut'});
+      case 'blood':
+        return _t({'en': 'Blood', 'pl': 'Krew', 'nl': 'Bloed', 'es': 'Sangre', 'de': 'Blut'});
+      default:
+        return key;
+    }
+  }
+
+  String organExplanation(String key) {
+    switch (key) {
+      case 'brain':
+        return _t({
+          'en': 'B12 and folate keep nerves firing. Iron carries oxygen to brain tissue and supports focus and memory.',
+          'pl': 'B12 i kwas foliowy utrzymują pracę nerwów. Żelazo dostarcza tlen do mózgu i wspiera koncentrację i pamięć.',
+          'nl': 'B12 en foliumzuur houden de zenuwen actief. IJzer brengt zuurstof naar hersenweefsel en ondersteunt focus en geheugen.',
+          'es': 'La B12 y el folato mantienen activos los nervios. El hierro lleva oxígeno al cerebro y favorece la concentración y la memoria.',
+          'de': 'B12 und Folat halten die Nerven aktiv. Eisen transportiert Sauerstoff ins Hirngewebe und unterstützt Konzentration und Gedächtnis.',
+        });
+      case 'eyes':
+        return _t({
+          'en': 'Vitamin A is essential for night vision. Vitamin C and zinc protect against age-related macular degeneration.',
+          'pl': 'Witamina A jest niezbędna do widzenia w nocy. Witamina C i cynk chronią przed zwyrodnieniem plamki żółtej.',
+          'nl': 'Vitamine A is essentieel voor nachtzicht. Vitamine C en zink beschermen tegen leeftijdsgebonden maculadegeneratie.',
+          'es': 'La vitamina A es esencial para la visión nocturna. La vitamina C y el zinc protegen contra la degeneración macular.',
+          'de': 'Vitamin A ist wichtig für das Nachtsehen. Vitamin C und Zink schützen vor altersbedingter Makuladegeneration.',
+        });
+      case 'lungs':
+        return _t({
+          'en': 'Antioxidants like vitamin C, E and A defend lung tissue against oxidative stress and inflammation.',
+          'pl': 'Antyoksydanty jak witamina C, E i A chronią tkankę płuc przed stresem oksydacyjnym i stanem zapalnym.',
+          'nl': 'Antioxidanten zoals vitamine C, E en A beschermen longweefsel tegen oxidatieve stress en ontsteking.',
+          'es': 'Antioxidantes como las vitaminas C, E y A defienden el tejido pulmonar del estrés oxidativo y la inflamación.',
+          'de': 'Antioxidantien wie Vitamin C, E und A schützen das Lungengewebe vor oxidativem Stress und Entzündungen.',
+        });
+      case 'heart':
+        return _t({
+          'en': 'Potassium regulates heartbeat, magnesium relaxes blood vessels, and vitamin E protects cells from oxidative damage.',
+          'pl': 'Potas reguluje rytm serca, magnez rozluźnia naczynia, a witamina E chroni komórki przed uszkodzeniem oksydacyjnym.',
+          'nl': 'Kalium reguleert de hartslag, magnesium ontspant bloedvaten en vitamine E beschermt cellen tegen oxidatieve schade.',
+          'es': 'El potasio regula el latido, el magnesio relaja los vasos y la vitamina E protege las células del daño oxidativo.',
+          'de': 'Kalium reguliert den Herzschlag, Magnesium entspannt die Gefäße und Vitamin E schützt Zellen vor oxidativen Schäden.',
+        });
+      case 'liver':
+        return _t({
+          'en': 'The liver stores fat-soluble vitamins. Vitamin K supports clotting; B12 is processed and stored here.',
+          'pl': 'Wątroba magazynuje witaminy rozpuszczalne w tłuszczach. Witamina K wspiera krzepnięcie; B12 jest tu przetwarzana i magazynowana.',
+          'nl': 'De lever slaat vetoplosbare vitamines op. Vitamine K ondersteunt de bloedstolling; B12 wordt hier verwerkt en opgeslagen.',
+          'es': 'El hígado almacena vitaminas liposolubles. La vitamina K favorece la coagulación; la B12 se procesa y almacena aquí.',
+          'de': 'Die Leber speichert fettlösliche Vitamine. Vitamin K unterstützt die Gerinnung; B12 wird hier verarbeitet und gespeichert.',
+        });
+      case 'stomach':
+        return _t({
+          'en': 'Zinc maintains the stomach lining. B-vitamins support the production of digestive enzymes.',
+          'pl': 'Cynk utrzymuje błonę śluzową żołądka. Witaminy z grupy B wspierają produkcję enzymów trawiennych.',
+          'nl': 'Zink onderhoudt de maagwand. B-vitamines ondersteunen de aanmaak van spijsverteringsenzymen.',
+          'es': 'El zinc mantiene la mucosa del estómago. Las vitaminas B apoyan la producción de enzimas digestivas.',
+          'de': 'Zink erhält die Magenschleimhaut. B-Vitamine unterstützen die Bildung von Verdauungsenzymen.',
+        });
+      case 'intestines':
+        return _t({
+          'en': 'Dietary fiber feeds healthy gut bacteria. Magnesium and potassium keep intestinal muscles contracting smoothly.',
+          'pl': 'Błonnik odżywia zdrowe bakterie jelitowe. Magnez i potas zapewniają płynne skurcze mięśni jelit.',
+          'nl': 'Vezels voeden gezonde darmbacteriën. Magnesium en kalium houden de darmspieren soepel samentrekken.',
+          'es': 'La fibra alimenta las bacterias intestinales sanas. El magnesio y el potasio mantienen los músculos intestinales en movimiento.',
+          'de': 'Ballaststoffe nähren gesunde Darmbakterien. Magnesium und Kalium halten die Darmmuskulatur geschmeidig in Bewegung.',
+        });
+      case 'kidneys':
+        return _t({
+          'en': 'Potassium and magnesium balance helps the kidneys filter waste; staying hydrated reduces kidney load.',
+          'pl': 'Równowaga potasu i magnezu pomaga nerkom filtrować odpady; nawodnienie zmniejsza obciążenie nerek.',
+          'nl': 'Een balans van kalium en magnesium helpt de nieren afval te filteren; goed hydrateren verlaagt de nierbelasting.',
+          'es': 'El equilibrio de potasio y magnesio ayuda a los riñones a filtrar desechos; hidratarse reduce su carga.',
+          'de': 'Ein Gleichgewicht von Kalium und Magnesium hilft den Nieren beim Filtern; ausreichend trinken entlastet die Nieren.',
+        });
+      case 'bones':
+        return _t({
+          'en': 'Calcium builds bone density. Vitamin D drives calcium absorption. Vitamin K guides calcium into bone, not arteries.',
+          'pl': 'Wapń buduje gęstość kości. Witamina D napędza wchłanianie wapnia. Witamina K kieruje wapń do kości, a nie do tętnic.',
+          'nl': 'Calcium bouwt botdichtheid op. Vitamine D stimuleert calciumopname. Vitamine K leidt calcium naar bot, niet naar slagaders.',
+          'es': 'El calcio aumenta la densidad ósea. La vitamina D impulsa su absorción. La vitamina K dirige el calcio al hueso, no a las arterias.',
+          'de': 'Kalzium baut Knochendichte auf. Vitamin D fördert die Aufnahme. Vitamin K lenkt Kalzium in die Knochen, nicht in die Arterien.',
+        });
+      case 'muscles':
+        return _t({
+          'en': 'Magnesium and potassium prevent cramps. Calcium triggers contraction. Adequate protein repairs muscle fibers.',
+          'pl': 'Magnez i potas zapobiegają skurczom. Wapń wyzwala skurcz. Odpowiednia ilość białka naprawia włókna mięśniowe.',
+          'nl': 'Magnesium en kalium voorkomen kramp. Calcium zet de samentrekking in gang. Voldoende eiwit herstelt spiervezels.',
+          'es': 'El magnesio y el potasio previenen calambres. El calcio activa la contracción. Suficiente proteína repara las fibras musculares.',
+          'de': 'Magnesium und Kalium verhindern Krämpfe. Kalzium löst die Kontraktion aus. Genug Protein repariert Muskelfasern.',
+        });
+      case 'skin':
+        return _t({
+          'en': 'Vitamin C builds collagen, vitamin E shields against UV damage, and zinc accelerates wound healing.',
+          'pl': 'Witamina C buduje kolagen, witamina E chroni przed promieniowaniem UV, a cynk przyspiesza gojenie ran.',
+          'nl': 'Vitamine C bouwt collageen op, vitamine E beschermt tegen UV-schade en zink versnelt wondgenezing.',
+          'es': 'La vitamina C forma colágeno, la vitamina E protege del daño UV y el zinc acelera la cicatrización.',
+          'de': 'Vitamin C bildet Kollagen, Vitamin E schützt vor UV-Schäden und Zink beschleunigt die Wundheilung.',
+        });
+      case 'blood':
+        return _t({
+          'en': 'Iron is the core of haemoglobin. B12 and folate are required to produce healthy red blood cells.',
+          'pl': 'Żelazo jest rdzeniem hemoglobiny. B12 i kwas foliowy są potrzebne do produkcji zdrowych czerwonych krwinek.',
+          'nl': 'IJzer is de kern van hemoglobine. B12 en foliumzuur zijn nodig om gezonde rode bloedcellen te maken.',
+          'es': 'El hierro es el núcleo de la hemoglobina. La B12 y el folato son necesarios para producir glóbulos rojos sanos.',
+          'de': 'Eisen ist der Kern des Hämoglobins. B12 und Folat werden für gesunde rote Blutkörperchen benötigt.',
+        });
+      default:
+        return '';
+    }
+  }
+
+  String organFoodFocus(String key) {
+    switch (key) {
+      case 'brain':
+        return _t({
+          'en': 'Prioritise eggs, fish, dairy, lean meat, legumes, leafy greens, and iron-rich foods paired with vitamin C.',
+          'pl': 'Stawiaj na jajka, ryby, nabiał, chude mięso, rośliny strączkowe, zielone warzywa i produkty bogate w żelazo z witaminą C.',
+          'nl': 'Geef prioriteit aan eieren, vis, zuivel, mager vlees, peulvruchten, bladgroenten en ijzerrijke voeding met vitamine C.',
+          'es': 'Prioriza huevos, pescado, lácteos, carne magra, legumbres, verduras de hoja y alimentos ricos en hierro con vitamina C.',
+          'de': 'Bevorzuge Eier, Fisch, Milchprodukte, mageres Fleisch, Hülsenfrüchte, Blattgemüse und eisenreiche Lebensmittel mit Vitamin C.',
+        });
+      case 'eyes':
+        return _t({
+          'en': 'Look for carrots, sweet potato, spinach, bell pepper, citrus, eggs, shellfish, seeds, and zinc-rich proteins.',
+          'pl': 'Wybieraj marchew, bataty, szpinak, paprykę, cytrusy, jajka, owoce morza, nasiona i białka bogate w cynk.',
+          'nl': 'Kies voor wortels, zoete aardappel, spinazie, paprika, citrus, eieren, schaaldieren, zaden en zinkrijke eiwitten.',
+          'es': 'Busca zanahorias, batata, espinacas, pimiento, cítricos, huevos, mariscos, semillas y proteínas ricas en zinc.',
+          'de': 'Achte auf Karotten, Süßkartoffeln, Spinat, Paprika, Zitrusfrüchte, Eier, Meeresfrüchte, Samen und zinkreiche Proteine.',
+        });
+      case 'lungs':
+        return _t({
+          'en': 'Colourful fruit, leafy greens, nuts, seeds, olive oil, and vitamin C-rich produce help cover antioxidant needs.',
+          'pl': 'Kolorowe owoce, zielone warzywa, orzechy, nasiona, oliwa i produkty bogate w witaminę C pokrywają potrzeby antyoksydacyjne.',
+          'nl': 'Kleurrijk fruit, bladgroenten, noten, zaden, olijfolie en vitamine C-rijke producten dekken de antioxidantbehoefte.',
+          'es': 'Frutas coloridas, verduras de hoja, frutos secos, semillas, aceite de oliva y productos ricos en vitamina C cubren los antioxidantes.',
+          'de': 'Buntes Obst, Blattgemüse, Nüsse, Samen, Olivenöl und Vitamin-C-reiche Produkte decken den Antioxidantienbedarf.',
+        });
+      case 'heart':
+        return _t({
+          'en': 'Potassium-rich fruit and vegetables, legumes, nuts, seeds, whole grains, and magnesium-rich foods are most useful.',
+          'pl': 'Najlepsze są owoce i warzywa bogate w potas, rośliny strączkowe, orzechy, nasiona, pełne ziarna i produkty bogate w magnez.',
+          'nl': 'Kaliumrijk fruit en groenten, peulvruchten, noten, zaden, volle granen en magnesiumrijke voeding zijn het nuttigst.',
+          'es': 'Frutas y verduras ricas en potasio, legumbres, frutos secos, semillas, granos integrales y alimentos ricos en magnesio son lo más útil.',
+          'de': 'Kaliumreiches Obst und Gemüse, Hülsenfrüchte, Nüsse, Samen, Vollkorn und magnesiumreiche Lebensmittel sind am nützlichsten.',
+        });
+      case 'liver':
+        return _t({
+          'en': 'Use eggs, leafy greens, fermented dairy, fish, nuts, seeds, and varied proteins to cover K, E, and B12.',
+          'pl': 'Jedz jajka, zielone warzywa, fermentowany nabiał, ryby, orzechy, nasiona i różne białka, aby pokryć K, E i B12.',
+          'nl': 'Gebruik eieren, bladgroenten, gefermenteerde zuivel, vis, noten, zaden en gevarieerde eiwitten voor K, E en B12.',
+          'es': 'Usa huevos, verduras de hoja, lácteos fermentados, pescado, frutos secos, semillas y proteínas variadas para cubrir K, E y B12.',
+          'de': 'Nutze Eier, Blattgemüse, fermentierte Milchprodukte, Fisch, Nüsse, Samen und vielfältige Proteine für K, E und B12.',
+        });
+      case 'stomach':
+        return _t({
+          'en': 'Zinc-rich seafood, meat, legumes, dairy, eggs, and B-vitamin foods support the stomach lining and digestion.',
+          'pl': 'Owoce morza bogate w cynk, mięso, strączki, nabiał, jajka i produkty z witaminami B wspierają błonę żołądka i trawienie.',
+          'nl': 'Zinkrijke zeevruchten, vlees, peulvruchten, zuivel, eieren en B-vitamine voeding ondersteunen de maagwand en spijsvertering.',
+          'es': 'Mariscos ricos en zinc, carne, legumbres, lácteos, huevos y alimentos con vitamina B apoyan la mucosa gástrica y la digestión.',
+          'de': 'Zinkreiche Meeresfrüchte, Fleisch, Hülsenfrüchte, Milchprodukte, Eier und B-Vitamin-Lebensmittel unterstützen Magenschleimhaut und Verdauung.',
+        });
+      case 'intestines':
+        return _t({
+          'en': 'Beans, lentils, oats, whole grains, vegetables, fruit, nuts, seeds, and enough fluids are the strongest levers.',
+          'pl': 'Fasola, soczewica, owies, pełne ziarna, warzywa, owoce, orzechy, nasiona i dość płynów to najsilniejsze dźwignie.',
+          'nl': 'Bonen, linzen, haver, volle granen, groenten, fruit, noten, zaden en voldoende vocht zijn de sterkste hefbomen.',
+          'es': 'Frijoles, lentejas, avena, granos integrales, verduras, fruta, frutos secos, semillas y suficientes líquidos son las mayores palancas.',
+          'de': 'Bohnen, Linsen, Hafer, Vollkorn, Gemüse, Obst, Nüsse, Samen und ausreichend Flüssigkeit sind die stärksten Hebel.',
+        });
+      case 'kidneys':
+        return _t({
+          'en': 'Hydration plus balanced potassium and magnesium from fruit, vegetables, legumes, and nuts supports filtering.',
+          'pl': 'Nawodnienie oraz zbilansowany potas i magnez z owoców, warzyw, strączków i orzechów wspierają filtrację.',
+          'nl': 'Hydratatie plus uitgebalanceerd kalium en magnesium uit fruit, groenten, peulvruchten en noten ondersteunt de filtering.',
+          'es': 'La hidratación más un equilibrio de potasio y magnesio de fruta, verduras, legumbres y frutos secos apoya el filtrado.',
+          'de': 'Flüssigkeit sowie ausgewogenes Kalium und Magnesium aus Obst, Gemüse, Hülsenfrüchten und Nüssen unterstützen die Filterung.',
+        });
+      case 'bones':
+        return _t({
+          'en': 'Dairy or fortified alternatives, sardines, tofu, leafy greens, eggs, fish, and vitamin K vegetables support bone strength.',
+          'pl': 'Nabiał lub wzbogacone zamienniki, sardynki, tofu, zielone warzywa, jajka, ryby i warzywa z witaminą K wspierają kości.',
+          'nl': 'Zuivel of verrijkte alternatieven, sardines, tofu, bladgroenten, eieren, vis en vitamine K-groenten ondersteunen sterke botten.',
+          'es': 'Lácteos o alternativas fortificadas, sardinas, tofu, verduras de hoja, huevos, pescado y verduras con vitamina K fortalecen los huesos.',
+          'de': 'Milchprodukte oder angereicherte Alternativen, Sardinen, Tofu, Blattgemüse, Eier, Fisch und Vitamin-K-Gemüse stärken die Knochen.',
+        });
+      case 'muscles':
+        return _t({
+          'en': 'Pair protein with magnesium, potassium, and calcium from dairy, legumes, potatoes, bananas, nuts, and greens.',
+          'pl': 'Łącz białko z magnezem, potasem i wapniem z nabiału, strączków, ziemniaków, bananów, orzechów i zielonych warzyw.',
+          'nl': 'Combineer eiwit met magnesium, kalium en calcium uit zuivel, peulvruchten, aardappelen, bananen, noten en groenten.',
+          'es': 'Combina proteína con magnesio, potasio y calcio de lácteos, legumbres, patatas, plátanos, frutos secos y verduras.',
+          'de': 'Kombiniere Protein mit Magnesium, Kalium und Kalzium aus Milchprodukten, Hülsenfrüchten, Kartoffeln, Bananen, Nüssen und Grünzeug.',
+        });
+      case 'skin':
+        return _t({
+          'en': 'Vitamin C fruit, nuts, seeds, avocado, olive oil, seafood, legumes, and zinc-rich proteins help collagen and repair.',
+          'pl': 'Owoce z witaminą C, orzechy, nasiona, awokado, oliwa, owoce morza, strączki i białka bogate w cynk wspierają kolagen i regenerację.',
+          'nl': 'Vitamine C-fruit, noten, zaden, avocado, olijfolie, zeevruchten, peulvruchten en zinkrijke eiwitten helpen collageen en herstel.',
+          'es': 'Frutas con vitamina C, frutos secos, semillas, aguacate, aceite de oliva, mariscos, legumbres y proteínas ricas en zinc ayudan al colágeno y la reparación.',
+          'de': 'Vitamin-C-Obst, Nüsse, Samen, Avocado, Olivenöl, Meeresfrüchte, Hülsenfrüchte und zinkreiche Proteine fördern Kollagen und Heilung.',
+        });
+      case 'blood':
+        return _t({
+          'en': 'Iron, B12, and folate come from red meat, fish, eggs, dairy, legumes, spinach, fortified grains, and citrus pairings.',
+          'pl': 'Żelazo, B12 i kwas foliowy pochodzą z czerwonego mięsa, ryb, jaj, nabiału, strączków, szpinaku, wzbogaconych zbóż i cytrusów.',
+          'nl': 'IJzer, B12 en foliumzuur komen uit rood vlees, vis, eieren, zuivel, peulvruchten, spinazie, verrijkte granen en citrus.',
+          'es': 'El hierro, la B12 y el folato vienen de carne roja, pescado, huevos, lácteos, legumbres, espinacas, granos fortificados y cítricos.',
+          'de': 'Eisen, B12 und Folat stammen aus rotem Fleisch, Fisch, Eiern, Milchprodukten, Hülsenfrüchten, Spinat, angereichertem Getreide und Zitrusfrüchten.',
+        });
+      default:
+        return '';
+    }
+  }
+
+  String organCoverageNoData(String organLower) => _t({
+        'en': 'No meaningful nutrient data has been logged yet, so $organLower cannot be assessed today.',
+        'pl': 'Nie zarejestrowano jeszcze istotnych danych o składnikach, więc $organLower nie można dziś ocenić.',
+        'nl': 'Er zijn nog geen relevante voedingsgegevens gelogd, dus $organLower kan vandaag niet worden beoordeeld.',
+        'es': 'Aún no se han registrado datos de nutrientes relevantes, así que $organLower no se puede evaluar hoy.',
+        'de': 'Es wurden noch keine aussagekräftigen Nährstoffdaten erfasst, daher kann $organLower heute nicht bewertet werden.',
+      });
+
+  String organCoverageLow(int pct) => _t({
+        'en': '$pct% coverage: this area is missing several key nutrients today. Add one or two food sources from the list above.',
+        'pl': '$pct% pokrycia: temu obszarowi brakuje dziś kilku kluczowych składników. Dodaj jedno lub dwa źródła z listy powyżej.',
+        'nl': '$pct% dekking: dit gebied mist vandaag enkele belangrijke voedingsstoffen. Voeg een of twee bronnen uit de lijst hierboven toe.',
+        'es': '$pct% de cobertura: a esta zona le faltan hoy varios nutrientes clave. Añade una o dos fuentes de la lista anterior.',
+        'de': '$pct% Abdeckung: Diesem Bereich fehlen heute mehrere wichtige Nährstoffe. Füge ein oder zwei Quellen aus der Liste oben hinzu.',
+      });
+
+  String organCoverageImproving(int pct) => _t({
+        'en': '$pct% coverage: improving, but still below the target range for this body part.',
+        'pl': '$pct% pokrycia: poprawia się, ale wciąż poniżej zakresu docelowego dla tej części ciała.',
+        'nl': '$pct% dekking: verbetert, maar nog onder het streefbereik voor dit lichaamsdeel.',
+        'es': '$pct% de cobertura: mejorando, pero aún por debajo del rango objetivo para esta parte del cuerpo.',
+        'de': '$pct% Abdeckung: verbessert sich, liegt aber noch unter dem Zielbereich für diesen Körperteil.',
+      });
+
+  String organCoverageHealthy(int pct) => _t({
+        'en': '$pct% coverage: this is in the healthy target zone for today.',
+        'pl': '$pct% pokrycia: to mieści się dziś w zdrowej strefie docelowej.',
+        'nl': '$pct% dekking: dit zit vandaag in de gezonde streefzone.',
+        'es': '$pct% de cobertura: esto está hoy en la zona objetivo saludable.',
+        'de': '$pct% Abdeckung: das liegt heute in der gesunden Zielzone.',
+      });
+
+  String organCoverageAbove(int pct) => _t({
+        'en': '$pct% coverage: above target. Usually okay short term, but the map starts warning when intake keeps rising.',
+        'pl': '$pct% pokrycia: powyżej celu. Zwykle okej na krótko, ale mapa ostrzega, gdy spożycie wciąż rośnie.',
+        'nl': '$pct% dekking: boven het doel. Meestal kortdurend prima, maar de kaart waarschuwt als de inname blijft stijgen.',
+        'es': '$pct% de cobertura: por encima del objetivo. Suele estar bien a corto plazo, pero el mapa avisa si la ingesta sigue subiendo.',
+        'de': '$pct% Abdeckung: über dem Ziel. Kurzfristig meist okay, aber die Karte warnt, wenn die Zufuhr weiter steigt.',
+      });
+
+  String organCoverageVeryHigh(int pct) => _t({
+        'en': '$pct% coverage: very high today. Repeated high intake can become unhealthy, especially for fat-soluble vitamins and minerals.',
+        'pl': '$pct% pokrycia: bardzo wysokie dziś. Powtarzające się wysokie spożycie może być niezdrowe, zwłaszcza witamin rozpuszczalnych w tłuszczach i minerałów.',
+        'nl': '$pct% dekking: vandaag erg hoog. Herhaaldelijk hoge inname kan ongezond worden, vooral voor vetoplosbare vitamines en mineralen.',
+        'es': '$pct% de cobertura: muy alta hoy. Una ingesta alta repetida puede volverse poco saludable, sobre todo de vitaminas liposolubles y minerales.',
+        'de': '$pct% Abdeckung: heute sehr hoch. Wiederholt hohe Zufuhr kann ungesund werden, besonders bei fettlöslichen Vitaminen und Mineralstoffen.',
+      });
+
+  // ── Nutrition dashboard ──
+
+  String get micronutrientWheel => _t({
+        'en': 'Micronutrient Wheel',
+        'pl': 'Koło mikroskładników',
+        'nl': 'Micronutriëntenwiel',
+        'es': 'Rueda de micronutrientes',
+        'de': 'Mikronährstoff-Rad',
+      });
+
+  String get macronutrients => _t({
+        'en': 'Macronutrients',
+        'pl': 'Makroskładniki',
+        'nl': 'Macronutriënten',
+        'es': 'Macronutrientes',
+        'de': 'Makronährstoffe',
+      });
+
+  String get vitamins => _t({
+        'en': 'Vitamins',
+        'pl': 'Witaminy',
+        'nl': 'Vitamines',
+        'es': 'Vitaminas',
+        'de': 'Vitamine',
+      });
+
+  String get minerals => _t({
+        'en': 'Minerals',
+        'pl': 'Minerały',
+        'nl': 'Mineralen',
+        'es': 'Minerales',
+        'de': 'Mineralien',
+      });
+
+  String get essentialFatsTraceMinerals => _t({
+        'en': 'Essential Fats & Trace Minerals',
+        'pl': 'Niezbędne tłuszcze i mikroelementy',
+        'nl': 'Essentiële vetten & sporenmineralen',
+        'es': 'Grasas esenciales y oligominerales',
+        'de': 'Essentielle Fette & Spurenelemente',
+      });
+
+  String get nutritionDisclaimer => _t({
+        'en': '* Targets shown are goal- and gender-adjusted Dietary Reference Intakes (NASEM / NIH, updated 2024–2025). Micronutrient values are estimated from USDA FoodData Central averages. For personalised advice, consult a registered dietitian.',
+        'pl': '* Pokazane cele to referencyjne spożycie dostosowane do celu i płci (NASEM / NIH, aktualizacja 2024–2025). Wartości mikroskładników szacowane są na podstawie średnich USDA FoodData Central. Po indywidualną poradę zwróć się do dietetyka.',
+        'nl': '* De getoonde doelen zijn op doel en geslacht afgestemde referentie-innames (NASEM / NIH, bijgewerkt 2024–2025). Micronutriëntwaarden zijn geschat op basis van USDA FoodData Central-gemiddelden. Raadpleeg voor persoonlijk advies een diëtist.',
+        'es': '* Los objetivos mostrados son ingestas de referencia ajustadas por meta y sexo (NASEM / NIH, actualizadas 2024–2025). Los valores de micronutrientes se estiman a partir de promedios de USDA FoodData Central. Para asesoramiento personalizado, consulta a un dietista.',
+        'de': '* Die angezeigten Ziele sind ziel- und geschlechtsangepasste Referenzwerte für die Zufuhr (NASEM / NIH, aktualisiert 2024–2025). Mikronährstoffwerte werden aus Durchschnittswerten der USDA FoodData Central geschätzt. Für persönliche Beratung wende dich an eine Ernährungsfachkraft.',
+      });
+
+  String nutrientName(String key) {
+    switch (key) {
+      case 'calories':
+        return _t({'en': 'Calories', 'pl': 'Kalorie', 'nl': 'Calorieën', 'es': 'Calorías', 'de': 'Kalorien'});
+      case 'protein':
+        return _t({'en': 'Protein', 'pl': 'Białko', 'nl': 'Eiwitten', 'es': 'Proteínas', 'de': 'Protein'});
+      case 'carbohydrates':
+        return _t({'en': 'Carbohydrates', 'pl': 'Węglowodany', 'nl': 'Koolhydraten', 'es': 'Carbohidratos', 'de': 'Kohlenhydrate'});
+      case 'fat':
+        return _t({'en': 'Fat', 'pl': 'Tłuszcz', 'nl': 'Vetten', 'es': 'Grasas', 'de': 'Fett'});
+      case 'dietaryFiber':
+        return _t({'en': 'Dietary Fiber', 'pl': 'Błonnik', 'nl': 'Vezels', 'es': 'Fibra', 'de': 'Ballaststoffe'});
+      case 'vitaminA':
+        return _t({'en': 'Vitamin A', 'pl': 'Witamina A', 'nl': 'Vitamine A', 'es': 'Vitamina A', 'de': 'Vitamin A'});
+      case 'vitaminC':
+        return _t({'en': 'Vitamin C', 'pl': 'Witamina C', 'nl': 'Vitamine C', 'es': 'Vitamina C', 'de': 'Vitamin C'});
+      case 'vitaminD':
+        return _t({'en': 'Vitamin D', 'pl': 'Witamina D', 'nl': 'Vitamine D', 'es': 'Vitamina D', 'de': 'Vitamin D'});
+      case 'vitaminE':
+        return _t({'en': 'Vitamin E', 'pl': 'Witamina E', 'nl': 'Vitamine E', 'es': 'Vitamina E', 'de': 'Vitamin E'});
+      case 'vitaminK':
+        return _t({'en': 'Vitamin K', 'pl': 'Witamina K', 'nl': 'Vitamine K', 'es': 'Vitamina K', 'de': 'Vitamin K'});
+      case 'folateB9':
+        return _t({'en': 'Folate (B9)', 'pl': 'Foliany (B9)', 'nl': 'Foliumzuur (B9)', 'es': 'Folato (B9)', 'de': 'Folat (B9)'});
+      case 'vitaminB12':
+        return _t({'en': 'Vitamin B12', 'pl': 'Witamina B12', 'nl': 'Vitamine B12', 'es': 'Vitamina B12', 'de': 'Vitamin B12'});
+      case 'calcium':
+        return _t({'en': 'Calcium', 'pl': 'Wapń', 'nl': 'Calcium', 'es': 'Calcio', 'de': 'Kalzium'});
+      case 'iron':
+        return _t({'en': 'Iron', 'pl': 'Żelazo', 'nl': 'IJzer', 'es': 'Hierro', 'de': 'Eisen'});
+      case 'magnesium':
+        return _t({'en': 'Magnesium', 'pl': 'Magnez', 'nl': 'Magnesium', 'es': 'Magnesio', 'de': 'Magnesium'});
+      case 'potassium':
+        return _t({'en': 'Potassium', 'pl': 'Potas', 'nl': 'Kalium', 'es': 'Potasio', 'de': 'Kalium'});
+      case 'sodium':
+        return _t({'en': 'Sodium', 'pl': 'Sód', 'nl': 'Natrium', 'es': 'Sodio', 'de': 'Natrium'});
+      case 'zinc':
+        return _t({'en': 'Zinc', 'pl': 'Cynk', 'nl': 'Zink', 'es': 'Zinc', 'de': 'Zink'});
+      case 'omega3':
+        return _t({'en': 'Omega-3 (EPA+DHA+ALA)', 'pl': 'Omega-3 (EPA+DHA+ALA)', 'nl': 'Omega-3 (EPA+DHA+ALA)', 'es': 'Omega-3 (EPA+DHA+ALA)', 'de': 'Omega-3 (EPA+DHA+ALA)'});
+      case 'selenium':
+        return _t({'en': 'Selenium', 'pl': 'Selen', 'nl': 'Selenium', 'es': 'Selenio', 'de': 'Selen'});
+      case 'iodine':
+        return _t({'en': 'Iodine', 'pl': 'Jod', 'nl': 'Jodium', 'es': 'Yodo', 'de': 'Jod'});
+      case 'chromium':
+        return _t({'en': 'Chromium', 'pl': 'Chrom', 'nl': 'Chroom', 'es': 'Cromo', 'de': 'Chrom'});
+      default:
+        return key;
+    }
+  }
 }
 
 class _AppLocalizationsDelegate

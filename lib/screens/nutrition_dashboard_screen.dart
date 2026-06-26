@@ -19,6 +19,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final intake = ref.watch(dailyIntakeProvider);
     final prefs = ref.watch(userPrefsProvider);
+    final l10n = AppLocalizations.of(context);
     final isFemale = prefs.gender == UserGender.female;
     final isMale = prefs.gender == UserGender.male;
     // Resolve goal-specific DRVs — "prefer not to say" uses male baseline.
@@ -47,12 +48,12 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
 
                 // ── Nutrient Wheel (today's micronutrient overview) ───────
-                const _SectionHeader('Micronutrient Wheel'),
+                _SectionHeader(l10n.micronutrientWheel),
                 const NutrientWheelWidget(),
                 const SizedBox(height: 8),
 
                 // ── Macronutrients ────────────────────────────────────────
-                const _SectionHeader('Macronutrients'),
+                _SectionHeader(l10n.macronutrients),
                 Card(
                   margin:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -60,7 +61,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                     children: [
                       _NutrientRow(
                         icon: const Text('🔥', style: TextStyle(fontSize: 16)),
-                        name: 'Calories',
+                        name: l10n.nutrientName('calories'),
                         current: intake.caloriesAvg,
                         drv: prefs.dailyCalorieGoal.toDouble(),
                         unit: 'kcal',
@@ -68,7 +69,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('💪', style: TextStyle(fontSize: 16)),
-                        name: 'Protein',
+                        name: l10n.nutrientName('protein'),
                         current: intake.proteinG,
                         drv: prefs.dailyProteinTargetG.toDouble(),
                         unit: 'g',
@@ -76,7 +77,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('🍞', style: TextStyle(fontSize: 16)),
-                        name: 'Carbohydrates',
+                        name: l10n.nutrientName('carbohydrates'),
                         current: intake.carbsG,
                         drv: prefs.dailyCarbLimitG.toDouble(),
                         unit: 'g',
@@ -85,7 +86,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('🥑', style: TextStyle(fontSize: 16)),
-                        name: 'Fat',
+                        name: l10n.nutrientName('fat'),
                         current: intake.fatG,
                         drv: prefs.dailyFatTargetG.toDouble(),
                         unit: 'g',
@@ -93,7 +94,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('🌾', style: TextStyle(fontSize: 16)),
-                        name: 'Dietary Fiber',
+                        name: l10n.nutrientName('dietaryFiber'),
                         current: intake.nutrientTotals.fiberG,
                         drv: drv.fiberG,
                         unit: 'g',
@@ -104,7 +105,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
 
                 // ── Vitamins ──────────────────────────────────────────────
-                const _SectionHeader('Vitamins'),
+                _SectionHeader(l10n.vitamins),
                 Card(
                   margin:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -112,7 +113,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                     children: [
                       _NutrientRow(
                         icon: const Text('🥕', style: TextStyle(fontSize: 16)),
-                        name: 'Vitamin A',
+                        name: l10n.nutrientName('vitaminA'),
                         current: intake.nutrientTotals.vitaminAUg,
                         drv: drv.vitaminAUg,
                         unit: 'μg',
@@ -120,7 +121,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('🍊', style: TextStyle(fontSize: 16)),
-                        name: 'Vitamin C',
+                        name: l10n.nutrientName('vitaminC'),
                         current: intake.nutrientTotals.vitaminCMg,
                         drv: drv.vitaminCMg,
                         unit: 'mg',
@@ -128,7 +129,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('☀️', style: TextStyle(fontSize: 16)),
-                        name: 'Vitamin D',
+                        name: l10n.nutrientName('vitaminD'),
                         current: intake.nutrientTotals.vitaminDUg,
                         drv: drv.vitaminDUg,
                         unit: 'μg',
@@ -136,7 +137,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('🌻', style: TextStyle(fontSize: 16)),
-                        name: 'Vitamin E',
+                        name: l10n.nutrientName('vitaminE'),
                         current: intake.nutrientTotals.vitaminEMg,
                         drv: drv.vitaminEMg,
                         unit: 'mg',
@@ -144,7 +145,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('🥬', style: TextStyle(fontSize: 16)),
-                        name: 'Vitamin K',
+                        name: l10n.nutrientName('vitaminK'),
                         current: intake.nutrientTotals.vitaminKUg,
                         drv: drv.vitaminKUg,
                         unit: 'μg',
@@ -152,7 +153,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('🫘', style: TextStyle(fontSize: 16)),
-                        name: 'Folate (B9)',
+                        name: l10n.nutrientName('folateB9'),
                         current: intake.nutrientTotals.folateMcg,
                         drv: drv.folateMcg,
                         unit: 'μg',
@@ -160,7 +161,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('🥩', style: TextStyle(fontSize: 16)),
-                        name: 'Vitamin B12',
+                        name: l10n.nutrientName('vitaminB12'),
                         current: intake.nutrientTotals.b12Mcg,
                         drv: drv.b12Mcg,
                         unit: 'μg',
@@ -171,7 +172,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
 
                 // ── Minerals ──────────────────────────────────────────────
-                const _SectionHeader('Minerals'),
+                _SectionHeader(l10n.minerals),
                 Card(
                   margin:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -180,7 +181,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       _NutrientRow(
                         icon: Image.asset('assets/Calcium.png',
                             width: 28, height: 28, fit: BoxFit.contain),
-                        name: 'Calcium',
+                        name: l10n.nutrientName('calcium'),
                         current: intake.nutrientTotals.calciumMg,
                         drv: drv.calciumMg,
                         unit: 'mg',
@@ -189,7 +190,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       _NutrientRow(
                         icon: Image.asset('assets/Iron.png',
                             width: 28, height: 28, fit: BoxFit.contain),
-                        name: 'Iron',
+                        name: l10n.nutrientName('iron'),
                         current: intake.nutrientTotals.ironMg,
                         drv: drv.ironMg,
                         unit: 'mg',
@@ -198,7 +199,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       _NutrientRow(
                         icon: Image.asset('assets/Magnesium.png',
                             width: 28, height: 28, fit: BoxFit.contain),
-                        name: 'Magnesium',
+                        name: l10n.nutrientName('magnesium'),
                         current: intake.nutrientTotals.magnesiumMg,
                         drv: drv.magnesiumMg,
                         unit: 'mg',
@@ -207,7 +208,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       _NutrientRow(
                         icon: Image.asset('assets/Potassium.png',
                             width: 28, height: 28, fit: BoxFit.contain),
-                        name: 'Potassium',
+                        name: l10n.nutrientName('potassium'),
                         current: intake.nutrientTotals.potassiumMg,
                         drv: drv.potassiumMg,
                         unit: 'mg',
@@ -216,7 +217,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       _NutrientRow(
                         icon: Image.asset('assets/Sodium.png',
                             width: 28, height: 28, fit: BoxFit.contain),
-                        name: 'Sodium',
+                        name: l10n.nutrientName('sodium'),
                         current: intake.nutrientTotals.sodiumMg,
                         drv: drv.sodiumMaxMg,
                         unit: 'mg',
@@ -226,7 +227,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       _NutrientRow(
                         icon: Image.asset('assets/Zink.png',
                             width: 28, height: 28, fit: BoxFit.contain),
-                        name: 'Zinc',
+                        name: l10n.nutrientName('zinc'),
                         current: intake.nutrientTotals.zincMg,
                         drv: drv.zincMg,
                         unit: 'mg',
@@ -237,7 +238,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
 
                 // ── Essential fatty acids & trace minerals (new 2026) ─────
-                const _SectionHeader('Essential Fats & Trace Minerals'),
+                _SectionHeader(l10n.essentialFatsTraceMinerals),
                 Card(
                   margin:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -245,7 +246,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                     children: [
                       _NutrientRow(
                         icon: const Text('🐟', style: TextStyle(fontSize: 16)),
-                        name: 'Omega-3 (EPA+DHA+ALA)',
+                        name: l10n.nutrientName('omega3'),
                         current: intake.nutrientTotals.omega3G,
                         drv: drv.omega3G,
                         unit: 'g',
@@ -253,7 +254,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('🥜', style: TextStyle(fontSize: 16)),
-                        name: 'Selenium',
+                        name: l10n.nutrientName('selenium'),
                         current: intake.nutrientTotals.seleniumMcg,
                         drv: drv.seleniumMcg,
                         unit: 'μg',
@@ -261,7 +262,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('🧪', style: TextStyle(fontSize: 16)),
-                        name: 'Iodine',
+                        name: l10n.nutrientName('iodine'),
                         current: intake.nutrientTotals.iodineMcg,
                         drv: drv.iodineMcg,
                         unit: 'μg',
@@ -269,7 +270,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                       const _Divider(),
                       _NutrientRow(
                         icon: const Text('🥦', style: TextStyle(fontSize: 16)),
-                        name: 'Chromium',
+                        name: l10n.nutrientName('chromium'),
                         current: intake.nutrientTotals.chromiumMcg,
                         drv: drv.chromiumMcg,
                         unit: 'μg',
@@ -292,10 +293,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Text(
-                    '* Targets shown are goal- and gender-adjusted Dietary Reference Intakes '
-                    '(NASEM / NIH, updated 2024–2025). Micronutrient values are estimated '
-                    'from USDA FoodData Central averages. For personalised advice, consult '
-                    'a registered dietitian.',
+                    l10n.nutritionDisclaimer,
                     style: TextStyle(
                       fontSize: 11,
                       color: context.appMutedTextColor,
