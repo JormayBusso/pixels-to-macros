@@ -1473,7 +1473,7 @@ class _MacroRow extends StatelessWidget {
                     ? Colors.red.shade600
                     : isHealthy
                         ? Colors.green.shade700
-                        : AppTheme.gray700,
+                        : context.appTextColor,
               ),
             ),
           ],

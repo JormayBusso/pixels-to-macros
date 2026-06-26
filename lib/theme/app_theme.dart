@@ -106,6 +106,13 @@ class AppTheme {
         ),
       ),
 
+      // Tabs (e.g. Settings) — keep unselected labels readable on premium dark
+      tabBarTheme: TabBarThemeData(
+        labelColor: premium ? visual.primaryAccent : primary,
+        unselectedLabelColor: premium ? visual.onMuted : gray500,
+        indicatorColor: premium ? visual.primaryAccent : primary,
+      ),
+
       // Cards
       cardTheme: CardThemeData(
         color: cardColor,
@@ -251,6 +258,15 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: visual.inputFillColor,
+        labelStyle: GoogleFonts.inter(
+          color: premium ? visual.onMuted : gray600,
+        ),
+        floatingLabelStyle: GoogleFonts.inter(
+          color: premium ? visual.primaryAccent : primary,
+        ),
+        hintStyle: GoogleFonts.inter(
+          color: premium ? visual.onMuted : gray500,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:

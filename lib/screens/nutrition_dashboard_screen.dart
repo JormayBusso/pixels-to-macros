@@ -908,8 +908,8 @@ class _NutrientDetailPanel extends StatelessWidget {
                     Expanded(
                       child: Text(
                         f.$1,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppTheme.gray700),
+                        style: TextStyle(
+                            fontSize: 12, color: context.appTextColor),
                       ),
                     ),
                     Text(

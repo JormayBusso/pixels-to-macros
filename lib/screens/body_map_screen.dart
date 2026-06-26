@@ -655,10 +655,10 @@ class _BodyMapInsightCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.gray800,
+                    color: context.appTextColor,
                   ),
                 ),
                 const SizedBox(height: 4),
