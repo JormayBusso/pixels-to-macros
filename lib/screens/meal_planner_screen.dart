@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
 import '../models/custom_meal.dart';
+import '../models/dietary_restriction.dart';
 import '../models/food_data.dart';
 import '../models/meal_plan.dart';
 import '../models/nutrition_goal.dart';
@@ -69,10 +70,11 @@ Recipe _customMealToRecipe(CustomMeal meal, List<FoodData> foods) {
 }
 
 /// The nutrition goal the weekly planner is currently planning for. Defaults to
-/// the user's global goal (null) but can be overridden per session from the
-/// planner's goal chips, so the AI autopilot and Smart Swap pick ONLY recipes
-/// eligible for the chosen goal — exactly like the Recipes screen.
-final plannerGoalProvider = StateProvider<NutritionGoalType?>((ref) => null);
+/// the user's global goal; can be overridden per session from the planner's
+/// goal chips. A null value means "All goals" (no eligibility filter — every
+/// recipe qualifies), exactly like the Recipes screen's "All goals" option.
+final plannerGoalProvider = StateProvider<NutritionGoalType?>(
+    (ref) => ref.read(userPrefsProvider).nutritionGoal);
 
 String _localizedGoalLabel(AppLocalizations l10n, NutritionGoalType goal) {
   return switch (goal) {
@@ -132,10 +134,13 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     final l10n = AppLocalizations.of(context);
     final plan = ref.watch(mealPlanProvider);
     final prefs = ref.watch(userPrefsProvider);
-    // The planner can target any nutrition goal (defaults to the global one);
-    // the AI autopilot + Smart Swap then pick ONLY recipes eligible for it.
-    final selectedGoal =
-        ref.watch(plannerGoalProvider) ?? prefs.nutritionGoal;
+    // The planner can target any nutrition goal (defaults to the global one),
+    // or "All goals" (null) for no filter. The AI autopilot + Smart Swap then
+    // pick ONLY recipes eligible for the chosen goal.
+    final plannerGoalRaw = ref.watch(plannerGoalProvider);
+    final isAllGoals = plannerGoalRaw == null;
+    // "All goals" maps to maintain for filtering (every recipe qualifies).
+    final selectedGoal = plannerGoalRaw ?? NutritionGoalType.maintain;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -197,9 +202,11 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              l10n.personalisedFor(
-                                _localizedGoalLabel(l10n, selectedGoal),
-                              ),
+                              isAllGoals
+                                  ? l10n.allGoals
+                                  : l10n.personalisedFor(
+                                      _localizedGoalLabel(l10n, selectedGoal),
+                                    ),
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -218,7 +225,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 // ── Goal selector (mirrors the Recipes screen): the AI plans
                 // and swaps pull ONLY meals eligible for the chosen goal. ──
                 SizedBox(
@@ -227,6 +234,21 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(
+                            l10n.allGoals,
+                            style: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                          selected: isAllGoals,
+                          showCheckmark: false,
+                          onSelected: (_) => ref
+                              .read(plannerGoalProvider.notifier)
+                              .state = null,
+                        ),
+                      ),
                       for (final g in NutritionGoalType.values)
                         Padding(
                           padding: const EdgeInsets.only(right: 8),
@@ -236,7 +258,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                               style: const TextStyle(
                                   fontSize: 12, fontWeight: FontWeight.w600),
                             ),
-                            selected: selectedGoal == g,
+                            selected: plannerGoalRaw == g,
                             showCheckmark: false,
                             onSelected: (_) => ref
                                 .read(plannerGoalProvider.notifier)
@@ -246,7 +268,47 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
+                // ── Dietary / allergy chips (matching allergens are hidden) ──
+                SizedBox(
+                  height: 38,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Center(
+                          child: Icon(Icons.no_food_outlined,
+                              size: 16, color: context.appMutedTextColor),
+                        ),
+                      ),
+                      for (final r in DietaryRestriction.values)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            label: Text(
+                              l10n.dietaryRestrictionLabel(r.name),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            selected: prefs.dietaryRestrictions.contains(r),
+                            onSelected: (_) {
+                              final updated = {...prefs.dietaryRestrictions};
+                              if (updated.contains(r)) {
+                                updated.remove(r);
+                              } else {
+                                updated.add(r);
+                              }
+                              ref.read(userPrefsProvider.notifier).update(
+                                  prefs.copyWith(
+                                      dietaryRestrictions: updated));
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
                 _PlannerActionBar(onAutopilot: () => _runAutopilot(context)),
                 const SizedBox(height: 8),
                 // ── Day list ──
@@ -316,7 +378,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     final pantryNames =
         pantryMode ? ref.read(pantryProvider).availableNames : const <String>{};
     await ref.read(mealPlanProvider.notifier).autoFillWeek(
-          goal: ref.read(plannerGoalProvider) ?? prefs.nutritionGoal,
+          goal: ref.read(plannerGoalProvider) ?? NutritionGoalType.maintain,
           dailyCalorieGoal: prefs.dailyCalorieGoal,
           dietaryRestrictions: prefs.dietaryRestrictions,
           pantryNames: pantryNames,
@@ -822,7 +884,7 @@ class _MealSlotRow extends ConsumerWidget {
     final portionMultiplier = plan.portionMultiplierFor(dayIndex, mealType);
     final prefs = ref.watch(userPrefsProvider);
     final l10n = AppLocalizations.of(context);
-    final goal = ref.watch(plannerGoalProvider) ?? prefs.nutritionGoal;
+    final goal = ref.watch(plannerGoalProvider) ?? NutritionGoalType.maintain;
     final dailyCal = prefs.dailyCalorieGoal;
     final restrictions = prefs.dietaryRestrictions;
     final pantryMode = ref.watch(pantryModeProvider);

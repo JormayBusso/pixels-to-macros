@@ -273,44 +273,6 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.recipes),
-        actions: [
-          // Dietary restrictions / allergy filter — relocated here from Settings
-          // because this is where it visibly takes effect. Writes the SAME
-          // userPrefsProvider the whole app enforces.
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                tooltip: l10n.dietaryRestrictions,
-                icon: const Icon(Icons.no_food_outlined),
-                onPressed: () => _showDietarySheet(context),
-              ),
-              if (dietaryRestrictions.isNotEmpty)
-                Positioned(
-                  top: 8,
-                  right: 6,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    constraints:
-                        const BoxConstraints(minWidth: 16, minHeight: 16),
-                    decoration: BoxDecoration(
-                      color: context.primary500,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '${dietaryRestrictions.length}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(54),
           child: Padding(
@@ -355,7 +317,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           // ── Goal chips ──
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -391,7 +353,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           // ── Meal type chips ──
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -409,6 +371,43 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                     onTap: () =>
                         ref.read(recipeQueryProvider.notifier).setMealType(m),
                   ),
+              ],
+            ),
+          ),
+          // ── Dietary / allergy chips (matching allergens are hidden) ──
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+            child: Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, right: 2),
+                  child: Icon(Icons.no_food_outlined,
+                      size: 16, color: context.appMutedTextColor),
+                ),
+                for (final r in DietaryRestriction.values)
+                  _FilterChip(
+                    label: l10n.dietaryRestrictionLabel(r.name),
+                    selected: dietaryRestrictions.contains(r),
+                    onTap: () {
+                      final p = ref.read(userPrefsProvider);
+                      final updated = {...p.dietaryRestrictions};
+                      if (updated.contains(r)) {
+                        updated.remove(r);
+                      } else {
+                        updated.add(r);
+                      }
+                      ref.read(userPrefsProvider.notifier).update(
+                          p.copyWith(dietaryRestrictions: updated));
+                    },
+                  ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: l10n.dietaryRestrictions,
+                  icon: Icon(Icons.info_outline,
+                      size: 18, color: context.appMutedTextColor),
+                  onPressed: () => _showDietarySheet(context),
+                ),
               ],
             ),
           ),
