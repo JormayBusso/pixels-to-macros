@@ -4748,6 +4748,128 @@ class AppLocalizations {
         'de': 'Mahlzeit bearbeiten',
       });
 
+  // ── Settings: diabetes & account ──
+
+  String get scannerDiagnostics => _t({
+        'en': 'Scanner Diagnostics',
+        'pl': 'Diagnostyka skanera',
+        'nl': 'Scannerdiagnostiek',
+        'es': 'Diagnóstico del escáner',
+        'de': 'Scanner-Diagnose',
+      });
+
+  String get bloodGlucoseUnit => _t({
+        'en': 'Blood glucose unit',
+        'pl': 'Jednostka glukozy we krwi',
+        'nl': 'Bloedglucose-eenheid',
+        'es': 'Unidad de glucosa en sangre',
+        'de': 'Blutzucker-Einheit',
+      });
+
+  String get insulinToCarbRatio => _t({
+        'en': 'Insulin-to-Carb Ratio (ICR)',
+        'pl': 'Współczynnik insulina-węglowodany (ICR)',
+        'nl': 'Insuline-koolhydraatratio (ICR)',
+        'es': 'Ratio insulina-carbohidratos (ICR)',
+        'de': 'Insulin-Kohlenhydrat-Verhältnis (ICR)',
+      });
+
+  String get icrHelp => _t({
+        'en': '1 unit of insulin covers how many grams of carbs?',
+        'pl': '1 jednostka insuliny pokrywa ile gramów węglowodanów?',
+        'nl': '1 eenheid insuline dekt hoeveel gram koolhydraten?',
+        'es': '¿1 unidad de insulina cubre cuántos gramos de carbohidratos?',
+        'de': '1 Einheit Insulin deckt wie viele Gramm Kohlenhydrate ab?',
+      });
+
+  String get insulinSensitivityFactor => _t({
+        'en': 'Insulin Sensitivity Factor (ISF)',
+        'pl': 'Współczynnik wrażliwości na insulinę (ISF)',
+        'nl': 'Insulinegevoeligheidsfactor (ISF)',
+        'es': 'Factor de sensibilidad a la insulina (ISF)',
+        'de': 'Insulinempfindlichkeitsfaktor (ISF)',
+      });
+
+  String isfHelp(String unitLabel) => _t({
+        'en': '1 unit of insulin lowers your blood glucose by how much ($unitLabel)? Used for correction doses.',
+        'pl': '1 jednostka insuliny obniża poziom glukozy o ile ($unitLabel)? Używane do dawek korekcyjnych.',
+        'nl': '1 eenheid insuline verlaagt je bloedglucose met hoeveel ($unitLabel)? Gebruikt voor correctiedoses.',
+        'es': '¿1 unidad de insulina reduce tu glucosa en cuánto ($unitLabel)? Se usa para dosis de corrección.',
+        'de': '1 Einheit Insulin senkt deinen Blutzucker um wie viel ($unitLabel)? Wird für Korrekturdosen verwendet.',
+      });
+
+  String get targetBloodGlucose => _t({
+        'en': 'Target blood glucose',
+        'pl': 'Docelowy poziom glukozy',
+        'nl': 'Streefwaarde bloedglucose',
+        'es': 'Glucosa en sangre objetivo',
+        'de': 'Ziel-Blutzucker',
+      });
+
+  String get targetBloodGlucoseHelp => _t({
+        'en': 'Your goal blood glucose for correction calculations.',
+        'pl': 'Twój docelowy poziom glukozy do obliczeń korekcyjnych.',
+        'nl': 'Je streefwaarde bloedglucose voor correctieberekeningen.',
+        'es': 'Tu glucosa objetivo para los cálculos de corrección.',
+        'de': 'Dein Ziel-Blutzucker für Korrekturberechnungen.',
+      });
+
+  String get diabetesSafetyWarning => _t({
+        'en': 'Confirm your ICR, ISF and target with your healthcare provider and review them regularly — they change over time. Always measure your blood glucose correctly and double-check every dose before injecting.',
+        'pl': 'Potwierdź ICR, ISF i wartość docelową ze swoim lekarzem i regularnie je weryfikuj — zmieniają się z czasem. Zawsze prawidłowo mierz poziom glukozy i sprawdzaj każdą dawkę przed wstrzyknięciem.',
+        'nl': 'Bevestig je ICR, ISF en streefwaarde met je zorgverlener en controleer ze regelmatig — ze veranderen na verloop van tijd. Meet je bloedglucose altijd correct en controleer elke dosis vóór het injecteren.',
+        'es': 'Confirma tu ICR, ISF y objetivo con tu profesional de salud y revísalos con regularidad: cambian con el tiempo. Mide siempre tu glucosa correctamente y verifica cada dosis antes de inyectar.',
+        'de': 'Bestätige deinen ICR, ISF und Zielwert mit deinem medizinischen Fachpersonal und überprüfe sie regelmäßig — sie ändern sich mit der Zeit. Miss deinen Blutzucker immer korrekt und überprüfe jede Dosis vor dem Injizieren.',
+      });
+
+  String get bolusCalculatorMode => _t({
+        'en': 'Bolus Calculator Mode',
+        'pl': 'Tryb kalkulatora bolusa',
+        'nl': 'Bolusrekenmachine-modus',
+        'es': 'Modo calculadora de bolo',
+        'de': 'Bolusrechner-Modus',
+      });
+
+  String get bolusCalculatorModeHelp => _t({
+        'en': 'An optional, safety-gated insulin estimate. Off by default. Requires a settings survey, consent, and review every 90 days.',
+        'pl': 'Opcjonalne, zabezpieczone oszacowanie insuliny. Domyślnie wyłączone. Wymaga ankiety ustawień, zgody i przeglądu co 90 dni.',
+        'nl': 'Een optionele, beveiligde insulineschatting. Standaard uit. Vereist een instellingenquête, toestemming en een controle elke 90 dagen.',
+        'es': 'Una estimación de insulina opcional y con controles de seguridad. Desactivada por defecto. Requiere una encuesta de ajustes, consentimiento y revisión cada 90 días.',
+        'de': 'Eine optionale, sicherheitsgeprüfte Insulinschätzung. Standardmäßig aus. Erfordert eine Einstellungsumfrage, Zustimmung und Überprüfung alle 90 Tage.',
+      });
+
+  String get premium => _t({
+        'en': 'Premium',
+        'pl': 'Premium',
+        'nl': 'Premium',
+        'es': 'Premium',
+        'de': 'Premium',
+      });
+
+  String get standard => _t({
+        'en': 'Standard',
+        'pl': 'Standardowy',
+        'nl': 'Standaard',
+        'es': 'Estándar',
+        'de': 'Standard',
+      });
+
+  String get heightLabel => _t({
+        'en': 'Height',
+        'pl': 'Wzrost',
+        'nl': 'Lengte',
+        'es': 'Altura',
+        'de': 'Größe',
+      });
+
+  String get deleteAccountConfirmBody => _t({
+        'en': 'This will permanently delete your account and all synced data. Local data on this device will be kept.\n\nThis cannot be undone.',
+        'pl': 'Spowoduje to trwałe usunięcie konta i wszystkich zsynchronizowanych danych. Dane lokalne na tym urządzeniu zostaną zachowane.\n\nTej operacji nie można cofnąć.',
+        'nl': 'Hiermee worden je account en alle gesynchroniseerde gegevens permanent verwijderd. Lokale gegevens op dit apparaat blijven behouden.\n\nDit kan niet ongedaan worden gemaakt.',
+        'es': 'Esto eliminará permanentemente tu cuenta y todos los datos sincronizados. Los datos locales de este dispositivo se conservarán.\n\nEsto no se puede deshacer.',
+        'de': 'Dadurch werden dein Konto und alle synchronisierten Daten dauerhaft gelöscht. Lokale Daten auf diesem Gerät bleiben erhalten.\n\nDies kann nicht rückgängig gemacht werden.',
+      });
+
   String nutrientName(String key) {
     switch (key) {
       case 'calories':

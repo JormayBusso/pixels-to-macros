@@ -514,7 +514,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   controller: _passwordCtrl,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    labelText: AppLocalizations.of(context).password,
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(_obscurePassword
@@ -1160,7 +1160,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.insights_outlined),
-                    label: const Text('Scanner Diagnostics'),
+                    label: Text(AppLocalizations.of(context).scannerDiagnostics),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => const ScanDiagnosticsScreen(),
@@ -1401,13 +1401,13 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
             const Divider(height: 28),
 
             // ── ICR ────────────────────────────────────────────────────
-            const Text('Insulin-to-Carb Ratio (ICR)',
-                style: TextStyle(
+            Text(AppLocalizations.of(context).insulinToCarbRatio,
+                style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: _diabetesBlue)),
             const SizedBox(height: 4),
-            Text('1 unit of insulin covers how many grams of carbs?',
+            Text(AppLocalizations.of(context).icrHelp,
                 style:
                     TextStyle(fontSize: 12, color: context.appMutedTextColor)),
             const SizedBox(height: 8),
@@ -1419,15 +1419,14 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
             const Divider(height: 28),
 
             // ── ISF ────────────────────────────────────────────────────
-            const Text('Insulin Sensitivity Factor (ISF)',
-                style: TextStyle(
+            Text(AppLocalizations.of(context).insulinSensitivityFactor,
+                style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: _diabetesBlue)),
             const SizedBox(height: 4),
             Text(
-              '1 unit of insulin lowers your blood glucose by how much '
-              '($unitLabel)? Used for correction doses.',
+              AppLocalizations.of(context).isfHelp(unitLabel),
               style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
             ),
             const SizedBox(height: 8),
@@ -1439,13 +1438,13 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
             const Divider(height: 28),
 
             // ── Target BG ──────────────────────────────────────────────
-            const Text('Target blood glucose',
-                style: TextStyle(
+            Text(AppLocalizations.of(context).targetBloodGlucose,
+                style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: _diabetesBlue)),
             const SizedBox(height: 4),
-            Text('Your goal blood glucose for correction calculations.',
+            Text(AppLocalizations.of(context).targetBloodGlucoseHelp,
                 style:
                     TextStyle(fontSize: 12, color: context.appMutedTextColor)),
             const SizedBox(height: 8),
@@ -1475,10 +1474,7 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Confirm your ICR, ISF and target with your healthcare '
-                      'provider and review them regularly — they change over '
-                      'time. Always measure your blood glucose correctly and '
-                      'double-check every dose before injecting.',
+                      AppLocalizations.of(context).diabetesSafetyWarning,
                       style: TextStyle(
                           fontSize: 11,
                           color: context.appTextColor,
@@ -1491,15 +1487,14 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
             const Divider(height: 28),
 
             // ── Bolus Calculator Mode (safety-gated, OFF by default) ───
-            const Text('Bolus Calculator Mode',
-                style: TextStyle(
+            Text(AppLocalizations.of(context).bolusCalculatorMode,
+                style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: _diabetesBlue)),
             const SizedBox(height: 4),
             Text(
-              'An optional, safety-gated insulin estimate. Off by default. '
-              'Requires a settings survey, consent, and review every 90 days.',
+              AppLocalizations.of(context).bolusCalculatorModeHelp,
               style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
             ),
             const SizedBox(height: 8),
@@ -1597,7 +1592,7 @@ class _FieldRow extends StatelessWidget {
         FilledButton(
           onPressed: onSave,
           style: FilledButton.styleFrom(backgroundColor: _diabetesBlue),
-          child: const Text('Save'),
+          child: Text(AppLocalizations.of(context).save),
         ),
       ],
     );
@@ -2049,14 +2044,14 @@ class _ThemeColorPickerCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _ThemePickerSectionHeader(
-                      label: 'Premium',
+                      label: AppLocalizations.of(context).premium,
                       color: context.visualTheme.primaryAccent,
                     ),
                     const SizedBox(height: 8),
                     tilesFor(premiumSeeds),
                     const SizedBox(height: 18),
                     _ThemePickerSectionHeader(
-                      label: 'Standard',
+                      label: AppLocalizations.of(context).standard,
                       color: context.appMutedTextColor,
                     ),
                     const SizedBox(height: 8),
@@ -2661,7 +2656,7 @@ class _CloudSyncCard extends ConsumerWidget {
                 width: double.infinity,
                 child: FilledButton.icon(
                   icon: const Icon(Icons.login),
-                  label: const Text('Sign In / Create Account'),
+                  label: Text(AppLocalizations.of(context).signIn),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const AuthScreen()),
                   ),
@@ -2714,7 +2709,7 @@ class _CloudSyncCard extends ConsumerWidget {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => ref.read(authProvider.notifier).signOut(),
-                    child: const Text('Sign Out'),
+                    child: Text(AppLocalizations.of(context).signOut),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -2725,7 +2720,7 @@ class _CloudSyncCard extends ConsumerWidget {
                       foregroundColor: Colors.red,
                       side: const BorderSide(color: Colors.red),
                     ),
-                    child: const Text('Delete Account'),
+                    child: Text(AppLocalizations.of(context).deleteAccount),
                   ),
                 ),
               ],
@@ -2740,15 +2735,14 @@ class _CloudSyncCard extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: const Text(
-          'This will permanently delete your account and all synced data. '
-          'Local data on this device will be kept.\n\nThis cannot be undone.',
+        title: Text(AppLocalizations.of(context).deleteAccount),
+        content: Text(
+          AppLocalizations.of(context).deleteAccountConfirmBody,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           TextButton(
             onPressed: () {
@@ -2756,7 +2750,7 @@ class _CloudSyncCard extends ConsumerWidget {
               ref.read(authProvider.notifier).deleteAccount();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(AppLocalizations.of(context).delete),
           ),
         ],
       ),
@@ -2830,9 +2824,9 @@ class _RemindersCardState extends State<_RemindersCard> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               secondary: const Icon(Icons.restaurant_outlined),
-              title: const Text('Meal reminder',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: const Text('Remind me to log meals at 13:00'),
+              title: Text(AppLocalizations.of(context).mealReminder,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(AppLocalizations.of(context).mealReminderDesc),
               value: _mealReminder,
               onChanged: (v) {
                 setState(() => _mealReminder = v);
@@ -2842,9 +2836,9 @@ class _RemindersCardState extends State<_RemindersCard> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               secondary: const Icon(Icons.water_drop_outlined),
-              title: const Text('Water reminder',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: const Text('Remind me to drink water every 2 hours'),
+              title: Text(AppLocalizations.of(context).waterReminder,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(AppLocalizations.of(context).waterReminderDesc),
               value: _waterReminder,
               onChanged: (v) {
                 setState(() => _waterReminder = v);
@@ -3338,7 +3332,7 @@ class _BodyProfileSettingsInput extends StatelessWidget {
     final selected = await showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Height'),
+        title: Text(AppLocalizations.of(context).heightLabel),
         content: TextField(
           controller: controller,
           autofocus: true,
