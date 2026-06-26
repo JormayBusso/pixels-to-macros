@@ -3578,6 +3578,270 @@ class AppLocalizations {
         'de': 'Verstanden',
       });
 
+  // ── Calculation provenance (info cards) ──
+
+  String get howThisIsCalculated => _t({
+        'en': 'How this is calculated',
+        'pl': 'Jak to jest obliczane',
+        'nl': 'Hoe dit wordt berekend',
+        'es': 'Cómo se calcula esto',
+        'de': 'Wie das berechnet wird',
+      });
+
+  String get calcWhyTrust => _t({
+        'en': 'Why you can trust this',
+        'pl': 'Dlaczego można temu ufać',
+        'nl': 'Waarom je dit kunt vertrouwen',
+        'es': 'Por qué puedes confiar en esto',
+        'de': 'Warum du dem vertrauen kannst',
+      });
+
+  String get calcSource => _t({
+        'en': 'Source',
+        'pl': 'Źródło',
+        'nl': 'Bron',
+        'es': 'Fuente',
+        'de': 'Quelle',
+      });
+
+  String get calcCaloriesTitle => _t({
+        'en': 'Daily calorie target',
+        'pl': 'Dzienny cel kaloryczny',
+        'nl': 'Dagelijks caloriedoel',
+        'es': 'Objetivo de calorías diario',
+        'de': 'Tägliches Kalorienziel',
+      });
+
+  String get calcCaloriesExplain => _t({
+        'en':
+            'Your maintenance calories are estimated from your weight, height, sex and self-reported muscle mass (about 30–33 kcal per kg, adjusted for build). Your goal then adds a surplus for muscle growth or a deficit for weight loss, kept within safe limits.',
+        'pl':
+            'Twoje kalorie podtrzymujące są szacowane na podstawie wagi, wzrostu, płci i deklarowanej masy mięśniowej (około 30–33 kcal na kg, z korektą na budowę ciała). Następnie cel dodaje nadwyżkę przy budowie mięśni lub deficyt przy odchudzaniu, w bezpiecznych granicach.',
+        'nl':
+            'Je onderhoudscalorieën worden geschat op basis van je gewicht, lengte, geslacht en opgegeven spiermassa (ongeveer 30–33 kcal per kg, aangepast aan je bouw). Je doel voegt dan een overschot toe voor spiergroei of een tekort voor gewichtsverlies, binnen veilige grenzen.',
+        'es':
+            'Tus calorías de mantenimiento se estiman a partir de tu peso, estatura, sexo y masa muscular declarada (unas 30–33 kcal por kg, ajustadas a tu complexión). Luego tu objetivo añade un superávit para ganar músculo o un déficit para perder peso, dentro de límites seguros.',
+        'de':
+            'Deine Erhaltungskalorien werden aus Gewicht, Größe, Geschlecht und angegebener Muskelmasse geschätzt (etwa 30–33 kcal pro kg, an den Körperbau angepasst). Dein Ziel ergänzt dann einen Überschuss für Muskelaufbau oder ein Defizit zum Abnehmen, innerhalb sicherer Grenzen.',
+      });
+
+  String get calcCaloriesWhy => _t({
+        'en':
+            'It follows established energy-requirement methods and caps deficits and surpluses to evidence-based ranges so your target stays safe and sustainable.',
+        'pl':
+            'Opiera się na uznanych metodach szacowania zapotrzebowania energetycznego i ogranicza deficyty oraz nadwyżki do zakresów opartych na dowodach, aby cel był bezpieczny i możliwy do utrzymania.',
+        'nl':
+            'Het volgt erkende methoden voor energiebehoefte en beperkt tekorten en overschotten tot wetenschappelijk onderbouwde bereiken, zodat je doel veilig en haalbaar blijft.',
+        'es':
+            'Sigue métodos reconocidos de necesidades energéticas y limita los déficits y superávits a rangos basados en evidencia para que tu objetivo sea seguro y sostenible.',
+        'de':
+            'Sie folgt anerkannten Methoden zum Energiebedarf und begrenzt Defizite und Überschüsse auf evidenzbasierte Bereiche, damit dein Ziel sicher und nachhaltig bleibt.',
+      });
+
+  String get calcMacrosTitle => _t({
+        'en': 'Protein, carb & fat targets',
+        'pl': 'Cele białka, węglowodanów i tłuszczu',
+        'nl': 'Doelen voor eiwit, koolhydraten en vet',
+        'es': 'Objetivos de proteínas, carbohidratos y grasas',
+        'de': 'Ziele für Eiweiß, Kohlenhydrate und Fett',
+      });
+
+  String get calcMacrosExplain => _t({
+        'en':
+            'Your calories are split into protein, carbohydrate and fat based on your goal (for example higher protein for weight loss, lower carbs for diabetes). Grams use 4 kcal per gram of protein and carbs and 9 kcal per gram of fat.',
+        'pl':
+            'Twoje kalorie są dzielone na białko, węglowodany i tłuszcz w zależności od celu (np. więcej białka przy odchudzaniu, mniej węglowodanów przy cukrzycy). Gramy liczone są jako 4 kcal na gram białka i węglowodanów oraz 9 kcal na gram tłuszczu.',
+        'nl':
+            'Je calorieën worden verdeeld over eiwit, koolhydraten en vet op basis van je doel (bijvoorbeeld meer eiwit bij gewichtsverlies, minder koolhydraten bij diabetes). Grammen gebruiken 4 kcal per gram eiwit en koolhydraten en 9 kcal per gram vet.',
+        'es':
+            'Tus calorías se reparten entre proteínas, carbohidratos y grasas según tu objetivo (por ejemplo, más proteína para perder peso, menos carbohidratos para la diabetes). Los gramos usan 4 kcal por gramo de proteína y carbohidratos y 9 kcal por gramo de grasa.',
+        'de':
+            'Deine Kalorien werden je nach Ziel auf Eiweiß, Kohlenhydrate und Fett aufgeteilt (z. B. mehr Eiweiß zum Abnehmen, weniger Kohlenhydrate bei Diabetes). Gramm werden mit 4 kcal pro Gramm Eiweiß und Kohlenhydrate und 9 kcal pro Gramm Fett berechnet.',
+      });
+
+  String get calcMacrosWhy => _t({
+        'en':
+            'The splits stay within the Acceptable Macronutrient Distribution Ranges published by the National Academies and follow goal-specific clinical guidance.',
+        'pl':
+            'Proporcje mieszczą się w zakresach AMDR opublikowanych przez National Academies i są zgodne z wytycznymi klinicznymi dla danego celu.',
+        'nl':
+            'De verdelingen blijven binnen de Acceptable Macronutrient Distribution Ranges van de National Academies en volgen doelgerichte klinische richtlijnen.',
+        'es':
+            'Las proporciones se mantienen dentro de los Rangos Aceptables de Distribución de Macronutrientes publicados por las National Academies y siguen pautas clínicas según tu objetivo.',
+        'de':
+            'Die Aufteilungen bleiben innerhalb der von den National Academies veröffentlichten Acceptable Macronutrient Distribution Ranges und folgen zielspezifischen klinischen Leitlinien.',
+      });
+
+  String get calcMicroTitle => _t({
+        'en': 'Vitamin & mineral targets',
+        'pl': 'Cele witamin i minerałów',
+        'nl': 'Doelen voor vitamines en mineralen',
+        'es': 'Objetivos de vitaminas y minerales',
+        'de': 'Ziele für Vitamine und Mineralstoffe',
+      });
+
+  String get calcMicroExplain => _t({
+        'en':
+            'Each micronutrient target is the Dietary Reference Intake for your sex, fine-tuned for your goal (for example more iron and B12 on a vegan diet, more fibre for diabetes).',
+        'pl':
+            'Każdy cel mikroskładnika to referencyjne spożycie (DRI) dla Twojej płci, dostosowane do celu (np. więcej żelaza i witaminy B12 na diecie wegańskiej, więcej błonnika przy cukrzycy).',
+        'nl':
+            'Elk micronutriëntdoel is de referentie-inname (DRI) voor jouw geslacht, afgestemd op je doel (bijvoorbeeld meer ijzer en B12 bij een veganistisch dieet, meer vezels bij diabetes).',
+        'es':
+            'Cada objetivo de micronutriente es la Ingesta Dietética de Referencia para tu sexo, ajustada a tu objetivo (por ejemplo, más hierro y B12 en una dieta vegana, más fibra para la diabetes).',
+        'de':
+            'Jeder Mikronährstoff-Zielwert ist die Referenzzufuhr (DRI) für dein Geschlecht, abgestimmt auf dein Ziel (z. B. mehr Eisen und B12 bei veganer Ernährung, mehr Ballaststoffe bei Diabetes).',
+      });
+
+  String get calcMicroWhy => _t({
+        'en':
+            'Values come from the National Academies / NIH Dietary Reference Intakes, the standard reference used by dietitians and public-health bodies.',
+        'pl':
+            'Wartości pochodzą z referencyjnych spożyć (DRI) National Academies / NIH — standardu używanego przez dietetyków i instytucje zdrowia publicznego.',
+        'nl':
+            'De waarden komen uit de Dietary Reference Intakes van de National Academies / NIH, de standaardreferentie van diëtisten en volksgezondheidsinstanties.',
+        'es':
+            'Los valores provienen de las Ingestas Dietéticas de Referencia de las National Academies / NIH, la referencia estándar que usan dietistas y organismos de salud pública.',
+        'de':
+            'Die Werte stammen aus den Dietary Reference Intakes der National Academies / NIH, der Standardreferenz von Ernährungsfachkräften und Gesundheitsbehörden.',
+      });
+
+  String get calcPlateTitle => _t({
+        'en': 'Plate score',
+        'pl': 'Ocena talerza',
+        'nl': 'Bordscore',
+        'es': 'Puntuación del plato',
+        'de': 'Teller-Bewertung',
+      });
+
+  String get calcPlateExplain => _t({
+        'en':
+            'A 0–100 quality score for a meal. It rewards a balanced calorie portion, enough protein and fibre, food variety and a low glycemic load, and lowers points for high saturated fat and sodium.',
+        'pl':
+            'Ocena jakości posiłku od 0 do 100. Nagradza zrównoważoną porcję kalorii, odpowiednią ilość białka i błonnika, różnorodność produktów i niski ładunek glikemiczny, a obniża punkty za dużo tłuszczów nasyconych i sodu.',
+        'nl':
+            'Een kwaliteitsscore van 0–100 voor een maaltijd. Het beloont een gebalanceerde calorieportie, voldoende eiwit en vezels, afwisseling en een lage glykemische lading, en trekt punten af voor veel verzadigd vet en natrium.',
+        'es':
+            'Una puntuación de calidad de 0 a 100 para una comida. Premia una porción calórica equilibrada, suficiente proteína y fibra, variedad de alimentos y una carga glucémica baja, y resta puntos por exceso de grasa saturada y sodio.',
+        'de':
+            'Eine Qualitätsbewertung von 0–100 für eine Mahlzeit. Sie belohnt eine ausgewogene Kalorienportion, genug Eiweiß und Ballaststoffe, Vielfalt und eine niedrige glykämische Last und zieht Punkte für viel gesättigtes Fett und Natrium ab.',
+      });
+
+  String get calcPlateWhy => _t({
+        'en':
+            'The components reflect the USDA Dietary Guidelines and widely used diet-quality indices. It is a helpful guide, not a medical diagnosis.',
+        'pl':
+            'Składowe odzwierciedlają wytyczne żywieniowe USDA i powszechnie stosowane wskaźniki jakości diety. To pomocna wskazówka, a nie diagnoza medyczna.',
+        'nl':
+            'De onderdelen weerspiegelen de USDA-voedingsrichtlijnen en veelgebruikte indexen voor dieetkwaliteit. Het is een handige richtlijn, geen medische diagnose.',
+        'es':
+            'Los componentes reflejan las Guías Alimentarias del USDA e índices de calidad de la dieta ampliamente usados. Es una guía útil, no un diagnóstico médico.',
+        'de':
+            'Die Bestandteile orientieren sich an den USDA-Ernährungsrichtlinien und gängigen Indizes zur Ernährungsqualität. Es ist eine hilfreiche Orientierung, keine medizinische Diagnose.',
+      });
+
+  String get calcBodyMapTitle => _t({
+        'en': 'Body map coverage',
+        'pl': 'Pokrycie mapy ciała',
+        'nl': 'Dekking lichaamskaart',
+        'es': 'Cobertura del mapa corporal',
+        'de': 'Abdeckung der Körperkarte',
+      });
+
+  String get calcBodyMapExplain => _t({
+        'en':
+            'Each organ is coloured by how well your recent intake of the nutrients it relies on matches your targets. Green means you are meeting the target; red means well below — or far above a safe upper limit.',
+        'pl':
+            'Każdy narząd jest kolorowany w zależności od tego, jak Twoje ostatnie spożycie potrzebnych mu składników odpowiada celom. Zielony oznacza realizację celu, a czerwony — znacznie poniżej lub znacznie powyżej bezpiecznego limitu.',
+        'nl':
+            'Elk orgaan krijgt een kleur op basis van hoe goed je recente inname van de benodigde voedingsstoffen overeenkomt met je doelen. Groen betekent dat je het doel haalt; rood betekent ver eronder — of ver boven een veilige bovengrens.',
+        'es':
+            'Cada órgano se colorea según qué tan bien tu ingesta reciente de los nutrientes que necesita coincide con tus objetivos. Verde significa que cumples el objetivo; rojo, muy por debajo o muy por encima de un límite superior seguro.',
+        'de':
+            'Jedes Organ wird danach eingefärbt, wie gut deine jüngste Zufuhr der benötigten Nährstoffe deinen Zielen entspricht. Grün bedeutet Ziel erreicht; Rot bedeutet deutlich darunter – oder weit über einer sicheren Obergrenze.',
+      });
+
+  String get calcBodyMapWhy => _t({
+        'en':
+            'Coverage is measured against the Dietary Reference Intakes (National Academies / NIH), including tolerable upper limits where they exist.',
+        'pl':
+            'Pokrycie jest mierzone względem referencyjnych spożyć (DRI, National Academies / NIH), w tym tolerowanych górnych limitów, jeśli istnieją.',
+        'nl':
+            'De dekking wordt gemeten ten opzichte van de Dietary Reference Intakes (National Academies / NIH), inclusief aanvaardbare bovengrenzen waar die bestaan.',
+        'es':
+            'La cobertura se mide frente a las Ingestas Dietéticas de Referencia (National Academies / NIH), incluidos los límites superiores tolerables cuando existen.',
+        'de':
+            'Die Abdeckung wird an den Dietary Reference Intakes (National Academies / NIH) gemessen, einschließlich tolerierbarer Obergrenzen, sofern vorhanden.',
+      });
+
+  String get calcGlTitle => _t({
+        'en': 'Glycemic load',
+        'pl': 'Ładunek glikemiczny',
+        'nl': 'Glykemische lading',
+        'es': 'Carga glucémica',
+        'de': 'Glykämische Last',
+      });
+
+  String get calcGlExplain => _t({
+        'en':
+            'Glycemic load estimates how much a food is likely to raise blood sugar. It combines the food\'s glycemic index with the grams of carbohydrate in the portion (GI × carbs ÷ 100).',
+        'pl':
+            'Ładunek glikemiczny szacuje, jak bardzo dany produkt może podnieść poziom cukru we krwi. Łączy indeks glikemiczny produktu z liczbą gramów węglowodanów w porcji (IG × węglowodany ÷ 100).',
+        'nl':
+            'De glykemische lading schat in hoeveel een voedingsmiddel je bloedsuiker waarschijnlijk laat stijgen. Het combineert de glykemische index met het aantal gram koolhydraten in de portie (GI × koolhydraten ÷ 100).',
+        'es':
+            'La carga glucémica estima cuánto puede elevar un alimento el azúcar en sangre. Combina el índice glucémico del alimento con los gramos de carbohidrato de la porción (IG × carbohidratos ÷ 100).',
+        'de':
+            'Die glykämische Last schätzt, wie stark ein Lebensmittel den Blutzucker voraussichtlich erhöht. Sie kombiniert den glykämischen Index mit den Gramm Kohlenhydrate der Portion (GI × Kohlenhydrate ÷ 100).',
+      });
+
+  String get calcGlWhy => _t({
+        'en':
+            'It uses the internationally recognised glycemic index/load method described by Harvard Health and used in diabetes research.',
+        'pl':
+            'Wykorzystuje uznaną na świecie metodę indeksu/ładunku glikemicznego opisaną przez Harvard Health i stosowaną w badaniach nad cukrzycą.',
+        'nl':
+            'Het gebruikt de internationaal erkende methode voor glykemische index/lading die door Harvard Health wordt beschreven en in diabetesonderzoek wordt gebruikt.',
+        'es':
+            'Utiliza el método de índice/carga glucémica reconocido internacionalmente descrito por Harvard Health y usado en la investigación sobre diabetes.',
+        'de':
+            'Sie verwendet die international anerkannte Methode des glykämischen Index/der glykämischen Last, die von Harvard Health beschrieben und in der Diabetesforschung genutzt wird.',
+      });
+
+  String get calcBolusTitle => _t({
+        'en': 'Meal insulin estimate',
+        'pl': 'Szacunek insuliny do posiłku',
+        'nl': 'Schatting maaltijdinsuline',
+        'es': 'Estimación de insulina para la comida',
+        'de': 'Schätzung Mahlzeiteninsulin',
+      });
+
+  String get calcBolusExplain => _t({
+        'en':
+            'An estimate only. Meal insulin = carbs ÷ your insulin-to-carb ratio, plus a correction = (current glucose − target) ÷ your sensitivity factor, minus any insulin still active (insulin on board).',
+        'pl':
+            'Tylko szacunek. Insulina do posiłku = węglowodany ÷ Twój przelicznik insulina–węglowodany, plus korekta = (aktualna glikemia − cel) ÷ Twój współczynnik wrażliwości, minus insulina nadal aktywna (insulina aktywna).',
+        'nl':
+            'Alleen een schatting. Maaltijdinsuline = koolhydraten ÷ jouw insuline-koolhydraatratio, plus een correctie = (huidige glucose − streefwaarde) ÷ jouw gevoeligheidsfactor, min nog actieve insuline (insuline aan boord).',
+        'es':
+            'Solo una estimación. Insulina de la comida = carbohidratos ÷ tu ratio insulina-carbohidratos, más una corrección = (glucosa actual − objetivo) ÷ tu factor de sensibilidad, menos la insulina aún activa (insulina activa).',
+        'de':
+            'Nur eine Schätzung. Mahlzeiteninsulin = Kohlenhydrate ÷ dein Insulin-Kohlenhydrat-Verhältnis, plus eine Korrektur = (aktueller Blutzucker − Zielwert) ÷ dein Empfindlichkeitsfaktor, minus noch aktives Insulin (aktives Insulin).',
+      });
+
+  String get calcBolusWhy => _t({
+        'en':
+            'It uses standard carb-counting maths, but every value must be set by your diabetes care team. Always confirm with them — never dose on this number alone.',
+        'pl':
+            'Wykorzystuje standardowe obliczenia liczenia węglowodanów, ale każdą wartość musi ustalić Twój zespół leczenia cukrzycy. Zawsze potwierdzaj z nimi — nigdy nie dawkuj wyłącznie na podstawie tej liczby.',
+        'nl':
+            'Het gebruikt standaard koolhydraat-telwiskunde, maar elke waarde moet door je diabetesteam worden ingesteld. Bevestig het altijd met hen — dien nooit insuline toe op alleen dit getal.',
+        'es':
+            'Usa las matemáticas estándar del conteo de carbohidratos, pero tu equipo de diabetes debe fijar cada valor. Confírmalo siempre con ellos: nunca te dosifiques solo con este número.',
+        'de':
+            'Sie verwendet die übliche Mathematik der Kohlenhydratzählung, aber jeder Wert muss von deinem Diabetes-Team festgelegt werden. Bestätige ihn immer mit ihnen – dosiere niemals allein anhand dieser Zahl.',
+      });
+
   // ── Edit Food ──
 
   String get foodUpdated => _t({

@@ -2,8 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../models/calc_info.dart';
 import '../models/nutrition_goal.dart';
 import '../theme/app_theme.dart';
+import 'calc_info_button.dart';
 
 /// An animated circular "plate score" from 0 to 100 that reveals after a scan.
 ///
@@ -100,13 +102,23 @@ class _PlateScoreRevealState extends State<PlateScoreReveal>
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              _verdict(widget.score),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: color,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    _verdict(widget.score),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                CalcInfoButton(id: CalcInfoId.plateScore, size: 16),
+              ],
             ),
             const SizedBox(height: 16),
             // Breakdown bars

@@ -2,21 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
+import '../models/calc_info.dart';
 import '../models/nutrient_data.dart';
 import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/calc_info_button.dart';
 import 'nutrient_wheel_screen.dart';
 
 /// Full nutrition breakdown: macros + vitamins + minerals.
 /// Navigate here by tapping the mascot on the home screen.
-class NutritionDashboardScreen extends ConsumerWidget {
+class NutritionDashboardScreen extends ConsumerStatefulWidget {
   const NutritionDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NutritionDashboardScreen> createState() =>
+      _NutritionDashboardScreenState();
+}
+
+class _NutritionDashboardScreenState
+    extends ConsumerState<NutritionDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) maybeAutoShowCalcInfo(context, CalcInfoId.microTargets);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final intake = ref.watch(dailyIntakeProvider);
     final prefs = ref.watch(userPrefsProvider);
     final l10n = AppLocalizations.of(context);
@@ -53,7 +70,8 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
 
                 // ── Macronutrients ────────────────────────────────────────
-                _SectionHeader(l10n.macronutrients),
+                _SectionHeader(l10n.macronutrients,
+                    infoId: CalcInfoId.macroTargets),
                 Card(
                   margin:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -105,7 +123,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
 
                 // ── Vitamins ──────────────────────────────────────────────
-                _SectionHeader(l10n.vitamins),
+                _SectionHeader(l10n.vitamins, infoId: CalcInfoId.microTargets),
                 Card(
                   margin:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -172,7 +190,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
 
                 // ── Minerals ──────────────────────────────────────────────
-                _SectionHeader(l10n.minerals),
+                _SectionHeader(l10n.minerals, infoId: CalcInfoId.microTargets),
                 Card(
                   margin:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -498,21 +516,29 @@ class _SummaryCard extends StatelessWidget {
 // ── Section header ────────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
+  const _SectionHeader(this.title, {this.infoId});
   final String title;
+  final CalcInfoId? infoId;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 16, 4),
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: context.appMutedTextColor,
-          letterSpacing: 1.0,
-        ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 8, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title.toUpperCase(),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: context.appMutedTextColor,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ),
+          if (infoId != null) CalcInfoButton(id: infoId!, size: 16),
+        ],
       ),
     );
   }

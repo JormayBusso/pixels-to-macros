@@ -8,11 +8,13 @@ import '../../core/diabetes/diabetes_safety_copy.dart' show generateCalculationI
 import '../../core/diabetes/glucose_conversion.dart';
 import '../../models/bolus_audit_record.dart';
 import '../../models/bolus_models.dart';
+import '../../models/calc_info.dart';
 import '../../models/insulin_dose_log.dart';
 import '../../models/insulin_settings.dart';
 import '../../providers/diabetes_provider.dart';
 import '../../services/diabetes/bolus_calculator_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/calc_info_button.dart';
 import 'bolus_setup_screen.dart' show kDiabetesBlue;
 
 /// A meal-time bolus *estimate* card.
@@ -62,6 +64,9 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
           ? widget.initialCarbsG!.toStringAsFixed(0)
           : '',
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) maybeAutoShowCalcInfo(context, CalcInfoId.bolusEstimate);
+    });
   }
 
   @override
@@ -107,11 +112,15 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
             children: [
               const Icon(Icons.calculate_outlined, color: kDiabetesBlue),
               const SizedBox(width: 8),
-              Text(AppLocalizations.of(context).bolusEstimate,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      color: kDiabetesBlue)),
+              Expanded(
+                child: Text(AppLocalizations.of(context).bolusEstimate,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        color: kDiabetesBlue)),
+              ),
+              const CalcInfoButton(
+                  id: CalcInfoId.bolusEstimate, color: kDiabetesBlue),
             ],
           ),
           const SizedBox(height: 4),

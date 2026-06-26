@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/calc_info.dart';
 import '../models/glucose_spike_model.dart';
 import '../theme/app_theme.dart';
+import 'calc_info_button.dart';
 import 'premium_theme_effects.dart';
 
 /// A card that shows the predicted blood glucose curve for a meal.
@@ -115,6 +117,8 @@ class _GlucoseSpikeCardState extends State<GlucoseSpikeCard> {
                   ),
                 ),
               ),
+              CalcInfoButton(id: CalcInfoId.glycemicLoad, size: 16),
+              const SizedBox(width: 4),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(

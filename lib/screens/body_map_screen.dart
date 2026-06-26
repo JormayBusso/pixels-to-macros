@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
+import '../models/calc_info.dart';
 import '../models/nutrient_data.dart';
 import '../models/scan_result.dart';
 import '../models/user_preferences.dart';
@@ -10,6 +11,7 @@ import '../providers/daily_intake_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/calc_info_button.dart';
 import '../widgets/interactive_body_map_svg.dart';
 import '../widgets/premium_theme_effects.dart';
 
@@ -54,6 +56,9 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
   void initState() {
     super.initState();
     _rawSvgFuture = rootBundle.loadString('assets/good body map.svg');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) maybeAutoShowCalcInfo(context, CalcInfoId.bodyMapScore);
+    });
   }
 
   static bool _hasOrganPathIds(String rawSvg) {
@@ -614,6 +619,13 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
           'Tap any organ to see the exact nutrients driving its score.',
         ),
         actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              showCalcInfo(context, CalcInfoId.bodyMapScore);
+            },
+            child: Text(AppLocalizations.of(context).howThisIsCalculated),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(AppLocalizations.of(context).gotIt),

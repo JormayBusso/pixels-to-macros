@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
 import '../core/app_locale.dart';
+import '../models/calc_info.dart';
 import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../providers/locale_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/calc_info_button.dart';
 
 /// First-launch onboarding: collects name, goal type, and macro targets.
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -743,9 +745,22 @@ class _ConfirmPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  AppLocalizations.of(context).dailyTargetsAdjust,
-                  style: const TextStyle(fontSize: 13, color: AppTheme.gray400),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        AppLocalizations.of(context).dailyTargetsAdjust,
+                        style: const TextStyle(
+                            fontSize: 13, color: AppTheme.gray400),
+                      ),
+                    ),
+                    CalcInfoButton(
+                        id: CalcInfoId.dailyCalories,
+                        size: 16,
+                        color: goalType.color),
+                  ],
                 ),
               ],
             ),
@@ -848,6 +863,10 @@ class _ConfirmPage extends StatelessWidget {
                       ),
                     ),
                   ),
+                  CalcInfoButton(
+                      id: CalcInfoId.macroTargets,
+                      size: 16,
+                      color: goalType.color),
                 ],
               );
             }),
