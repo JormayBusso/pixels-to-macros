@@ -91,7 +91,7 @@ class _PlateScoreRevealState extends State<PlateScoreReveal>
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.gray500,
+                          color: context.appMutedTextColor,
                         ),
                       ),
                     ],
@@ -220,7 +220,8 @@ class _BreakdownRow extends StatelessWidget {
           SizedBox(
             width: 100,
             child: Text(label,
-                style: const TextStyle(fontSize: 12, color: AppTheme.gray600)),
+                style:
+                    TextStyle(fontSize: 12, color: context.appMutedTextColor)),
           ),
           Expanded(
             child: ClipRRect(
@@ -240,10 +241,10 @@ class _BreakdownRow extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             '$points/$max',
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.gray500),
+                color: context.appMutedTextColor),
           ),
         ],
       ),

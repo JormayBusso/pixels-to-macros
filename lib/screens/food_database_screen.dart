@@ -129,17 +129,17 @@ class _FoodDatabaseScreenState extends ConsumerState<FoodDatabaseScreen> {
                     children: [
                       Text(
                         '${_filtered.length} foods',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
-                          color: AppTheme.gray400,
+                          color: context.appMutedTextColor,
                         ),
                       ),
                       const Spacer(),
                       Text(
                         '${_allFoods.length} total',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
-                          color: AppTheme.gray400,
+                          color: context.appMutedTextColor,
                         ),
                       ),
                     ],
@@ -194,9 +194,9 @@ class _FoodTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Density: ${food.densityMin}–${food.densityMax} g/cm³',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: AppTheme.gray400,
+                        color: context.appMutedTextColor,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -240,8 +240,8 @@ class _FoodTile extends StatelessWidget {
                   ),
                   Text(
                     'kcal/${food.unitLabel}',
-                    style:
-                        const TextStyle(fontSize: 10, color: AppTheme.gray400),
+                    style: TextStyle(
+                        fontSize: 10, color: context.appMutedTextColor),
                   ),
                   const SizedBox(height: 8),
                   Icon(Icons.chevron_right, color: context.primary600),
@@ -276,7 +276,7 @@ class _FoodTile extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 'per ${food.unitLabel}',
-                style: const TextStyle(color: AppTheme.gray400),
+                style: TextStyle(color: context.appMutedTextColor),
               ),
               const SizedBox(height: 20),
               _DetailSection(
@@ -400,7 +400,7 @@ class _DetailSection extends StatelessWidget {
                 Expanded(
                   child: Text(
                     row.$1,
-                    style: const TextStyle(color: AppTheme.gray600),
+                    style: TextStyle(color: context.appMutedTextColor),
                   ),
                 ),
                 Text(

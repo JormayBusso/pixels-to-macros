@@ -320,7 +320,8 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
                                     AppLocalizations.of(context)
                                         .noIngredientsYet,
                                     style: TextStyle(
-                                        color: AppTheme.gray400, fontSize: 15)),
+                                        color: context.appMutedTextColor,
+                                        fontSize: 15)),
                               ],
                             ),
                           )
@@ -363,8 +364,9 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
                                         ),
                                       ),
                                       IconButton(
-                                        icon: const Icon(Icons.close,
-                                            size: 18, color: AppTheme.gray400),
+                                        icon: Icon(Icons.close,
+                                            size: 18,
+                                            color: context.appMutedTextColor),
                                         onPressed: () => _removeIngredient(i),
                                       ),
                                     ],
@@ -431,10 +433,11 @@ class _ImagePlaceholder extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.add_a_photo_outlined, size: 32, color: AppTheme.gray400),
+          Icon(Icons.add_a_photo_outlined,
+              size: 32, color: context.appMutedTextColor),
           const SizedBox(height: 6),
           Text('Tap to add a photo (optional)',
-              style: TextStyle(fontSize: 12, color: AppTheme.gray400)),
+              style: TextStyle(fontSize: 12, color: context.appMutedTextColor)),
         ],
       ),
     );
@@ -688,8 +691,8 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
                     subtitle: Text(
                         '${food.kcalPer100g.round()} kcal / ${food.unitLabel}'),
                     trailing: alreadyAdded
-                        ? const Icon(Icons.check,
-                            color: AppTheme.gray400, size: 18)
+                        ? Icon(Icons.check,
+                            color: context.appMutedTextColor, size: 18)
                         : isSelected
                             ? Icon(Icons.check_circle,
                                 color: context.primary600)

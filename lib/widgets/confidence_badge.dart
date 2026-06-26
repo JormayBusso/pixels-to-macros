@@ -143,9 +143,9 @@ class ConfidenceRingCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     'Based on calorie range uncertainty',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.gray400,
+                      color: context.appMutedTextColor,
                     ),
                   ),
                 ],

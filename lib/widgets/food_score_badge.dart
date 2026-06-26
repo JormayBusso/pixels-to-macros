@@ -94,9 +94,9 @@ class FoodScoreBadge extends StatelessWidget {
                     children: [
                       Text(
                         l10n.foodScore,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.gray500,
+                          color: context.appMutedTextColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

@@ -835,7 +835,7 @@ class _DayCard extends ConsumerWidget {
                           ? Colors.red.shade600
                           : dayCal > dailyGoal * 0.9
                               ? Colors.green.shade600
-                              : AppTheme.gray500,
+                              : context.appMutedTextColor,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -850,7 +850,7 @@ class _DayCard extends ConsumerWidget {
                       : l10n.tapToAddMeals,
                   style: TextStyle(
                     fontSize: 11,
-                    color: hasAny ? AppTheme.gray500 : AppTheme.gray400,
+                    color: context.appMutedTextColor,
                   ),
                 ),
               ],
@@ -929,8 +929,9 @@ class _MealSlotRow extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color:
-                            isEnabled ? context.primary500 : AppTheme.gray500,
+                        color: isEnabled
+                            ? context.primary500
+                            : context.appMutedTextColor,
                       ),
                     ),
                     const Spacer(),
@@ -1051,16 +1052,16 @@ class _MealSlotRow extends ConsumerWidget {
                               const SizedBox(height: 3),
                               Row(
                                 children: [
-                                  const Icon(
+                                  Icon(
                                       Icons.local_fire_department_outlined,
                                       size: 11,
-                                      color: AppTheme.gray400),
+                                      color: context.appMutedTextColor),
                                   const SizedBox(width: 2),
                                   Text(
                                       '${(recipe.caloriesPerServing(recipe.servings) * portionMultiplier).round()} kcal',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontSize: 10,
-                                          color: AppTheme.gray500)),
+                                          color: context.appMutedTextColor)),
                                   if (portionMultiplier > 1.05) ...[
                                     const SizedBox(width: 6),
                                     Text(
@@ -1115,12 +1116,12 @@ class _MealSlotRow extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
                 child: Row(
                   children: [
-                    const Icon(Icons.hourglass_empty,
-                        size: 14, color: AppTheme.gray400),
+                    Icon(Icons.hourglass_empty,
+                        size: 14, color: context.appMutedTextColor),
                     const SizedBox(width: 6),
                     Text(l10n.findingRecipe,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppTheme.gray400)),
+                        style: TextStyle(
+                            fontSize: 11, color: context.appMutedTextColor)),
                   ],
                 ),
               ),
@@ -1302,7 +1303,7 @@ class _SmartSwapSheet extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               l10n.smartSwapSubtitle,
-              style: const TextStyle(fontSize: 12, color: AppTheme.gray500),
+              style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
             ),
             const SizedBox(height: 12),
             ...SmartSwapIntent.values.map(
@@ -1424,9 +1425,9 @@ class _PantrySheetState extends ConsumerState<_PantrySheet> {
                   const SizedBox(height: 6),
                   Text(
                     l10n.pantryModeDescription,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.gray500,
+                      color: context.appMutedTextColor,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1464,7 +1465,7 @@ class _PantrySheetState extends ConsumerState<_PantrySheet> {
                       ? Center(
                           child: Text(
                             l10n.emptyPantry,
-                            style: const TextStyle(color: AppTheme.gray400),
+                            style: TextStyle(color: context.appMutedTextColor),
                           ),
                         )
                       : ListView.builder(
@@ -1688,8 +1689,8 @@ class _GroceryPreviewSheet extends StatelessWidget {
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w700)),
                       Text('${sorted.length} ${l10n.ingredientsFromPlan}',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppTheme.gray500)),
+                          style: TextStyle(
+                              fontSize: 12, color: context.appMutedTextColor)),
                     ],
                   ),
                 ],
@@ -1939,8 +1940,8 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                     subtitle: r.hasMacros
                         ? Text(
                             '${r.calories} kcal · P${r.proteinG.round()}g · C${r.carbsG.round()}g · F${r.fatG.round()}g',
-                            style: const TextStyle(
-                                fontSize: 10, color: AppTheme.gray500))
+                            style: TextStyle(
+                                fontSize: 10, color: context.appMutedTextColor))
                         : null,
                     trailing: const Icon(Icons.chevron_right, size: 18),
                     onTap: () => Navigator.pop(context, r),
