@@ -158,12 +158,12 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.view_in_ar),
-            tooltip: 'Export 3D point cloud',
+            tooltip: AppLocalizations.of(context).export3dPointCloud,
             onPressed: _exportPLY,
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: AppTheme.red500),
-            tooltip: 'Delete scan',
+            tooltip: AppLocalizations.of(context).deleteScan,
             onPressed: () => _confirmDelete(context, ref),
           ),
         ],
@@ -446,19 +446,19 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
               child: Column(
                 children: [
                   _RangeRow(
-                    label: 'Minimum',
+                    label: AppLocalizations.of(context).minimum,
                     value: '${_scan.totalCaloriesMin.round()} kcal',
                     color: context.primary600,
                   ),
                   const SizedBox(height: 8),
                   _RangeRow(
-                    label: 'Average',
+                    label: AppLocalizations.of(context).average,
                     value: '${avgTotal.round()} kcal',
                     color: AppTheme.gray900,
                   ),
                   const SizedBox(height: 8),
                   _RangeRow(
-                    label: 'Maximum',
+                    label: AppLocalizations.of(context).maximum,
                     value: '${_scan.totalCaloriesMax.round()} kcal',
                     color: AppTheme.amber700,
                   ),
@@ -504,7 +504,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
               _scan.sideCameraPosition != null) ...[
             const SizedBox(height: 16),
             Text(
-              'Camera Pose',
+              AppLocalizations.of(context).cameraPose,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -520,17 +520,17 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                   children: [
                     if (_scan.topCameraPosition != null)
                       _InfoRow(
-                        label: 'Top position',
+                        label: AppLocalizations.of(context).topPosition,
                         value: _scan.topCameraPosition!,
                       ),
                     if (_scan.sideCameraPosition != null)
                       _InfoRow(
-                        label: 'Side position',
+                        label: AppLocalizations.of(context).sidePosition,
                         value: _scan.sideCameraPosition!,
                       ),
                     const SizedBox(height: 4),
                     Text(
-                      'Full 4×4 transform stored for geometry reconstruction',
+                      AppLocalizations.of(context).fullTransformNote,
                       style: TextStyle(fontSize: 11, color: context.appMutedTextColor),
                     ),
                   ],
@@ -667,7 +667,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                   ),
                   onPressed: openModel,
                   icon: const Icon(Icons.threed_rotation, size: 18),
-                  label: const Text('View 3D'),
+                  label: Text(AppLocalizations.of(context).view3d),
                 ),
               ),
           ],
@@ -1051,7 +1051,7 @@ class _MissingScanMediaCard extends StatelessWidget {
             FilledButton.icon(
               onPressed: onViewModel,
               icon: const Icon(Icons.view_in_ar, size: 18),
-              label: const Text('View 3D Scan'),
+              label: Text(AppLocalizations.of(context).view3dScan),
             ),
           ],
         ],
@@ -1265,9 +1265,9 @@ class _GlThermometerCard extends StatelessWidget {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Text('Cool', style: TextStyle(fontSize: 10)),
+                Text(AppLocalizations.of(context).cool, style: const TextStyle(fontSize: 10)),
                 const Spacer(),
-                const Text('🌶️ Hot', style: TextStyle(fontSize: 10)),
+                Text(AppLocalizations.of(context).hot, style: const TextStyle(fontSize: 10)),
               ],
             ),
           ],

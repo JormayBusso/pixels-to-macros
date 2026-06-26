@@ -213,11 +213,11 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEdit ? 'Edit Meal' : 'Create Meal'),
+        title: Text(isEdit ? AppLocalizations.of(context).editMealTitle : AppLocalizations.of(context).createMeal),
         actions: [
           IconButton(
             icon: const Icon(Icons.keyboard_hide),
-            tooltip: 'Dismiss keyboard',
+            tooltip: AppLocalizations.of(context).dismissKeyboard,
             onPressed: () => FocusScope.of(context).unfocus(),
           ),
           if (_saving)
@@ -228,7 +228,7 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2)))
           else
-            TextButton(onPressed: _save, child: const Text('Save')),
+            TextButton(onPressed: _save, child: Text(AppLocalizations.of(context).save)),
         ],
       ),
       body: GestureDetector(
@@ -266,11 +266,11 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
                         TextField(
                           controller: _nameCtrl,
                           textCapitalization: TextCapitalization.sentences,
-                          decoration: const InputDecoration(
-                            labelText: 'Meal name',
-                            hintText: 'e.g. My morning oatmeal',
-                            prefixIcon: Icon(Icons.restaurant_menu),
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context).mealNameLabel,
+                            hintText: AppLocalizations.of(context).mealNameOatmealHint,
+                            prefixIcon: const Icon(Icons.restaurant_menu),
+                            border: const OutlineInputBorder(),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -402,7 +402,7 @@ class _CreateMealScreenState extends ConsumerState<CreateMealScreen> {
                           const Expanded(child: SizedBox()),
                         FilledButton.icon(
                           icon: const Icon(Icons.add),
-                          label: const Text('Add Ingredient'),
+                          label: Text(AppLocalizations.of(context).addIngredientButton),
                           onPressed: _showAddIngredientSheet,
                         ),
                       ],
@@ -436,7 +436,7 @@ class _ImagePlaceholder extends StatelessWidget {
           Icon(Icons.add_a_photo_outlined,
               size: 32, color: context.appMutedTextColor),
           const SizedBox(height: 6),
-          Text('Tap to add a photo (optional)',
+          Text(AppLocalizations.of(context).tapToAddPhotoOptional,
               style: TextStyle(fontSize: 12, color: context.appMutedTextColor)),
         ],
       ),
@@ -559,7 +559,7 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Barcode scanning requires internet.')),
+        SnackBar(content: Text(AppLocalizations.of(context).barcodeNeedsInternetShort)),
       );
       return;
     }
@@ -644,8 +644,8 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
                     borderRadius: BorderRadius.circular(2)),
               ),
             ),
-            const Text('Add Ingredient',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            Text(AppLocalizations.of(context).addIngredientButton,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
             // Search + barcode
             Row(
@@ -655,10 +655,10 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
                     controller: _searchCtrl,
                     onChanged: _filter,
                     autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Search food…',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      hintText: AppLocalizations.of(context).searchFoodHint,
+                      prefixIcon: const Icon(Icons.search),
+                      border: const OutlineInputBorder(),
                       isDense: true,
                     ),
                   ),
@@ -666,7 +666,7 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.qr_code_scanner),
-                  tooltip: 'Scan barcode',
+                  tooltip: AppLocalizations.of(context).scanBarcode,
                   onPressed: _scanBarcode,
                 ),
               ],
@@ -734,7 +734,7 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
                       widget.onAdded(_selected!.label, g);
                       Navigator.of(context).pop();
                     },
-                    child: const Text('Add'),
+                    child: Text(AppLocalizations.of(context).add),
                   ),
                 ],
               ),

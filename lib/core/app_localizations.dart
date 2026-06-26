@@ -4570,6 +4570,184 @@ class AppLocalizations {
         'de': 'Dein ICR ist nicht eingestellt. Bolusberechnungen werden ungenau sein.\nGehe zu Einstellungen → Diabetes, um deinen persönlichen ICR festzulegen.',
       });
 
+  // ── Scan / voice / manual entry ──
+
+  String get editTooltip => _t({
+        'en': 'Edit',
+        'pl': 'Edytuj',
+        'nl': 'Bewerken',
+        'es': 'Editar',
+        'de': 'Bearbeiten',
+      });
+
+  String get mealNameLabel => _t({
+        'en': 'Meal name',
+        'pl': 'Nazwa posiłku',
+        'nl': 'Naam maaltijd',
+        'es': 'Nombre de la comida',
+        'de': 'Name der Mahlzeit',
+      });
+
+  String get mealNameExampleHint => _t({
+        'en': 'e.g. My post-workout lunch',
+        'pl': 'np. Mój obiad po treningu',
+        'nl': 'bijv. Mijn lunch na het sporten',
+        'es': 'p. ej. Mi almuerzo post-entrenamiento',
+        'de': 'z. B. Mein Mittagessen nach dem Training',
+      });
+
+  String get searchFoodHint => _t({
+        'en': 'Search food…',
+        'pl': 'Szukaj jedzenia…',
+        'nl': 'Zoek voedsel…',
+        'es': 'Buscar alimento…',
+        'de': 'Lebensmittel suchen…',
+      });
+
+  String get searchFoodLabel => _t({
+        'en': 'Search Food',
+        'pl': 'Szukaj jedzenia',
+        'nl': 'Voedsel zoeken',
+        'es': 'Buscar alimento',
+        'de': 'Lebensmittel suchen',
+      });
+
+  String get searchFoodTooltip => _t({
+        'en': 'Search food',
+        'pl': 'Szukaj jedzenia',
+        'nl': 'Voedsel zoeken',
+        'es': 'Buscar alimento',
+        'de': 'Lebensmittel suchen',
+      });
+
+  String get noMatchingFood => _t({
+        'en': 'No matching food',
+        'pl': 'Brak pasującego jedzenia',
+        'nl': 'Geen overeenkomend voedsel',
+        'es': 'No hay alimentos coincidentes',
+        'de': 'Kein passendes Lebensmittel',
+      });
+
+  String get view3d => _t({
+        'en': 'View 3D',
+        'pl': 'Zobacz 3D',
+        'nl': 'Bekijk 3D',
+        'es': 'Ver 3D',
+        'de': '3D ansehen',
+      });
+
+  String get view3dScan => _t({
+        'en': 'View 3D Scan',
+        'pl': 'Zobacz skan 3D',
+        'nl': 'Bekijk 3D-scan',
+        'es': 'Ver escaneo 3D',
+        'de': '3D-Scan ansehen',
+      });
+
+  String get export3dPointCloud => _t({
+        'en': 'Export 3D point cloud',
+        'pl': 'Eksportuj chmurę punktów 3D',
+        'nl': '3D-puntenwolk exporteren',
+        'es': 'Exportar nube de puntos 3D',
+        'de': '3D-Punktwolke exportieren',
+      });
+
+  String get tapToAddPhotoOptional => _t({
+        'en': 'Tap to add a photo (optional)',
+        'pl': 'Dotknij, aby dodać zdjęcie (opcjonalnie)',
+        'nl': 'Tik om een foto toe te voegen (optioneel)',
+        'es': 'Toca para añadir una foto (opcional)',
+        'de': 'Tippen, um ein Foto hinzuzufügen (optional)',
+      });
+
+  String get barcodeNeedsInternetShort => _t({
+        'en': 'Barcode scanning requires internet.',
+        'pl': 'Skanowanie kodu kreskowego wymaga internetu.',
+        'nl': 'Streepjescode scannen vereist internet.',
+        'es': 'Escanear el código requiere internet.',
+        'de': 'Barcode-Scannen erfordert Internet.',
+      });
+
+  String get minimum => _t({
+        'en': 'Minimum',
+        'pl': 'Minimum',
+        'nl': 'Minimum',
+        'es': 'Mínimo',
+        'de': 'Minimum',
+      });
+
+  String get average => _t({
+        'en': 'Average',
+        'pl': 'Średnia',
+        'nl': 'Gemiddeld',
+        'es': 'Promedio',
+        'de': 'Durchschnitt',
+      });
+
+  String get maximum => _t({
+        'en': 'Maximum',
+        'pl': 'Maksimum',
+        'nl': 'Maximum',
+        'es': 'Máximo',
+        'de': 'Maximum',
+      });
+
+  String get topPosition => _t({
+        'en': 'Top position',
+        'pl': 'Pozycja z góry',
+        'nl': 'Bovenpositie',
+        'es': 'Posición superior',
+        'de': 'Position von oben',
+      });
+
+  String get sidePosition => _t({
+        'en': 'Side position',
+        'pl': 'Pozycja z boku',
+        'nl': 'Zijpositie',
+        'es': 'Posición lateral',
+        'de': 'Seitliche Position',
+      });
+
+  String get cameraPose => _t({
+        'en': 'Camera Pose',
+        'pl': 'Pozycja kamery',
+        'nl': 'Camerapositie',
+        'es': 'Pose de cámara',
+        'de': 'Kamerapose',
+      });
+
+  String get fullTransformNote => _t({
+        'en': 'Full 4×4 transform stored for geometry reconstruction',
+        'pl': 'Pełna transformacja 4×4 zapisana do rekonstrukcji geometrii',
+        'nl': 'Volledige 4×4-transformatie opgeslagen voor geometriereconstructie',
+        'es': 'Transformación 4×4 completa almacenada para la reconstrucción geométrica',
+        'de': 'Vollständige 4×4-Transformation für die Geometrierekonstruktion gespeichert',
+      });
+
+  String get mealNameOatmealHint => _t({
+        'en': 'e.g. My morning oatmeal',
+        'pl': 'np. Moja poranna owsianka',
+        'nl': 'bijv. Mijn ochtendhavermout',
+        'es': 'p. ej. Mis avenas de la mañana',
+        'de': 'z. B. Mein Morgen-Haferbrei',
+      });
+
+  String get addIngredientButton => _t({
+        'en': 'Add Ingredient',
+        'pl': 'Dodaj składnik',
+        'nl': 'Ingrediënt toevoegen',
+        'es': 'Añadir ingrediente',
+        'de': 'Zutat hinzufügen',
+      });
+
+  String get editMealTitle => _t({
+        'en': 'Edit Meal',
+        'pl': 'Edytuj posiłek',
+        'nl': 'Maaltijd bewerken',
+        'es': 'Editar comida',
+        'de': 'Mahlzeit bearbeiten',
+      });
+
   String nutrientName(String key) {
     switch (key) {
       case 'calories':

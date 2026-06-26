@@ -1033,7 +1033,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
           if (editing)
             TextButton(
               onPressed: () => FocusScope.of(context).unfocus(),
-              child: const Text('Done'),
+              child: Text(l10n.done),
             ),
         ],
       ),
@@ -1041,7 +1041,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => FocusScope.of(context).unfocus(),
               icon: const Icon(Icons.keyboard_arrow_down),
-              label: const Text('Done'),
+              label: Text(l10n.done),
             )
           : null,
       body: GestureDetector(
@@ -1306,7 +1306,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                                         IconButton(
                                           icon: const Icon(Icons.close,
                                               size: 18),
-                                          tooltip: 'Remove',
+                                          tooltip: AppLocalizations.of(context).remove,
                                           color: context.appMutedTextColor,
                                           onPressed: () => _removeParsed(i),
                                         ),
@@ -1318,14 +1318,14 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                                         IconButton(
                                           icon: const Icon(Icons.search,
                                               size: 18),
-                                          tooltip: 'Search food',
+                                          tooltip: AppLocalizations.of(context).searchFoodTooltip,
                                           color: Colors.red.shade400,
                                           onPressed: () => _resolveParsed(i),
                                         ),
                                         IconButton(
                                           icon: const Icon(Icons.close,
                                               size: 18),
-                                          tooltip: 'Remove',
+                                          tooltip: AppLocalizations.of(context).remove,
                                           color: Colors.red.shade400,
                                           onPressed: () => _removeParsed(i),
                                         ),
@@ -1394,10 +1394,10 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                                 controller: _mealNameCtrl,
                                 textCapitalization:
                                     TextCapitalization.sentences,
-                                decoration: const InputDecoration(
-                                  labelText: 'Meal name',
-                                  hintText: 'e.g. My post-workout lunch',
-                                  prefixIcon: Icon(Icons.restaurant_menu),
+                                decoration: InputDecoration(
+                                  labelText: AppLocalizations.of(context).mealNameLabel,
+                                  hintText: AppLocalizations.of(context).mealNameExampleHint,
+                                  prefixIcon: const Icon(Icons.restaurant_menu),
                                   isDense: true,
                                 ),
                               ),
@@ -1528,7 +1528,7 @@ class _VoiceFoodSearchSheetState extends State<_VoiceFoodSearchSheet> {
                 autofocus: true,
                 onChanged: (v) => setState(() => _q = v),
                 decoration: InputDecoration(
-                  hintText: 'Search food…',
+                  hintText: AppLocalizations.of(context).searchFoodHint,
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12)),
@@ -1538,7 +1538,7 @@ class _VoiceFoodSearchSheetState extends State<_VoiceFoodSearchSheet> {
             ),
             Expanded(
               child: matches.isEmpty
-                  ? const Center(child: Text('No matching food'))
+                  ? Center(child: Text(AppLocalizations.of(context).noMatchingFood))
                   : ListView.builder(
                       controller: ctrl,
                       itemCount: matches.length,
@@ -1600,7 +1600,7 @@ class _ErrorBox extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.copy, size: 16),
                   color: Colors.red.shade700,
-                  tooltip: 'Copy error',
+                  tooltip: AppLocalizations.of(context).copyError,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () {

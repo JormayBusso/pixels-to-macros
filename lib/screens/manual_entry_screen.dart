@@ -586,12 +586,12 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
           if (editing)
             TextButton(
               onPressed: () => FocusScope.of(context).unfocus(),
-              child: const Text('Done'),
+              child: Text(AppLocalizations.of(context).done),
             )
           else
             IconButton(
               icon: const Icon(Icons.qr_code_scanner, size: 30),
-              tooltip: 'Scan barcode',
+              tooltip: AppLocalizations.of(context).scanBarcode,
               onPressed: _openBarcodeScanner,
             ),
         ],
@@ -600,7 +600,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => FocusScope.of(context).unfocus(),
               icon: const Icon(Icons.keyboard_arrow_down),
-              label: const Text('Done'),
+              label: Text(AppLocalizations.of(context).done),
             )
           : null,
       body: GestureDetector(
@@ -618,7 +618,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                         children: [
                           Expanded(
                             child: _TabToggleButton(
-                              label: 'Search Food',
+                              label: AppLocalizations.of(context).searchFoodLabel,
                               icon: Icons.search,
                               active: !_showMeals,
                               onTap: () => setState(() => _showMeals = false),
@@ -627,7 +627,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: _TabToggleButton(
-                              label: 'My Meals',
+                              label: AppLocalizations.of(context).myMeals,
                               icon: Icons.restaurant_menu,
                               active: _showMeals,
                               onTap: () => setState(() => _showMeals = true),
@@ -683,9 +683,9 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                         child: TextField(
                           controller: _searchCtrl,
                           onChanged: _filter,
-                          decoration: const InputDecoration(
-                            hintText: 'Search food…',
-                            prefixIcon: Icon(Icons.search),
+                          decoration: InputDecoration(
+                            hintText: AppLocalizations.of(context).searchFoodHint,
+                            prefixIcon: const Icon(Icons.search),
                           ),
                         ),
                       ),
@@ -1355,13 +1355,13 @@ class _MealsTab extends ConsumerWidget {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.edit_outlined, size: 18),
-                      tooltip: 'Edit',
+                      tooltip: AppLocalizations.of(context).editTooltip,
                       onPressed: () => onEdit(meal),
                     ),
                     IconButton(
                       icon: Icon(Icons.delete_outline,
                           size: 18, color: AppTheme.red500),
-                      tooltip: 'Delete',
+                      tooltip: AppLocalizations.of(context).delete,
                       onPressed: () => _confirmDelete(context, meal),
                     ),
                     FilledButton(
@@ -1369,7 +1369,7 @@ class _MealsTab extends ConsumerWidget {
                           minimumSize: const Size(60, 36),
                           padding: const EdgeInsets.symmetric(horizontal: 12)),
                       onPressed: () => onLog(meal),
-                      child: const Text('Log'),
+                      child: Text(AppLocalizations.of(context).log),
                     ),
                   ],
                 ),
