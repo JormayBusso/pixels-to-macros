@@ -298,6 +298,14 @@ class AppLocalizations {
         'de': 'Weiblich',
       });
 
+  String get preferNotToSay => _t({
+        'en': 'Prefer not to say',
+        'pl': 'Wolę nie podawać',
+        'nl': 'Zeg ik liever niet',
+        'es': 'Prefiero no decirlo',
+        'de': 'Keine Angabe',
+      });
+
   String get other => _t({
         'en': 'Other',
         'pl': 'Inne',
@@ -4868,6 +4876,118 @@ class AppLocalizations {
         'nl': 'Hiermee worden je account en alle gesynchroniseerde gegevens permanent verwijderd. Lokale gegevens op dit apparaat blijven behouden.\n\nDit kan niet ongedaan worden gemaakt.',
         'es': 'Esto eliminará permanentemente tu cuenta y todos los datos sincronizados. Los datos locales de este dispositivo se conservarán.\n\nEsto no se puede deshacer.',
         'de': 'Dadurch werden dein Konto und alle synchronisierten Daten dauerhaft gelöscht. Lokale Daten auf diesem Gerät bleiben erhalten.\n\nDies kann nicht rückgängig gemacht werden.',
+      });
+
+  String get continueLabel => _t({
+        'en': 'Continue',
+        'pl': 'Kontynuuj',
+        'nl': 'Doorgaan',
+        'es': 'Continuar',
+        'de': 'Weiter',
+      });
+
+  String get hideKeyboard => _t({
+        'en': 'Hide keyboard',
+        'pl': 'Ukryj klawiaturę',
+        'nl': 'Toetsenbord verbergen',
+        'es': 'Ocultar teclado',
+        'de': 'Tastatur ausblenden',
+      });
+
+  String removeFoodConfirm(String label) => _t({
+        'en': 'Remove "$label" from today\'s intake?',
+        'pl': 'Usunąć „$label" z dzisiejszego spożycia?',
+        'nl': '"$label" verwijderen uit de inname van vandaag?',
+        'es': '¿Eliminar "$label" de la ingesta de hoy?',
+        'de': '"$label" aus der heutigen Aufnahme entfernen?',
+      });
+
+  String get deleteScanTitle => _t({
+        'en': 'Delete Scan',
+        'pl': 'Usuń skan',
+        'nl': 'Scan verwijderen',
+        'es': 'Eliminar escaneo',
+        'de': 'Scan löschen',
+      });
+
+  String get deleteScanHistoryConfirm => _t({
+        'en': 'Delete this scan from history?',
+        'pl': 'Usunąć ten skan z historii?',
+        'nl': 'Deze scan uit de geschiedenis verwijderen?',
+        'es': '¿Eliminar este escaneo del historial?',
+        'de': 'Diesen Scan aus dem Verlauf löschen?',
+      });
+
+  String get noScansYet => _t({
+        'en': 'No scans yet — tap Scan to start!',
+        'pl': 'Brak skanów — dotknij Skanuj, aby rozpocząć!',
+        'nl': 'Nog geen scans — tik op Scannen om te beginnen!',
+        'es': 'Aún no hay escaneos: ¡toca Escanear para empezar!',
+        'de': 'Noch keine Scans — tippe auf Scannen, um zu beginnen!',
+      });
+
+  String scanItemCount(int n) => _t({
+        'en': '$n item${n == 1 ? '' : 's'}',
+        'pl': n == 1 ? '$n element' : '$n elementów',
+        'nl': '$n item${n == 1 ? '' : 's'}',
+        'es': n == 1 ? '$n elemento' : '$n elementos',
+        'de': n == 1 ? '$n Element' : '$n Elemente',
+      });
+
+  String get howManyPeople => _t({
+        'en': 'How many people?',
+        'pl': 'Dla ilu osób?',
+        'nl': 'Voor hoeveel personen?',
+        'es': '¿Para cuántas personas?',
+        'de': 'Für wie viele Personen?',
+      });
+
+  String get peopleCountHelp => _t({
+        'en': 'Set how many people each planned day cooks for. Grocery amounts are multiplied accordingly.',
+        'pl': 'Ustaw, dla ilu osób gotujesz każdego zaplanowanego dnia. Ilości na liście zakupów zostaną odpowiednio przeliczone.',
+        'nl': 'Stel in voor hoeveel personen je elke geplande dag kookt. De boodschappenhoeveelheden worden dienovereenkomstig vermenigvuldigd.',
+        'es': 'Indica para cuántas personas cocinas cada día planificado. Las cantidades de la compra se multiplican en consecuencia.',
+        'de': 'Lege fest, für wie viele Personen du an jedem geplanten Tag kochst. Die Einkaufsmengen werden entsprechend multipliziert.',
+      });
+
+  String get setAllDays => _t({
+        'en': 'Set all days',
+        'pl': 'Ustaw wszystkie dni',
+        'nl': 'Alle dagen instellen',
+        'es': 'Establecer todos los días',
+        'de': 'Alle Tage festlegen',
+      });
+
+  String get generate => _t({
+        'en': 'Generate',
+        'pl': 'Generuj',
+        'nl': 'Genereren',
+        'es': 'Generar',
+        'de': 'Generieren',
+      });
+
+  String get groceryListEmptied => _t({
+        'en': 'Grocery list emptied',
+        'pl': 'Lista zakupów opróżniona',
+        'nl': 'Boodschappenlijst geleegd',
+        'es': 'Lista de la compra vaciada',
+        'de': 'Einkaufsliste geleert',
+      });
+
+  String get emptyGroceryList => _t({
+        'en': 'Empty current grocery list',
+        'pl': 'Opróżnij bieżącą listę zakupów',
+        'nl': 'Huidige boodschappenlijst legen',
+        'es': 'Vaciar la lista de la compra actual',
+        'de': 'Aktuelle Einkaufsliste leeren',
+      });
+
+  String get skipSetLater => _t({
+        'en': 'Skip — I\'ll set this later in Settings',
+        'pl': 'Pomiń — ustawię to później w Ustawieniach',
+        'nl': 'Overslaan — ik stel dit later in bij Instellingen',
+        'es': 'Omitir: lo configuraré más tarde en Ajustes',
+        'de': 'Überspringen — ich stelle das später in den Einstellungen ein',
       });
 
   String nutrientName(String key) {

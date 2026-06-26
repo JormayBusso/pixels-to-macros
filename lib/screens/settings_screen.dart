@@ -1383,11 +1383,13 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
             const SizedBox(height: 14),
 
             // ── Blood-glucose unit ─────────────────────────────────────
-            const Text('Blood glucose unit',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.gray700)),
+            Text(
+              AppLocalizations.of(context).bloodGlucoseUnit,
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.gray700),
+            ),
             const SizedBox(height: 6),
             SegmentedButton<GlucoseUnit>(
               segments: const [

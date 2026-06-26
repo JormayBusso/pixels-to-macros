@@ -1575,7 +1575,7 @@ class _PeoplePerDayDialogState extends State<_PeoplePerDayDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: context.appSurfaceColor,
-      title: const Text('How many people?'),
+      title: Text(AppLocalizations.of(context).howManyPeople),
       content: SizedBox(
         width: double.maxFinite,
         child: SingleChildScrollView(
@@ -1584,8 +1584,7 @@ class _PeoplePerDayDialogState extends State<_PeoplePerDayDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Set how many people each planned day cooks for. Grocery '
-                'amounts are multiplied accordingly.',
+                AppLocalizations.of(context).peopleCountHelp,
                 style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
               ),
               const SizedBox(height: 8),
@@ -1618,7 +1617,8 @@ class _PeoplePerDayDialogState extends State<_PeoplePerDayDialog> {
               const Divider(),
               Row(
                 children: [
-                  const Expanded(child: Text('Set all days')),
+                  Expanded(
+                      child: Text(AppLocalizations.of(context).setAllDays)),
                   TextButton(onPressed: () => _setAll(1), child: const Text('1')),
                   TextButton(onPressed: () => _setAll(2), child: const Text('2')),
                   TextButton(onPressed: () => _setAll(4), child: const Text('4')),
@@ -1631,11 +1631,11 @@ class _PeoplePerDayDialogState extends State<_PeoplePerDayDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(AppLocalizations.of(context).cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, _counts),
-          child: const Text('Generate'),
+          child: Text(AppLocalizations.of(context).generate),
         ),
       ],
     );
@@ -1760,13 +1760,15 @@ class _GroceryPreviewSheet extends StatelessWidget {
                         await onClearList();
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Grocery list emptied')),
+                            SnackBar(
+                                content: Text(AppLocalizations.of(context)
+                                    .groceryListEmptied)),
                           );
                         }
                       },
                       icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-                      label: const Text('Empty current grocery list'),
+                      label:
+                          Text(AppLocalizations.of(context).emptyGroceryList),
                       style:
                           TextButton.styleFrom(foregroundColor: AppTheme.red500),
                     ),

@@ -393,7 +393,7 @@ class _NamePage extends StatelessWidget {
                 FocusScope.of(context).unfocus();
                 onNext();
               },
-              child: const Text('Continue'),
+              child: Text(AppLocalizations.of(context).continueLabel),
             ),
           ),
         ],
@@ -445,21 +445,21 @@ class _GenderPage extends StatelessWidget {
           const SizedBox(height: 32),
           _GenderOption(
             icon: Icons.male,
-            label: 'Male',
+            label: AppLocalizations.of(context).male,
             isSelected: selected == UserGender.male,
             onTap: () => onSelect(UserGender.male),
           ),
           const SizedBox(height: 12),
           _GenderOption(
             icon: Icons.female,
-            label: 'Female',
+            label: AppLocalizations.of(context).female,
             isSelected: selected == UserGender.female,
             onTap: () => onSelect(UserGender.female),
           ),
           const SizedBox(height: 12),
           _GenderOption(
             icon: Icons.help_outline,
-            label: 'Prefer not to say',
+            label: AppLocalizations.of(context).preferNotToSay,
             isSelected: selected == UserGender.preferNotToSay,
             onTap: () => onSelect(UserGender.preferNotToSay),
           ),
@@ -468,14 +468,14 @@ class _GenderPage extends StatelessWidget {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: onNext,
-              child: const Text('Continue'),
+              child: Text(AppLocalizations.of(context).continueLabel),
             ),
           ),
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: onBack,
             icon: const Icon(Icons.arrow_back, size: 16),
-            label: const Text('Back'),
+            label: Text(AppLocalizations.of(context).back),
             style: TextButton.styleFrom(foregroundColor: AppTheme.gray500),
           ),
         ],
@@ -664,14 +664,14 @@ class _GoalTypePage extends StatelessWidget {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: onNext,
-              child: const Text('Next'),
+              child: Text(AppLocalizations.of(context).next),
             ),
           ),
           const SizedBox(height: 4),
           TextButton.icon(
             onPressed: onBack,
             icon: const Icon(Icons.arrow_back, size: 16),
-            label: const Text('Back'),
+            label: Text(AppLocalizations.of(context).back),
             style: TextButton.styleFrom(foregroundColor: AppTheme.gray500),
           ),
           const SizedBox(height: 8),
@@ -854,7 +854,7 @@ class _ConfirmPage extends StatelessWidget {
           TextButton.icon(
             onPressed: onBack,
             icon: const Icon(Icons.arrow_back, size: 16),
-            label: const Text('Back'),
+            label: Text(AppLocalizations.of(context).back),
             style: TextButton.styleFrom(foregroundColor: AppTheme.gray500),
           ),
           const SizedBox(height: 16),
@@ -1060,14 +1060,14 @@ class _WeightPage extends StatelessWidget {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: onNext,
-              child: const Text('Continue'),
+              child: Text(AppLocalizations.of(context).continueLabel),
             ),
           ),
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: onBack,
             icon: const Icon(Icons.arrow_back, size: 16),
-            label: const Text('Back'),
+            label: Text(AppLocalizations.of(context).back),
             style: TextButton.styleFrom(foregroundColor: AppTheme.gray500),
           ),
         ],
@@ -1194,7 +1194,7 @@ class _IcrPage extends StatelessWidget {
             child: TextButton.icon(
               onPressed: () => FocusScope.of(context).unfocus(),
               icon: const Icon(Icons.keyboard_hide_outlined, size: 18),
-              label: const Text('Hide keyboard'),
+              label: Text(AppLocalizations.of(context).hideKeyboard),
             ),
           ),
           const SizedBox(height: 28),
@@ -1209,7 +1209,7 @@ class _IcrPage extends StatelessWidget {
                 onChanged(v);
                 onFinish();
               },
-              child: const Text('Start Scanning! 🚀'),
+              child: Text(AppLocalizations.of(context).startScanning),
             ),
           ),
           const SizedBox(height: 12),
@@ -1218,16 +1218,16 @@ class _IcrPage extends StatelessWidget {
               onChanged(0.0); // 0.0 = not set
               onFinish();
             },
-            child: const Text(
-              'Skip — I\'ll set this later in Settings',
-              style: TextStyle(color: AppTheme.gray500),
+            child: Text(
+              AppLocalizations.of(context).skipSetLater,
+              style: const TextStyle(color: AppTheme.gray500),
             ),
           ),
           const SizedBox(height: 4),
           TextButton.icon(
             onPressed: onBack,
             icon: const Icon(Icons.arrow_back, size: 16),
-            label: const Text('Back'),
+            label: Text(AppLocalizations.of(context).back),
             style: TextButton.styleFrom(foregroundColor: AppTheme.gray500),
           ),
           const SizedBox(height: 24),

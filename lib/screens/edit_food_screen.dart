@@ -255,7 +255,7 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
             width: double.infinity,
             child: ElevatedButton.icon(
               icon: const Icon(Icons.check),
-              label: const Text('Save Changes'),
+              label: Text(AppLocalizations.of(context).saveChanges),
               onPressed: _save,
             ),
           ),

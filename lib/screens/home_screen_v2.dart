@@ -712,20 +712,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     return await showDialog<bool>(
                                       context: context,
                                       builder: (ctx) => AlertDialog(
-                                        title: const Text('Remove Food'),
+                                        title: Text(AppLocalizations.of(context)
+                                            .removeFood),
                                         content: Text(
-                                            'Remove "${f.label}" from today\'s intake?'),
+                                            AppLocalizations.of(context)
+                                                .removeFoodConfirm(f.label)),
                                         actions: [
                                           TextButton(
                                             onPressed: () =>
                                                 Navigator.pop(ctx, false),
-                                            child: const Text('Cancel'),
+                                            child: Text(
+                                                AppLocalizations.of(context)
+                                                    .cancel),
                                           ),
                                           TextButton(
                                             onPressed: () =>
                                                 Navigator.pop(ctx, true),
-                                            child: const Text('Remove',
-                                                style: TextStyle(
+                                            child: Text(
+                                                AppLocalizations.of(context)
+                                                    .remove,
+                                                style: const TextStyle(
                                                     color: Colors.red)),
                                           ),
                                         ],
@@ -775,7 +781,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     size: 40, color: AppTheme.gray200),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'No scans yet — tap Scan to start!',
+                                  AppLocalizations.of(context).noScansYet,
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: context.appMutedTextColor,
@@ -849,7 +855,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       ),
                                     ),
                               title: Text(
-                                '${scan.foods.length} item${scan.foods.length == 1 ? '' : 's'}',
+                                AppLocalizations.of(context)
+                                    .scanItemCount(scan.foods.length),
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w600),
                               ),
@@ -891,21 +898,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   return await showDialog<bool>(
                                     context: context,
                                     builder: (ctx) => AlertDialog(
-                                      title: const Text('Delete Scan'),
-                                      content: const Text(
-                                          'Delete this scan from history?'),
+                                      title: Text(AppLocalizations.of(context)
+                                          .deleteScanTitle),
+                                      content: Text(AppLocalizations.of(context)
+                                          .deleteScanHistoryConfirm),
                                       actions: [
                                         TextButton(
                                           onPressed: () =>
                                               Navigator.pop(ctx, false),
-                                          child: const Text('Cancel'),
+                                          child: Text(
+                                              AppLocalizations.of(context)
+                                                  .cancel),
                                         ),
                                         TextButton(
                                           onPressed: () =>
                                               Navigator.pop(ctx, true),
-                                          child: const Text('Delete',
-                                              style:
-                                                  TextStyle(color: Colors.red)),
+                                          child: Text(
+                                              AppLocalizations.of(context)
+                                                  .delete,
+                                              style: const TextStyle(
+                                                  color: Colors.red)),
                                         ),
                                       ],
                                     ),
