@@ -14,6 +14,7 @@ import '../providers/locale_provider.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/premium_theme_effects.dart';
+import 'voice/voice_translation.dart';
 
 /// Voice-powered food logging.
 ///
@@ -420,7 +421,8 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         try {
           // New parse → row indices change; drop stale grams controllers.
           _disposeGramControllers();
-          _parsed = _parseTranscript(_transcript);
+          final langCode = ref.read(localeProvider).code;
+          _parsed = _parseTranscript(_transcript, langCode);
           _lowConfidence = result.hasConfidenceRating &&
               result.confidence > 0 &&
               result.confidence < 0.55 &&
@@ -444,9 +446,13 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   }
 
   /// NLP parser: handles word-numbers, plurals, smart segmentation.
-  List<_ParsedFood> _parseTranscript(String text) {
+  List<_ParsedFood> _parseTranscript(String text, String langCode) {
     final results = <_ParsedFood>[];
-    final lower = text
+    // Translate localized spoken tokens (numbers, units, connectors, common
+    // food names) into the English tokens this pipeline understands. Runs
+    // before accented characters are stripped so diacritics still match.
+    final english = voiceNormalizeToEnglish(text, langCode);
+    final lower = english
         .toLowerCase()
         .replaceAll(RegExp(r'[^\w\s,]'), ' ')
         .replaceAll(RegExp(r'\bhand\s+fulls?\b'), 'handful')
