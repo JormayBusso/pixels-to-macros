@@ -3999,6 +3999,88 @@ class AppLocalizations {
         'de': '* Die angezeigten Ziele sind ziel- und geschlechtsangepasste Referenzwerte für die Zufuhr (NASEM / NIH, aktualisiert 2024–2025). Mikronährstoffwerte werden aus Durchschnittswerten der USDA FoodData Central geschätzt. Für persönliche Beratung wende dich an eine Ernährungsfachkraft.',
       });
 
+  // ── Analytics ──
+
+  String get calorieTrend => _t({
+        'en': 'Calorie trend',
+        'pl': 'Trend kalorii',
+        'nl': 'Calorietrend',
+        'es': 'Tendencia de calorías',
+        'de': 'Kalorientrend',
+      });
+
+  String get noDataYet => _t({
+        'en': 'No data yet',
+        'pl': 'Brak danych',
+        'nl': 'Nog geen gegevens',
+        'es': 'Aún no hay datos',
+        'de': 'Noch keine Daten',
+      });
+
+  String analyticsConsistencyLow(int pct) => _t({
+        'en': 'You logged only $pct% of days. Scanning more often makes these analytics much more accurate.',
+        'pl': 'Zarejestrowałeś tylko $pct% dni. Częstsze skanowanie znacznie zwiększa dokładność tych statystyk.',
+        'nl': 'Je hebt slechts $pct% van de dagen gelogd. Vaker scannen maakt deze analyses veel nauwkeuriger.',
+        'es': 'Solo registraste el $pct% de los días. Escanear con más frecuencia hace estos análisis mucho más precisos.',
+        'de': 'Du hast nur $pct% der Tage erfasst. Häufigeres Scannen macht diese Auswertungen viel genauer.',
+      });
+
+  String analyticsConsistencyHigh(int logged, int total) => _t({
+        'en': 'Excellent consistency — you logged $logged of $total days. Trends here are reliable.',
+        'pl': 'Świetna regularność — zarejestrowałeś $logged z $total dni. Trendy są wiarygodne.',
+        'nl': 'Uitstekende consistentie — je hebt $logged van $total dagen gelogd. Deze trends zijn betrouwbaar.',
+        'es': 'Excelente constancia: registraste $logged de $total días. Estas tendencias son fiables.',
+        'de': 'Ausgezeichnete Beständigkeit — du hast $logged von $total Tagen erfasst. Diese Trends sind verlässlich.',
+      });
+
+  String get analyticsAvgMatchesGoal => _t({
+        'en': 'Your daily average matches your goal almost exactly. Nice work staying on plan.',
+        'pl': 'Twoja dzienna średnia niemal dokładnie pokrywa się z celem. Świetna robota, trzymasz plan.',
+        'nl': 'Je dagelijkse gemiddelde komt bijna precies overeen met je doel. Goed bezig met je plan.',
+        'es': 'Tu promedio diario coincide casi exactamente con tu objetivo. Buen trabajo siguiendo el plan.',
+        'de': 'Dein Tagesdurchschnitt entspricht fast genau deinem Ziel. Gut gemacht, du bleibst am Plan.',
+      });
+
+  String analyticsAvgOverGoal(int delta, int goal, int dropKcal) => _t({
+        'en': "You're averaging $delta kcal/day over your $goal kcal goal. If your goal is fat-loss, drop ~$dropKcal kcal of fast carbs first.",
+        'pl': 'Średnio jesz $delta kcal/dzień ponad cel $goal kcal. Jeśli celem jest redukcja, najpierw odejmij ~$dropKcal kcal szybkich węglowodanów.',
+        'nl': 'Je zit gemiddeld $delta kcal/dag boven je doel van $goal kcal. Als vetverlies je doel is, schrap eerst ~$dropKcal kcal snelle koolhydraten.',
+        'es': 'Promedias $delta kcal/día por encima de tu objetivo de $goal kcal. Si tu meta es perder grasa, reduce primero ~$dropKcal kcal de carbohidratos rápidos.',
+        'de': 'Du liegst im Schnitt $delta kcal/Tag über deinem Ziel von $goal kcal. Wenn Fettabbau dein Ziel ist, streiche zuerst ~$dropKcal kcal schnelle Kohlenhydrate.',
+      });
+
+  String analyticsAvgUnderGoal(int deficit, int goal) => _t({
+        'en': "You're $deficit kcal/day under your $goal kcal goal. If you're tired, add a protein-rich snack.",
+        'pl': 'Jesz $deficit kcal/dzień poniżej celu $goal kcal. Jeśli czujesz zmęczenie, dodaj przekąskę bogatą w białko.',
+        'nl': 'Je zit $deficit kcal/dag onder je doel van $goal kcal. Als je moe bent, voeg een eiwitrijke snack toe.',
+        'es': 'Estás $deficit kcal/día por debajo de tu objetivo de $goal kcal. Si te sientes cansado, añade un snack rico en proteína.',
+        'de': 'Du liegst $deficit kcal/Tag unter deinem Ziel von $goal kcal. Wenn du müde bist, füge einen proteinreichen Snack hinzu.',
+      });
+
+  String analyticsTrendUp(String pct) => _t({
+        'en': 'Calories are trending up by $pct% recently — worth checking which days.',
+        'pl': 'Kalorie ostatnio rosną o $pct% — warto sprawdzić, które dni.',
+        'nl': 'Calorieën stijgen de laatste tijd met $pct% — de moeite waard om te kijken welke dagen.',
+        'es': 'Las calorías están subiendo un $pct% últimamente — conviene revisar qué días.',
+        'de': 'Die Kalorien steigen zuletzt um $pct% — es lohnt sich zu prüfen, an welchen Tagen.',
+      });
+
+  String analyticsTrendDown(String pct) => _t({
+        'en': "Calories are trending down by $pct% recently — make sure you're still hitting protein targets.",
+        'pl': 'Kalorie ostatnio spadają o $pct% — upewnij się, że wciąż realizujesz cele białkowe.',
+        'nl': 'Calorieën dalen de laatste tijd met $pct% — zorg dat je je eiwitdoelen blijft halen.',
+        'es': 'Las calorías están bajando un $pct% últimamente — asegúrate de seguir alcanzando tus objetivos de proteína.',
+        'de': 'Die Kalorien sinken zuletzt um $pct% — achte darauf, dass du deine Proteinziele weiter erreichst.',
+      });
+
+  String analyticsProteinShareLow(int pct) => _t({
+        'en': 'Protein is only $pct% of your average intake. Aim for 20–30% for satiety and muscle support.',
+        'pl': 'Białko to tylko $pct% Twojego średniego spożycia. Celuj w 20–30% dla sytości i wsparcia mięśni.',
+        'nl': 'Eiwit is slechts $pct% van je gemiddelde inname. Streef naar 20–30% voor verzadiging en spierondersteuning.',
+        'es': 'La proteína es solo el $pct% de tu ingesta media. Apunta al 20–30% para saciedad y apoyo muscular.',
+        'de': 'Protein macht nur $pct% deiner durchschnittlichen Zufuhr aus. Ziele auf 20–30% für Sättigung und Muskelunterstützung.',
+      });
+
   String nutrientName(String key) {
     switch (key) {
       case 'calories':

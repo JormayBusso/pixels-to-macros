@@ -187,12 +187,12 @@ class _CalorieTrendCard extends StatelessWidget {
     final days = state.days;
     if (days.isEmpty) {
       return _CardShell(
-        title: 'Calorie trend',
+        title: AppLocalizations.of(context).calorieTrend,
         child: SizedBox(
           height: 160,
           child: Center(
             child:
-                Text('No data yet', style: TextStyle(color: context.appMutedTextColor)),
+                Text(AppLocalizations.of(context).noDataYet, style: TextStyle(color: context.appMutedTextColor)),
           ),
         ),
       );
@@ -203,7 +203,7 @@ class _CalorieTrendCard extends StatelessWidget {
         : null;
 
     return _CardShell(
-      title: 'Calorie trend',
+      title: AppLocalizations.of(context).calorieTrend,
       trailing: selected == null
           ? null
           : Text(
@@ -618,21 +618,21 @@ class _MacroDonutCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _MacroBar(
-                    label: 'Protein',
+                    label: AppLocalizations.of(context).protein,
                     grams: m.protein,
                     target: proteinTarget,
                     color: const Color(0xFF42A5F5),
                   ),
                   const SizedBox(height: 8),
                   _MacroBar(
-                    label: 'Carbs',
+                    label: AppLocalizations.of(context).carbs,
                     grams: m.carbs,
                     target: carbsTarget,
                     color: const Color(0xFFFFA726),
                   ),
                   const SizedBox(height: 8),
                   _MacroBar(
-                    label: 'Fat',
+                    label: AppLocalizations.of(context).fat,
                     grams: m.fat,
                     target: fatTarget,
                     color: const Color(0xFF66BB6A),
@@ -904,37 +904,34 @@ class _InsightCard extends StatelessWidget {
   }
 
   List<String> _buildMessages(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final m = <String>[];
     final avg = state.averageDaily;
     final consistency = state.consistency;
     final trend = state.weeklyTrendPct;
 
     if (consistency < 0.3 && state.days.length >= 7) {
-      m.add(
-          'You logged only ${(consistency * 100).round()}% of days. Scanning more often makes these analytics much more accurate.');
+      m.add(l10n.analyticsConsistencyLow((consistency * 100).round()));
     } else if (consistency >= 0.85) {
-      m.add(
-          'Excellent consistency — you logged ${state.loggedDays} of ${state.days.length} days. Trends here are reliable.');
+      m.add(l10n.analyticsConsistencyHigh(state.loggedDays, state.days.length));
     }
 
     if (goal > 0 && avg > 0) {
       final delta = avg - goal;
       if (delta.abs() < goal * 0.05) {
-        m.add(
-            'Your daily average matches your goal almost exactly. Nice work staying on plan.');
+        m.add(l10n.analyticsAvgMatchesGoal);
       } else if (delta > 0) {
-        m.add(
-            'You\'re averaging ${delta.round()} kcal/day over your ${goal.round()} kcal goal. If your goal is fat-loss, drop ~${(delta * 0.7).round()} kcal of fast carbs first.');
+        m.add(l10n.analyticsAvgOverGoal(
+            delta.round(), goal.round(), (delta * 0.7).round()));
       } else {
-        m.add(
-            'You\'re ${(-delta).round()} kcal/day under your ${goal.round()} kcal goal. If you\'re tired, add a protein-rich snack.');
+        m.add(l10n.analyticsAvgUnderGoal((-delta).round(), goal.round()));
       }
     }
 
     if (trend != null && trend.abs() >= 8) {
       m.add(trend > 0
-          ? 'Calories are trending up by ${trend.toStringAsFixed(1)}% recently — worth checking which days.'
-          : 'Calories are trending down by ${trend.abs().toStringAsFixed(1)}% recently — make sure you\'re still hitting protein targets.');
+          ? l10n.analyticsTrendUp(trend.toStringAsFixed(1))
+          : l10n.analyticsTrendDown(trend.abs().toStringAsFixed(1)));
     }
 
     final macros = state.avgMacros;
@@ -942,8 +939,7 @@ class _InsightCard extends StatelessWidget {
     if (macroCal > 0) {
       final pPct = (macros.protein * 4) / macroCal;
       if (pPct < 0.18) {
-        m.add(
-            'Protein is only ${(pPct * 100).round()}% of your average intake. Aim for 20–30% for satiety and muscle support.');
+        m.add(l10n.analyticsProteinShareLow((pPct * 100).round()));
       }
     }
     return m;
