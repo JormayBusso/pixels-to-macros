@@ -29,10 +29,10 @@ class DiabetesReviewScreen extends ConsumerWidget {
         children: [
           _statusCard(status),
           const SizedBox(height: 16),
-          _dateRow('Last reviewed', s.surveyLastCompletedAt),
-          _dateRow('Next review due', s.surveyNextDueAt),
+          _dateRow(context, 'Last reviewed', s.surveyLastCompletedAt),
+          _dateRow(context, 'Next review due', s.surveyNextDueAt),
           if (s.surveySnoozedUntil != null)
-            _dateRow('Reminder snoozed until', s.surveySnoozedUntil),
+            _dateRow(context, 'Reminder snoozed until', s.surveySnoozedUntil),
           const SizedBox(height: 20),
           FilledButton.icon(
             style: FilledButton.styleFrom(
@@ -60,7 +60,7 @@ class DiabetesReviewScreen extends ConsumerWidget {
             'Reviewing your settings regularly keeps the calculator safe. '
             'Confirming marks them current for the next '
             '${DiabetesConstants.reviewInterval.inDays} days.',
-            style: const TextStyle(fontSize: 12, color: AppTheme.gray500),
+            style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
           ),
         ],
       ),
@@ -116,14 +116,14 @@ class DiabetesReviewScreen extends ConsumerWidget {
     );
   }
 
-  Widget _dateRow(String label, DateTime? date) => Padding(
+  Widget _dateRow(BuildContext context, String label, DateTime? date) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label,
                 style:
-                    const TextStyle(fontSize: 13, color: AppTheme.gray600)),
+                    TextStyle(fontSize: 13, color: context.appMutedTextColor)),
             Text(
               date == null ? '—' : _fmtDate(date),
               style: const TextStyle(

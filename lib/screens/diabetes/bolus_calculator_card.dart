@@ -103,10 +103,10 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             DiabetesSafetyCopy.generalDisclaimer,
             style:
-                TextStyle(fontSize: 11, color: AppTheme.gray500, height: 1.4),
+                TextStyle(fontSize: 11, color: context.appMutedTextColor, height: 1.4),
           ),
           const SizedBox(height: 14),
           TextField(
@@ -609,10 +609,10 @@ class _InsulinDoseLogSheetState extends ConsumerState<InsulinDoseLogSheet> {
           const Text('Log insulin dose',
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Enter the dose you actually took. This is used for '
             'insulin-on-board and history.',
-            style: TextStyle(fontSize: 12, color: AppTheme.gray500),
+            style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
           ),
           const SizedBox(height: 14),
           TextField(

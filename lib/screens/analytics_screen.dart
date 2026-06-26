@@ -188,11 +188,11 @@ class _CalorieTrendCard extends StatelessWidget {
     if (days.isEmpty) {
       return _CardShell(
         title: 'Calorie trend',
-        child: const SizedBox(
+        child: SizedBox(
           height: 160,
           child: Center(
             child:
-                Text('No data yet', style: TextStyle(color: AppTheme.gray400)),
+                Text('No data yet', style: TextStyle(color: context.appMutedTextColor)),
           ),
         ),
       );
@@ -523,9 +523,9 @@ class _StatTile extends StatelessWidget {
               if (unit.isNotEmpty)
                 TextSpan(
                   text: ' $unit',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: AppTheme.gray400,
+                    color: context.appMutedTextColor,
                   ),
                 ),
             ]),
@@ -600,11 +600,11 @@ class _MacroDonutCard extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const Text(
+                      Text(
                         'kcal/day',
                         style: TextStyle(
                           fontSize: 9,
-                          color: AppTheme.gray400,
+                          color: context.appMutedTextColor,
                         ),
                       ),
                     ],
@@ -676,7 +676,7 @@ class _MacroBar extends StatelessWidget {
             ),
             Text(
               '${grams.round()}g${target > 0 ? ' / ${target.round()}g' : ''}',
-              style: const TextStyle(fontSize: 11, color: AppTheme.gray500),
+              style: TextStyle(fontSize: 11, color: context.appMutedTextColor),
             ),
           ],
         ),
@@ -778,10 +778,10 @@ class _WeekdayPatternCard extends StatelessWidget {
                     if (v > 0)
                       Text(
                         '${v.round()}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.gray500,
+                          color: context.appMutedTextColor,
                         ),
                       ),
                     const SizedBox(height: 2),
@@ -810,9 +810,9 @@ class _WeekdayPatternCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       _wdShort(wdNum),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
-                        color: AppTheme.gray400,
+                        color: context.appMutedTextColor,
                       ),
                     ),
                   ],
@@ -1073,9 +1073,9 @@ class _CardShell extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               subtitle!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: AppTheme.gray400,
+                color: context.appMutedTextColor,
               ),
             ),
           ],

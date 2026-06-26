@@ -333,7 +333,7 @@ class _SpikeStat extends StatelessWidget {
               Icon(icon, size: 12, color: color),
               const SizedBox(width: 3),
               Text(label,
-                  style: TextStyle(fontSize: 10, color: AppTheme.gray400)),
+                  style: TextStyle(fontSize: 10, color: context.appMutedTextColor)),
             ],
           ),
           const SizedBox(height: 2),

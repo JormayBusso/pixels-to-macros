@@ -81,9 +81,9 @@ class _BolusSetupScreenState extends ConsumerState<BolusSetupScreen> {
                       style:
                           TextStyle(fontSize: 13, color: AppTheme.gray700, height: 1.4)),
                   const SizedBox(height: 12),
-                  const Text(DiabetesSafetyCopy.generalDisclaimer,
+                  Text(DiabetesSafetyCopy.generalDisclaimer,
                       style:
-                          TextStyle(fontSize: 12, color: AppTheme.gray600, height: 1.4)),
+                          TextStyle(fontSize: 12, color: context.appMutedTextColor, height: 1.4)),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(10),

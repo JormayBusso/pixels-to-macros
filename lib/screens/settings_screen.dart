@@ -392,9 +392,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       children: [
                         Text(
                           l10n.selectGender,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppTheme.gray400,
+                            color: context.appMutedTextColor,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -822,8 +822,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                   l10n.vacationModeDesc,
-                                  style: const TextStyle(
-                                      fontSize: 12, color: AppTheme.gray600),
+                                  style: TextStyle(
+                                      fontSize: 12, color: context.appMutedTextColor),
                                 ),
                               ],
                             ),
@@ -957,7 +957,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 Text(
                   l10n.dataStoredLocally,
-                  style: const TextStyle(fontSize: 13, color: AppTheme.gray600),
+                  style: TextStyle(fontSize: 13, color: context.appMutedTextColor),
                 ),
                 const SizedBox(height: 16),
                 _InfoRow(
@@ -1098,7 +1098,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   'Flutter + ARKit + CoreML',
                   style: TextStyle(
                     fontSize: 13,
-                    color: AppTheme.gray400,
+                    color: context.appMutedTextColor,
                     height: 1.5,
                   ),
                 ),
@@ -1125,9 +1125,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 Text(
                   l10n.evaluationToolsDesc,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: AppTheme.gray400,
+                    color: context.appMutedTextColor,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1169,9 +1169,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Testing tools — reset the app to the initial state.',
-                  style: TextStyle(fontSize: 13, color: AppTheme.gray400),
+                  style: TextStyle(fontSize: 13, color: context.appMutedTextColor),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
@@ -1722,7 +1722,7 @@ class _TextSizePickerCard extends ConsumerWidget {
           children: [
             Text(
               'Adjust text size throughout the app.',
-              style: const TextStyle(fontSize: 13, color: AppTheme.gray600),
+              style: TextStyle(fontSize: 13, color: context.appMutedTextColor),
             ),
             const SizedBox(height: 16),
             Row(
@@ -1847,7 +1847,7 @@ class _NutritionGoalPickerCard extends ConsumerWidget {
           children: [
             Text(
               current.description,
-              style: const TextStyle(fontSize: 13, color: AppTheme.gray600),
+              style: TextStyle(fontSize: 13, color: context.appMutedTextColor),
             ),
             const SizedBox(height: 16),
             Wrap(
@@ -1945,7 +1945,7 @@ class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
           children: [
             Text(
               l10n.chooseMascot,
-              style: const TextStyle(fontSize: 13, color: AppTheme.gray600),
+              style: TextStyle(fontSize: 13, color: context.appMutedTextColor),
             ),
             const SizedBox(height: 16),
             // Live preview — show all 4 stages
@@ -2056,7 +2056,7 @@ class _ThemeColorPickerCard extends ConsumerWidget {
                     const SizedBox(height: 18),
                     _ThemePickerSectionHeader(
                       label: 'Standard',
-                      color: AppTheme.gray500,
+                      color: context.appMutedTextColor,
                     ),
                     const SizedBox(height: 8),
                     tilesFor(standardSeeds),
@@ -2631,10 +2631,10 @@ class _CloudSyncCard extends ConsumerWidget {
             children: [
               Icon(Icons.cloud_off, size: 32, color: AppTheme.gray300),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Cloud sync not configured yet.\nAdd Supabase credentials to .env to enable.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.gray400, fontSize: 13),
+                style: TextStyle(color: context.appMutedTextColor, fontSize: 13),
               ),
             ],
           ),
@@ -2699,8 +2699,8 @@ class _CloudSyncCard extends ConsumerWidget {
                       Text(auth.displayName,
                           style: const TextStyle(fontWeight: FontWeight.w700)),
                       Text(auth.user?.email ?? '',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppTheme.gray500)),
+                          style: TextStyle(
+                              fontSize: 12, color: context.appMutedTextColor)),
                     ],
                   ),
                 ),
@@ -2821,9 +2821,9 @@ class _RemindersCardState extends State<_RemindersCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'In-app reminders (coming soon)',
-              style: TextStyle(fontSize: 12, color: AppTheme.gray400),
+              style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
             ),
             const SizedBox(height: 8),
             SwitchListTile(
@@ -2896,7 +2896,7 @@ class _WeightCalibrationCard extends ConsumerWidget {
             const SizedBox(height: 8),
             Text(
               l10n.adaptiveCalorieCalibrationDesc,
-              style: const TextStyle(fontSize: 12, color: AppTheme.gray600),
+              style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
             ),
             if (state.lastCalibration != null) ...[
               const SizedBox(height: 10),
@@ -2924,7 +2924,7 @@ class _WeightCalibrationCard extends ConsumerWidget {
             else if (state.entries.isEmpty)
               Text(
                 l10n.noMonthlyWeightsYet,
-                style: const TextStyle(fontSize: 12, color: AppTheme.gray500),
+                style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
               )
             else
               Column(
@@ -2937,7 +2937,7 @@ class _WeightCalibrationCard extends ConsumerWidget {
                       isLatest
                           ? Icons.radio_button_checked
                           : Icons.radio_button_unchecked,
-                      color: isLatest ? context.primary600 : AppTheme.gray400,
+                      color: isLatest ? context.primary600 : context.appMutedTextColor,
                     ),
                     title: Text('${entry.weightKg.round()} kg'),
                     subtitle: Text(_formatMonth(entry.recordedAt)),
@@ -3048,9 +3048,9 @@ class _WeightSettingsInput extends StatelessWidget {
       children: [
         Text(
           l10n.weightKg,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
-            color: AppTheme.gray400,
+            color: context.appMutedTextColor,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -3122,15 +3122,15 @@ class _WeightSettingsInput extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('${GoalDefaults.minWeightKg.round()} kg',
-                style: const TextStyle(fontSize: 11, color: AppTheme.gray400)),
+                style: TextStyle(fontSize: 11, color: context.appMutedTextColor)),
             Text('${GoalDefaults.maxWeightKg.round()} kg',
-                style: const TextStyle(fontSize: 11, color: AppTheme.gray400)),
+                style: TextStyle(fontSize: 11, color: context.appMutedTextColor)),
           ],
         ),
         const SizedBox(height: 6),
         Text(
           l10n.weightEstimateNote,
-          style: const TextStyle(fontSize: 12, color: AppTheme.gray500),
+          style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
         ),
       ],
     );
@@ -3201,11 +3201,11 @@ class _BodyProfileSettingsInput extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Height',
           style: TextStyle(
             fontSize: 12,
-            color: AppTheme.gray400,
+            color: context.appMutedTextColor,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -3283,17 +3283,17 @@ class _BodyProfileSettingsInput extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('${GoalDefaults.minHeightCm.round()} cm',
-                style: const TextStyle(fontSize: 11, color: AppTheme.gray400)),
+                style: TextStyle(fontSize: 11, color: context.appMutedTextColor)),
             Text('${GoalDefaults.maxHeightCm.round()} cm',
-                style: const TextStyle(fontSize: 11, color: AppTheme.gray400)),
+                style: TextStyle(fontSize: 11, color: context.appMutedTextColor)),
           ],
         ),
         const SizedBox(height: 14),
-        const Text(
+        Text(
           'Muscle amount',
           style: TextStyle(
             fontSize: 12,
-            color: AppTheme.gray400,
+            color: context.appMutedTextColor,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -3313,12 +3313,12 @@ class _BodyProfileSettingsInput extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           muscleMassLevel.description,
-          style: const TextStyle(fontSize: 12, color: AppTheme.gray500),
+          style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           'Calories use weight, height, biological sex and muscle amount as a starting estimate, then should be refined from your real weight trend.',
-          style: TextStyle(fontSize: 12, color: AppTheme.gray500),
+          style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
         ),
       ],
     );
