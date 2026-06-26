@@ -1,14 +1,19 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../core/app_localizations.dart';
+import '../models/custom_meal.dart';
 import '../models/user_preferences.dart';
 import 'database_service.dart';
 
-/// Smart water & food reminder notifications.
+/// Smart water & meal reminder notifications.
 ///
 /// - Water: at most 2 reminders per day, only when intake is >30% behind pace.
-/// - Food:  one reminder at 13:00 if calorie intake is >30% behind daily goal.
+/// - Meals: breakfast ~09:00, lunch ~13:00, dinner ~19:00 — each only fires if
+///   that meal has not been logged yet today.
 ///
 /// Wake window assumed 08:00–21:00 (13 hours).
 class NotificationService {
@@ -98,17 +103,77 @@ class NotificationService {
       }
     }
 
-    // ── Food reminder at 13:00 ────────────────────────────────────────
-    final calorieGoal = prefs.dailyCalorieGoal;
-    // Food reminder is always scheduled for 13:00 if user hasn't consumed
-    // enough by then. We schedule it here and cancel on app open if met.
-    final lunchTime = _today(13);
-    if (mealReminderEnabled && lunchTime.isAfter(now) && calorieGoal > 0) {
+    // ── Meal reminders ────────────────────────────────────────────────
+    // Breakfast (09:00), lunch (13:00), dinner (19:00). Each reminder is only
+    // scheduled if its time is still in the future today AND that meal has not
+    // already been logged. Reminders are rescheduled on app start, on app
+    // resume, and whenever a meal is logged, so already-logged meals get their
+    // reminder cancelled.
+    await _scheduleMealReminders(now: now, enabled: mealReminderEnabled);
+  }
+
+  /// IDs for the breakfast / lunch / dinner reminders.
+  static const _mealReminderIds = [200, 201, 202];
+
+  /// Re-evaluate just the meal reminders (without touching water/insight ones).
+  ///
+  /// Call after a meal is logged so the corresponding reminder is cancelled.
+  Future<void> refreshMealReminders() async {
+    if (!_initialized) await initialize();
+    for (final id in _mealReminderIds) {
+      await _plugin.cancel(id);
+    }
+    final toggles = await _loadReminderToggles();
+    await _scheduleMealReminders(now: DateTime.now(), enabled: toggles.$1);
+  }
+
+  /// Schedule breakfast/lunch/dinner reminders for meals that are not yet
+  /// logged today and whose time is still in the future.
+  Future<void> _scheduleMealReminders({
+    required DateTime now,
+    required bool enabled,
+  }) async {
+    if (!enabled) return;
+
+    final l10n = await _localizations();
+    final logged = await _loggedMealsToday();
+
+    final plan = <(MealType, int, int, String, String)>[
+      (
+        MealType.breakfast,
+        9,
+        200,
+        l10n.mealReminderBreakfastTitle,
+        l10n.mealReminderBreakfastBody,
+      ),
+      (
+        MealType.lunch,
+        13,
+        201,
+        l10n.mealReminderLunchTitle,
+        l10n.mealReminderLunchBody,
+      ),
+      (
+        MealType.dinner,
+        19,
+        202,
+        l10n.mealReminderDinnerTitle,
+        l10n.mealReminderDinnerBody,
+      ),
+    ];
+
+    for (final item in plan) {
+      final mealType = item.$1;
+      final hour = item.$2;
+      final id = item.$3;
+      final time = _today(hour);
+      if (logged.contains(mealType)) continue;
+      if (!time.isAfter(now)) continue;
       await _scheduleOnce(
-        id: 200,
-        title: 'Don\'t forget lunch! 🍽️',
-        body: 'Check in on your nutrition — log today\'s meals.',
-        scheduledDate: lunchTime,
+        id: id,
+        title: item.$4,
+        body: item.$5,
+        scheduledDate: time,
         channelId: _foodChannelId,
         channelName: _foodChannelName,
       );
@@ -163,6 +228,65 @@ class NotificationService {
     } catch (_) {
       return (true, true);
     }
+  }
+
+  /// Build localizations from the user's saved language (defaults to English).
+  Future<AppLocalizations> _localizations() async {
+    var code = 'en';
+    try {
+      final sp = await SharedPreferences.getInstance();
+      code = sp.getString('app_language_code') ?? 'en';
+    } catch (_) {}
+    return AppLocalizations(Locale(code));
+  }
+
+  /// Which meal a timestamp falls into, by hour-of-day window.
+  static MealType _mealForHour(int hour) {
+    if (hour < 11) return MealType.breakfast;
+    if (hour < 16) return MealType.lunch;
+    return MealType.dinner;
+  }
+
+  /// Set of meals that already have a logged item today.
+  ///
+  /// Scans carry only a timestamp (no meal type) so they are bucketed by
+  /// hour-of-day window. Custom meals carry an explicit meal type.
+  Future<Set<MealType>> _loggedMealsToday() async {
+    final logged = <MealType>{};
+    try {
+      final db = await DatabaseService.instance.database;
+      final now = DateTime.now();
+      final todayStart =
+          DateTime(now.year, now.month, now.day).toIso8601String();
+
+      final scanRows = await db.query(
+        'scan_results',
+        columns: ['timestamp'],
+        where: 'timestamp >= ?',
+        whereArgs: [todayStart],
+      );
+      for (final r in scanRows) {
+        final dt = DateTime.tryParse(r['timestamp'] as String? ?? '');
+        if (dt != null) logged.add(_mealForHour(dt.hour));
+      }
+
+      final mealRows = await db.query(
+        'custom_meals',
+        columns: ['meal_type', 'created_at'],
+        where: 'created_at >= ?',
+        whereArgs: [todayStart],
+      );
+      for (final r in mealRows) {
+        final mt = r['meal_type'] as String?;
+        if (mt != null && mt.isNotEmpty) {
+          logged.add(MealType.fromDbValue(mt));
+        } else {
+          final dt = DateTime.tryParse(r['created_at'] as String? ?? '');
+          if (dt != null) logged.add(_mealForHour(dt.hour));
+        }
+      }
+    } catch (_) {}
+    return logged;
   }
 
   // ── Smart Personalized Notification (1/day max) ──────────────────────────

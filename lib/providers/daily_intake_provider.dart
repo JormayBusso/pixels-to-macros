@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/nutrient_data.dart';
@@ -5,6 +7,7 @@ import '../models/scan_result.dart';
 import '../services/app_recovery_service.dart';
 import '../services/database_service.dart';
 import '../services/debug_log.dart';
+import '../services/notification_service.dart';
 
 /// Today's aggregated calorie and macro intake from all scans.
 class DailyIntake {
@@ -101,6 +104,10 @@ class DailyIntakeNotifier extends StateNotifier<DailyIntake> {
       state = const DailyIntake();
       AppRecoveryService.recover(e, st, source: 'Daily intake');
     }
+
+    // Re-evaluate meal reminders so a meal that was just logged has its
+    // pending reminder cancelled (best-effort, never blocks intake loading).
+    unawaited(NotificationService.instance.refreshMealReminders());
   }
 }
 

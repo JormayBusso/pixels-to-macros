@@ -3337,11 +3337,59 @@ class AppLocalizations {
       });
 
   String get mealReminderDesc => _t({
-        'en': 'Remind me to log meals at 13:00',
-        'pl': 'Przypomnij mi o logowaniu posiłków o 13:00',
-        'nl': 'Herinner me om maaltijden te loggen om 13:00',
-        'es': 'Recordarme registrar comidas a las 13:00',
-        'de': 'Erinnere mich um 13:00 Mahlzeiten zu loggen',
+        'en': 'Remind me to log breakfast, lunch & dinner if I forget',
+        'pl': 'Przypomnij o śniadaniu, obiedzie i kolacji, jeśli zapomnę',
+        'nl': 'Herinner me aan ontbijt, lunch en diner als ik het vergeet',
+        'es': 'Recordarme registrar desayuno, almuerzo y cena si lo olvido',
+        'de': 'Erinnere mich an Frühstück, Mittag- & Abendessen, falls ich es vergesse',
+      });
+
+  String get mealReminderBreakfastTitle => _t({
+        'en': 'Good morning! 🍳',
+        'pl': 'Dzień dobry! 🍳',
+        'nl': 'Goedemorgen! 🍳',
+        'es': '¡Buenos días! 🍳',
+        'de': 'Guten Morgen! 🍳',
+      });
+
+  String get mealReminderLunchTitle => _t({
+        'en': 'Lunchtime! 🍽️',
+        'pl': 'Pora na obiad! 🍽️',
+        'nl': 'Lunchtijd! 🍽️',
+        'es': '¡Hora de almorzar! 🍽️',
+        'de': 'Zeit fürs Mittagessen! 🍽️',
+      });
+
+  String get mealReminderDinnerTitle => _t({
+        'en': 'Dinnertime 🌙',
+        'pl': 'Pora na kolację 🌙',
+        'nl': 'Tijd voor het diner 🌙',
+        'es': 'Hora de cenar 🌙',
+        'de': 'Zeit fürs Abendessen 🌙',
+      });
+
+  String get mealReminderBreakfastBody => _t({
+        'en': 'Don\'t forget to log your breakfast.',
+        'pl': 'Nie zapomnij zapisać śniadania.',
+        'nl': 'Vergeet niet je ontbijt te loggen.',
+        'es': 'No olvides registrar tu desayuno.',
+        'de': 'Vergiss nicht, dein Frühstück zu loggen.',
+      });
+
+  String get mealReminderLunchBody => _t({
+        'en': 'Have you logged your lunch yet?',
+        'pl': 'Czy zapisałeś już swój obiad?',
+        'nl': 'Heb je je lunch al gelogd?',
+        'es': '¿Ya registraste tu almuerzo?',
+        'de': 'Hast du dein Mittagessen schon geloggt?',
+      });
+
+  String get mealReminderDinnerBody => _t({
+        'en': 'Round off your day — log your dinner.',
+        'pl': 'Zakończ dzień — zapisz swoją kolację.',
+        'nl': 'Sluit je dag af — log je diner.',
+        'es': 'Cierra tu día: registra tu cena.',
+        'de': 'Runde deinen Tag ab — logge dein Abendessen.',
       });
 
   String get waterReminder => _t({

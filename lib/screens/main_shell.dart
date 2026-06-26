@@ -36,7 +36,8 @@ class MainShell extends ConsumerStatefulWidget {
   ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends ConsumerState<MainShell> {
+class _MainShellState extends ConsumerState<MainShell>
+    with WidgetsBindingObserver {
   int _tabIndex = 0;
   bool _showTutorial = false;
   bool _checkedWeeklyBadgeRecap = false;
@@ -59,6 +60,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       setState(() => _tabIndex = 0);
     };
     AppRecoveryService.homeRecoverySignal.addListener(_recoveryListener);
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final showingTutorial = _checkTutorial();
       unawaited(_initNotifications());
@@ -71,7 +73,19 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void dispose() {
     AppRecoveryService.homeRecoverySignal.removeListener(_recoveryListener);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Re-evaluate meal reminders when returning to the foreground so meals
+    // logged in another session (or the passing of a meal window) are
+    // reflected, cancelling reminders that no longer apply.
+    if (state == AppLifecycleState.resumed) {
+      unawaited(NotificationService.instance.refreshMealReminders());
+    }
   }
 
   Future<void> _initNotifications() async {
