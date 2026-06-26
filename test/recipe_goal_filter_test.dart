@@ -133,14 +133,14 @@ void main() {
 
       for (final recipe in dairyFree) {
         expect(
-          _containsAnyTerm(recipe, DietaryRestriction.dairyFree.triggerTerms),
+          DietaryRestriction.dairyFree.matchesText(_restrictionText(recipe)),
           isFalse,
           reason: '${recipe.name} contains dairy terms',
         );
       }
       for (final recipe in nutFree) {
         expect(
-          _containsAnyTerm(recipe, DietaryRestriction.nutFree.triggerTerms),
+          DietaryRestriction.nutFree.matchesText(_restrictionText(recipe)),
           isFalse,
           reason: '${recipe.name} contains nut terms',
         );
@@ -470,6 +470,72 @@ void main() {
       expect(picked?.id, 'balanced-high-protein');
     });
   });
+
+  group('Multilingual allergen matching (matchesText)', () {
+    // Offending ingredients in every supported language MUST be detected.
+    final mustBlock = <DietaryRestriction, List<String>>{
+      DietaryRestriction.glutenFree: [
+        'wheat flour', 'sourdough bread', 'spaghetti', 'barley malt', 'panko',
+        'tarwebloem', 'volkorenbrood', 'beschuit', 'patentbloem',
+        'zelfrijzend bakmeel', 'bloem', // Dutch standalone flour
+        'mąka pszenna', 'bułka tarta', 'chleb', 'makaron',
+        'Weizenmehl', 'Brötchen', 'Roggenbrot', 'Dinkelmehl', 'Nudelauflauf',
+        'harina de trigo', 'pan rallado',
+      ],
+      DietaryRestriction.dairyFree: [
+        'cheddar cheese', 'buttermilk', 'greek yogurt', 'heavy cream', 'paneer',
+        'roomboter', 'geitenkaas', 'schapenkaas', 'volle melk', 'slagroom',
+        'mleko', 'ser żółty', 'jogurt naturalny', 'twaróg', 'śmietana',
+        'Schafskäse', 'Frischkäse', 'Naturjoghurt', 'Sahne', 'Vollmilch',
+        'queso manchego', 'leche entera', 'mantequilla',
+      ],
+      DietaryRestriction.nutFree: [
+        'almonds', 'walnuts', 'cashew butter', 'peanut sauce', 'marzipan',
+        'amandelen', 'hazelnoot', 'pinda', 'walnoot',
+        'orzechy włoskie', 'migdały', 'orzeszki ziemne',
+        'Haselnuss', 'Erdnuss', 'Bittermandelaroma', 'Walnüsse',
+        'nuez', 'almendras', 'cacahuete',
+      ],
+    };
+
+    // Naturally-safe items (free-from labels, plant alternatives, lookalikes)
+    // MUST NOT be flagged.
+    final mustAllow = <DietaryRestriction, List<String>>{
+      DietaryRestriction.glutenFree: [
+        'gluten-free bread', 'glutenvrije broodmix', 'glutenfreies Mehl',
+        'almond flour', 'rice noodles', 'corn tortilla', 'bloemkool',
+        'zonnebloemolie', 'bloemkoolrijst', 'buckwheat', 'sin gluten',
+      ],
+      DietaryRestriction.dairyFree: [
+        'coconut milk', 'almond milk', 'oat cream', 'peanut butter',
+        'cocoa butter', 'vegan cheese', 'pindakaas', 'kokosmilch',
+        'amandelmelk', 'plantaardige melk', 'sojajoghurt', 'leche de coco',
+        'dairy-free', 'cream of tartar',
+      ],
+      DietaryRestriction.nutFree: [
+        'coconut milk', 'nutmeg', 'butternut squash', 'water chestnuts',
+        'nootmuskaat', 'kokosmelk', 'nut-free granola',
+      ],
+    };
+
+    mustBlock.forEach((restriction, samples) {
+      for (final sample in samples) {
+        test('${restriction.name} blocks "$sample"', () {
+          expect(restriction.matchesText(sample), isTrue,
+              reason: '"$sample" should be flagged for ${restriction.name}');
+        });
+      }
+    });
+
+    mustAllow.forEach((restriction, samples) {
+      for (final sample in samples) {
+        test('${restriction.name} allows "$sample"', () {
+          expect(restriction.matchesText(sample), isFalse,
+              reason: '"$sample" should NOT be flagged for ${restriction.name}');
+        });
+      }
+    });
+  });
 }
 
 Recipe _recipe({
@@ -672,6 +738,11 @@ const _dairyEggHoneyTerms = <String>[
   'mozzarella',
   'feta',
 ];
+
+String _restrictionText(Recipe recipe) => <String>[
+      recipe.name,
+      ...recipe.ingredients.map((ingredient) => ingredient.name),
+    ].join(' ');
 
 bool _containsAnyTerm(Recipe recipe, List<String> terms) {
   final text = <String>[
