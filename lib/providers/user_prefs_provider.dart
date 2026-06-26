@@ -4,6 +4,7 @@ import '../models/glucose_unit.dart';
 import '../models/nutrition_goal.dart';
 import '../models/user_preferences.dart';
 import '../services/database_service.dart';
+import '../services/debug_log.dart';
 
 /// Provides the user's preferences (name, calorie goal, onboarding status, nutrition goal).
 class UserPrefsNotifier extends StateNotifier<UserPreferences> {
@@ -15,8 +16,16 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
   }
 
   Future<void> update(UserPreferences prefs) async {
-    await DatabaseService.instance.saveUserPreferences(prefs);
+    // Update in-memory state FIRST so the UI reacts immediately (e.g. the
+    // onboarding gate navigates to the home screen). Persisting to the
+    // database is best-effort: a storage/sync failure must never block the
+    // user from progressing through the app.
     state = prefs;
+    try {
+      await DatabaseService.instance.saveUserPreferences(prefs);
+    } catch (e, st) {
+      DebugLog.instance.log('UserPrefs', 'saveUserPreferences failed: $e\n$st');
+    }
   }
 
   /// Reset to factory defaults (for testing/debug).

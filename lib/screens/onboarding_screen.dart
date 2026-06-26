@@ -207,7 +207,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       ref.read(localeProvider.notifier).setLanguage(lang);
                     },
                   ),
-                  _WelcomePage(onNext: _next),
+                  _WelcomePage(onNext: _next, onBack: _back),
                   _NamePage(
                       controller: _nameCtrl, onNext: _next, onBack: _back),
                   _WeightPage(
@@ -291,8 +291,9 @@ class _OnboardingScrollFrame extends StatelessWidget {
 // â”€â”€ Page 0: Welcome â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _WelcomePage extends StatelessWidget {
-  const _WelcomePage({required this.onNext});
+  const _WelcomePage({required this.onNext, required this.onBack});
   final VoidCallback onNext;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -338,6 +339,13 @@ class _WelcomePage extends StatelessWidget {
               child: Text(l10n.getStarted),
             ),
           ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back, size: 16),
+            label: Text(l10n.back),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.gray500),
+          ),
         ],
       ),
     );
@@ -355,24 +363,25 @@ class _NamePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return _OnboardingScrollFrame(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.person_outline, size: 56, color: context.primary500),
           const SizedBox(height: 24),
-          const Text(
-            'What\'s your name?',
-            style: TextStyle(
+          Text(
+            l10n.whatsYourName,
+            style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
               color: AppTheme.gray900,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'We\'ll use it to personalise your dashboard.',
-            style: TextStyle(fontSize: 14, color: AppTheme.gray400),
+          Text(
+            l10n.nameDashboardHint,
+            style: const TextStyle(fontSize: 14, color: AppTheme.gray400),
           ),
           const SizedBox(height: 32),
           TextField(
@@ -380,9 +389,9 @@ class _NamePage extends StatelessWidget {
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => FocusScope.of(context).unfocus(),
-            decoration: const InputDecoration(
-              hintText: 'Your name',
-              prefixIcon: Icon(Icons.person_outline),
+            decoration: InputDecoration(
+              hintText: l10n.yourNameHint,
+              prefixIcon: const Icon(Icons.person_outline),
             ),
           ),
           const SizedBox(height: 24),
@@ -427,20 +436,20 @@ class _GenderPage extends StatelessWidget {
           Icon(Icons.person_search_outlined,
               size: 56, color: context.primary500),
           const SizedBox(height: 24),
-          const Text(
-            'Biological sex',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).selectGender,
+            style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
               color: AppTheme.gray900,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Used to personalise your nutrient targets\n(vitamin, mineral & calorie recommendations).',
+          Text(
+            AppLocalizations.of(context).genderTargetsNote,
             textAlign: TextAlign.center,
-            style:
-                TextStyle(fontSize: 14, color: AppTheme.gray400, height: 1.5),
+            style: const TextStyle(
+                fontSize: 14, color: AppTheme.gray400, height: 1.5),
           ),
           const SizedBox(height: 32),
           _GenderOption(
@@ -554,18 +563,18 @@ class _GoalTypePage extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 8),
-          const Text(
-            'What\'s your goal?',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).whatsYourGoal,
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
               color: AppTheme.gray900,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Choose the plan that fits your lifestyle.',
-            style: TextStyle(fontSize: 13, color: AppTheme.gray400),
+          Text(
+            AppLocalizations.of(context).goalLifestyleSubtitle,
+            style: const TextStyle(fontSize: 13, color: AppTheme.gray400),
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -734,9 +743,9 @@ class _ConfirmPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  'Your daily targets (adjust if needed)',
-                  style: TextStyle(fontSize: 13, color: AppTheme.gray400),
+                Text(
+                  AppLocalizations.of(context).dailyTargetsAdjust,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.gray400),
                 ),
               ],
             ),
@@ -757,7 +766,7 @@ class _ConfirmPage extends StatelessWidget {
                     : 3200;
             return Column(children: [
               _TargetSlider(
-                label: '🔥 Daily Calories',
+                label: AppLocalizations.of(context).sliderDailyCalories,
                 value: calories,
                 min: 1200,
                 max: 5000,
@@ -770,12 +779,12 @@ class _ConfirmPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _TargetSlider(
-                label: '🍞 Carb Limit',
+                label: AppLocalizations.of(context).sliderCarbLimit,
                 value: carbLimit,
                 min: 15,
                 max: 500,
                 step: 5,
-                unit: 'g / day',
+                unit: AppLocalizations.of(context).gramsPerDayUnit,
                 color: Colors.amber.shade700,
                 warningValue: (idealCarb * 1.3).round().clamp(20, 500),
                 dangerValue: (idealCarb * 1.6).round().clamp(30, 500),
@@ -783,12 +792,12 @@ class _ConfirmPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _TargetSlider(
-                label: '💪 Protein Target',
+                label: AppLocalizations.of(context).sliderProteinTarget,
                 value: proteinTarget,
                 min: 30,
                 max: 300,
                 step: 5,
-                unit: 'g / day',
+                unit: AppLocalizations.of(context).gramsPerDayUnit,
                 color: Colors.red.shade600,
                 warningValue: (idealProtein * 1.3).round().clamp(40, 300),
                 dangerValue: (idealProtein * 1.6).round().clamp(50, 300),
@@ -796,12 +805,12 @@ class _ConfirmPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _TargetSlider(
-                label: '🥑 Fat Target',
+                label: AppLocalizations.of(context).sliderFatTarget,
                 value: fatTarget,
                 min: 20,
                 max: 250,
                 step: 5,
-                unit: 'g / day',
+                unit: AppLocalizations.of(context).gramsPerDayUnit,
                 color: Colors.green.shade600,
                 warningValue: (idealFat * 1.3).round().clamp(25, 250),
                 dangerValue: (idealFat * 1.6).round().clamp(35, 250),
@@ -830,7 +839,8 @@ class _ConfirmPage extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Macros add up to $total kcal ($pct% of $calories kcal target)',
+                      AppLocalizations.of(context)
+                          .macrosAddUpTo(total, pct, calories),
                       style: TextStyle(
                         fontSize: 11,
                         color: goalType.color,
@@ -1144,10 +1154,10 @@ class _IcrPage extends StatelessWidget {
           const SizedBox(height: 16),
           const Text('🩺', style: TextStyle(fontSize: 48)),
           const SizedBox(height: 12),
-          const Text(
-            'Your Insulin-to-Carb Ratio',
+          Text(
+            AppLocalizations.of(context).icrTitle,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
               color: AppTheme.gray900,
@@ -1161,12 +1171,9 @@ class _IcrPage extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFF1976D2), width: 1),
             ),
-            child: const Text(
-              'Your ICR (Insulin-to-Carb Ratio) tells you how many grams of carbohydrate one unit of insulin covers.\n\n'
-              'Example: an ICR of 10 means 1 unit covers 10 g of carbs.\n\n'
-              'This value is personal and should be set by your diabetes care team. '
-              'Do NOT use a pre-set value — an incorrect ICR can cause dangerous blood sugar swings.',
-              style: TextStyle(
+            child: Text(
+              AppLocalizations.of(context).icrExplanation,
+              style: const TextStyle(
                   fontSize: 13, color: Color(0xFF1565C0), height: 1.5),
             ),
           ),
@@ -1175,10 +1182,10 @@ class _IcrPage extends StatelessWidget {
             controller: controller,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(
-              labelText: 'ICR — grams of carbs per 1 unit of insulin',
-              hintText: 'e.g. 10',
-              prefixIcon: Icon(Icons.vaccines_outlined),
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).icrFieldLabel,
+              hintText: AppLocalizations.of(context).icrExampleHint,
+              prefixIcon: const Icon(Icons.vaccines_outlined),
               suffixText: 'g / unit',
             ),
             onTapOutside: (_) => FocusScope.of(context).unfocus(),
@@ -1187,15 +1194,6 @@ class _IcrPage extends StatelessWidget {
               final parsed = double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
               onChanged(parsed);
             },
-          ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () => FocusScope.of(context).unfocus(),
-              icon: const Icon(Icons.keyboard_hide_outlined, size: 18),
-              label: Text(AppLocalizations.of(context).hideKeyboard),
-            ),
           ),
           const SizedBox(height: 28),
           SizedBox(

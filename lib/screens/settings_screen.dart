@@ -1971,8 +1971,7 @@ class _MascotPickerCardState extends ConsumerState<_MascotPickerCard> {
               children: MascotType.values.map((mt) {
                 final selected = current == mt;
                 return ChoiceChip(
-                  avatar: Text(mt.emoji, style: const TextStyle(fontSize: 16)),
-                  label: Text(_mascotLabel(mt, l10n)),
+                  label: Text('${mt.emoji}  ${_mascotLabel(mt, l10n)}'),
                   selected: selected,
                   onSelected: (_) async {
                     final updated = prefs.copyWith(mascotType: mt);

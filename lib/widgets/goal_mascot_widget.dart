@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/app_localizations.dart';
 import '../models/mascot_type.dart';
 import '../models/nutrition_goal.dart';
 import '../theme/app_theme.dart';
@@ -117,10 +118,10 @@ class _MascotStages {
           'assets/mascots/strong_gorilla.png',
         ],
         labels = const [
-          'Baby Gorilla',
-          'Growing Strong',
-          'Mighty Gorilla',
-          'Champion',
+          'gorilla_baby',
+          'gorilla_growing',
+          'gorilla_mighty',
+          'gorilla_champion',
         ],
         bgColors = const [
           Color(0xFFDCFCE7),
@@ -137,10 +138,10 @@ class _MascotStages {
           'assets/mascots/huge_tree.png',
         ],
         labels = const [
-          'Seedling',
-          'Sprouting',
-          'Growing Strong',
-          'In Full Bloom',
+          'plant_seedling',
+          'plant_sprouting',
+          'plant_growing',
+          'plant_bloom',
         ],
         bgColors = const [
           Color(0xFFF0FDF4),
@@ -157,10 +158,10 @@ class _MascotStages {
           'assets/mascots/extreme_fat_burning.png',
         ],
         labels = const [
-          'No Burn Yet',
-          'Warming Up',
-          'Fat Burning',
-          'Extreme Burn',
+          'flame_none',
+          'flame_warming',
+          'flame_burning',
+          'flame_extreme',
         ],
         bgColors = const [
           Color(0xFFFFF7ED),
@@ -177,10 +178,10 @@ class _MascotStages {
           'assets/mascots/very_healthy_sugar.PNG',
         ],
         labels = const [
-          'Sugar Overload',
-          'Too Much Sugar',
-          'Under Control',
-          'Excellent Control',
+          'sugar_overload',
+          'sugar_toomuch',
+          'sugar_control',
+          'sugar_excellent',
         ],
         bgColors = const [
           Color(0xFFFEE2E2),
@@ -284,7 +285,7 @@ class _ImageMascot extends StatelessWidget {
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             child: Text(
-              stages.labels[s],
+              AppLocalizations.of(context).mascotStageLabel(stages.labels[s]),
               key: ValueKey(s),
               textAlign: TextAlign.center,
               maxLines: 2,
@@ -299,14 +300,14 @@ class _ImageMascot extends StatelessWidget {
         ),
         if (onTap != null) ...[
           const SizedBox(height: 4),
-          const Row(
+          Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Nutrition details',
-                style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+                AppLocalizations.of(context).nutritionDetails,
+                style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
               ),
-              Icon(Icons.chevron_right, size: 12, color: Color(0xFF9CA3AF)),
+              const Icon(Icons.chevron_right, size: 12, color: Color(0xFF9CA3AF)),
             ],
           ),
         ],

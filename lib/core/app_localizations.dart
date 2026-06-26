@@ -359,6 +359,208 @@ class AppLocalizations {
         'de': 'Muskelanteil',
       });
 
+  String get nameDashboardHint => _t({
+        'en': "We'll use it to personalise your dashboard.",
+        'pl': 'Użyjemy go, aby spersonalizować Twój panel.',
+        'nl': 'We gebruiken het om je dashboard te personaliseren.',
+        'es': 'Lo usaremos para personalizar tu panel.',
+        'de': 'Wir verwenden ihn, um dein Dashboard zu personalisieren.',
+      });
+
+  String get yourNameHint => _t({
+        'en': 'Your name',
+        'pl': 'Twoje imię',
+        'nl': 'Je naam',
+        'es': 'Tu nombre',
+        'de': 'Dein Name',
+      });
+
+  String get genderTargetsNote => _t({
+        'en':
+            'Used to personalise your nutrient targets\n(vitamin, mineral & calorie recommendations).',
+        'pl':
+            'Służy do personalizacji celów odżywczych\n(witaminy, minerały i kalorie).',
+        'nl':
+            'Gebruikt om je voedingsdoelen te personaliseren\n(vitamines, mineralen en calorieën).',
+        'es':
+            'Se usa para personalizar tus objetivos nutricionales\n(vitaminas, minerales y calorías).',
+        'de':
+            'Dient zur Personalisierung deiner Nährstoffziele\n(Vitamine, Mineralstoffe und Kalorien).',
+      });
+
+  String get whatsYourGoal => _t({
+        'en': "What's your goal?",
+        'pl': 'Jaki jest Twój cel?',
+        'nl': 'Wat is je doel?',
+        'es': '¿Cuál es tu objetivo?',
+        'de': 'Was ist dein Ziel?',
+      });
+
+  String get goalLifestyleSubtitle => _t({
+        'en': 'Choose the plan that fits your lifestyle.',
+        'pl': 'Wybierz plan dopasowany do Twojego stylu życia.',
+        'nl': 'Kies het plan dat bij je leven past.',
+        'es': 'Elige el plan que se adapte a tu estilo de vida.',
+        'de': 'Wähle den Plan, der zu deinem Leben passt.',
+      });
+
+  String get dailyTargetsAdjust => _t({
+        'en': 'Your daily targets (adjust if needed)',
+        'pl': 'Twoje dzienne cele (dostosuj w razie potrzeby)',
+        'nl': 'Je dagelijkse doelen (pas aan indien nodig)',
+        'es': 'Tus objetivos diarios (ajústalos si quieres)',
+        'de': 'Deine Tagesziele (bei Bedarf anpassen)',
+      });
+
+  String get sliderDailyCalories => _t({
+        'en': '🔥 Daily Calories',
+        'pl': '🔥 Dzienne kalorie',
+        'nl': '🔥 Dagelijkse calorieën',
+        'es': '🔥 Calorías diarias',
+        'de': '🔥 Tägliche Kalorien',
+      });
+
+  String get sliderCarbLimit => _t({
+        'en': '🍞 Carb Limit',
+        'pl': '🍞 Limit węglowodanów',
+        'nl': '🍞 Koolhydraatlimiet',
+        'es': '🍞 Límite de carbohidratos',
+        'de': '🍞 Kohlenhydrat-Limit',
+      });
+
+  String get sliderProteinTarget => _t({
+        'en': '💪 Protein Target',
+        'pl': '💪 Cel białka',
+        'nl': '💪 Eiwitdoel',
+        'es': '💪 Objetivo de proteínas',
+        'de': '💪 Proteinziel',
+      });
+
+  String get sliderFatTarget => _t({
+        'en': '🥑 Fat Target',
+        'pl': '🥑 Cel tłuszczu',
+        'nl': '🥑 Vetdoel',
+        'es': '🥑 Objetivo de grasas',
+        'de': '🥑 Fettziel',
+      });
+
+  String get gramsPerDayUnit => _t({
+        'en': 'g / day',
+        'pl': 'g / dzień',
+        'nl': 'g / dag',
+        'es': 'g / día',
+        'de': 'g / Tag',
+      });
+
+  String macrosAddUpTo(int total, int pct, int target) => _t({
+        'en': 'Macros add up to $total kcal ($pct% of $target kcal target)',
+        'pl': 'Makroskładniki dają $total kcal ($pct% z celu $target kcal)',
+        'nl': "Macro's tellen op tot $total kcal ($pct% van $target kcal-doel)",
+        'es':
+            'Los macros suman $total kcal ($pct% del objetivo de $target kcal)',
+        'de': 'Makros ergeben $total kcal ($pct% des Ziels von $target kcal)',
+      });
+
+  String get icrTitle => _t({
+        'en': 'Your Insulin-to-Carb Ratio',
+        'pl': 'Twój współczynnik insulina-węglowodany',
+        'nl': 'Je insuline-koolhydraatratio',
+        'es': 'Tu ratio insulina-carbohidratos',
+        'de': 'Dein Insulin-Kohlenhydrat-Verhältnis',
+      });
+
+  String get icrExplanation => _t({
+        'en':
+            'Your ICR (Insulin-to-Carb Ratio) tells you how many grams of carbohydrate one unit of insulin covers.\n\n'
+                'Example: an ICR of 10 means 1 unit covers 10 g of carbs.\n\n'
+                'This value is personal and should be set by your diabetes care team. '
+                'Do NOT use a pre-set value — an incorrect ICR can cause dangerous blood sugar swings.',
+        'pl':
+            'Twój WWcW (współczynnik insulina-węglowodany) mówi, ile gramów węglowodanów pokrywa jedna jednostka insuliny.\n\n'
+                'Przykład: WWcW równy 10 oznacza, że 1 jednostka pokrywa 10 g węglowodanów.\n\n'
+                'Ta wartość jest indywidualna i powinna być ustalona przez Twój zespół diabetologiczny. '
+                'NIE używaj wartości domyślnej — błędny współczynnik może powodować groźne wahania cukru.',
+        'nl':
+            'Je ICR (insuline-koolhydraatratio) geeft aan hoeveel gram koolhydraten één eenheid insuline dekt.\n\n'
+                'Voorbeeld: een ICR van 10 betekent dat 1 eenheid 10 g koolhydraten dekt.\n\n'
+                'Deze waarde is persoonlijk en moet door je diabetesteam worden ingesteld. '
+                'Gebruik GEEN vooraf ingestelde waarde — een onjuiste ICR kan gevaarlijke bloedsuikerschommelingen veroorzaken.',
+        'es':
+            'Tu ICR (ratio insulina-carbohidratos) indica cuántos gramos de carbohidratos cubre una unidad de insulina.\n\n'
+                'Ejemplo: un ICR de 10 significa que 1 unidad cubre 10 g de carbohidratos.\n\n'
+                'Este valor es personal y debe establecerlo tu equipo médico de diabetes. '
+                'NO uses un valor predefinido: un ICR incorrecto puede causar variaciones peligrosas de azúcar en sangre.',
+        'de':
+            'Dein KE-Faktor (Insulin-Kohlenhydrat-Verhältnis) gibt an, wie viele Gramm Kohlenhydrate eine Einheit Insulin abdeckt.\n\n'
+                'Beispiel: Ein ICR von 10 bedeutet, dass 1 Einheit 10 g Kohlenhydrate abdeckt.\n\n'
+                'Dieser Wert ist persönlich und sollte von deinem Diabetes-Team festgelegt werden. '
+                'Verwende KEINEN voreingestellten Wert — ein falscher ICR kann gefährliche Blutzuckerschwankungen verursachen.',
+      });
+
+  String get icrFieldLabel => _t({
+        'en': 'ICR — grams of carbs per 1 unit of insulin',
+        'pl': 'WWcW — gramy węglowodanów na 1 jednostkę insuliny',
+        'nl': 'ICR — gram koolhydraten per 1 eenheid insuline',
+        'es': 'ICR — gramos de carbohidratos por 1 unidad de insulina',
+        'de': 'ICR — Gramm Kohlenhydrate pro 1 Einheit Insulin',
+      });
+
+  String get icrExampleHint => _t({
+        'en': 'e.g. 10',
+        'pl': 'np. 10',
+        'nl': 'bv. 10',
+        'es': 'p. ej. 10',
+        'de': 'z. B. 10',
+      });
+
+  /// Localized mascot evolution-stage label shown under the home mascot.
+  /// [key] is a stable stage key defined in goal_mascot_widget.dart.
+  String mascotStageLabel(String key) {
+    switch (key) {
+      case 'gorilla_baby':
+        return _t({'en': 'Baby Gorilla', 'pl': 'Mały goryl', 'nl': 'Babygorilla', 'es': 'Gorila bebé', 'de': 'Baby-Gorilla'});
+      case 'gorilla_growing':
+      case 'plant_growing':
+        return _t({'en': 'Growing Strong', 'pl': 'Rośnie w siłę', 'nl': 'Wordt sterker', 'es': 'Creciendo fuerte', 'de': 'Wird stärker'});
+      case 'gorilla_mighty':
+        return _t({'en': 'Mighty Gorilla', 'pl': 'Potężny goryl', 'nl': 'Machtige gorilla', 'es': 'Gorila poderoso', 'de': 'Mächtiger Gorilla'});
+      case 'gorilla_champion':
+        return _t({'en': 'Champion', 'pl': 'Mistrz', 'nl': 'Kampioen', 'es': 'Campeón', 'de': 'Champion'});
+      case 'plant_seedling':
+        return _t({'en': 'Seedling', 'pl': 'Sadzonka', 'nl': 'Zaailing', 'es': 'Plántula', 'de': 'Sämling'});
+      case 'plant_sprouting':
+        return _t({'en': 'Sprouting', 'pl': 'Kiełkowanie', 'nl': 'Ontkiemend', 'es': 'Brotando', 'de': 'Keimt'});
+      case 'plant_bloom':
+        return _t({'en': 'In Full Bloom', 'pl': 'W pełnym rozkwicie', 'nl': 'In volle bloei', 'es': 'En plena floración', 'de': 'In voller Blüte'});
+      case 'flame_none':
+        return _t({'en': 'No Burn Yet', 'pl': 'Brak spalania', 'nl': 'Nog geen verbranding', 'es': 'Sin quema aún', 'de': 'Noch keine Verbrennung'});
+      case 'flame_warming':
+        return _t({'en': 'Warming Up', 'pl': 'Rozgrzewka', 'nl': 'Opwarmen', 'es': 'Calentando', 'de': 'Aufwärmen'});
+      case 'flame_burning':
+        return _t({'en': 'Fat Burning', 'pl': 'Spalanie tłuszczu', 'nl': 'Vetverbranding', 'es': 'Quema de grasa', 'de': 'Fettverbrennung'});
+      case 'flame_extreme':
+        return _t({'en': 'Extreme Burn', 'pl': 'Ekstremalne spalanie', 'nl': 'Extreme verbranding', 'es': 'Quema extrema', 'de': 'Extreme Verbrennung'});
+      case 'sugar_overload':
+        return _t({'en': 'Sugar Overload', 'pl': 'Przeładowanie cukrem', 'nl': 'Suikeroverbelasting', 'es': 'Sobrecarga de azúcar', 'de': 'Zuckerüberladung'});
+      case 'sugar_toomuch':
+        return _t({'en': 'Too Much Sugar', 'pl': 'Za dużo cukru', 'nl': 'Te veel suiker', 'es': 'Demasiado azúcar', 'de': 'Zu viel Zucker'});
+      case 'sugar_control':
+        return _t({'en': 'Under Control', 'pl': 'Pod kontrolą', 'nl': 'Onder controle', 'es': 'Bajo control', 'de': 'Unter Kontrolle'});
+      case 'sugar_excellent':
+        return _t({'en': 'Excellent Control', 'pl': 'Doskonała kontrola', 'nl': 'Uitstekende controle', 'es': 'Control excelente', 'de': 'Ausgezeichnete Kontrolle'});
+      default:
+        return key;
+    }
+  }
+
+  String get nutritionDetails => _t({
+        'en': 'Nutrition details',
+        'pl': 'Szczegóły żywieniowe',
+        'nl': 'Voedingsdetails',
+        'es': 'Detalles nutricionales',
+        'de': 'Nährwertdetails',
+      });
+
   String get bodyProfileEstimateNote => _t({
         'en':
             'Calories use weight, height, biological sex and muscle amount as a starting estimate, then should be refined from your real weight trend.',
