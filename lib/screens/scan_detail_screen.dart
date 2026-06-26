@@ -425,7 +425,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
               child: Text(
                 'Tap to edit  •  Long-press for ground truth  •  Swipe ← to remove',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: AppTheme.gray400),
+                style: TextStyle(fontSize: 11, color: context.appMutedTextColor),
               ),
             ),
 
@@ -531,7 +531,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'Full 4×4 transform stored for geometry reconstruction',
-                      style: TextStyle(fontSize: 11, color: AppTheme.gray400),
+                      style: TextStyle(fontSize: 11, color: context.appMutedTextColor),
                     ),
                   ],
                 ),
@@ -750,7 +750,8 @@ class _InfoRow extends StatelessWidget {
           SizedBox(
             width: 100,
             child: Text(label,
-                style: const TextStyle(fontSize: 12, color: AppTheme.gray400)),
+                style:
+                    TextStyle(fontSize: 12, color: context.appMutedTextColor)),
           ),
           Expanded(
             child: Text(
@@ -866,9 +867,9 @@ class _FoodDetailCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           '${grams.toStringAsFixed(0)} g  •  ${food.volumeCm3.toStringAsFixed(1)} cm³',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppTheme.gray400,
+                            color: context.appMutedTextColor,
                           ),
                         ),
                         if (score != null) ...[
@@ -906,9 +907,9 @@ class _FoodDetailCard extends StatelessWidget {
                       ),
                       Text(
                         '± ${margin.round()}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: AppTheme.gray400,
+                          color: context.appMutedTextColor,
                         ),
                       ),
                     ],
@@ -923,7 +924,7 @@ class _FoodDetailCard extends StatelessWidget {
                 children: [
                   Text(
                     '${food.caloriesMin.round()}',
-                    style: TextStyle(fontSize: 10, color: AppTheme.gray400),
+                    style: TextStyle(fontSize: 10, color: context.appMutedTextColor),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -969,7 +970,7 @@ class _FoodDetailCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     '${food.caloriesMax.round()}',
-                    style: TextStyle(fontSize: 10, color: AppTheme.gray400),
+                    style: TextStyle(fontSize: 10, color: context.appMutedTextColor),
                   ),
                 ],
               ),
@@ -997,7 +998,7 @@ class _RangeRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 13, color: AppTheme.gray400)),
+            style: TextStyle(fontSize: 13, color: context.appMutedTextColor)),
         Text(
           value,
           style: TextStyle(
@@ -1032,7 +1033,7 @@ class _MissingScanMediaCard extends StatelessWidget {
           Icon(
             hasModel ? Icons.view_in_ar : Icons.image_not_supported_outlined,
             size: 34,
-            color: AppTheme.gray400,
+            color: context.appMutedTextColor,
           ),
           const SizedBox(height: 10),
           Text(

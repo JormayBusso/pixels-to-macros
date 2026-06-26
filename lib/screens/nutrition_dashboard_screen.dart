@@ -296,9 +296,9 @@ class NutritionDashboardScreen extends ConsumerWidget {
                     '(NASEM / NIH, updated 2024–2025). Micronutrient values are estimated '
                     'from USDA FoodData Central averages. For personalised advice, consult '
                     'a registered dietitian.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppTheme.gray400,
+                      color: context.appMutedTextColor,
                       fontStyle: FontStyle.italic,
                     ),
                     textAlign: TextAlign.center,
@@ -372,8 +372,8 @@ class _GoalContextNote extends StatelessWidget {
           Expanded(
             child: Text(
               note,
-              style:
-                  TextStyle(fontSize: 12, color: AppTheme.gray400, height: 1.4),
+              style: TextStyle(
+                  fontSize: 12, color: context.appMutedTextColor, height: 1.4),
             ),
           ),
         ],
@@ -466,8 +466,8 @@ class _SummaryCard extends StatelessWidget {
                   ),
                   Text(
                     'of $calorieGoal kcal goal',
-                    style:
-                        const TextStyle(fontSize: 12, color: AppTheme.gray400),
+                    style: TextStyle(
+                        fontSize: 12, color: context.appMutedTextColor),
                   ),
                 ],
               ),
@@ -485,7 +485,8 @@ class _SummaryCard extends StatelessWidget {
                 ),
                 Text(
                   '$scanCount scan${scanCount == 1 ? '' : 's'} today',
-                  style: const TextStyle(fontSize: 11, color: AppTheme.gray400),
+                  style: TextStyle(
+                      fontSize: 11, color: context.appMutedTextColor),
                 ),
               ],
             ),
@@ -828,7 +829,7 @@ class _NutrientRowState extends State<_NutrientRow> {
                   Icon(
                     _expanded ? Icons.expand_less : Icons.expand_more,
                     size: 16,
-                    color: AppTheme.gray400,
+                    color: context.appMutedTextColor,
                   ),
                 ],
               ],
@@ -879,9 +880,9 @@ class _NutrientDetailPanel extends StatelessWidget {
           children: [
             Text(
               info.description,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: AppTheme.gray600,
+                color: context.appMutedTextColor,
                 height: 1.5,
               ),
             ),

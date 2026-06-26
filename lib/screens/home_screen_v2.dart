@@ -374,7 +374,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   SizedBox(height: 16),
                   Text(
                     'Loading your data…',
-                    style: TextStyle(color: AppTheme.gray400),
+                    style: TextStyle(color: context.appMutedTextColor),
                   ),
                 ],
               ),
@@ -470,9 +470,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 4),
                     Text(
                       _todayLabel(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: AppTheme.gray400,
+                        color: context.appMutedTextColor,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -589,12 +589,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     color: context.primary400, size: 20),
                               ),
                               const SizedBox(width: 12),
-                              const Expanded(
+                              Expanded(
                                 child: Text(
                                   'No food logged yet today.\nScan or add food to start tracking!',
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: AppTheme.gray400,
+                                    color: context.appMutedTextColor,
                                     height: 1.4,
                                   ),
                                 ),
@@ -777,7 +777,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   'No scans yet — tap Scan to start!',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: AppTheme.gray400,
+                                    color: context.appMutedTextColor,
                                   ),
                                 ),
                               ],
@@ -854,9 +854,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                               subtitle: Text(
                                 _timeAgo(scan.timestamp),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
-                                  color: AppTheme.gray400,
+                                  color: context.appMutedTextColor,
                                 ),
                               ),
                               trailing: Text(
@@ -1274,10 +1274,10 @@ class _SelectableSectionHeader extends StatelessWidget {
           InkWell(
             onTap: onEnterSelection,
             borderRadius: BorderRadius.circular(20),
-            child: const Padding(
-              padding: EdgeInsets.all(4),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
               child: Icon(Icons.check_circle_outline,
-                  size: 20, color: AppTheme.gray400),
+                  size: 20, color: context.appMutedTextColor),
             ),
           ),
         ],
@@ -1461,7 +1461,8 @@ class _MacroRow extends StatelessWidget {
         Row(
           children: [
             Text(label,
-                style: const TextStyle(fontSize: 11, color: AppTheme.gray600)),
+                style:
+                    TextStyle(fontSize: 11, color: context.appMutedTextColor)),
             const Spacer(),
             Text(
               '$current / $target $unit',
@@ -1824,9 +1825,9 @@ class _HydrationCard extends ConsumerWidget {
                 label: '${(tempGoal / 1000).toStringAsFixed(1)} L',
                 onChanged: (v) => setDialogState(() => tempGoal = v.round()),
               ),
-              const Text(
+              Text(
                 'Min 2.0 L · Max 3.5 L',
-                style: TextStyle(fontSize: 11, color: AppTheme.gray400),
+                style: TextStyle(fontSize: 11, color: context.appMutedTextColor),
               ),
             ],
           ),

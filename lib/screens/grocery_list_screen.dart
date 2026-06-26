@@ -942,23 +942,24 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
                         // Suggestions list
                         if (suggestions.isEmpty) ...[
-                          const Center(
+                          Center(
                             child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: 24),
+                              padding: const EdgeInsets.symmetric(vertical: 24),
                               child: Column(
                                 children: [
-                                  Icon(Icons.history_outlined,
+                                  const Icon(Icons.history_outlined,
                                       size: 40, color: AppTheme.gray300),
-                                  SizedBox(height: 8),
+                                  const SizedBox(height: 8),
                                   Text('No meal history yet',
                                       style: TextStyle(
                                           fontWeight: FontWeight.w600,
-                                          color: AppTheme.gray400)),
+                                          color: context.appMutedTextColor)),
                                   SizedBox(height: 4),
                                   Text(
                                     'Scan a meal first to get personalised suggestions.',
                                     style: TextStyle(
-                                        fontSize: 12, color: AppTheme.gray400),
+                                        fontSize: 12,
+                                        color: context.appMutedTextColor),
                                     textAlign: TextAlign.center,
                                   ),
                                 ],
@@ -991,8 +992,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                   style: const TextStyle(fontSize: 14)),
                               subtitle: Text(
                                   '${item.category} • suggested qty: ${item.suggestedQty}',
-                                  style: const TextStyle(
-                                      fontSize: 11, color: AppTheme.gray400)),
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: context.appMutedTextColor)),
                               onChanged: (v) => setSheetState(() {
                                 if (v == true)
                                   selected.add(idx);
@@ -1126,8 +1128,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                           size: 64, color: AppTheme.gray300),
                       const SizedBox(height: 16),
                       Text('Your ${l10n.groceryList.toLowerCase()} is empty',
-                          style:
-                              TextStyle(fontSize: 16, color: AppTheme.gray400)),
+                          style: TextStyle(
+                              fontSize: 16, color: context.appMutedTextColor)),
                       const SizedBox(height: 16),
                       Column(
                         mainAxisSize: MainAxisSize.min,
@@ -1195,7 +1197,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                     ],
                     if (checked.isNotEmpty) ...[
                       _SectionLabel('Purchased (${checked.length})',
-                          color: AppTheme.gray400),
+                          color: context.appMutedTextColor),
                       ...checked.map((item) => _GroceryTile(
                             item: item,
                             onToggle: () => ref

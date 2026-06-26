@@ -428,7 +428,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
             Text(
               '${food.kcalPer100g.round()} kcal  •  ${food.proteinPer100g.round()} g protein  •  '
               '${food.carbsPer100g.round()} g carbs  •  ${food.fatPer100g.round()} g fat',
-              style: const TextStyle(fontSize: 12, color: AppTheme.gray600),
+              style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
             ),
             const SizedBox(height: 16),
             // ── Health score bar ──────────────────────────────────────
@@ -436,17 +436,17 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
               children: [
                 Text(
                   l10n.foodScoreTitle('needsBalancing'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AppTheme.gray400,
+                    color: context.appMutedTextColor,
                   ),
                 ),
                 const Spacer(),
                 Text(
                   l10n.foodScoreTitle('excellentFit'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AppTheme.gray400,
+                    color: context.appMutedTextColor,
                   ),
                 ),
               ],
@@ -733,9 +733,9 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                                     children: [
                                       Text(
                                         '${food.kcalPer100g.round()} kcal / ${food.unitLabel}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
-                                          color: AppTheme.gray400,
+                                          color: context.appMutedTextColor,
                                         ),
                                       ),
                                       if (restrictionMatches.isNotEmpty)
@@ -1263,13 +1263,13 @@ class _MealsTab extends ConsumerWidget {
                 size: 56, color: AppTheme.gray300),
             const SizedBox(height: 12),
             Text(AppLocalizations.of(context).noSavedMeals,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.gray400)),
+                    color: context.appMutedTextColor)),
             const SizedBox(height: 6),
             Text(AppLocalizations.of(context).createMealDesc,
-                style: const TextStyle(color: AppTheme.gray400)),
+                style: TextStyle(color: context.appMutedTextColor)),
             const SizedBox(height: 20),
             FilledButton.icon(
               icon: const Icon(Icons.add),
@@ -1297,14 +1297,15 @@ class _MealsTab extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
         child: Row(
           children: [
-            Icon(_mealTypeIcon(type), size: 16, color: AppTheme.gray400),
+            Icon(_mealTypeIcon(type),
+                size: 16, color: context.appMutedTextColor),
             const SizedBox(width: 6),
             Text(
               type.displayName,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.gray400,
+                  color: context.appMutedTextColor,
                   letterSpacing: 0.5),
             ),
           ],
