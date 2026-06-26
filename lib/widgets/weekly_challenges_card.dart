@@ -137,7 +137,7 @@ class StreakFreezeIndicator extends ConsumerWidget {
             Icon(
               Icons.ac_unit,
               size: 14,
-              color: freeze.remaining > 0 ? Colors.blue : AppTheme.gray400,
+              color: freeze.remaining > 0 ? Colors.blue : context.appMutedTextColor,
             ),
             const SizedBox(width: 3),
             Text(
@@ -145,7 +145,7 @@ class StreakFreezeIndicator extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: freeze.remaining > 0 ? Colors.blue : AppTheme.gray400,
+                color: freeze.remaining > 0 ? Colors.blue : context.appMutedTextColor,
               ),
             ),
           ],

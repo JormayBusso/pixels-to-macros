@@ -1419,7 +1419,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                                         fontWeight: FontWeight.w600,
                                         color: selected
                                             ? context.primary700
-                                            : AppTheme.gray600,
+                                            : context.appMutedTextColor,
                                       ),
                                     ),
                                   );
