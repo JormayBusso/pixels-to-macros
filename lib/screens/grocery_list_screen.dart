@@ -156,6 +156,91 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     );
   }
 
+  void _editItem(GroceryItem item) {
+    final l10n = AppLocalizations.of(context);
+    final nameCtrl = TextEditingController(text: item.name);
+    final qtyCtrl = TextEditingController(
+        text: item.quantity > 0 ? item.quantity.toString() : '');
+    final unitCtrl = TextEditingController(text: item.unit ?? '');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.appSurfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.editGroceryItem,
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: l10n.itemName,
+                prefixIcon: const Icon(Icons.shopping_basket_outlined),
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: qtyCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: l10n.quantityLabel,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: unitCtrl,
+                    decoration: InputDecoration(
+                      labelText: l10n.unitOptional,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  final newName = nameCtrl.text.trim();
+                  if (newName.isEmpty) return;
+                  final qty =
+                      int.tryParse(qtyCtrl.text.trim()) ?? item.quantity;
+                  ref.read(groceryProvider.notifier).updateItem(
+                        item,
+                        name: newName,
+                        quantity: qty,
+                        unit: unitCtrl.text.trim(),
+                      );
+                  Navigator.of(ctx).pop();
+                },
+                child: Text(l10n.save),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Smart suggestions ─────────────────────────────────────────────────────
 
   /// Scan a photo of the user's fridge/pantry and check off matching grocery items.
@@ -1193,6 +1278,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                             onDelete: () => ref
                                 .read(groceryProvider.notifier)
                                 .deleteItem(item),
+                            onEdit: () => _editItem(item),
                           )),
                     ],
                     if (checked.isNotEmpty) ...[
@@ -1206,6 +1292,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                             onDelete: () => ref
                                 .read(groceryProvider.notifier)
                                 .deleteItem(item),
+                            onEdit: () => _editItem(item),
                           )),
                     ],
                   ],
@@ -1262,11 +1349,13 @@ class _GroceryTile extends StatelessWidget {
     required this.item,
     required this.onToggle,
     required this.onDelete,
+    required this.onEdit,
   });
 
   final GroceryItem item;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -1281,6 +1370,7 @@ class _GroceryTile extends StatelessWidget {
       ),
       onDismissed: (_) => onDelete(),
       child: ListTile(
+        onTap: onEdit,
         leading: Checkbox(
           value: item.checked,
           onChanged: (_) => onToggle(),

@@ -145,10 +145,14 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        toolbarHeight: 72,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(l10n.weeklyMealPlanner,
+                maxLines: 2,
+                softWrap: true,
                 style:
                     const TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
             Text(
@@ -1846,12 +1850,14 @@ class _PickRecipeSheetState extends State<_PickRecipeSheet> {
                   Text(widget.mealType.emoji,
                       style: const TextStyle(fontSize: 22)),
                   const SizedBox(width: 8),
-                  Text(
-                      l10n.pickRecipe(
-                        _localizedMealTypeLabel(l10n, widget.mealType),
-                      ),
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w700)),
+                  Expanded(
+                    child: Text(
+                        l10n.pickRecipe(
+                          _localizedMealTypeLabel(l10n, widget.mealType),
+                        ),
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w700)),
+                  ),
                 ],
               ),
             ),

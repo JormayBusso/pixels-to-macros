@@ -70,6 +70,26 @@ class GroceryNotifier extends StateNotifier<GroceryState> {
     await load();
   }
 
+  /// Edit an existing item's name, quantity and unit.
+  Future<void> updateItem(
+    GroceryItem item, {
+    required String name,
+    required int quantity,
+    String? unit,
+  }) async {
+    final updated = GroceryItem(
+      id: item.id,
+      name: name,
+      category: item.category,
+      quantity: quantity,
+      unit: (unit != null && unit.trim().isEmpty) ? null : unit,
+      checked: item.checked,
+      createdAt: item.createdAt,
+    );
+    await DatabaseService.instance.updateGroceryItem(updated);
+    await load();
+  }
+
   Future<void> deleteItem(GroceryItem item) async {
     if (item.id != null) {
       await DatabaseService.instance.deleteGroceryItem(item.id!);

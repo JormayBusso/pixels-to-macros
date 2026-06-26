@@ -217,9 +217,9 @@ class AppLocalizations {
       });
 
   String get groceryList => _t({
-        'en': 'Grocery',
+        'en': 'Groceries',
         'pl': 'Zakupy',
-        'nl': 'Boodschap',
+        'nl': 'Boodschappen',
         'es': 'Compras',
         'de': 'Einkäufe',
       });
@@ -1861,6 +1861,38 @@ class AppLocalizations {
 
   // ── Grocery ──
 
+  String get editGroceryItem => _t({
+        'en': 'Edit item',
+        'pl': 'Edytuj pozycję',
+        'nl': 'Item bewerken',
+        'es': 'Editar artículo',
+        'de': 'Artikel bearbeiten',
+      });
+
+  String get itemName => _t({
+        'en': 'Item name',
+        'pl': 'Nazwa pozycji',
+        'nl': 'Itemnaam',
+        'es': 'Nombre del artículo',
+        'de': 'Artikelname',
+      });
+
+  String get quantityLabel => _t({
+        'en': 'Quantity',
+        'pl': 'Ilość',
+        'nl': 'Aantal',
+        'es': 'Cantidad',
+        'de': 'Menge',
+      });
+
+  String get unitOptional => _t({
+        'en': 'Unit (optional)',
+        'pl': 'Jednostka (opcjonalnie)',
+        'nl': 'Eenheid (optioneel)',
+        'es': 'Unidad (opcional)',
+        'de': 'Einheit (optional)',
+      });
+
   String get weeklyGroceryList => _t({
         'en': 'Weekly Grocery List',
         'pl': 'Tygodniowa lista zakupów',
@@ -3047,10 +3079,10 @@ class AppLocalizations {
       });
 
   String pickRecipe(String meal) => _t({
-        'en': 'Pick a $meal Recipe',
-        'pl': 'Wybierz przepis na $meal',
-        'nl': 'Kies een $meal recept',
-        'es': 'Elige una receta de $meal',
+        'en': 'Pick a ${meal.toLowerCase()} recipe',
+        'pl': 'Wybierz przepis na ${meal.toLowerCase()}',
+        'nl': 'Kies een ${meal.toLowerCase()} recept',
+        'es': 'Elige una receta de ${meal.toLowerCase()}',
         'de': 'Wähle ein $meal-Rezept',
       });
 
