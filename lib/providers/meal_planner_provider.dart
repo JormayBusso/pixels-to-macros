@@ -167,6 +167,12 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
   }
 
   /// Re-roll the recipe for an already-enabled slot.
+  ///
+  /// The shuffle button is meant to let the user browse the WHOLE pool of
+  /// goal- and allergy-valid recipes for that meal, so it deliberately does
+  /// not restrict itself to dishes that are unused elsewhere in the week and
+  /// it picks at random (rather than the single deterministic "best" swap).
+  /// Portions are re-tuned afterwards to keep the day near the calorie goal.
   Future<void> shuffleSlot(
     int dayOfWeek,
     RecipeMealType mealType,
@@ -177,12 +183,13 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
   }) async {
     await _assignRecipe(dayOfWeek, mealType, goal,
         forceNew: true,
+        avoidWeekDuplicates: false,
         dailyCalorieGoal: dailyCalorieGoal,
         dietaryRestrictions: dietaryRestrictions,
         pantryNames: pantryNames,
-        swapIntent: pantryNames.isEmpty
-            ? SmartSwapIntent.balanced
-            : SmartSwapIntent.pantryFirst);
+        // Pantry mode still biases toward pantry items; otherwise pick a
+        // fully random dish from the entire eligible pool.
+        swapIntent: pantryNames.isEmpty ? null : SmartSwapIntent.pantryFirst);
     await _autoTuneDayCalories(dayOfWeek, goal, dailyCalorieGoal);
   }
 
@@ -336,6 +343,7 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     RecipeMealType mealType,
     NutritionGoalType goal, {
     required bool forceNew,
+    bool avoidWeekDuplicates = true,
     int dailyCalorieGoal = 0,
     Set<DietaryRestriction> dietaryRestrictions = const <DietaryRestriction>{},
     Set<String> pantryNames = const <String>{},
@@ -355,12 +363,20 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
 
     if (candidates.isEmpty) return;
 
-    // Avoid already-assigned recipes across the whole week when possible
     final usedIds = state.assignments.values.map((r) => r.id).toSet();
-    final fresh = candidates.where((r) => !usedIds.contains(r.id)).toList();
-    var pool = (fresh.isNotEmpty && (forceNew || currentId == null))
-        ? fresh
-        : candidates;
+    List<Recipe> pool;
+    if (avoidWeekDuplicates) {
+      // Bulk auto-fill: prefer dishes not already used elsewhere this week so
+      // the generated plan has variety, falling back to all if exhausted.
+      final fresh = candidates.where((r) => !usedIds.contains(r.id)).toList();
+      pool = (fresh.isNotEmpty && (forceNew || currentId == null))
+          ? fresh
+          : candidates;
+    } else {
+      // Single-slot shuffle: cycle the FULL pool of goal/allergy-valid recipes
+      // for this meal, not just the ones unused on other days.
+      pool = List<Recipe>.from(candidates);
+    }
     if (forceNew && currentId != null) {
       final withoutCurrent = pool.where((r) => r.id != currentId).toList();
       if (withoutCurrent.isNotEmpty) pool = withoutCurrent;
@@ -368,8 +384,10 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
 
     // ── Calorie-budget filtering ──────────────────────────────────────────
     // If the caller provided a daily calorie goal, pick a recipe that keeps
-    // the day's total close to the target.
-    if (dailyCalorieGoal > 0) {
+    // the day's total close to the target. Skipped for manual single-slot
+    // shuffles so the user can browse every dish; _autoTuneDayCalories then
+    // rescales portions to hit the goal.
+    if (dailyCalorieGoal > 0 && avoidWeekDuplicates) {
       // Sum calories already assigned for this day
       int usedCalories = 0;
       for (final mt in RecipeMealType.values) {
