@@ -191,6 +191,12 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     await update(prefs);
   }
 
+  Future<void> setPremiumUnlocked(bool unlocked) async {
+    if (state.premiumUnlocked == unlocked) return;
+    final prefs = state.copyWith(premiumUnlocked: unlocked);
+    await update(prefs);
+  }
+
   Future<UserPreferences> _normaliseDailyHydration(
     UserPreferences prefs,
   ) async {

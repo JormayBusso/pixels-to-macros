@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/earned_badge.dart';
 import '../models/food_data.dart';
 import '../models/nutrient_data.dart';
 import '../models/nutrition_goal.dart';
@@ -236,6 +237,36 @@ class WeeklyBadgeService {
       badges: badges,
     );
   }
+
+  /// Compute last week's badges and persist any newly earned ones to the
+  /// all-time collection, returning the recap for display. Awarding is
+  /// idempotent (one row per badge per week).
+  Future<WeeklyBadgeRecap> evaluateAndAward({
+    required UserPreferences prefs,
+  }) async {
+    final recap = await buildPreviousWeekRecap(prefs: prefs);
+    if (recap.badges.isNotEmpty) {
+      final weekKey = _dateKey(recap.previousWeekStart);
+      final now = DateTime.now();
+      await DatabaseService.instance.awardBadges(
+        recap.badges
+            .map(
+              (badge) => EarnedBadge(
+                badgeId: badge.id,
+                weekKey: weekKey,
+                metric: badge.metric,
+                earnedAt: now,
+              ),
+            )
+            .toList(),
+      );
+    }
+    return recap;
+  }
+
+  /// The user's all-time earned badges, newest first.
+  Future<List<EarnedBadge>> earnedBadges() =>
+      DatabaseService.instance.getEarnedBadges();
 
   Future<FoodData?> _foodFor(
     DetectedFood food,

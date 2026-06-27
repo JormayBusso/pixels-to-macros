@@ -95,6 +95,9 @@ class UserPreferences {
   /// Current-week key, formatted yyyy-mm-dd for that week's Monday, already recapped.
   final String lastWeeklyBadgeRecapWeek;
 
+  /// Whether the user has unlocked the premium theme pack via in-app purchase.
+  final bool premiumUnlocked;
+
   const UserPreferences({
     this.id,
     this.name = '',
@@ -125,6 +128,7 @@ class UserPreferences {
     this.lastSeenHistoryScanId = 0,
     this.weeklyBadgeRecapEnabled = true,
     this.lastWeeklyBadgeRecapWeek = '',
+    this.premiumUnlocked = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -159,6 +163,7 @@ class UserPreferences {
       'last_seen_history_scan_id': lastSeenHistoryScanId,
       'weekly_badge_recap_enabled': weeklyBadgeRecapEnabled ? 1 : 0,
       'last_weekly_badge_recap_week': lastWeeklyBadgeRecapWeek,
+      'premium_unlocked': premiumUnlocked ? 1 : 0,
     };
   }
 
@@ -201,6 +206,7 @@ class UserPreferences {
       weeklyBadgeRecapEnabled: (map['weekly_badge_recap_enabled'] as int?) != 0,
       lastWeeklyBadgeRecapWeek:
           map['last_weekly_badge_recap_week'] as String? ?? '',
+      premiumUnlocked: (map['premium_unlocked'] as int?) == 1,
     );
   }
 
@@ -233,6 +239,7 @@ class UserPreferences {
     int? lastSeenHistoryScanId,
     bool? weeklyBadgeRecapEnabled,
     String? lastWeeklyBadgeRecapWeek,
+    bool? premiumUnlocked,
   }) {
     return UserPreferences(
       id: id,
@@ -269,6 +276,7 @@ class UserPreferences {
           weeklyBadgeRecapEnabled ?? this.weeklyBadgeRecapEnabled,
       lastWeeklyBadgeRecapWeek:
           lastWeeklyBadgeRecapWeek ?? this.lastWeeklyBadgeRecapWeek,
+      premiumUnlocked: premiumUnlocked ?? this.premiumUnlocked,
     );
   }
 }

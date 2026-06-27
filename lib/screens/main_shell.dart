@@ -121,12 +121,16 @@ class _MainShellState extends ConsumerState<MainShell>
       _checkedWeeklyBadgeRecap = true;
 
       final prefs = ref.read(userPrefsProvider);
-      if (!prefs.onboardingComplete || !prefs.weeklyBadgeRecapEnabled) return;
+      if (!prefs.onboardingComplete) return;
 
-      final recap = await WeeklyBadgeService.instance.buildPreviousWeekRecap(
+      // Always evaluate + persist last week's badges to the all-time
+      // collection (idempotent), independent of the recap-sheet toggle.
+      final recap = await WeeklyBadgeService.instance.evaluateAndAward(
         prefs: prefs,
       );
       if (!mounted) return;
+
+      if (!prefs.weeklyBadgeRecapEnabled) return;
 
       final latestPrefs = ref.read(userPrefsProvider);
       if (latestPrefs.lastWeeklyBadgeRecapWeek == recap.currentWeekKey) return;

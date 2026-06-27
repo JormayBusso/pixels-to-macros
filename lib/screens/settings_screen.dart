@@ -23,6 +23,7 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
+import '../widgets/premium_paywall_sheet.dart';
 import '../widgets/premium_theme_effects.dart';
 import '../widgets/tour_keys.dart';
 import 'auth_screen.dart';
@@ -1969,8 +1970,18 @@ class _ThemeColorPickerCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(userPrefsProvider);
     final current = prefs.themeColorSeed;
+    final premiumUnlocked = prefs.premiumUnlocked;
     final premiumSeeds = AppColorSeed.values.where((seed) => seed.isPremium);
     final standardSeeds = AppColorSeed.values.where((seed) => !seed.isPremium);
+
+    Future<void> selectSeed(AppColorSeed seed) async {
+      if (seed.isPremium && !prefs.premiumUnlocked) {
+        await showPremiumPaywall(context, selectSeedOnUnlock: seed);
+        return;
+      }
+      final updated = prefs.copyWith(themeColorSeed: seed);
+      await ref.read(userPrefsProvider.notifier).update(updated);
+    }
 
     return Card(
       child: Padding(
@@ -2001,13 +2012,8 @@ class _ThemeColorPickerCard extends ConsumerWidget {
                         child: _ThemePreviewTile(
                           seed: seed,
                           selected: current == seed,
-                          onTap: () async {
-                            final updated =
-                                prefs.copyWith(themeColorSeed: seed);
-                            await ref
-                                .read(userPrefsProvider.notifier)
-                                .update(updated);
-                          },
+                          locked: seed.isPremium && !premiumUnlocked,
+                          onTap: () => selectSeed(seed),
                         ),
                       );
                     }).toList(),
@@ -2076,10 +2082,12 @@ class _ThemePreviewTile extends StatefulWidget {
     required this.seed,
     required this.selected,
     required this.onTap,
+    this.locked = false,
   });
 
   final AppColorSeed seed;
   final bool selected;
+  final bool locked;
   final VoidCallback onTap;
 
   @override
@@ -2282,25 +2290,40 @@ class _ThemePreviewTileState extends State<_ThemePreviewTile>
                     ),
                   ),
                   const SizedBox(width: 6),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: selected ? seed.color : Colors.transparent,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: selected
-                            ? seed.color
-                            : (premium
-                                ? Colors.white.withValues(alpha: 0.24)
-                                : AppTheme.gray300),
+                  if (widget.locked)
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.28),
+                        shape: BoxShape.circle,
+                        border:
+                            Border.all(color: Colors.white.withValues(alpha: 0.5)),
                       ),
+                      child: const Icon(Icons.lock_outline,
+                          color: Colors.white, size: 13),
+                    )
+                  else
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: selected ? seed.color : Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: selected
+                              ? seed.color
+                              : (premium
+                                  ? Colors.white.withValues(alpha: 0.24)
+                                  : AppTheme.gray300),
+                        ),
+                      ),
+                      child: selected
+                          ? const Icon(Icons.check,
+                              color: Colors.white, size: 14)
+                          : null,
                     ),
-                    child: selected
-                        ? const Icon(Icons.check, color: Colors.white, size: 14)
-                        : null,
-                  ),
                 ],
               ),
             ),

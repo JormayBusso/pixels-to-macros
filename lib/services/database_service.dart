@@ -8,6 +8,7 @@ import 'dart:io';
 import '../core/constants.dart';
 import '../models/bolus_audit_record.dart';
 import '../models/custom_meal.dart';
+import '../models/earned_badge.dart';
 import '../models/food_data.dart';
 import '../models/grocery_item.dart';
 import '../models/ground_truth.dart';
@@ -49,7 +50,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 38,
+      version: 39,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -156,10 +157,14 @@ class DatabaseService {
         meal_reminder_enabled    INTEGER NOT NULL DEFAULT 1,
         water_reminder_enabled   INTEGER NOT NULL DEFAULT 1,
         weekly_badge_recap_enabled INTEGER NOT NULL DEFAULT 1,
-        last_weekly_badge_recap_week TEXT NOT NULL DEFAULT ''
+        last_weekly_badge_recap_week TEXT NOT NULL DEFAULT '',
+        premium_unlocked         INTEGER NOT NULL DEFAULT 0
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
+
+    // earned_badges — accumulated achievement collection
+    await _createBadgeTable(db);
 
     // ground_truth — actual measurements for evaluation
     await db.execute('''
@@ -693,6 +698,31 @@ class DatabaseService {
     if (oldVersion < 37) {
       await _createPersonalizationTables(db);
     }
+    if (oldVersion < 39) {
+      try {
+        await db.execute(
+            'ALTER TABLE user_preferences ADD COLUMN premium_unlocked INTEGER NOT NULL DEFAULT 0');
+      } catch (_) {}
+      await _createBadgeTable(db);
+    }
+  }
+
+  /// Stores badges the user has earned so they accumulate over time and can be
+  /// shown as an all-time collection (independent of the weekly recap, which is
+  /// recomputed). One row per (badge_id, week_key) — earned once per week.
+  /// Icon/color/title are derived from a const catalog in the UI; only the
+  /// stable id, week key and the dynamic metric are persisted.
+  Future<void> _createBadgeTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS earned_badges (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        badge_id   TEXT    NOT NULL,
+        week_key   TEXT    NOT NULL,
+        metric     TEXT    NOT NULL,
+        earned_at  TEXT    NOT NULL,
+        UNIQUE (badge_id, week_key)
+      )
+    ''');
   }
 
   Future<void> _createPersonalizationTables(Database db) async {
@@ -5086,6 +5116,31 @@ class DatabaseService {
       where: 'week_number = ? AND year = ?',
       whereArgs: [weekNumber, year],
     );
+  }
+
+  // ── Earned badges ────────────────────────────────────────────────────────
+
+  /// Persist newly earned badges. Idempotent: a badge already recorded for the
+  /// same week is ignored, so calling this repeatedly never duplicates.
+  Future<void> awardBadges(List<EarnedBadge> badges) async {
+    if (badges.isEmpty) return;
+    final db = await database;
+    final batch = db.batch();
+    for (final badge in badges) {
+      batch.insert(
+        'earned_badges',
+        badge.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// All earned badges, newest first.
+  Future<List<EarnedBadge>> getEarnedBadges() async {
+    final db = await database;
+    final rows = await db.query('earned_badges', orderBy: 'earned_at DESC');
+    return rows.map(EarnedBadge.fromMap).toList();
   }
 
   // ── Custom meals ─────────────────────────────────────────────────────────

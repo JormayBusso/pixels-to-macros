@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/app_localizations.dart';
 import '../services/weekly_badge_service.dart';
 import '../theme/app_theme.dart';
 
@@ -13,6 +14,7 @@ class WeeklyBadgeRecapSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       top: false,
       child: Padding(
@@ -51,9 +53,9 @@ class WeeklyBadgeRecapSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Last Week Badges',
-                        style: TextStyle(
+                      Text(
+                        l10n.lastWeekBadges,
+                        style: const TextStyle(
                           fontSize: 19,
                           fontWeight: FontWeight.w800,
                           color: AppTheme.gray900,
@@ -85,7 +87,7 @@ class WeeklyBadgeRecapSheet extends StatelessWidget {
               width: double.infinity,
               child: FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Continue'),
+                child: Text(l10n.continueLabel),
               ),
             ),
           ],
@@ -121,6 +123,7 @@ class _BadgeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = AppLocalizations.of(context).weeklyBadgeText(badge.id);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -152,7 +155,7 @@ class _BadgeTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  badge.title,
+                  text.title,
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -161,7 +164,7 @@ class _BadgeTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  badge.subtitle,
+                  text.subtitle,
                   style: TextStyle(
                     fontSize: 12,
                     color: context.appMutedTextColor,

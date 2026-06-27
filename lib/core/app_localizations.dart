@@ -5376,6 +5376,283 @@ class AppLocalizations {
         'de': 'Standard',
       });
 
+  // ── Premium theme paywall ────────────────────────────────────────────────
+
+  String get premiumThemesTitle => _t({
+        'en': 'Premium Themes',
+        'pl': 'Motywy Premium',
+        'nl': "Premium thema's",
+        'es': 'Temas Premium',
+        'de': 'Premium-Designs',
+      });
+
+  String get premiumThemesSubtitle => _t({
+        'en': 'Unlock a pack of animated, glowing app themes.',
+        'pl': 'Odblokuj pakiet animowanych, świecących motywów aplikacji.',
+        'nl': "Ontgrendel een pakket geanimeerde, gloeiende app-thema's.",
+        'es': 'Desbloquea un paquete de temas animados y brillantes.',
+        'de': 'Schalte ein Paket animierter, leuchtender App-Designs frei.',
+      });
+
+  String get premiumFeatureAnimated => _t({
+        'en': 'Living animated backgrounds',
+        'pl': 'Żywe animowane tła',
+        'nl': 'Levende geanimeerde achtergronden',
+        'es': 'Fondos animados con vida',
+        'de': 'Lebendige animierte Hintergründe',
+      });
+
+  String get premiumFeatureGlow => _t({
+        'en': 'Glowing accents across the app',
+        'pl': 'Świecące akcenty w całej aplikacji',
+        'nl': 'Gloeiende accenten in de hele app',
+        'es': 'Acentos brillantes en toda la app',
+        'de': 'Leuchtende Akzente in der ganzen App',
+      });
+
+  String get premiumFeaturePacks => _t({
+        'en': '8 exclusive theme styles',
+        'pl': '8 ekskluzywnych stylów motywów',
+        'nl': '8 exclusieve themastijlen',
+        'es': '8 estilos de tema exclusivos',
+        'de': '8 exklusive Design-Stile',
+      });
+
+  String get premiumUnlockCta => _t({
+        'en': 'Unlock Premium',
+        'pl': 'Odblokuj Premium',
+        'nl': 'Premium ontgrendelen',
+        'es': 'Desbloquear Premium',
+        'de': 'Premium freischalten',
+      });
+
+  String get premiumRestore => _t({
+        'en': 'Restore purchase',
+        'pl': 'Przywróć zakup',
+        'nl': 'Aankoop herstellen',
+        'es': 'Restaurar compra',
+        'de': 'Kauf wiederherstellen',
+      });
+
+  String get premiumMaybeLater => _t({
+        'en': 'Maybe later',
+        'pl': 'Może później',
+        'nl': 'Misschien later',
+        'es': 'Quizás más tarde',
+        'de': 'Vielleicht später',
+      });
+
+  String get premiumComingSoon => _t({
+        'en': 'In-app purchases aren\'t available yet — coming soon.',
+        'pl': 'Zakupy w aplikacji nie są jeszcze dostępne — wkrótce.',
+        'nl': 'In-app-aankopen zijn nog niet beschikbaar — binnenkort.',
+        'es': 'Las compras dentro de la app aún no están disponibles — próximamente.',
+        'de': 'In-App-Käufe sind noch nicht verfügbar — demnächst.',
+      });
+
+  String get premiumUnlockedToast => _t({
+        'en': 'Premium themes unlocked! 🎉',
+        'pl': 'Motywy premium odblokowane! 🎉',
+        'nl': "Premium thema's ontgrendeld! 🎉",
+        'es': '¡Temas premium desbloqueados! 🎉',
+        'de': 'Premium-Designs freigeschaltet! 🎉',
+      });
+
+  String get premiumDevUnlock => _t({
+        'en': 'Dev unlock (debug only)',
+        'pl': 'Odblokowanie deweloperskie (tylko debug)',
+        'nl': 'Dev-ontgrendeling (alleen debug)',
+        'es': 'Desbloqueo de desarrollo (solo debug)',
+        'de': 'Dev-Freischaltung (nur Debug)',
+      });
+
+  String get premiumLockedHint => _t({
+        'en': 'Premium theme — tap to unlock',
+        'pl': 'Motyw premium — dotknij, aby odblokować',
+        'nl': 'Premium thema — tik om te ontgrendelen',
+        'es': 'Tema premium — toca para desbloquear',
+        'de': 'Premium-Design — zum Freischalten tippen',
+      });
+
+  // ── Badge collection ─────────────────────────────────────────────────────
+
+  String get badgeCollectionTitle => _t({
+        'en': 'Badge Collection',
+        'pl': 'Kolekcja odznak',
+        'nl': 'Badgeverzameling',
+        'es': 'Colección de insignias',
+        'de': 'Abzeichensammlung',
+      });
+
+  String get badgeCollectionEmpty => _t({
+        'en': 'No badges yet. Log meals through the week to start earning them.',
+        'pl': 'Brak odznak. Zapisuj posiłki w ciągu tygodnia, aby zacząć je zdobywać.',
+        'nl': 'Nog geen badges. Log maaltijden door de week heen om ze te verdienen.',
+        'es': 'Aún no hay insignias. Registra comidas durante la semana para empezar a ganarlas.',
+        'de': 'Noch keine Abzeichen. Logge Mahlzeiten über die Woche, um sie zu verdienen.',
+      });
+
+  String badgeCollectionCount(int earned, int total) => _t({
+        'en': '$earned of $total earned',
+        'pl': 'Zdobyto $earned z $total',
+        'nl': '$earned van $total verdiend',
+        'es': '$earned de $total ganadas',
+        'de': '$earned von $total verdient',
+      });
+
+  String get lastWeekBadges => _t({
+        'en': 'Last Week Badges',
+        'pl': 'Odznaki z zeszłego tygodnia',
+        'nl': 'Badges van vorige week',
+        'es': 'Insignias de la semana pasada',
+        'de': 'Abzeichen der letzten Woche',
+      });
+
+  /// Localized title + subtitle for a badge id (see WeeklyBadgeService /
+  /// kBadgeCatalog). Falls back to the id if unknown.
+  ({String title, String subtitle}) weeklyBadgeText(String id) {
+    switch (id) {
+      case 'perfect_log_week':
+        return (
+          title: _t({
+            'en': 'Perfect Log Week',
+            'pl': 'Idealny tydzień zapisów',
+            'nl': 'Perfecte logweek',
+            'es': 'Semana de registro perfecta',
+            'de': 'Perfekte Log-Woche',
+          }),
+          subtitle: _t({
+            'en': 'You logged food every day last week.',
+            'pl': 'W zeszłym tygodniu zapisywałeś jedzenie każdego dnia.',
+            'nl': 'Je hebt vorige week elke dag eten gelogd.',
+            'es': 'Registraste comida todos los días la semana pasada.',
+            'de': 'Du hast letzte Woche jeden Tag Essen geloggt.',
+          }),
+        );
+      case 'steady_tracker':
+        return (
+          title: _t({
+            'en': 'Steady Tracker',
+            'pl': 'Wytrwały tropiciel',
+            'nl': 'Stabiele tracker',
+            'es': 'Seguimiento constante',
+            'de': 'Beständiger Tracker',
+          }),
+          subtitle: _t({
+            'en': 'You kept nutrition tracking consistent.',
+            'pl': 'Konsekwentnie śledziłeś odżywianie.',
+            'nl': 'Je hield het voedingsregistratie consistent.',
+            'es': 'Mantuviste el seguimiento nutricional constante.',
+            'de': 'Du hast die Ernährungserfassung konstant gehalten.',
+          }),
+        );
+      case 'streak_builder':
+        return (
+          title: _t({
+            'en': 'Streak Builder',
+            'pl': 'Budowniczy serii',
+            'nl': 'Reeksbouwer',
+            'es': 'Constructor de rachas',
+            'de': 'Serien-Baumeister',
+          }),
+          subtitle: _t({
+            'en': 'Your logging rhythm held for consecutive days.',
+            'pl': 'Twój rytm zapisów utrzymał się przez kolejne dni.',
+            'nl': 'Je logritme hield meerdere dagen op rij stand.',
+            'es': 'Tu ritmo de registro se mantuvo días seguidos.',
+            'de': 'Dein Log-Rhythmus hielt mehrere Tage in Folge.',
+          }),
+        );
+      case 'scanner_momentum':
+        return (
+          title: _t({
+            'en': 'Scanner Momentum',
+            'pl': 'Rozpęd skanera',
+            'nl': 'Scannermomentum',
+            'es': 'Impulso de escaneo',
+            'de': 'Scanner-Schwung',
+          }),
+          subtitle: _t({
+            'en': 'You used the app often enough to build a useful record.',
+            'pl': 'Używałeś aplikacji wystarczająco często, aby zbudować przydatny zapis.',
+            'nl': 'Je gebruikte de app vaak genoeg voor een nuttig overzicht.',
+            'es': 'Usaste la app lo suficiente para crear un registro útil.',
+            'de': 'Du hast die App oft genug für eine nützliche Aufzeichnung genutzt.',
+          }),
+        );
+      case 'protein_focus':
+        return (
+          title: _t({
+            'en': 'Protein Focus',
+            'pl': 'Skupienie na białku',
+            'nl': 'Eiwitfocus',
+            'es': 'Enfoque en proteínas',
+            'de': 'Protein-Fokus',
+          }),
+          subtitle: _t({
+            'en': 'You stayed close to your protein target most of the week.',
+            'pl': 'Przez większość tygodnia byłeś blisko celu białkowego.',
+            'nl': 'Je zat het grootste deel van de week dicht bij je eiwitdoel.',
+            'es': 'Estuviste cerca de tu objetivo de proteína casi toda la semana.',
+            'de': 'Du warst die meiste Woche nah an deinem Proteinziel.',
+          }),
+        );
+      case 'balanced_plate':
+        return (
+          title: _t({
+            'en': 'Balanced Plate',
+            'pl': 'Zrównoważony talerz',
+            'nl': 'Gebalanceerd bord',
+            'es': 'Plato equilibrado',
+            'de': 'Ausgewogener Teller',
+          }),
+          subtitle: _t({
+            'en': 'Your calorie and protein pattern stayed in a healthy range.',
+            'pl': 'Twój wzorzec kalorii i białka pozostał w zdrowym zakresie.',
+            'nl': 'Je calorie- en eiwitpatroon bleef in een gezond bereik.',
+            'es': 'Tu patrón de calorías y proteína se mantuvo saludable.',
+            'de': 'Dein Kalorien- und Proteinmuster blieb im gesunden Bereich.',
+          }),
+        );
+      case 'micronutrient_pro':
+        return (
+          title: _t({
+            'en': 'Micronutrient Pro',
+            'pl': 'Mistrz mikroskładników',
+            'nl': 'Micronutriënt-pro',
+            'es': 'Pro de micronutrientes',
+            'de': 'Mikronährstoff-Profi',
+          }),
+          subtitle: _t({
+            'en': 'You reached broad vitamin and mineral coverage.',
+            'pl': 'Osiągnąłeś szerokie pokrycie witamin i minerałów.',
+            'nl': 'Je bereikte een brede vitamine- en mineralendekking.',
+            'es': 'Alcanzaste una amplia cobertura de vitaminas y minerales.',
+            'de': 'Du hast eine breite Vitamin- und Mineralstoffabdeckung erreicht.',
+          }),
+        );
+      case 'hydration_rhythm':
+        return (
+          title: _t({
+            'en': 'Hydration Rhythm',
+            'pl': 'Rytm nawodnienia',
+            'nl': 'Hydratatieritme',
+            'es': 'Ritmo de hidratación',
+            'de': 'Hydration-Rhythmus',
+          }),
+          subtitle: _t({
+            'en': 'You logged drinks across the week.',
+            'pl': 'Zapisywałeś napoje przez cały tydzień.',
+            'nl': 'Je logde drankjes door de week heen.',
+            'es': 'Registraste bebidas durante la semana.',
+            'de': 'Du hast Getränke über die Woche geloggt.',
+          }),
+        );
+      default:
+        return (title: id, subtitle: '');
+    }
+  }
+
   String get heightLabel => _t({
         'en': 'Height',
         'pl': 'Wzrost',

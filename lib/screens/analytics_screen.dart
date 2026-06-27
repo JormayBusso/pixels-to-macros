@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
+import '../models/badge_catalog.dart';
+import '../models/earned_badge.dart';
 import '../providers/analytics_provider.dart';
 import '../providers/user_prefs_provider.dart';
+import '../services/weekly_badge_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/premium_theme_effects.dart';
 import 'progress_story_screen.dart';
@@ -99,6 +102,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   _InsightCard(state: analytics, goal: goal),
                   const SizedBox(height: 16),
                   _DayBreakdownCard(state: analytics, goal: goal),
+                  const SizedBox(height: 16),
+                  const _BadgeCollectionCard(),
                 ],
               ),
             ),
@@ -1077,6 +1082,150 @@ class _CardShell extends StatelessWidget {
           ],
           const SizedBox(height: 6),
           child,
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────── Badge collection ───────────────────────────
+
+class _BadgeCollectionCard extends StatefulWidget {
+  const _BadgeCollectionCard();
+
+  @override
+  State<_BadgeCollectionCard> createState() => _BadgeCollectionCardState();
+}
+
+class _BadgeCollectionCardState extends State<_BadgeCollectionCard> {
+  late Future<List<EarnedBadge>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = WeeklyBadgeService.instance.earnedBadges();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return FutureBuilder<List<EarnedBadge>>(
+      future: _future,
+      builder: (context, snapshot) {
+        final earned = snapshot.data ?? const <EarnedBadge>[];
+        final earnedIds = earned.map((b) => b.badgeId).toSet();
+        final total = kBadgeCatalog.length;
+        return _CardShell(
+          title: l10n.badgeCollectionTitle,
+          subtitle: l10n.badgeCollectionCount(earnedIds.length, total),
+          child: earnedIds.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Row(
+                    children: [
+                      Icon(Icons.emoji_events_outlined,
+                          size: 18, color: context.appMutedTextColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n.badgeCollectionEmpty,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.35,
+                            color: context.appMutedTextColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : GridView.count(
+                  crossAxisCount: 4,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 0.74,
+                  children: kBadgeCatalog.map((entry) {
+                    final unlocked = earnedIds.contains(entry.id);
+                    return _BadgeMedallion(
+                      entry: entry,
+                      unlocked: unlocked,
+                    );
+                  }).toList(),
+                ),
+        );
+      },
+    );
+  }
+}
+
+class _BadgeMedallion extends StatelessWidget {
+  const _BadgeMedallion({required this.entry, required this.unlocked});
+
+  final BadgeCatalogEntry entry;
+  final bool unlocked;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final title = l10n.weeklyBadgeText(entry.id).title;
+    final muted = context.appMutedTextColor;
+
+    return Tooltip(
+      message: title,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AspectRatio(
+            aspectRatio: 1,
+            child: unlocked
+                ? DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          entry.color,
+                          Color.lerp(entry.color, Colors.black, 0.28)!,
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: entry.color.withValues(alpha: 0.42),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(entry.icon, color: Colors.white, size: 22),
+                  )
+                : DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: muted.withValues(alpha: 0.12),
+                      border: Border.all(
+                        color: muted.withValues(alpha: 0.28),
+                      ),
+                    ),
+                    child: Icon(Icons.lock_outline,
+                        color: muted.withValues(alpha: 0.7), size: 18),
+                  ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            title,
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 9.5,
+              height: 1.15,
+              fontWeight: unlocked ? FontWeight.w700 : FontWeight.w500,
+              color: unlocked ? context.appTextColor : muted,
+            ),
+          ),
         ],
       ),
     );
