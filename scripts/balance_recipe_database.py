@@ -91,6 +91,36 @@ COOKED_PROCESS_TERMS = [
     "sear", "caramelize", "caramelise", "reduce the heat", "bring to a boil",
 ]
 
+# Sweet treats / sugary drinks masquerading as snacks -> belong in dessert.
+SWEET_TREAT_TERMS = [
+    "toffee", "popcorn", "soufflé", "soufflés", "souffle", "souffles", "donut",
+    "doughnut", "candy", "fudge", "caramel", "marshmallow", "egg coffee",
+    "iced tea", "iced green tea", "bubble tea", "thai tea", "milk tea",
+    "lemonade", "milkshake",
+]
+
+# Plain sauces / spreads that are a cooking component, not a stand-alone snack
+# -> route to dinner (a sauce accompanies a main dish).
+SAUCE_TERMS = [
+    "hollandaise", "béarnaise", "bearnaise", "bbq sauce", "barbecue sauce",
+    "currysauce", "curry sauce", "tomatensauce", "tomato sauce", "bolognese",
+    "gravy", "remoulade",
+]
+
+# Genuinely healthy grab-and-eat snacks worth keeping in the snack bucket
+# (fruit, nuts, yoghurt, veg dips/spreads, wholegrain + hummus, protein shake).
+HEALTHY_SNACK_TERMS = [
+    "fruit", "apple", "banana", "berries", "berry", "grapes", "druiven",
+    "orange", "mango", "yogurt", "yoghurt", "kwark", "skyr", "nuts", "noten",
+    "almond", "amandel", "cashew", "walnut", "pistache", "pistachio",
+    "trail mix", "studentenhaver", "protein shake", "protein bar", "shake",
+    "smoothie", "energy ball", "energy balls", "energy bites", "bliss balls",
+    "hummus", "guacamole", "dip", "edamame", "olives", "olijven", "kiemgroente",
+    "rauwkost", "groente", "meergranen", "volkoren", "aubergine", "avocado",
+    "chia", "overnight oats", "rice cake", "rice cakes", "rijstwafel",
+    "knäckebröd", "knackebrod", "crackers",
+]
+
 # Main-dish proteins. A snack whose TITLE names one of these is a composed meal,
 # never a simple snack — even if it also mentions a dip/hummus/nut component
 # (e.g. "Hummus with pistachio lamb meatballs", "Almond-crusted fish").
@@ -229,6 +259,20 @@ def filter_snacks(recipes: list[dict]) -> collections.Counter:
             target = "dinner" if _has(blob, DINNER_TERMS) else "lunch"
             _set_meal_type(r, target)
             changes[f"snack->{target}"] += 1
+            continue
+        # Item 15: keep ONLY genuinely healthy snacks (fruit, nuts, yoghurt,
+        # veg dips/spreads, wholegrain + hummus, protein shake). Reroute the rest.
+        title = _title(r)
+        if _has(title, SAUCE_TERMS):
+            _set_meal_type(r, "dinner")
+            changes["snack->dinner"] += 1
+        elif _has(title, SWEET_TREAT_TERMS):
+            _set_meal_type(r, "dessert")
+            changes["snack->dessert"] += 1
+        elif not _has(title + " " + _ingredient_blob(r), HEALTHY_SNACK_TERMS):
+            # Not clearly healthy and not a sweet/sauce -> demote to a light meal.
+            _set_meal_type(r, "lunch")
+            changes["snack->lunch"] += 1
     return changes
 
 

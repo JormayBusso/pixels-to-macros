@@ -1190,7 +1190,12 @@ def reclassify_bundled_recipes() -> bool:
     return validate_bundled_recipes()
 
 
-def scrape_recipe(session: requests.Session, language: str, url: str) -> dict | None:
+def scrape_recipe(
+    session: requests.Session,
+    language: str,
+    url: str,
+    forced_meal: str | None = None,
+) -> dict | None:
     try:
         scraper = create_scraper(session, url)
         title = (scraper.title() or "").strip()
@@ -1222,7 +1227,12 @@ def scrape_recipe(session: requests.Session, language: str, url: str) -> dict | 
         except Exception:
             total_time = None
 
-        meal_type = infer_meal_type(title, url, ingredients)
+        if forced_meal in {"breakfast", "lunch", "dinner", "snack", "dessert"}:
+            # Meal-locked: the URL came from a breakfast/lunch listing page, so
+            # trust that category instead of the unreliable keyword inference.
+            meal_type = forced_meal
+        else:
+            meal_type = infer_meal_type(title, url, ingredients)
         goals = classify_goals(
             title=title,
             ingredients=ingredients,
@@ -1285,6 +1295,7 @@ def scrape_recipe(session: requests.Session, language: str, url: str) -> dict | 
             "tags": tags,
             "health_score": health_score,
             "health_score_reason": health_score_reason,
+            "meal_locked": bool(forced_meal),
             "source": urlparse(url).netloc,
             "source_url": url,
         }
@@ -1654,6 +1665,334 @@ def parse_host_filter(raw: str) -> tuple[str, ...]:
     )
 
 
+# ── Meal-targeted discovery + meal-locked extraction ─────────────────────────
+# infer_meal_type() is unreliable and defaults to "dinner", so to reliably ADD
+# breakfast and lunch recipes we harvest URLs straight from each site's
+# breakfast/lunch listing or search pages and LOCK the meal_type when scraping.
+MEAL_URLS_FILE = ROOT / "recipe_urls_meal.txt"
+
+# (meal, language, listing_url, render)
+#   render="js"       -> Playwright + infinite-scroll (Albert Heijn search)
+#   render="chefkoch" -> server HTML with /sNN/ path pagination
+#   render="html"     -> server HTML with ?page=N pagination
+MEAL_SEEDS: tuple[tuple[str, str, str, str], ...] = (
+    # Albert Heijn Allerhande search (JS rendered) — the ONLY source per user request.
+    ("breakfast", "NL", "https://www.ah.nl/allerhande/recepten-zoeken?query=Ontbijt", "js"),
+    ("lunch", "NL", "https://www.ah.nl/allerhande/recepten-zoeken?query=Lunch", "js"),
+)
+
+# Listing/category/index paths that must never be treated as a recipe URL.
+_LISTING_BLOCKLIST = (
+    "/collection/", "/collections/", "/category/", "/categories/", "/cuisine/",
+    "/recipes/courses", "/recipe-finder", "/recepten-zoeken", "/allerhande/recepten",
+    "/ideas/", "/search", "/przepisy", "/rs/", "/howto", "/health/", "/author/",
+)
+
+
+def _site_for_url(url: str) -> SiteConfig | None:
+    host = urlparse(url).netloc.lower()
+    for site in SITES:
+        site_host = urlparse(site.base_url).netloc.lower()
+        if host == site_host or host.endswith("." + site_host) or site_host.endswith("." + host):
+            return site
+    return None
+
+
+def _is_listing_url(url: str) -> bool:
+    path = urlparse(url).path.lower()
+    return any(token in path for token in _LISTING_BLOCKLIST)
+
+
+def _with_page(url: str, page: int) -> str:
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}page={page}"
+
+
+def _clean_link(link: str) -> str:
+    return link.split("#", 1)[0].split("?", 1)[0].rstrip("/")
+
+
+def _harvest_html_listing(
+    session: requests.Session,
+    meal: str,
+    lang: str,
+    base_url: str,
+    pages: int,
+    max_links: int,
+) -> list[tuple[str, str, str]]:
+    site = _site_for_url(base_url)
+    out: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    for pg in range(1, pages + 1):
+        page_url = base_url if pg == 1 else _with_page(base_url, pg)
+        html = fetch_text(session, page_url, use_playwright_on_block=True)
+        if not html:
+            if pg > 1:
+                break
+            continue
+        new = 0
+        for raw in extract_links_from_html(html, page_url):
+            link = _clean_link(raw)
+            if link in seen or _is_listing_url(link):
+                continue
+            if site is not None and not looks_like_recipe(link, site):
+                continue
+            seen.add(link)
+            out.append((meal, lang, link))
+            new += 1
+            if len(out) >= max_links:
+                return out
+        print(f"  [page {pg}] {page_url} -> +{new} (seed total {len(out)})")
+        if new == 0 and pg > 1:
+            break
+    return out
+
+
+def _harvest_chefkoch(
+    session: requests.Session,
+    meal: str,
+    lang: str,
+    base_url: str,
+    pages: int,
+    max_links: int,
+) -> list[tuple[str, str, str]]:
+    out: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    for pg in range(pages):
+        page_url = base_url.replace("/s0/", f"/s{pg * 30}/", 1)
+        html = fetch_text(session, page_url, use_playwright_on_block=True)
+        if not html:
+            if pg > 0:
+                break
+            continue
+        new = 0
+        for raw in extract_links_from_html(html, page_url):
+            link = _clean_link(raw)
+            if link in seen:
+                continue
+            # Chefkoch recipe URLs look like /rezepte/<digits>/<slug>.html
+            if not re.search(r"/rezepte/\d+/", urlparse(link).path):
+                continue
+            seen.add(link)
+            out.append((meal, lang, link))
+            new += 1
+            if len(out) >= max_links:
+                return out
+        print(f"  [chefkoch s{pg * 30}] -> +{new} (seed total {len(out)})")
+        if new == 0 and pg > 0:
+            break
+    return out
+
+
+def _harvest_js_search(
+    meal: str,
+    lang: str,
+    url: str,
+    scrolls: int,
+    max_links: int,
+) -> list[tuple[str, str, str]]:
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception as exc:  # pragma: no cover
+        print(f"[playwright unavailable] {exc}")
+        return []
+    try:
+        from playwright_stealth import Stealth
+    except Exception as exc:  # pragma: no cover
+        print(f"[playwright_stealth unavailable] {exc}")
+        return []
+
+    ua = (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+    )
+    # ah.nl search shows ~36 results per page and paginates via &page=N.
+    # `scrolls` is reused as the maximum page count to walk.
+    max_pages = max(scrolls, 1)
+    seen: set[str] = set()
+    try:
+        # Stealth() patches navigator.webdriver et al so ah.nl's bot wall
+        # ("Access Denied") lets the search results render.
+        with Stealth().use_sync(sync_playwright()) as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            page = browser.new_page(
+                user_agent=ua,
+                viewport={"width": 1366, "height": 1000},
+                locale="nl-NL",
+            )
+            page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_timeout(3000)
+            for sel in (
+                "button:has-text('Accepteren')",
+                "button:has-text('Alles accepteren')",
+                "button:has-text('Akkoord')",
+                "#accept-cookies",
+                "[data-testhook='accept-cookies'] button",
+            ):
+                try:
+                    page.click(sel, timeout=2500)
+                    page.wait_for_timeout(800)
+                    break
+                except Exception:
+                    pass
+            empty_streak = 0
+            for pg_num in range(1, max_pages + 1):
+                page_url = _with_page(url, pg_num)
+                try:
+                    page.goto(page_url, wait_until="domcontentloaded", timeout=60000)
+                except Exception as exc:
+                    print(f"  [ah page {pg_num}] nav error: {exc}")
+                    break
+                page.wait_for_timeout(random.randint(1800, 2600))
+                page.mouse.wheel(0, 40000)
+                page.wait_for_timeout(random.randint(800, 1400))
+                try:
+                    hrefs = page.eval_on_selector_all(
+                        "a[href*='/allerhande/recept/']",
+                        "els => els.map(e => e.href)",
+                    )
+                except Exception:
+                    hrefs = []
+                before = len(seen)
+                for h in hrefs:
+                    if h:
+                        seen.add(_clean_link(h))
+                new = len(seen) - before
+                print(f"  [ah page {pg_num}] {meal} +{new} (total {len(seen)})")
+                if len(seen) >= max_links:
+                    break
+                if new == 0:
+                    empty_streak += 1
+                    if empty_streak >= 2:
+                        print(f"  [ah] no new results after page {pg_num}; stopping")
+                        break
+                else:
+                    empty_streak = 0
+            browser.close()
+    except Exception as exc:
+        print(f"[ah-search failed] {url}: {exc}")
+    return [(meal, lang, u) for u in list(seen)[:max_links]]
+
+
+def discover_meals(pages: int, scrolls: int, max_per_seed: int) -> dict[str, tuple[str, str]]:
+    session = build_session()
+    collected: dict[str, tuple[str, str]] = {}
+    for meal, lang, url, render in MEAL_SEEDS:
+        before = len(collected)
+        print(f"\n=== discover {meal} [{lang}] {url} ({render}) ===")
+        try:
+            if render == "js":
+                found = _harvest_js_search(meal, lang, url, scrolls, max_per_seed)
+            elif render == "chefkoch":
+                found = _harvest_chefkoch(session, meal, lang, url, pages, max_per_seed)
+            else:
+                found = _harvest_html_listing(session, meal, lang, url, pages, max_per_seed)
+        except Exception as exc:
+            print(f"[discover-error] {url}: {exc}")
+            found = []
+        for m, lg, u in found:
+            if u not in collected:
+                collected[u] = (m, lg)
+        print(f"[discover] {meal} {lang} -> +{len(collected) - before} (total {len(collected)})")
+
+    by_meal = Counter(m for m, _ in collected.values())
+    lines = [f"{lg}\t{m}\t{u}" for u, (m, lg) in collected.items()]
+    MEAL_URLS_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"\n[discover-done] {len(collected)} meal-tagged URLs by meal={dict(by_meal)} -> {MEAL_URLS_FILE}")
+    return collected
+
+
+def read_meal_urls() -> list[tuple[str, str, str]]:
+    if not MEAL_URLS_FILE.exists():
+        raise FileNotFoundError(f"Missing {MEAL_URLS_FILE}. Run discover-meals first.")
+    rows: list[tuple[str, str, str]] = []
+    for line in MEAL_URLS_FILE.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) == 3:
+            lang, meal, url = parts
+        elif len(parts) == 2:
+            meal, url = parts
+            lang = language_from_url(url)
+        else:
+            continue
+        rows.append((lang.strip().upper(), meal.strip().lower(), url.strip()))
+    return rows
+
+
+def extract_meal_locked(
+    output_path: Path,
+    per_meal_target: int,
+    max_recipes: int,
+    delay_min: float,
+    delay_max: float,
+) -> list[dict]:
+    targets = ("breakfast", "lunch")
+    rows = [row for row in read_meal_urls() if row[1] in targets]
+    random.shuffle(rows)
+    session = build_session()
+
+    recipes = load_recipes_from(output_path)
+    existing = load_existing_recipes()
+    seen_ids = {r.get("id") for r in recipes}
+    seen_ids.update(r.get("id") for r in existing)
+    seen_urls = {str(r.get("source_url") or "") for r in recipes if r.get("source_url")}
+    seen_urls.update(str(r.get("source_url") or "") for r in existing if r.get("source_url"))
+    counts = Counter(str(r.get("meal_type") or "").lower() for r in recipes)
+    success_since_save = 0
+
+    def snapshot() -> dict:
+        return {"breakfast": counts["breakfast"], "lunch": counts["lunch"]}
+
+    def target_reached() -> bool:
+        return all(counts[m] >= per_meal_target for m in targets)
+
+    print(
+        f"[meal-locked-start] urls={len(rows)} staged={len(recipes)} "
+        f"per_meal_target={per_meal_target} counts={snapshot()}"
+    )
+
+    for idx, (lang, meal, url) in enumerate(rows, 1):
+        if len(recipes) >= max_recipes or target_reached():
+            break
+        if meal not in targets or counts[meal] >= per_meal_target:
+            continue
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+
+        time.sleep(random.uniform(delay_min, delay_max))
+        print(f"\n[meal {idx}/{len(rows)}] {lang} {meal} {url}")
+        recipe = scrape_recipe(session, lang, url, forced_meal=meal)
+        if recipe is None:
+            continue
+        if recipe["id"] in seen_ids:
+            print(f"[duplicate] {recipe['id']}")
+            continue
+        if recipe.get("meal_type") not in targets:
+            continue
+
+        recipes.append(recipe)
+        seen_ids.add(recipe["id"])
+        counts[meal] += 1
+        success_since_save += 1
+        print(f"[meal-ok] {recipe['title']} meal={meal} counts={snapshot()}")
+
+        if success_since_save >= SAVE_EVERY:
+            save_recipes_to(output_path, recipes)
+            success_since_save = 0
+            print(f"[saved] {output_path} counts={snapshot()}")
+
+    save_recipes_to(output_path, recipes)
+    print(f"[meal-locked-complete] {len(recipes)} staged -> {output_path} counts={snapshot()}")
+    return recipes
+
+
 def merge_staging(staging_path: Path) -> bool:
     """Append reviewed staging recipes into the curated DB (dedup by id)."""
     staged = load_recipes_from(staging_path)
@@ -1739,6 +2078,24 @@ def main() -> int:
     )
     merge_parser.add_argument("--input", type=str, default=str(STAGING_JSON))
 
+    discover_parser = sub.add_parser(
+        "discover-meals",
+        help="Harvest breakfast/lunch recipe URLs from each site's meal listing/search pages",
+    )
+    discover_parser.add_argument("--pages", type=int, default=12, help="Listing pages per seed (?page=N)")
+    discover_parser.add_argument("--scrolls", type=int, default=45, help="Infinite-scroll passes for JS search pages")
+    discover_parser.add_argument("--max-per-seed", type=int, default=1400)
+
+    meal_locked_parser = sub.add_parser(
+        "extract-meal-locked",
+        help="Scrape meal-tagged URLs (breakfast/lunch only, locked meal_type, real images) into staging",
+    )
+    meal_locked_parser.add_argument("--output", type=str, default=str(STAGING_JSON))
+    meal_locked_parser.add_argument("--per-meal-target", type=int, default=500)
+    meal_locked_parser.add_argument("--max-recipes", type=int, default=1200)
+    meal_locked_parser.add_argument("--delay-min", type=float, default=0.4)
+    meal_locked_parser.add_argument("--delay-max", type=float, default=1.2)
+
     sub.add_parser("validate", help="Audit assets/bundled_recipes.json")
     sub.add_parser("reclassify", help="Recompute meal and nutrition-goal labels for bundled recipes")
 
@@ -1784,6 +2141,16 @@ def main() -> int:
     elif args.command == "merge-staging":
         if not merge_staging(Path(args.input)):
             return 1
+    elif args.command == "discover-meals":
+        discover_meals(args.pages, args.scrolls, args.max_per_seed)
+    elif args.command == "extract-meal-locked":
+        extract_meal_locked(
+            Path(args.output),
+            args.per_meal_target,
+            args.max_recipes,
+            args.delay_min,
+            args.delay_max,
+        )
     elif args.command == "validate":
         if not validate_bundled_recipes():
             return 1
