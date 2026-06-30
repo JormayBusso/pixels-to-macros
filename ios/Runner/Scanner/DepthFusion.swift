@@ -695,8 +695,11 @@ final class DepthFusion {
 /// Algorithm summary:
 ///   1. Convert sparse voxels to a dense bool grid with 1-voxel padding.
 ///   2. For every cube cell whose 8 corners straddle the inside/outside
-///      boundary, place ONE vertex at the average of the edge-crossing
-///      midpoints (gives a smoother surface than marching cubes).
+///      boundary, place ONE vertex using feature-preserving dual contouring:
+///      each boundary-crossing edge is an axis-aligned plane constraint and the
+///      per-axis QEF solve keeps sharp corners sharp (square cracker) while
+///      leaving curved surfaces round (tomato), instead of rounding everything
+///      off the way a plain edge-midpoint average does.
 ///   3. For every grid edge that crosses the boundary, emit a quad
 ///      (two triangles) joining the 4 cells that share that edge.
 /// Naive Surface Nets dual-contouring mesher. Used by the LiDAR voxel-fusion
@@ -790,21 +793,68 @@ enum SurfaceNets {
                     // All-inside (0xFF) or all-outside (0x00) → no surface.
                     if cornerMask == 0 || cornerMask == 0xFF { continue }
 
-                    // Average of midpoints of edges where corner signs differ.
-                    var sum = SIMD3<Float>(0, 0, 0)
+                    // Feature-preserving (dual-contour) vertex placement.
+                    //
+                    // Plain Surface Nets puts the cell vertex at the unweighted
+                    // average of every edge-crossing midpoint, which rounds OFF
+                    // every corner — a square cracker comes out as a pillow and
+                    // a flat edge bevels. Instead, treat each boundary-crossing
+                    // edge as an axis-aligned plane constraint (point = edge
+                    // midpoint, normal = the edge's axis) and solve the QEF for
+                    // the point minimising the squared distance to all of them.
+                    //
+                    // Because the voxel boundary normals are axis-aligned, the
+                    // QEF's normal matrix is DIAGONAL, so the solve decouples
+                    // into three independent 1-D averages — one per axis — over
+                    // only the crossings whose face is perpendicular to that
+                    // axis. Where two perpendicular faces meet (a cracker edge
+                    // or corner) the per-axis averages land exactly on the
+                    // corner → the feature stays SHARP. On a curved surface (a
+                    // tomato) neighbouring cells vary smoothly → the surface
+                    // stays ROUND. Volume is unaffected (it is voxelCount-based).
+                    var sumAxis = SIMD3<Float>(0, 0, 0) // Σ crossing coord per axis
+                    var cntAxis = SIMD3<Float>(0, 0, 0) // # crossings per axis
+                    var mass = SIMD3<Float>(0, 0, 0)
                     var count: Float = 0
-                    for (a, b) in edgeCorners where cornerIn[a] != cornerIn[b] {
+                    for i in 0..<12 {
+                        let (a, b) = edgeCorners[i]
+                        if cornerIn[a] == cornerIn[b] { continue }
                         let oa = cornerOffsets[a]
                         let ob = cornerOffsets[b]
-                        sum += SIMD3<Float>(
+                        let p = SIMD3<Float>(
                             Float(2 * x + oa.0 + ob.0) * 0.5,
                             Float(2 * y + oa.1 + ob.1) * 0.5,
                             Float(2 * z + oa.2 + ob.2) * 0.5
                         )
+                        // Edge index ranges encode the crossing-face normal:
+                        // 0..3 → x-faces, 4..7 → y-faces, 8..11 → z-faces.
+                        if i < 4 {
+                            sumAxis.x += p.x; cntAxis.x += 1
+                        } else if i < 8 {
+                            sumAxis.y += p.y; cntAxis.y += 1
+                        } else {
+                            sumAxis.z += p.z; cntAxis.z += 1
+                        }
+                        mass += p
                         count += 1
                     }
                     guard count > 0 else { continue }
-                    let centerVox = sum / count
+                    mass /= count
+
+                    // Per-axis QEF solve with a small Tikhonov bias toward the
+                    // centroid (`mass`) for numerical stability and to keep an
+                    // unconstrained axis (no perpendicular crossings) centred.
+                    let reg: Float = 0.02
+                    @inline(__always) func axis(_ s: Float, _ c: Float, _ m: Float,
+                                                 _ lo: Float, _ hi: Float) -> Float {
+                        let v = (s + reg * m) / (c + reg)
+                        return Swift.min(hi, Swift.max(lo, v)) // clamp to the cell
+                    }
+                    let centerVox = SIMD3<Float>(
+                        axis(sumAxis.x, cntAxis.x, mass.x, Float(x), Float(x + 1)),
+                        axis(sumAxis.y, cntAxis.y, mass.y, Float(y), Float(y + 1)),
+                        axis(sumAxis.z, cntAxis.z, mass.z, Float(z), Float(z + 1))
+                    )
 
                     // Convert local-voxel coordinates → ARKit world (metres).
                     let wx = (centerVox.x + Float(minX)) * voxelSizeM
