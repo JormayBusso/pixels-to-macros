@@ -446,7 +446,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     );
     if (people == null || !context.mounted) return;
 
-    // Aggregate REAL purchase quantities. Each planned slot is one serving, so
+    // Aggregate REAL weekly usage. Each planned slot is one serving, so
     // per-ingredient grams = recipe ingredient grams / recipe servings, scaled
     // by that slot's portion multiplier and the people cooking that day. Summed
     // across the week and keyed by a canonical staple (so the same item across
@@ -471,15 +471,46 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
       }
     });
 
+    // Apply still-fresh leftovers from previous shops so the list only buys
+    // what's actually missing (buy a box of 10 eggs, use 4 → 6 remembered →
+    // next week's 4 eggs need no purchase).
+    final leftovers = await DatabaseService.instance.getFreshLeftovers();
+    if (!context.mounted) return;
+
     final aggs = <_AggIngredient>[];
-    gramsByItem.forEach((k, grams) {
-      final line = GroceryPackaging.purchaseLine(displayName[k] ?? k, grams);
+    gramsByItem.forEach((k, usageGrams) {
+      final name = displayName[k] ?? k;
+      final inStockGrams = leftovers[k] ?? 0;
+      final toBuyGrams = (usageGrams - inStockGrams).clamp(0, double.infinity);
+      final shelfLife = GroceryPackaging.shelfLifeDays(name);
+      if (toBuyGrams <= 0) {
+        // Fully covered by leftovers — show as in-stock, buy nothing.
+        aggs.add(_AggIngredient(
+          itemKey: k,
+          name: GroceryPackaging.purchaseLine(name, usageGrams)?.name ??
+              _titleCase(GroceryPackaging.cleanName(name)),
+          quantity: 0,
+          unit: '',
+          usageGrams: usageGrams,
+          purchasedGrams: 0,
+          leftoverUsed: inStockGrams,
+          shelfLifeDays: shelfLife,
+          inStock: true,
+        ));
+        return;
+      }
+      final line = GroceryPackaging.purchaseLine(name, toBuyGrams.toDouble());
       if (line != null) {
         aggs.add(_AggIngredient(
+          itemKey: k,
           name: line.name,
           quantity: line.quantity,
           unit: line.unit,
-          totalGrams: grams,
+          usageGrams: usageGrams,
+          purchasedGrams: line.purchasedGrams,
+          leftoverUsed: inStockGrams,
+          shelfLifeDays: shelfLife,
+          inStock: false,
         ));
       }
     });
@@ -497,7 +528,8 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         },
         onAdd: () async {
           final notifier = ref.read(groceryProvider.notifier);
-          final items = aggs
+          final toBuy = aggs.where((a) => !a.inStock).toList();
+          final items = toBuy
               .map((agg) => (
                     name: agg.name,
                     category: _guessCategory(agg.name),
@@ -506,10 +538,25 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                   ))
               .toList();
           await notifier.addItems(items);
+          // Remember the carry-over: anything bought beyond what the week uses
+          // (and any leftover not consumed) is stored for the next shop.
+          final db = DatabaseService.instance;
+          for (final agg in aggs) {
+            final remaining = agg.inStock
+                ? (agg.leftoverUsed - agg.usageGrams)
+                : (agg.leftoverUsed + agg.purchasedGrams - agg.usageGrams);
+            await db.setLeftover(
+              itemKey: agg.itemKey,
+              displayName: agg.name,
+              gramsRemaining: remaining,
+              unit: agg.unit.isEmpty ? null : agg.unit,
+              shelfLifeDays: agg.shelfLifeDays,
+            );
+          }
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(l10n.itemsAdded(aggs.length)),
+                content: Text(l10n.itemsAdded(toBuy.length)),
                 backgroundColor: AppTheme.green600,
               ),
             );
@@ -527,6 +574,11 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
   /// sliced, fresh, …) to leave just the shoppable item ("mustard", "sesame
   /// oil", "avocados"). Egg and garlic variants collapse so quantities
   /// aggregate and convert to natural units (cloves, pieces).
+  String _titleCase(String s) => s
+      .split(' ')
+      .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
+      .join(' ');
+
   String _guessCategory(String name) {
     final l = name.toLowerCase();
     const fruits = [
@@ -1472,18 +1524,41 @@ class _MacroBadge extends StatelessWidget {
 // ── Grocery preview sheet ─────────────────────────────────────────────────────
 
 class _AggIngredient {
+  final String itemKey;
   final String name;
   final int quantity;
   final String unit;
-  final double totalGrams;
+  final double usageGrams;
+  final double purchasedGrams;
+  final double leftoverUsed;
+  final int shelfLifeDays;
+  final bool inStock;
   const _AggIngredient({
+    required this.itemKey,
     required this.name,
     required this.quantity,
     required this.unit,
-    required this.totalGrams,
+    required this.usageGrams,
+    required this.purchasedGrams,
+    required this.leftoverUsed,
+    required this.shelfLifeDays,
+    required this.inStock,
   });
 
   String get amountLabel => unit.isEmpty ? '$quantity' : '$quantity $unit';
+
+  /// A short "uses X this week" usage description (g or kg).
+  String usageLabel() {
+    final g = usageGrams.round();
+    if (g >= 1000) {
+      final kg = (usageGrams / 1000);
+      final txt = kg == kg.roundToDouble()
+          ? kg.round().toString()
+          : kg.toStringAsFixed(1);
+      return '$txt kg';
+    }
+    return '$g g';
+  }
 }
 
 /// Lets the user choose how many people each planned day is cooking for, so the
@@ -1591,7 +1666,12 @@ class _GroceryPreviewSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final sorted = [...ingredients]
-      ..sort((a, b) => b.totalGrams.compareTo(a.totalGrams));
+      ..sort((a, b) {
+        // In-stock items sink to the bottom; otherwise heaviest usage first.
+        if (a.inStock != b.inStock) return a.inStock ? 1 : -1;
+        return b.usageGrams.compareTo(a.usageGrams);
+      });
+    final buyCount = sorted.where((a) => !a.inStock).length;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
@@ -1648,23 +1728,39 @@ class _GroceryPreviewSheet extends StatelessWidget {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: AppTheme.green100.withValues(
+                        color: (agg.inStock ? AppTheme.gray300 : AppTheme.green100)
+                            .withValues(
                           alpha: context.isPremiumTheme ? 0.18 : 1,
                         ),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.shopping_basket_outlined,
-                          size: 16, color: AppTheme.green700),
+                      child: Icon(
+                          agg.inStock
+                              ? Icons.inventory_2_outlined
+                              : Icons.shopping_basket_outlined,
+                          size: 16,
+                          color: agg.inStock
+                              ? AppTheme.gray500
+                              : AppTheme.green700),
                     ),
                     title: Text(agg.name,
                         style: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w500)),
+                    subtitle: Text(
+                      agg.inStock
+                          ? l10n.groceryInStock
+                          : l10n.groceryUsesThisWeek(agg.usageLabel()),
+                      style: TextStyle(
+                          fontSize: 11, color: context.appMutedTextColor),
+                    ),
                     trailing: Text(
-                      agg.amountLabel,
+                      agg.inStock ? '✓' : agg.amountLabel,
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: context.primary600),
+                          color: agg.inStock
+                              ? AppTheme.green600
+                              : context.primary600),
                     ),
                   );
                 },
@@ -1681,7 +1777,7 @@ class _GroceryPreviewSheet extends StatelessWidget {
                       onPressed: onAdd,
                       icon: const Icon(Icons.add_shopping_cart_outlined,
                           size: 18),
-                      label: Text(l10n.addItemsToGroceryList(sorted.length)),
+                      label: Text(l10n.addItemsToGroceryList(buyCount)),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(50),
                         shape: RoundedRectangleBorder(

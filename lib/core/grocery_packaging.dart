@@ -67,6 +67,7 @@ class GroceryLine {
     required this.quantity,
     required this.unit,
     required this.totalGrams,
+    required this.purchasedGrams,
     this.packages = 1,
     this.packaged = false,
   });
@@ -80,6 +81,10 @@ class GroceryLine {
 
   /// The raw summed grams the recipes actually use (for leftover tracking).
   final double totalGrams;
+
+  /// The grams the purchased quantity actually provides (a 1 kg flour bag =
+  /// 1000 g even if only 230 g is needed). Drives leftover carry-over.
+  final double purchasedGrams;
 
   /// How many whole packages this represents (eggs boxes, flour bags…).
   final int packages;
@@ -228,6 +233,7 @@ class GroceryPackaging {
             quantity: qty,
             unit: rule.unit,
             totalGrams: grams,
+            purchasedGrams: qty * rule.gramsPerPiece,
             packages: packs,
             packaged: true,
           );
@@ -237,15 +243,18 @@ class GroceryPackaging {
           quantity: piecesNeeded,
           unit: piecesNeeded == 1 ? _singular(rule.unit) : rule.unit,
           totalGrams: grams,
+          purchasedGrams: piecesNeeded * rule.gramsPerPiece,
         );
       }
       // Weight/volume staple sold in fixed packs → round up to whole packs.
       final packs = (grams / rule.packGrams).ceil().clamp(1, 50);
+      final qty = (packs * rule.packGrams).round();
       return GroceryLine(
         name: _title(cleanName(displayName)),
-        quantity: (packs * rule.packGrams).round(),
+        quantity: qty,
         unit: rule.unit,
         totalGrams: grams,
+        purchasedGrams: qty.toDouble(),
         packages: packs,
         packaged: true,
       );
@@ -265,7 +274,47 @@ class GroceryPackaging {
       quantity: g,
       unit: 'g',
       totalGrams: grams,
+      purchasedGrams: g.toDouble(),
     );
+  }
+
+  // ── Shelf life (days) for leftover carry-over ──────────────────────────
+  // Perishables expire quickly so leftovers are not carried to a later week;
+  // dry/long-life staples carry over for months.
+  static const Map<Staple, int> _shelfLife = {
+    Staple.eggs: 28,
+    Staple.garlic: 60,
+    Staple.onion: 30,
+    Staple.tomato: 7,
+    Staple.lemon: 21,
+    Staple.cucumber: 7,
+    Staple.milk: 7,
+    Staple.butter: 45,
+    Staple.flour: 365,
+    Staple.sugar: 720,
+    Staple.oil: 365,
+    Staple.salt: 3650,
+    Staple.pepper: 3650,
+  };
+
+  static const _perishableHints = [
+    'meat', 'vlees', 'fleisch', 'mięs', 'chicken', 'kip', 'hähnchen', 'kurczak',
+    'fish', 'vis', 'fisch', 'ryb', 'salmon', 'zalm', 'lachs', 'łoso',
+    'salad', 'sla', 'salat', 'sałat', 'spinach', 'spinazie', 'spinat', 'szpinak',
+    'herb', 'kruid', 'kräuter', 'zioł', 'berry', 'bes', 'beere', 'jagod',
+    'cream', 'room', 'sahne', 'śmietan', 'yog', 'yoğ', 'jogurt',
+  ];
+
+  /// Estimated shelf life in days for a raw ingredient — used to decide whether
+  /// leftovers from a previous week are still usable.
+  static int shelfLifeDays(String name) {
+    final staple = stapleOf(name);
+    if (staple != null) return _shelfLife[staple] ?? 7;
+    final c = cleanName(name);
+    for (final hint in _perishableHints) {
+      if (c.contains(hint)) return 4;
+    }
+    return 10;
   }
 
   static String _singular(String unit) {

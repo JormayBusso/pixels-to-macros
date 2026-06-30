@@ -3478,6 +3478,22 @@ class AppLocalizations {
         'de': 'Zutaten aus deinem Mahlzeitenplan',
       });
 
+  String groceryUsesThisWeek(String amount) => _t({
+        'en': 'uses $amount this week',
+        'pl': 'zużywa $amount w tym tygodniu',
+        'nl': 'gebruikt deze week $amount',
+        'es': 'usa $amount esta semana',
+        'de': 'verbraucht diese Woche $amount',
+      });
+
+  String get groceryInStock => _t({
+        'en': 'already in stock from last shop',
+        'pl': 'już w zapasie z poprzednich zakupów',
+        'nl': 'al op voorraad van vorige keer',
+        'es': 'ya disponible de la compra anterior',
+        'de': 'bereits vom letzten Einkauf vorrätig',
+      });
+
   String pickRecipe(String meal) => _t({
         'en': 'Pick a ${meal.toLowerCase()} recipe',
         'pl': 'Wybierz przepis na ${meal.toLowerCase()}',

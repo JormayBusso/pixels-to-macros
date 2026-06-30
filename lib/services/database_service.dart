@@ -50,7 +50,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 39,
+      version: 40,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -165,6 +165,9 @@ class DatabaseService {
 
     // earned_badges — accumulated achievement collection
     await _createBadgeTable(db);
+
+    // grocery_leftovers — carry-over of unused shopping amounts
+    await _createGroceryLeftoverTable(db);
 
     // ground_truth — actual measurements for evaluation
     await db.execute('''
@@ -705,6 +708,9 @@ class DatabaseService {
       } catch (_) {}
       await _createBadgeTable(db);
     }
+    if (oldVersion < 40) {
+      await _createGroceryLeftoverTable(db);
+    }
   }
 
   /// Stores badges the user has earned so they accumulate over time and can be
@@ -721,6 +727,24 @@ class DatabaseService {
         metric     TEXT    NOT NULL,
         earned_at  TEXT    NOT NULL,
         UNIQUE (badge_id, week_key)
+      )
+    ''');
+  }
+
+  /// Persists grocery leftovers so unused amounts from a previous shop carry
+  /// over: buy a box of 10 eggs, use 4, and the remaining 6 are remembered so
+  /// next week's list only buys what's still missing. Perishable leftovers are
+  /// discarded once past their [shelf_life_days] from [purchased_at]. One row
+  /// per canonical [item_key].
+  Future<void> _createGroceryLeftoverTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS grocery_leftovers (
+        item_key         TEXT    PRIMARY KEY,
+        display_name     TEXT    NOT NULL,
+        grams_remaining  REAL    NOT NULL DEFAULT 0,
+        unit             TEXT,
+        purchased_at     TEXT    NOT NULL,
+        shelf_life_days  INTEGER NOT NULL DEFAULT 10
       )
     ''');
   }
@@ -5011,6 +5035,68 @@ class DatabaseService {
   Future<void> deletePantryItem(int id) async {
     final db = await database;
     await db.delete('pantry_items', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ── Grocery leftovers (cross-week carry-over) ────────────────────────────
+
+  /// All non-expired leftovers as { item_key: grams_remaining }. Rows whose
+  /// shelf life has elapsed are deleted on read so stale perishables never
+  /// reduce a future shopping list.
+  Future<Map<String, double>> getFreshLeftovers() async {
+    final db = await database;
+    final rows = await db.query('grocery_leftovers');
+    final now = DateTime.now();
+    final out = <String, double>{};
+    final expired = <String>[];
+    for (final row in rows) {
+      final purchased =
+          DateTime.tryParse(row['purchased_at'] as String? ?? '') ?? now;
+      final shelf = (row['shelf_life_days'] as int?) ?? 10;
+      final grams = (row['grams_remaining'] as num?)?.toDouble() ?? 0;
+      if (now.difference(purchased).inDays > shelf || grams <= 0) {
+        expired.add(row['item_key'] as String);
+      } else {
+        out[row['item_key'] as String] = grams;
+      }
+    }
+    for (final key in expired) {
+      await db.delete('grocery_leftovers',
+          where: 'item_key = ?', whereArgs: [key]);
+    }
+    return out;
+  }
+
+  /// Upserts a leftover row. A grams value <= 0 removes the row.
+  Future<void> setLeftover({
+    required String itemKey,
+    required String displayName,
+    required double gramsRemaining,
+    String? unit,
+    required int shelfLifeDays,
+  }) async {
+    final db = await database;
+    if (gramsRemaining <= 0) {
+      await db.delete('grocery_leftovers',
+          where: 'item_key = ?', whereArgs: [itemKey]);
+      return;
+    }
+    await db.insert(
+      'grocery_leftovers',
+      {
+        'item_key': itemKey,
+        'display_name': displayName,
+        'grams_remaining': gramsRemaining,
+        'unit': unit,
+        'purchased_at': DateTime.now().toIso8601String(),
+        'shelf_life_days': shelfLifeDays,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> clearLeftovers() async {
+    final db = await database;
+    await db.delete('grocery_leftovers');
   }
 
   // ── Grocery list ────────────────────────────────────────────────────────
