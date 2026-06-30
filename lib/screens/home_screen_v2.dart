@@ -18,6 +18,8 @@ import '../providers/user_prefs_provider.dart';
 import '../services/database_service.dart';
 import '../services/scan_media_resolver.dart';
 import '../theme/app_theme.dart';
+import '../models/calc_info.dart';
+import '../widgets/calc_info_button.dart';
 import '../widgets/drink_sheet.dart';
 import '../widgets/goal_mascot_widget.dart';
 import '../widgets/premium_theme_effects.dart';
@@ -464,6 +466,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ],
                               ),
                             ),
+                          ),
+                          CalcInfoButton(
+                            id: CalcInfoId.streak,
+                            color: visualTheme.premium
+                                ? visualTheme.primaryAccent
+                                : AppTheme.gray500,
                           ),
                         ],
                       ],
@@ -1581,6 +1589,7 @@ class _RecommendationsCard extends ConsumerWidget {
                     ),
                   ),
                 ),
+                const CalcInfoButton(id: CalcInfoId.recommendations),
               ],
             ),
           ),

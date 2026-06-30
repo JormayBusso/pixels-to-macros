@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
+
+import '../providers/startup_provider.dart';
 
 /// Full-screen intro video shown at app launch.
 ///
 /// The video fills the entire iPhone screen (BoxFit.cover — no black bars).
 /// When playback ends it fades quickly into [nextScreen].
-class IntroVideoScreen extends StatefulWidget {
+class IntroVideoScreen extends ConsumerStatefulWidget {
   final Widget nextScreen;
   const IntroVideoScreen({super.key, required this.nextScreen});
 
   @override
-  State<IntroVideoScreen> createState() => _IntroVideoScreenState();
+  ConsumerState<IntroVideoScreen> createState() => _IntroVideoScreenState();
 }
 
-class _IntroVideoScreenState extends State<IntroVideoScreen>
+class _IntroVideoScreenState extends ConsumerState<IntroVideoScreen>
     with TickerProviderStateMixin {
   VideoPlayerController? _controller;
   late final AnimationController _fadeOut;
@@ -25,6 +28,11 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
   @override
   void initState() {
     super.initState();
+
+    // Kick off the app's startup data load now, while the intro video plays,
+    // so locale + user preferences are ready before the gate is shown and the
+    // home screen appears without a loading spinner.
+    ref.read(startupLoadProvider);
 
     _fadeOut = AnimationController(
       vsync: this,

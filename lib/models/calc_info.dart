@@ -7,6 +7,12 @@ enum CalcInfoId {
   bodyMapScore,
   glycemicLoad,
   bolusEstimate,
+  insulinOnBoard,
+  insulinRatios,
+  recommendations,
+  streak,
+  weeklyBadges,
+  recipeGoalMatch,
 }
 
 /// Localised, sourced explanation for a calculation shown in the app.

@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/app_locale.dart';
 import 'core/app_localizations.dart';
 import 'providers/locale_provider.dart';
+import 'providers/startup_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/user_prefs_provider.dart';
-import 'providers/diabetes_provider.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/intro_video_screen.dart';
@@ -73,67 +73,35 @@ class PixelsToMacrosApp extends ConsumerWidget {
 }
 
 /// Gates between onboarding and main app based on user preferences.
-class _AppGate extends ConsumerStatefulWidget {
+///
+/// The startup data load is kicked off during the intro video (see
+/// [startupLoadProvider]), so it is almost always finished by the time this
+/// gate is shown — the home screen appears with no loading spinner.
+class _AppGate extends ConsumerWidget {
   const _AppGate();
 
   @override
-  ConsumerState<_AppGate> createState() => _AppGateState();
-}
-
-class _AppGateState extends ConsumerState<_AppGate> {
-  bool _loading = true;
-  bool _loadFailed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    if (mounted)
-      setState(() {
-        _loading = true;
-        _loadFailed = false;
-      });
-    try {
-      await ref.read(localeProvider.notifier).load();
-      await ref
-          .read(userPrefsProvider.notifier)
-          .load()
-          .timeout(const Duration(seconds: 10));
-      // Load opt-in diabetes/insulin state (safe no-ops when not enabled).
-      await ref.read(insulinSettingsProvider.notifier).load();
-      await ref.read(insulinDoseLogProvider.notifier).load();
-    } catch (e) {
-      DebugLog.instance.log('App', 'Startup load failed: $e');
-      if (mounted)
-        setState(() {
-          _loading = false;
-          _loadFailed = true;
-        });
-      return;
-    }
-    if (mounted) setState(() => _loading = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (_loadFailed) {
-      return _RecoveryScreen(onRetry: _load);
-    }
-
-    final prefs = ref.watch(userPrefsProvider);
-    if (!prefs.onboardingComplete) {
-      return const OnboardingScreen();
-    }
-    return const MainShell();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final startup = ref.watch(startupLoadProvider);
+    return startup.when(
+      // The load is triggered during the intro video, so this loading frame is
+      // a rare fallback. Show the plain app background (no spinner) so there is
+      // never a visible "loading" flash before the home screen.
+      loading: () => const Scaffold(),
+      error: (e, _) {
+        DebugLog.instance.log('App', 'Startup load failed: $e');
+        return _RecoveryScreen(
+          onRetry: () => ref.invalidate(startupLoadProvider),
+        );
+      },
+      data: (_) {
+        final prefs = ref.watch(userPrefsProvider);
+        if (!prefs.onboardingComplete) {
+          return const OnboardingScreen();
+        }
+        return const MainShell();
+      },
+    );
   }
 }
 

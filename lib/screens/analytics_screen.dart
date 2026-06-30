@@ -5,12 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
 import '../models/badge_catalog.dart';
+import '../models/calc_info.dart';
 import '../models/earned_badge.dart';
 import '../providers/analytics_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../services/weekly_badge_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/premium_theme_effects.dart';
+import '../widgets/calc_info_button.dart';
 import 'progress_story_screen.dart';
 
 /// Analytics tab.
@@ -1118,6 +1120,7 @@ class _BadgeCollectionCardState extends State<_BadgeCollectionCard> {
         return _CardShell(
           title: l10n.badgeCollectionTitle,
           subtitle: l10n.badgeCollectionCount(earnedIds.length, total),
+          trailing: const CalcInfoButton(id: CalcInfoId.weeklyBadges),
           child: earnedIds.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10),

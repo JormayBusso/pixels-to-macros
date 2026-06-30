@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
 import '../core/app_locale.dart';
+import '../models/calc_info.dart';
 import '../models/dietary_restriction.dart';
 import '../models/mascot_type.dart';
 import '../models/glucose_unit.dart';
@@ -23,6 +24,7 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
+import '../widgets/calc_info_button.dart';
 import '../widgets/premium_paywall_sheet.dart';
 import '../widgets/premium_theme_effects.dart';
 import '../widgets/tour_keys.dart';
@@ -1377,11 +1379,17 @@ class _DiabetesSettingsCardState extends ConsumerState<_DiabetesSettingsCard> {
             const Divider(height: 28),
 
             // ── ICR ────────────────────────────────────────────────────
-            Text(AppLocalizations.of(context).insulinToCarbRatio,
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: _diabetesBlue)),
+            Row(
+              children: [
+                Text(AppLocalizations.of(context).insulinToCarbRatio,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: _diabetesBlue)),
+                const CalcInfoButton(
+                    id: CalcInfoId.insulinRatios, color: _diabetesBlue),
+              ],
+            ),
             const SizedBox(height: 4),
             Text(AppLocalizations.of(context).icrHelp,
                 style:

@@ -77,6 +77,62 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         sourceUrl:
             'https://diabetesjournals.org/care/issue/48/Supplement_1',
       );
+    case CalcInfoId.insulinOnBoard:
+      return CalcInfo(
+        id: id,
+        title: l10n.calcIobTitle,
+        explanation: l10n.calcIobExplain,
+        legitimacy: l10n.calcIobWhy,
+        sourceLabel: 'American Diabetes Association — Standards of Care',
+        sourceUrl:
+            'https://diabetesjournals.org/care/issue/48/Supplement_1',
+      );
+    case CalcInfoId.insulinRatios:
+      return CalcInfo(
+        id: id,
+        title: l10n.calcRatiosTitle,
+        explanation: l10n.calcRatiosExplain,
+        legitimacy: l10n.calcRatiosWhy,
+        sourceLabel: 'American Diabetes Association — Standards of Care',
+        sourceUrl:
+            'https://diabetesjournals.org/care/issue/48/Supplement_1',
+      );
+    case CalcInfoId.recommendations:
+      return CalcInfo(
+        id: id,
+        title: l10n.calcRecsTitle,
+        explanation: l10n.calcRecsExplain,
+        legitimacy: l10n.calcRecsWhy,
+        sourceLabel: 'USDA — Dietary Guidelines for Americans 2020–2025',
+        sourceUrl: 'https://www.dietaryguidelines.gov/',
+      );
+    case CalcInfoId.streak:
+      return CalcInfo(
+        id: id,
+        title: l10n.calcStreakTitle,
+        explanation: l10n.calcStreakExplain,
+        legitimacy: l10n.calcStreakWhy,
+        sourceLabel: 'USDA — Dietary Guidelines for Americans 2020–2025',
+        sourceUrl: 'https://www.dietaryguidelines.gov/',
+      );
+    case CalcInfoId.weeklyBadges:
+      return CalcInfo(
+        id: id,
+        title: l10n.calcBadgesTitle,
+        explanation: l10n.calcBadgesExplain,
+        legitimacy: l10n.calcBadgesWhy,
+        sourceLabel: 'USDA — Dietary Guidelines for Americans 2020–2025',
+        sourceUrl: 'https://www.dietaryguidelines.gov/',
+      );
+    case CalcInfoId.recipeGoalMatch:
+      return CalcInfo(
+        id: id,
+        title: l10n.calcRecipeMatchTitle,
+        explanation: l10n.calcRecipeMatchExplain,
+        legitimacy: l10n.calcRecipeMatchWhy,
+        sourceLabel: 'USDA — Dietary Guidelines for Americans 2020–2025',
+        sourceUrl: 'https://www.dietaryguidelines.gov/',
+      );
   }
 }
 

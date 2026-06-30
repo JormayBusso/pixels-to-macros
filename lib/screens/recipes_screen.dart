@@ -8,6 +8,7 @@ import '../core/app_localizations.dart';
 import '../models/custom_meal.dart';
 import '../models/dietary_restriction.dart';
 import '../models/food_data.dart';
+import '../models/calc_info.dart';
 import '../models/nutrition_goal.dart';
 import '../models/recipe.dart';
 import '../models/scan_result.dart';
@@ -20,6 +21,7 @@ import '../services/database_service.dart';
 import '../services/ingredient_localizer.dart';
 import '../services/recipe_repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/calc_info_button.dart';
 import '../widgets/tour_keys.dart';
 import 'create_meal_screen.dart';
 
@@ -348,6 +350,12 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                       ref.read(recipeQueryProvider.notifier).setGoal(g);
                     },
                   ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: Center(
+                    child: CalcInfoButton(id: CalcInfoId.recipeGoalMatch),
+                  ),
+                ),
               ],
             ),
           ),

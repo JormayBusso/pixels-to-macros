@@ -200,7 +200,13 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,
-              title: Text(AppLocalizations.of(context).subtractIob),
+              title: Row(
+                children: [
+                  Flexible(child: Text(AppLocalizations.of(context).subtractIob)),
+                  const CalcInfoButton(
+                      id: CalcInfoId.insulinOnBoard, color: kDiabetesBlue),
+                ],
+              ),
               subtitle: Text(
                 AppLocalizations.of(context).subtractIobCardDesc,
                 style: const TextStyle(fontSize: 11),

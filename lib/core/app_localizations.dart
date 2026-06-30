@@ -3890,7 +3890,209 @@ class AppLocalizations {
             'Sie verwendet die übliche Mathematik der Kohlenhydratzählung, aber jeder Wert muss von deinem Diabetes-Team festgelegt werden. Bestätige ihn immer mit ihnen – dosiere niemals allein anhand dieser Zahl.',
       });
 
-  // ── Edit Food ──
+  String get calcIobTitle => _t({
+        'en': 'Insulin on board',
+        'pl': 'Insulina aktywna',
+        'nl': 'Insuline aan boord',
+        'es': 'Insulina activa',
+        'de': 'Aktives Insulin',
+      });
+
+  String get calcIobExplain => _t({
+        'en':
+            'An estimate of how much of your earlier rapid-acting insulin is still working. It decays steadily from each dose over your set insulin action time, and the remaining amounts are added together.',
+        'pl':
+            'Szacunek, ile z wcześniejszej insuliny szybko działającej nadal działa. Maleje stopniowo od każdej dawki przez ustawiony czas działania insuliny, a pozostałe ilości są sumowane.',
+        'nl':
+            'Een schatting van hoeveel van je eerdere snelwerkende insuline nog werkt. Het neemt vanaf elke dosis geleidelijk af over je ingestelde insulinewerkingsduur, en de resterende hoeveelheden worden bij elkaar opgeteld.',
+        'es':
+            'Una estimación de cuánta de tu insulina rápida anterior sigue actuando. Disminuye de forma constante desde cada dosis durante el tiempo de acción de la insulina que configuraste, y las cantidades restantes se suman.',
+        'de':
+            'Eine Schätzung, wie viel deines früheren schnell wirkenden Insulins noch wirkt. Es nimmt von jeder Dosis über deine eingestellte Insulinwirkdauer stetig ab, und die verbleibenden Mengen werden addiert.',
+      });
+
+  String get calcIobWhy => _t({
+        'en':
+            'Subtracting active insulin to avoid stacking doses is standard bolus-advisor practice, but your insulin action time must be set with your diabetes care team.',
+        'pl':
+            'Odejmowanie aktywnej insuliny, aby unikać nakładania się dawek, to standardowa praktyka kalkulatorów bolusa, ale czas działania insuliny musi ustalić Twój zespół leczenia cukrzycy.',
+        'nl':
+            'Actieve insuline aftrekken om dosissen niet te stapelen is standaard bij bolusadviseurs, maar je insulinewerkingsduur moet met je diabetesteam worden ingesteld.',
+        'es':
+            'Restar la insulina activa para evitar acumular dosis es práctica estándar de los calculadores de bolo, pero el tiempo de acción de tu insulina debe fijarlo tu equipo de diabetes.',
+        'de':
+            'Aktives Insulin abzuziehen, um Dosen nicht zu stapeln, ist gängige Praxis von Bolusrechnern, aber deine Insulinwirkdauer muss mit deinem Diabetes-Team festgelegt werden.',
+      });
+
+  String get calcRatiosTitle => _t({
+        'en': 'Carb ratio & sensitivity factor',
+        'pl': 'Przelicznik węglowodanowy i współczynnik wrażliwości',
+        'nl': 'Koolhydraatratio & gevoeligheidsfactor',
+        'es': 'Ratio de carbohidratos y factor de sensibilidad',
+        'de': 'KH-Faktor & Korrekturfaktor',
+      });
+
+  String get calcRatiosExplain => _t({
+        'en':
+            'Your insulin-to-carb ratio is how many grams of carbohydrate one unit of insulin covers. Your sensitivity factor is how much one unit lowers your glucose. You enter these per time of day; the app does not invent them.',
+        'pl':
+            'Przelicznik insulina–węglowodany to liczba gramów węglowodanów pokrywanych przez jedną jednostkę insuliny. Współczynnik wrażliwości to spadek glikemii po jednej jednostce. Wpisujesz je dla pór dnia; aplikacja ich nie wymyśla.',
+        'nl':
+            'Je insuline-koolhydraatratio is hoeveel gram koolhydraten één eenheid insuline dekt. Je gevoeligheidsfactor is hoeveel één eenheid je glucose verlaagt. Je voert deze per tijdstip in; de app verzint ze niet.',
+        'es':
+            'Tu ratio insulina-carbohidratos es cuántos gramos de carbohidrato cubre una unidad de insulina. Tu factor de sensibilidad es cuánto baja la glucosa una unidad. Los introduces por franja horaria; la app no los inventa.',
+        'de':
+            'Dein Insulin-Kohlenhydrat-Verhältnis gibt an, wie viele Gramm Kohlenhydrate eine Einheit Insulin abdeckt. Dein Korrekturfaktor gibt an, wie stark eine Einheit deinen Blutzucker senkt. Du gibst diese je Tageszeit ein; die App erfindet sie nicht.',
+      });
+
+  String get calcRatiosWhy => _t({
+        'en':
+            'These individualised settings come from your diabetes care team and follow standard carb-counting therapy. Review and confirm them regularly with your clinician.',
+        'pl':
+            'Te indywidualne ustawienia pochodzą od Twojego zespołu leczenia cukrzycy i są zgodne ze standardową terapią liczenia węglowodanów. Regularnie sprawdzaj je z lekarzem.',
+        'nl':
+            'Deze persoonlijke instellingen komen van je diabetesteam en volgen standaard koolhydraat-teltherapie. Bespreek en bevestig ze regelmatig met je arts.',
+        'es':
+            'Estos ajustes individualizados provienen de tu equipo de diabetes y siguen la terapia estándar de conteo de carbohidratos. Revísalos y confírmalos con tu médico con regularidad.',
+        'de':
+            'Diese individuellen Einstellungen stammen von deinem Diabetes-Team und folgen der üblichen Kohlenhydratzähl-Therapie. Überprüfe und bestätige sie regelmäßig mit deiner Ärztin oder deinem Arzt.',
+      });
+
+  String get calcRecsTitle => _t({
+        'en': 'Daily recommendations',
+        'pl': 'Codzienne zalecenia',
+        'nl': 'Dagelijkse aanbevelingen',
+        'es': 'Recomendaciones diarias',
+        'de': 'Tägliche Empfehlungen',
+      });
+
+  String get calcRecsExplain => _t({
+        'en':
+            'These nudges compare today\'s intake with your goal-specific targets. When protein, carbs, calories or hydration cross 50%, 80% or 100% of your target, a matching tip appears.',
+        'pl':
+            'Te wskazówki porównują dzisiejsze spożycie z celami dla Twojego celu. Gdy białko, węglowodany, kalorie lub nawodnienie przekroczą 50%, 80% lub 100% celu, pojawia się odpowiednia podpowiedź.',
+        'nl':
+            'Deze tips vergelijken je inname van vandaag met je doelgerichte targets. Als eiwit, koolhydraten, calorieën of hydratatie 50%, 80% of 100% van je doel passeren, verschijnt een passende tip.',
+        'es':
+            'Estos consejos comparan tu ingesta de hoy con los objetivos de tu meta. Cuando la proteína, los carbohidratos, las calorías o la hidratación cruzan el 50%, 80% o 100% de tu objetivo, aparece un consejo acorde.',
+        'de':
+            'Diese Hinweise vergleichen die heutige Zufuhr mit deinen zielspezifischen Vorgaben. Wenn Eiweiß, Kohlenhydrate, Kalorien oder Flüssigkeit 50%, 80% oder 100% deines Ziels überschreiten, erscheint ein passender Tipp.',
+      });
+
+  String get calcRecsWhy => _t({
+        'en':
+            'The thresholds and priorities reflect the USDA Dietary Guidelines. Tips are general guidance, not medical advice.',
+        'pl':
+            'Progi i priorytety odzwierciedlają wytyczne żywieniowe USDA. Wskazówki to ogólne porady, a nie porada medyczna.',
+        'nl':
+            'De drempels en prioriteiten weerspiegelen de USDA-voedingsrichtlijnen. Tips zijn algemene richtlijnen, geen medisch advies.',
+        'es':
+            'Los umbrales y prioridades reflejan las Guías Alimentarias del USDA. Los consejos son orientación general, no consejo médico.',
+        'de':
+            'Die Schwellen und Prioritäten orientieren sich an den USDA-Ernährungsrichtlinien. Tipps sind allgemeine Orientierung, kein medizinischer Rat.',
+      });
+
+  String get calcStreakTitle => _t({
+        'en': 'Logging streak',
+        'pl': 'Seria rejestrowania',
+        'nl': 'Logreeks',
+        'es': 'Racha de registro',
+        'de': 'Logging-Serie',
+      });
+
+  String get calcStreakExplain => _t({
+        'en':
+            'Your streak counts consecutive days on which you logged at least one item. Vacation mode keeps a streak alive on days you choose to pause.',
+        'pl':
+            'Seria liczy kolejne dni, w których zarejestrowano co najmniej jedną pozycję. Tryb wakacyjny utrzymuje serię w dni, które wybierzesz na pauzę.',
+        'nl':
+            'Je reeks telt opeenvolgende dagen waarop je minstens één item hebt gelogd. Vakantiemodus houdt een reeks in stand op dagen die je pauzeert.',
+        'es':
+            'Tu racha cuenta los días consecutivos en los que registraste al menos un elemento. El modo vacaciones mantiene la racha en los días que decides pausar.',
+        'de':
+            'Deine Serie zählt aufeinanderfolgende Tage, an denen du mindestens einen Eintrag erfasst hast. Der Urlaubsmodus hält die Serie an Tagen aufrecht, die du pausierst.',
+      });
+
+  String get calcStreakWhy => _t({
+        'en':
+            'Regular self-monitoring is linked to better dietary adherence in the evidence behind the USDA Dietary Guidelines. The streak is a motivator, not a health measure.',
+        'pl':
+            'Regularne samokontrolowanie wiąże się z lepszym przestrzeganiem diety w dowodach stojących za wytycznymi USDA. Seria to motywator, a nie miara zdrowia.',
+        'nl':
+            'Regelmatige zelfmonitoring hangt samen met betere dieettrouw in het bewijs achter de USDA-richtlijnen. De reeks is een motivator, geen gezondheidsmaat.',
+        'es':
+            'El autocontrol regular se asocia con una mejor adherencia dietética en la evidencia de las Guías del USDA. La racha es un motivador, no una medida de salud.',
+        'de':
+            'Regelmäßige Selbstkontrolle ist in der Evidenz hinter den USDA-Richtlinien mit besserer Ernährungstreue verbunden. Die Serie ist ein Motivator, kein Gesundheitsmaß.',
+      });
+
+  String get calcBadgesTitle => _t({
+        'en': 'Weekly badges',
+        'pl': 'Cotygodniowe odznaki',
+        'nl': 'Wekelijkse badges',
+        'es': 'Insignias semanales',
+        'de': 'Wöchentliche Abzeichen',
+      });
+
+  String get calcBadgesExplain => _t({
+        'en':
+            'Badges are awarded for last week\'s habits — for example logging every day, hitting your protein target on several days, or building balanced plates. Each badge has a clear, fixed threshold.',
+        'pl':
+            'Odznaki przyznawane są za nawyki z ubiegłego tygodnia — np. codzienne rejestrowanie, osiągnięcie celu białkowego w kilku dniach lub komponowanie zbilansowanych talerzy. Każda odznaka ma jasny, stały próg.',
+        'nl':
+            'Badges worden toegekend voor de gewoonten van vorige week — bijvoorbeeld elke dag loggen, je eiwitdoel op meerdere dagen halen of gebalanceerde borden samenstellen. Elke badge heeft een duidelijke, vaste drempel.',
+        'es':
+            'Las insignias se otorgan por los hábitos de la semana pasada, por ejemplo registrar cada día, alcanzar tu objetivo de proteína varios días o crear platos equilibrados. Cada insignia tiene un umbral claro y fijo.',
+        'de':
+            'Abzeichen werden für die Gewohnheiten der letzten Woche vergeben — etwa tägliches Erfassen, das Erreichen deines Eiweißziels an mehreren Tagen oder ausgewogene Teller. Jedes Abzeichen hat eine klare, feste Schwelle.',
+      });
+
+  String get calcBadgesWhy => _t({
+        'en':
+            'The criteria reward the consistency and balance encouraged by the USDA Dietary Guidelines. Badges celebrate habits and are not a health assessment.',
+        'pl':
+            'Kryteria nagradzają regularność i równowagę zalecane przez wytyczne USDA. Odznaki świętują nawyki i nie są oceną zdrowia.',
+        'nl':
+            'De criteria belonen de consistentie en balans die de USDA-richtlijnen aanmoedigen. Badges vieren gewoonten en zijn geen gezondheidsbeoordeling.',
+        'es':
+            'Los criterios premian la constancia y el equilibrio que fomentan las Guías del USDA. Las insignias celebran hábitos y no son una evaluación de salud.',
+        'de':
+            'Die Kriterien belohnen die von den USDA-Richtlinien geförderte Beständigkeit und Ausgewogenheit. Abzeichen würdigen Gewohnheiten und sind keine Gesundheitsbewertung.',
+      });
+
+  String get calcRecipeMatchTitle => _t({
+        'en': 'Why this recipe fits',
+        'pl': 'Dlaczego ten przepis pasuje',
+        'nl': 'Waarom dit recept past',
+        'es': 'Por qué encaja esta receta',
+        'de': 'Warum dieses Rezept passt',
+      });
+
+  String get calcRecipeMatchExplain => _t({
+        'en':
+            'Recipes are filtered to your goal: weight loss favours lower-calorie, higher-protein meals; muscle growth needs more protein; diabetes limits carbs and glycemic load; keto caps net carbs; vegan and vegetarian filter by ingredients.',
+        'pl':
+            'Przepisy są filtrowane pod Twój cel: odchudzanie preferuje posiłki o niższej kaloryczności i wyższej zawartości białka; budowa mięśni wymaga więcej białka; cukrzyca ogranicza węglowodany i ładunek glikemiczny; keto ogranicza węglowodany netto; wegańskie i wegetariańskie filtrują po składnikach.',
+        'nl':
+            'Recepten worden gefilterd op je doel: gewichtsverlies kiest caloriearmere, eiwitrijkere maaltijden; spiergroei vraagt meer eiwit; diabetes beperkt koolhydraten en glykemische lading; keto begrenst netto koolhydraten; veganistisch en vegetarisch filteren op ingrediënten.',
+        'es':
+            'Las recetas se filtran según tu objetivo: perder peso prefiere comidas con menos calorías y más proteína; ganar músculo necesita más proteína; la diabetes limita carbohidratos y carga glucémica; keto limita los carbohidratos netos; vegano y vegetariano filtran por ingredientes.',
+        'de':
+            'Rezepte werden nach deinem Ziel gefiltert: Abnehmen bevorzugt kalorienärmere, eiweißreichere Mahlzeiten; Muskelaufbau braucht mehr Eiweiß; Diabetes begrenzt Kohlenhydrate und glykämische Last; Keto begrenzt Netto-Kohlenhydrate; vegan und vegetarisch filtern nach Zutaten.',
+      });
+
+  String get calcRecipeMatchWhy => _t({
+        'en':
+            'The thresholds follow goal-specific guidance from the USDA Dietary Guidelines and standard clinical nutrition. They help you browse, but you can still see every recipe.',
+        'pl':
+            'Progi są zgodne z zaleceniami dla danego celu z wytycznych USDA i standardowej dietetyki klinicznej. Pomagają przeglądać, ale nadal widzisz wszystkie przepisy.',
+        'nl':
+            'De drempels volgen doelgerichte richtlijnen uit de USDA-voedingsrichtlijnen en standaard klinische voeding. Ze helpen je bladeren, maar je ziet nog steeds elk recept.',
+        'es':
+            'Los umbrales siguen las pautas específicas por objetivo de las Guías del USDA y la nutrición clínica estándar. Te ayudan a explorar, pero aún puedes ver todas las recetas.',
+        'de':
+            'Die Schwellen folgen zielspezifischen Vorgaben der USDA-Richtlinien und der üblichen klinischen Ernährung. Sie helfen beim Stöbern, aber du siehst weiterhin jedes Rezept.',
+      });
 
   String get foodUpdated => _t({
         'en': 'Food updated',
