@@ -1,16 +1,17 @@
-/// Multilingual voice normalization.
+/// Multilingual voice food parsing.
 ///
-/// The spoken-food parser in `voice_entry_screen.dart` understands English
-/// number-words, units, connectors and food names, and it matches against the
-/// English food database. To support the other selectable app languages
-/// (Polish, Dutch, Spanish, German) we translate the recognised localized
-/// tokens into the equivalent English tokens *before* the English pipeline
-/// runs. Speech recognition already runs in the user's language (see
-/// `_startListening`), so the transcript arrives in that language; this layer
-/// turns e.g. "dwa banany i pół jabłka" into "two banana and half apple".
+/// The primary entry point is [parseSpokenFoods], which reads the transcript
+/// **directly in the user's language** — recognising localized numbers,
+/// fractions, units, connectors and food names natively and resolving each food
+/// against a multilingual index. No step round-trips the whole sentence through
+/// English (see the parser section at the bottom of this file).
 ///
-/// IMPORTANT: this runs before the parser strips accented characters, so keys
-/// here keep their diacritics (ł, ä, ñ, …) to match the raw transcript.
+/// The older [voiceNormalizeToEnglish] helper (English-pivot token translation)
+/// is retained only for reference/tests and is no longer used by the live
+/// parsing pipeline.
+///
+/// IMPORTANT: token tables keep their diacritics (ł, ä, ñ, …) to match the raw
+/// transcript; matching is accent-folded internally.
 library;
 
 /// Translate a localized spoken phrase to the English tokens the parser
@@ -987,3 +988,434 @@ const Map<String, Map<String, List<String>>> _foodTable = {
     'de': ['olivenöl'],
   },
 };
+
+// ════════════════════════════════════════════════════════════════════════════
+// TRUE PER-LANGUAGE SPOKEN-FOOD PARSER (no English pivot)
+//
+// `parseSpokenFoods` reads the transcript directly in the user's language. It
+// recognises localized numbers, fractions, units, connectors and filler words
+// natively, and resolves each food phrase against a multilingual food index
+// (built by inverting `_foodTable`) using accent-folded, inflection-tolerant
+// matching. The result is a list of `SpokenItem`s: each carries either an
+// explicit weight (grams) or a spoken piece count, plus a `foodQuery` that is
+// the canonical English DB label when the food was recognised, or the cleaned
+// native phrase when it wasn't (so the caller can still fuzzy-match / surface
+// it). No step round-trips the whole sentence through English.
+// ════════════════════════════════════════════════════════════════════════════
+
+/// One parsed spoken food. [grams] is set when the speaker gave a weight or
+/// volume; [pieceCount] is set when they gave a count ("two apples", "a
+/// banana") and should be multiplied by the matched food's typical piece
+/// weight by the caller. [resolved] is true when [foodQuery] is a canonical
+/// English DB label resolved from the multilingual index.
+class SpokenItem {
+  final String foodQuery;
+  final double? grams;
+  final double? pieceCount;
+  final bool resolved;
+  const SpokenItem({
+    required this.foodQuery,
+    this.grams,
+    this.pieceCount,
+    required this.resolved,
+  });
+}
+
+/// English canonical number-word → value. Localized number words are mapped to
+/// these canonical words by `_numbers[lang]`, so this table closes the loop for
+/// every language (and is used directly for English).
+const Map<String, double> _enNumberValues = {
+  'one': 1,
+  'two': 2,
+  'three': 3,
+  'four': 4,
+  'five': 5,
+  'six': 6,
+  'seven': 7,
+  'eight': 8,
+  'nine': 9,
+  'ten': 10,
+  'eleven': 11,
+  'twelve': 12,
+  'twenty': 20,
+  'thirty': 30,
+  'hundred': 100,
+  'half': 0.5,
+  'quarter': 0.25,
+};
+
+/// English canonical unit → grams per unit. Count-style units (piece/serving)
+/// live in [_countUnits] instead and are returned as a piece count.
+const Map<String, double> _enUnitGrams = {
+  'grams': 1,
+  'kg': 1000,
+  'ml': 1,
+  'l': 1000,
+  'slice': 30,
+  'cup': 240,
+  'handful': 30,
+  'bowl': 300,
+  'tablespoon': 15,
+  'teaspoon': 5,
+  'oz': 28.35,
+  'pound': 453.6,
+};
+const Set<String> _countUnits = {'piece', 'serving'};
+
+/// English-side tables so English is parsed by the very same native pipeline
+/// (English is just one more language, not a privileged target).
+const Map<String, String> _numbersEn = {
+  'one': 'one',
+  'two': 'two',
+  'three': 'three',
+  'four': 'four',
+  'five': 'five',
+  'six': 'six',
+  'seven': 'seven',
+  'eight': 'eight',
+  'nine': 'nine',
+  'ten': 'ten',
+  'eleven': 'eleven',
+  'twelve': 'twelve',
+  'twenty': 'twenty',
+  'thirty': 'thirty',
+  'hundred': 'hundred',
+  'half': 'half',
+  'quarter': 'quarter',
+};
+const Map<String, String> _unitsEn = {
+  'g': 'grams',
+  'gram': 'grams',
+  'grams': 'grams',
+  'kg': 'kg',
+  'kilo': 'kg',
+  'kilogram': 'kg',
+  'ml': 'ml',
+  'milliliter': 'ml',
+  'l': 'l',
+  'liter': 'l',
+  'litre': 'l',
+  'slice': 'slice',
+  'slices': 'slice',
+  'piece': 'piece',
+  'pieces': 'piece',
+  'cup': 'cup',
+  'cups': 'cup',
+  'glass': 'cup',
+  'handful': 'handful',
+  'bowl': 'bowl',
+  'plate': 'bowl',
+  'tablespoon': 'tablespoon',
+  'tbsp': 'tablespoon',
+  'teaspoon': 'teaspoon',
+  'tsp': 'teaspoon',
+  'serving': 'serving',
+  'servings': 'serving',
+  'oz': 'oz',
+  'ounce': 'oz',
+  'ounces': 'oz',
+  'pound': 'pound',
+  'pounds': 'pound',
+  'lb': 'pound',
+  'lbs': 'pound',
+};
+const Map<String, String> _connectorsEn = {
+  'and': 'and',
+  'with': 'with',
+  'plus': 'plus',
+};
+const Map<String, String> _articlesEn = {
+  'a': 'a',
+  'an': 'a',
+  'some': 'some',
+  'the': 'the',
+  'of': 'of',
+};
+const Set<String> _fillersEn = {
+  'i', 'we', 'just', 'also', 'then', 'today', 'tonight', 'please', //
+  'ate', 'eat', 'eaten', 'had', 'have', 'having', 'got', 'consumed', //
+  'about', 'around', 'roughly', 'approximately', 'like', 'my', //
+};
+
+/// Resolved per-language parse data, built once and cached.
+class _LangPack {
+  final Map<String, double> numberValue; // localized word -> numeric value
+  final Map<String, double?> unitGrams; // localized unit -> grams (null=count)
+  final Set<String> connectors; // localized split words
+  final Set<String> articleCount; // localized words meaning "a/an" -> 1
+  final Set<String> drop; // filler / article words to ignore
+  final Map<String, String> foodIndex; // accent-folded localized term -> EN
+  const _LangPack({
+    required this.numberValue,
+    required this.unitGrams,
+    required this.connectors,
+    required this.articleCount,
+    required this.drop,
+    required this.foodIndex,
+  });
+}
+
+final Map<String, _LangPack> _langPackCache = {};
+
+_LangPack _langPack(String lang) {
+  return _langPackCache.putIfAbsent(lang, () => _buildLangPack(lang));
+}
+
+_LangPack _buildLangPack(String lang) {
+  final isEn = lang == 'en';
+  final numbers = isEn ? _numbersEn : (_numbers[lang] ?? const {});
+  final units = isEn ? _unitsEn : (_units[lang] ?? const {});
+  final connectors = isEn ? _connectorsEn : (_connectors[lang] ?? const {});
+  final articles = isEn ? _articlesEn : (_articles[lang] ?? const {});
+  final fillers =
+      isEn ? const <String, String>{} : (_fillers[lang] ?? const {});
+
+  final numberValue = <String, double>{};
+  numbers.forEach((local, enWord) {
+    final v = _enNumberValues[enWord];
+    if (v != null) numberValue[local] = v;
+  });
+
+  final unitGrams = <String, double?>{};
+  units.forEach((local, enUnit) {
+    if (_countUnits.contains(enUnit)) {
+      unitGrams[local] = null; // count unit
+    } else {
+      final g = _enUnitGrams[enUnit];
+      if (g != null) unitGrams[local] = g;
+    }
+  });
+
+  final articleCount = <String>{};
+  final drop = <String>{};
+  articles.forEach((local, en) {
+    if (en == 'a') {
+      articleCount.add(local);
+    } else {
+      drop.add(local); // "some", "the", "of"
+    }
+  });
+  // Filler words (verbs like "comido", "gegessen") are dropped entirely.
+  fillers.forEach((local, _) => drop.add(local));
+  if (isEn) drop.addAll(_fillersEn);
+
+  // Multilingual food index: every localized synonym (and the English label
+  // itself) resolves to the canonical English DB label. Stored accent-folded.
+  final foodIndex = <String, String>{};
+  _foodTable.forEach((english, byLang) {
+    foodIndex[_fold(english)] = english;
+    final terms = isEn ? const <String>[] : (byLang[lang] ?? const <String>[]);
+    for (final t in terms) {
+      foodIndex[_fold(t)] = english;
+    }
+  });
+
+  return _LangPack(
+    numberValue: numberValue,
+    unitGrams: unitGrams,
+    connectors: connectors.keys.toSet(),
+    articleCount: articleCount,
+    drop: drop,
+    foodIndex: foodIndex,
+  );
+}
+
+/// Lowercase + strip diacritics so "jabłka"/"plátano"/"Hähnchen" compare
+/// cleanly. Polish ł is handled explicitly (it has no NFD decomposition).
+String _fold(String s) {
+  const map = {
+    'á': 'a', 'à': 'a', 'ä': 'a', 'â': 'a', 'ã': 'a', 'å': 'a', //
+    'é': 'e', 'è': 'e', 'ë': 'e', 'ê': 'e', 'ę': 'e', //
+    'í': 'i', 'ì': 'i', 'ï': 'i', 'î': 'i', //
+    'ó': 'o', 'ò': 'o', 'ö': 'o', 'ô': 'o', 'õ': 'o', 'ø': 'o', //
+    'ú': 'u', 'ù': 'u', 'ü': 'u', 'û': 'u', //
+    'ñ': 'n', 'ń': 'n', 'ç': 'c', 'ć': 'c', 'ł': 'l', 'ś': 's', //
+    'ż': 'z', 'ź': 'z', 'ą': 'a', 'ß': 'ss', //
+  };
+  final b = StringBuffer();
+  for (final ch in s.toLowerCase().split('')) {
+    b.write(map[ch] ?? ch);
+  }
+  return b.toString();
+}
+
+int _levenshtein(String a, String b) {
+  if (a == b) return 0;
+  if (a.isEmpty) return b.length;
+  if (b.isEmpty) return a.length;
+  final prev = List<int>.generate(b.length + 1, (i) => i);
+  final cur = List<int>.filled(b.length + 1, 0);
+  for (var i = 0; i < a.length; i++) {
+    cur[0] = i + 1;
+    for (var j = 0; j < b.length; j++) {
+      final cost = a[i] == b[j] ? 0 : 1;
+      cur[j + 1] = [cur[j] + 1, prev[j + 1] + 1, prev[j] + cost]
+          .reduce((x, y) => x < y ? x : y);
+    }
+    for (var j = 0; j <= b.length; j++) {
+      prev[j] = cur[j];
+    }
+  }
+  return prev[b.length];
+}
+
+bool _fuzzyEq(String a, String b) {
+  if (a == b) return true;
+  final maxLen = a.length > b.length ? a.length : b.length;
+  if (maxLen < 4) return false;
+  final d = _levenshtein(a, b);
+  // Tolerate one edit for short words, two for longer ones — covers Polish
+  // case endings (jabłko/jabłka), Dutch/German plurals (appel/appels).
+  return d <= (maxLen >= 7 ? 2 : 1);
+}
+
+/// Resolve an accent-folded native food phrase to a canonical English DB label
+/// using the multilingual index. Tries the whole phrase, then sliding windows,
+/// then inflection-tolerant single-word matching. Returns null when unknown.
+String? _resolveFood(List<String> words, _LangPack pack) {
+  if (words.isEmpty) return null;
+  // Whole phrase, then longest sub-phrases first.
+  for (var len = words.length; len >= 1; len--) {
+    for (var start = 0; start + len <= words.length; start++) {
+      final key = words.sublist(start, start + len).join(' ');
+      final hit = pack.foodIndex[key];
+      if (hit != null) return hit;
+    }
+  }
+  // Inflection-tolerant single-word matching against every index key.
+  for (final w in words) {
+    if (w.length < 3) continue;
+    for (final entry in pack.foodIndex.entries) {
+      if (entry.key.contains(' ')) continue; // single-word keys only here
+      if (_fuzzyEq(w, entry.key)) return entry.value;
+    }
+  }
+  return null;
+}
+
+/// Parse a spoken transcript in [lang] into structured food items without
+/// pivoting through English. See [SpokenItem].
+List<SpokenItem> parseSpokenFoods(String text, String lang) {
+  final pack = _langPack(lang);
+
+  // Normalise: lowercase, turn most punctuation into spaces, keep commas as
+  // explicit separators, normalise decimal commas inside numbers (1,5 -> 1.5).
+  var cleaned = text.toLowerCase().replaceAll(RegExp(r'[.!?¿¡;:()"]'), ' ');
+  cleaned = cleaned.replaceAllMapped(
+      RegExp(r'(\d),(\d)'), (m) => '${m[1]}.${m[2]}');
+  cleaned = cleaned.replaceAll(',', ' , ');
+  final raw = cleaned.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+
+  // Split into segments on connectors and commas.
+  final segments = <List<String>>[];
+  var current = <String>[];
+  for (final tok in raw) {
+    if (tok == ',' || pack.connectors.contains(tok)) {
+      if (current.isNotEmpty) segments.add(current);
+      current = <String>[];
+    } else {
+      current.add(tok);
+    }
+  }
+  if (current.isNotEmpty) segments.add(current);
+
+  final items = <SpokenItem>[];
+  for (final seg in segments) {
+    double? qty;
+    double? unitGrams; // grams-per-unit when a weight/volume unit was given
+    var isCountUnit = false;
+    var sawArticle = false;
+    final foodWords = <String>[];
+
+    for (var i = 0; i < seg.length; i++) {
+      final tok = seg[i];
+      final folded = _fold(tok);
+      if (pack.drop.contains(tok) || pack.drop.contains(folded)) {
+        continue; // filler / "some" / "the" / "of"
+      }
+      // Number: digit or localized number word. Combine "X and a half"? We keep
+      // it simple — a fraction word adds to the running quantity.
+      final asDigit = double.tryParse(tok);
+      final asWord = pack.numberValue[tok] ?? pack.numberValue[folded];
+      if (foodWords.isEmpty && (asDigit != null || asWord != null)) {
+        final v = asDigit ?? asWord!;
+        qty = (qty == null) ? v : (v < 1 ? qty + v : qty * v);
+        continue;
+      }
+      // Unit token (only meaningful before the food name).
+      if (foodWords.isEmpty &&
+          (pack.unitGrams.containsKey(tok) ||
+              pack.unitGrams.containsKey(folded))) {
+        final g = pack.unitGrams.containsKey(tok)
+            ? pack.unitGrams[tok]
+            : pack.unitGrams[folded];
+        if (g == null) {
+          isCountUnit = true;
+        } else {
+          unitGrams = g;
+        }
+        continue;
+      }
+      // Article meaning "a/an" → an implicit count of one.
+      if (foodWords.isEmpty &&
+          (pack.articleCount.contains(tok) ||
+              pack.articleCount.contains(folded))) {
+        sawArticle = true;
+        continue;
+      }
+      foodWords.add(folded);
+    }
+
+    if (foodWords.isEmpty) continue;
+
+    final resolved = _resolveFood(foodWords, pack);
+    final query = resolved ?? foodWords.join(' ');
+
+    double? grams;
+    double? pieceCount;
+    if (unitGrams != null) {
+      grams = (qty ?? 1) * unitGrams;
+    } else if (isCountUnit) {
+      pieceCount = qty ?? 1;
+    } else if (qty != null) {
+      // Bare number with no unit → a count of pieces.
+      pieceCount = qty;
+    } else if (sawArticle) {
+      pieceCount = 1;
+    }
+
+    items.add(SpokenItem(
+      foodQuery: query,
+      grams: grams,
+      pieceCount: pieceCount,
+      resolved: resolved != null,
+    ));
+  }
+
+  // Merge duplicate foods spoken twice ("rice ... and rice").
+  if (items.length > 1) {
+    final byKey = <String, SpokenItem>{};
+    final order = <String>[];
+    for (final it in items) {
+      final key = it.foodQuery;
+      final ex = byKey[key];
+      if (ex == null) {
+        byKey[key] = it;
+        order.add(key);
+      } else {
+        byKey[key] = SpokenItem(
+          foodQuery: key,
+          grams: (ex.grams ?? 0) + (it.grams ?? 0) == 0
+              ? null
+              : (ex.grams ?? 0) + (it.grams ?? 0),
+          pieceCount: (ex.pieceCount ?? 0) + (it.pieceCount ?? 0) == 0
+              ? null
+              : (ex.pieceCount ?? 0) + (it.pieceCount ?? 0),
+          resolved: ex.resolved || it.resolved,
+        );
+      }
+    }
+    return [for (final k in order) byKey[k]!];
+  }
+  return items;
+}

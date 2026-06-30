@@ -448,147 +448,24 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   /// NLP parser: handles word-numbers, plurals, smart segmentation.
   List<_ParsedFood> _parseTranscript(String text, String langCode) {
     final results = <_ParsedFood>[];
-    // Translate localized spoken tokens (numbers, units, connectors, common
-    // food names) into the English tokens this pipeline understands. Runs
-    // before accented characters are stripped so diacritics still match.
-    final english = voiceNormalizeToEnglish(text, langCode);
-    final lower = english
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^\w\s,]'), ' ')
-        .replaceAll(RegExp(r'\bhand\s+fulls?\b'), 'handful')
-        .replaceAll(RegExp(r'\bhand\s+fuls?\b'), 'handful');
+    // Parse the transcript natively in the user's language: localized numbers,
+    // fractions, units, connectors and food names are understood directly and
+    // each food is resolved against a multilingual index — no English pivot.
+    final spoken = parseSpokenFoods(text, langCode);
 
-    // 1. Normalise spoken fractions/amounts, THEN word-numbers. Fractions must
-    //    run first so "two thirds" becomes "0.66" before "two" → "2".
-    final amounts = _spelledAmountsToNumbers(lower);
-    final converted = _wordNumbersToDigits(amounts);
+    for (final item in spoken) {
+      // [grams] is set when the speaker gave an explicit weight/volume;
+      // [pieceCount] is set when they gave a count and is refined to a realistic
+      // weight using the matched food's category after matching.
+      final double? grams = item.grams;
+      final double? pieceCount = item.pieceCount;
 
-    // 2. Strip speech boilerplate before segmentation.
-    final defiltered = _stripSpeechFillers(converted);
-
-    // 3. Split on connectors that usually separate foods.
-    var segments = defiltered.split(
-      RegExp(r'\s*(?:,\s*|(?:^|\s)(?:and|plus|with)\s+)'),
-    );
-
-    // 3. Further split when a digit immediately precedes a food name
-    //    e.g. "2 bananas 1 apple" -> ["2 bananas", "1 apple"]
-    final refined = <String>[];
-    for (var seg in segments) {
-      seg = _cleanFoodSegment(seg);
-      if (seg.isEmpty) continue;
-      final parts = seg
-          .splitMapJoin(
-            RegExp(r'(?<=\S)\s+(?=\d+\s)'),
-            onMatch: (m) => '\x00',
-            onNonMatch: (s) => s,
-          )
-          .split('\x00');
-      for (final p in parts) {
-        final t = p.trim();
-        if (t.isNotEmpty) refined.add(t);
-      }
-    }
-
-    for (var seg in refined) {
-      seg = seg.trim();
-      if (seg.isEmpty) continue;
-
-      // 4. Convert word numbers to digits
-      const wordNumbers = {
-        'one': '1',
-        'two': '2',
-        'three': '3',
-        'four': '4',
-        'five': '5',
-        'six': '6',
-        'seven': '7',
-        'eight': '8',
-        'nine': '9',
-        'ten': '10',
-        'half': '0.5',
-        'quarter': '0.25',
-      };
-      for (final entry in wordNumbers.entries) {
-        if (seg.startsWith('${entry.key} ')) {
-          seg = seg.replaceFirst(entry.key, entry.value);
-          break;
-        }
-      }
-
-      // 4b. Extract quantity
-      double? grams;
-      // When the user gives a count ("two apples", "a banana") rather than a
-      // weight, remember the count so the weight can be refined to the matched
-      // food's typical piece size after matching.
-      double? pieceCount;
-      String foodQuery = seg;
-
-      final qMatch = RegExp(
-              r'^(\d+(?:\.\d+)?)\s*(g|grams?|kg|ml|l|liters?|litres?|oz|ounces?|lbs?|pounds?|pieces?|servings?|cups?|slices?|handfuls?|tbsp|tablespoons?|tsp|teaspoons?|bowls?|plates?|scoops?)?\s*(?:of\s+)?(.+)$')
-          .firstMatch(seg);
-      if (qMatch != null) {
-        final qty = double.tryParse(qMatch.group(1)!) ?? 100;
-        final unit = qMatch.group(2) ?? '';
-        foodQuery = qMatch.group(3)!.trim();
-
-        if (unit.startsWith('piece') || unit.startsWith('serving')) {
-          pieceCount = qty;
-          grams = qty * 100;
-        } else if (unit.startsWith('cup')) {
-          grams = qty * 240;
-        } else if (unit.startsWith('slice')) {
-          grams = qty * 30;
-        } else if (unit.startsWith('handful')) {
-          grams = qty * 30;
-        } else if (unit.startsWith('bowl') || unit.startsWith('plate')) {
-          grams = qty * 300;
-        } else if (unit.startsWith('scoop')) {
-          grams = qty * 30;
-        } else if (unit.startsWith('tbsp') || unit.startsWith('tablespoon')) {
-          grams = qty * 15;
-        } else if (unit.startsWith('tsp') || unit.startsWith('teaspoon')) {
-          grams = qty * 5;
-        } else if (unit.startsWith('oz') || unit.startsWith('ounce')) {
-          grams = qty * 28.35;
-        } else if (unit.startsWith('lb') || unit.startsWith('pound')) {
-          grams = qty * 453.6;
-        } else if (unit == 'kg') {
-          grams = qty * 1000;
-        } else if (unit.startsWith('l') && !unit.startsWith('lb')) {
-          grams = qty * 1000; // 1L ≈ 1000ml ≈ 1000g for most liquids
-        } else if (unit.startsWith('g') || unit.startsWith('ml')) {
-          grams = qty;
-        } else {
-          // No unit: treat number as count of pieces (e.g. "2 bananas").
-          pieceCount = qty;
-          grams = qty * 120; // provisional; refined per food category below
-        }
-      }
-
-      // Handle bare "handful of ..." without a leading number
-      final handfulMatch =
-          RegExp(r'^(?:(?:an?|some)\s+)?handfuls?\s+(?:of\s+)?(.+)$')
-              .firstMatch(foodQuery);
-      if (handfulMatch != null) {
-        foodQuery = handfulMatch.group(1)!.trim();
-        grams = 30;
-      }
-
-      // Handle "a/an" prefix for countable single foods.
-      if (foodQuery.startsWith('a ') || foodQuery.startsWith('an ')) {
-        foodQuery = foodQuery.replaceFirst(RegExp(r'^an?\s+'), '');
-        if (grams == null) {
-          pieceCount = 1;
-          grams = 120; // provisional; refined per food category below
-        }
-      }
-
-      grams ??= 100;
-
-      // 5. Strip filler residue, apply aliases, and depluralize for matching.
-      foodQuery = _normaliseFoodQuery(foodQuery);
+      // Apply English aliases / depluralization for the DB match. When the food
+      // already resolved to a canonical English label this is a no-op; for an
+      // unresolved native phrase it harmlessly normalizes any English residue.
+      var foodQuery = _normaliseFoodQuery(item.foodQuery);
       if (foodQuery.isEmpty || _isNoiseFoodQuery(foodQuery)) continue;
+
 
       // 6. Fuzzy match against food DB
       FoodData? match;
@@ -663,14 +540,14 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         // food's category (a "piece" of nuts is not a "piece" of steak).
         final resolvedGrams = pieceCount != null
             ? pieceCount * _typicalPieceGrams(match.category)
-            : grams;
+            : (grams ?? 100);
         results.add(_ParsedFood(food: match, grams: resolvedGrams));
       } else {
         // Only surface an unrecognised item when the residue genuinely looks
         // like a food name — not leftover filler, verbs, numbers or chatter.
         final cleaned = _foodLikeResidue(queryWords);
         if (cleaned != null) {
-          results.add(_ParsedFood(food: null, query: cleaned, grams: grams));
+          results.add(_ParsedFood(food: null, query: cleaned, grams: grams ?? 100));
         }
       }
     }
@@ -731,58 +608,6 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     }
   }
 
-  static String _stripSpeechFillers(String text) {
-    var out = text.replaceAll(RegExp(r'\s+'), ' ').trim();
-    final phrasePatterns = [
-      // "I ate", "we had", "I just consumed", "I made", "I grabbed"
-      RegExp(
-          r'\b(?:i|we)\s+(?:did\s+)?(?:just\s+)?(?:ate|eat|eaten|had|have|got|consumed|grabbed|made|cooked|prepared|fixed)\b'),
-      // contractions: "I'm having", "I've had", "we're eating" (apostrophes are
-      // already converted to spaces upstream, so "i'm" -> "i m")
-      RegExp(
-          r'\b(?:i|we)\s+(?:m|ve|re|am|was|were)\s+(?:just\s+)?(?:had|have|having|eating|eaten|got|getting|making|cooking|gonna\s+have)\b'),
-      // intention phrases: "gonna have", "going to eat", "want to grab"
-      RegExp(
-          r'\b(?:gonna|wanna|going\s+to|want\s+to|like\s+to)\s+(?:eat|have|grab|log|add|make)\b'),
-      RegExp(r'\b(?:i|we)\s+(?:would\s+like\s+to\s+)?(?:log|add)\b'),
-      RegExp(r'\b(?:let\s+me|please)\s+(?:log|add)\b'),
-      RegExp(r'\bi\s+think\s+i\s+(?:had|ate|have)\b'),
-      RegExp(
-          r'\b(?:also|then)\s+(?:i|we)?\s*(?:did\s+)?(?:ate|eat|had|have|got)?\b'),
-      RegExp(r'\bplease\s+(?:log|add)\b'),
-      // meal context lead-ins: "for breakfast", "for lunch i had"
-      RegExp(
-          r'\bfor\s+(?:breakfast|lunch|dinner|a\s+snack)\s+(?:i|we)?\s*(?:had|ate|have)?\b'),
-    ];
-    for (final pattern in phrasePatterns) {
-      out = out.replaceAll(pattern, ' ');
-    }
-    return out.replaceAll(RegExp(r'\s+'), ' ').trim();
-  }
-
-  static String _cleanFoodSegment(String segment) {
-    var out = segment.replaceAll(RegExp(r'\s+'), ' ').trim();
-    var changed = true;
-    while (changed) {
-      final before = out;
-      out = out
-          .replaceFirst(RegExp(r'^(?:and|also|then|plus|with)\s+'), '')
-          .replaceFirst(
-              RegExp(r'^(?:i|we)\s+(?:m|ve|re|am|was|were|did|just)\s+'), '')
-          .replaceFirst(RegExp(r'^(?:i|we)\s+(?:did\s+)?'), '')
-          .replaceFirst(
-              RegExp(
-                  r'^(?:ate|eat|eaten|had|have|having|got|consumed|grabbed|made|cooked|prepared)\s+'),
-              '')
-          .replaceFirst(
-              RegExp(r'^(?:please\s+|let\s+me\s+)?(?:log|add)\s+'), '')
-          .replaceFirst(RegExp(r'^(?:just|also|then)\s+'), '')
-          .trim();
-      changed = out != before;
-    }
-    return out;
-  }
-
   static String _normaliseFoodQuery(String query) {
     var out = query
         .replaceAll(RegExp(r'\s+'), ' ')
@@ -822,71 +647,6 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         .toList();
     if (words.isEmpty) return null;
     return words.join(' ');
-  }
-
-  /// Normalise spoken fractions and vague amounts to numeric quantities so the
-  /// quantity regex can consume them, e.g. "two thirds of an apple" →
-  /// "0.66 of an apple" (0.66 × one apple) instead of "2 … apple" (two apples).
-  /// Runs BEFORE [_wordNumbersToDigits] so compound phrases ("two thirds") are
-  /// matched before "two" is independently turned into "2".
-  static String _spelledAmountsToNumbers(String text) {
-    var out = text;
-    // Order matters: more specific (compound) phrases first.
-    const fractionPhrases = <String, String>{
-      r'\bthree\s+(?:quarters|fourths)\b': '0.75',
-      r'\btwo\s+thirds\b': '0.66',
-      r'\btwo\s+(?:quarters|fourths)\b': '0.5',
-      r'\bthree\s+fifths\b': '0.6',
-      r'\btwo\s+fifths\b': '0.4',
-      r'\bhalf\s+(?:a|an)\b': '0.5',
-      r'\b(?:a|one)\s+third\b': '0.33',
-      r'\b(?:a|one)\s+(?:quarter|fourth)\b': '0.25',
-      r'\b(?:a|one)\s+fifth\b': '0.2',
-      r'\b(?:a|one)\s+half\b': '0.5',
-      r'\bhalf\b': '0.5',
-      r'\b(?:a\s+)?couple\s+(?:of\s+)?': '2 ',
-      r'\ba\s+few\s+': '3 ',
-    };
-    fractionPhrases.forEach((pattern, value) {
-      out = out.replaceAll(RegExp(pattern), value);
-    });
-    // "another X" = one more X → count of 1 (also lets it merge with an earlier
-    // mention of the same food in the de-duplication pass).
-    out = out.replaceAll(RegExp(r'\banother\b'), '1');
-    return out;
-  }
-
-  /// Map spoken word-numbers to digits so the quantity regex can pick them up.
-  static String _wordNumbersToDigits(String text) {
-    const map = {
-      'zero': '0',
-      'one': '1',
-      'two': '2',
-      'three': '3',
-      'four': '4',
-      'five': '5',
-      'six': '6',
-      'seven': '7',
-      'eight': '8',
-      'nine': '9',
-      'ten': '10',
-      'eleven': '11',
-      'twelve': '12',
-      'thirteen': '13',
-      'fourteen': '14',
-      'fifteen': '15',
-      'twenty': '20',
-      'thirty': '30',
-      'forty': '40',
-      'fifty': '50',
-      'hundred': '100',
-      'half': '0.5',
-    };
-    var out = text;
-    for (final e in map.entries) {
-      out = out.replaceAll(RegExp('\\b${e.key}\\b'), e.value);
-    }
-    return out;
   }
 
   /// Remove trailing 's' / 'es' from food names so "bananas" matches "banana".
