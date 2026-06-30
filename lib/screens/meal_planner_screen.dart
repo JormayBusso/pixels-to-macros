@@ -381,6 +381,8 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     final pantryMode = ref.read(pantryModeProvider);
     final pantryNames =
         pantryMode ? ref.read(pantryProvider).availableNames : const <String>{};
+    ref.read(mealPlanProvider.notifier).languageCode =
+        ref.read(localeProvider).code;
     await ref.read(mealPlanProvider.notifier).autoFillWeek(
           goal: ref.read(plannerGoalProvider) ?? NutritionGoalType.maintain,
           dailyCalorieGoal: prefs.dailyCalorieGoal,

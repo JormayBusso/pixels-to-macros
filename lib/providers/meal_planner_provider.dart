@@ -229,12 +229,9 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
   }) async {
     final key = MealPlanState.slotKey(dayOfWeek, mealType);
     final current = state.assignments[key];
-    final candidates = await RecipeRepository.instance.query(
+    final candidates = await _queryWithFallback(
       goal: goal,
       mealType: mealType,
-      limit: 1000,
-      includeGenerated: true,
-      language: languageCode,
       dietaryRestrictions: dietaryRestrictions,
     );
     if (candidates.isEmpty) return const <Recipe>[];
@@ -352,12 +349,9 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     final key = MealPlanState.slotKey(dayOfWeek, mealType);
     final currentId = state.assignments[key]?.id;
 
-    final candidates = await RecipeRepository.instance.query(
+    final candidates = await _queryWithFallback(
       goal: goal,
       mealType: mealType,
-      limit: 1000,
-      includeGenerated: true,
-      language: languageCode,
       dietaryRestrictions: dietaryRestrictions,
     );
 
@@ -412,7 +406,10 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
 
     final recipe = swapIntent == null
         ? _pickRandomRecipe(pool, key, dayOfWeek, mealType)
-        : (RecipeSwapService.pickBestSwap(
+        : (_pickSwapWithVariety(
+              key: key,
+              dayOfWeek: dayOfWeek,
+              mealType: mealType,
               current: state.assignments[key],
               candidates: pool,
               intent: swapIntent,
@@ -456,6 +453,102 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     ));
     pool.shuffle(rng);
     return pool[rng.nextInt(pool.length)];
+  }
+
+  /// Query eligible recipes, progressively relaxing the *soft* filters so an
+  /// enabled slot is never left empty. Hard constraints (the meal type and the
+  /// user's dietary restrictions/allergies) are always kept; only the language
+  /// preference and then the nutrition goal are dropped on retry.
+  Future<List<Recipe>> _queryWithFallback({
+    required NutritionGoalType goal,
+    required RecipeMealType mealType,
+    required Set<DietaryRestriction> dietaryRestrictions,
+  }) async {
+    var candidates = await RecipeRepository.instance.query(
+      goal: goal,
+      mealType: mealType,
+      limit: 1000,
+      includeGenerated: true,
+      language: languageCode,
+      dietaryRestrictions: dietaryRestrictions,
+    );
+    // Relax 1: allow recipes from any language.
+    if (candidates.isEmpty && languageCode != null) {
+      candidates = await RecipeRepository.instance.query(
+        goal: goal,
+        mealType: mealType,
+        limit: 1000,
+        includeGenerated: true,
+        dietaryRestrictions: dietaryRestrictions,
+      );
+    }
+    // Relax 2: drop the nutrition-goal constraint (keep meal type + diet).
+    if (candidates.isEmpty) {
+      candidates = await RecipeRepository.instance.query(
+        mealType: mealType,
+        limit: 1000,
+        includeGenerated: true,
+        dietaryRestrictions: dietaryRestrictions,
+      );
+    }
+    return candidates;
+  }
+
+  /// Picks a recipe for an intent-driven assignment with controlled variety.
+  ///
+  /// Directional swaps (lower-carb / faster / higher-protein) the user taps
+  /// explicitly must return the single best match, so they stay deterministic.
+  /// The auto-planner intents (balanced / pantry-first) instead pick at random
+  /// from the top-ranked slice — this keeps quality high while ensuring that
+  /// re-running "AI generate" produces a genuinely different week each time.
+  Recipe? _pickSwapWithVariety({
+    required String key,
+    required int dayOfWeek,
+    required RecipeMealType mealType,
+    required Recipe? current,
+    required List<Recipe> candidates,
+    required SmartSwapIntent intent,
+    required NutritionGoalType goal,
+    required Set<String> pantryNames,
+    required Set<String> usedRecipeIds,
+  }) {
+    final autoPlanner = intent == SmartSwapIntent.balanced ||
+        intent == SmartSwapIntent.pantryFirst;
+    if (!autoPlanner) {
+      return RecipeSwapService.pickBestSwap(
+        current: current,
+        candidates: candidates,
+        intent: intent,
+        goal: goal,
+        pantryNames: pantryNames,
+        usedRecipeIds: usedRecipeIds,
+      );
+    }
+    final ranked = RecipeSwapService.rankSwaps(
+      current: current,
+      candidates: candidates,
+      intent: intent,
+      goal: goal,
+      pantryNames: pantryNames,
+      usedRecipeIds: usedRecipeIds,
+      limit: 16,
+    );
+    if (ranked.isEmpty) return null;
+    final shuffleCount = (_shuffleCounts[key] ?? 0) + 1;
+    _shuffleCounts[key] = shuffleCount;
+    final rng = Random(Object.hash(
+      state.year,
+      state.weekNumber,
+      dayOfWeek,
+      mealType.index,
+      shuffleCount,
+      DateTime.now().microsecondsSinceEpoch,
+    ));
+    // Pantry-first keeps a tighter slice so it still favours pantry overlap.
+    final topN = intent == SmartSwapIntent.pantryFirst
+        ? min(ranked.length, 6)
+        : min(ranked.length, 10);
+    return ranked[rng.nextInt(topN)];
   }
 
   int _dayCalories(int dayOfWeek) {
