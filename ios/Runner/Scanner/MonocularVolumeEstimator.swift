@@ -1028,10 +1028,10 @@ final class MonocularVolumeEstimator {
         let bboxH = max(1, footprint.maxRow - footprint.minRow + 1)
         // Higher silhouette sampling resolution = the reconstructed mesh tracks
         // the real top/side contour more tightly (finer rim, crisper outline)
-        // for a more accurate 3D object. 80 cells stays well within a safe
-        // vertex budget for the viewer/exporter while noticeably sharpening the
-        // hull versus the previous 56-cell grid. Volume math is unaffected.
-        let maxCells = 80
+        // for a more accurate 3D object. 100 cells gives a smooth, mask-faithful
+        // outline (a round tomato reads round) while staying within a safe
+        // vertex budget for the viewer/exporter. Volume math is unaffected.
+        let maxCells = 100
         let step = max(1, Int((Double(max(bboxW, bboxH)) / Double(maxCells)).rounded(.up)))
         let gc = max(1, Int((Double(bboxW) / Double(step)).rounded(.up)))
         let gr = max(1, Int((Double(bboxH) / Double(step)).rounded(.up)))
@@ -1151,28 +1151,27 @@ final class MonocularVolumeEstimator {
         }
         let transverseStrength = transverseRoundnessStrength(for: label)
 
-        // ── True two-silhouette voxel visual hull ─────────────────────────
-        // A voxel is SOLID only where the TOP silhouette (top-mask occupancy)
-        // AND the SIDE silhouette (side-profile bottom/top along the matched
-        // axis) both contain it. The carved solid's top and side outlines then
-        // match the two captured photos exactly — a closed rounded body, not a
-        // draped height-field with a flat bottom. Round foods additionally
-        // round the unobserved transverse axis, still bounded by the top mask.
-        let vny = 30
-        @inline(__always) func hullSolid(_ ci: Int, _ ri: Int, _ yj: Int) -> Bool {
-            if yj < 0 || yj >= vny { return false }
-            if !isOn(ri, ci) { return false }
-            let y01 = (Float(yj) + 0.5) / Float(vny)
+        // ── Exact-silhouette smooth surface (no voxels, no layers) ────────
+        // We do NOT voxelize the body anymore. `cornerBounds` evaluates a
+        // CONTINUOUS bottom/top height (fraction of full height) at any
+        // silhouette corner, from the SIDE silhouette (side-profile bounds
+        // along the matched axis, with transverse rounding for round foods) or,
+        // without one, from the TOP silhouette's distance transform (a smooth
+        // dome). Because the height is continuous — not snapped to 30 layers —
+        // and the outline comes straight from the mask, the reconstructed mesh
+        // matches the two captured silhouettes exactly: a round tomato comes
+        // out round, never as stacked cubes or horizontal layers.
+        @inline(__always) func cornerBounds(_ rr: Int, _ cc: Int) -> (bottom: Float, top: Float) {
             if let sideProfile, !sideProfile.normalizedHeights.isEmpty {
                 let axisU = sideProfile.topAxis == .columns
-                    ? Double(ci) / Double(max(gc - 1, 1))
-                    : Double(ri) / Double(max(gr - 1, 1))
+                    ? Double(cc) / Double(max(gc, 1))
+                    : Double(rr) / Double(max(gr, 1))
                 let b = sideProfile.sampleBounds(axisU)
                 var bottom = Float(b.bottom)
                 var top = Float(b.top)
-                if top <= bottom { return false }
+                if top <= bottom { return (0, max(0.02, Float(b.top))) }
                 if transverseStrength > 0 {
-                    let tCoord = sideProfile.topAxis == .columns ? Float(ri) : Float(ci)
+                    let tCoord = sideProfile.topAxis == .columns ? Float(rr) : Float(cc)
                     let tCenter = sideProfile.topAxis == .columns ? cgR : cgC
                     let tExtent = sideProfile.topAxis == .columns ? Float(gr) : Float(gc)
                     let radius = tCoord >= tCenter ? max(0.5, tExtent - tCenter) : max(0.5, tCenter)
@@ -1183,13 +1182,14 @@ final class MonocularVolumeEstimator {
                     bottom = mid - halfH
                     top = mid + halfH
                 }
-                return y01 >= bottom && y01 <= top
+                let lo = max(0, bottom)
+                return (lo, max(lo + 0.001, top))
             }
-            // No side silhouette: extrude the top silhouette with a distance-
-            // transform cap (round) or flat top (box); base sits on the plate.
-            let nd = min(1.0, edgeDist[corner(ri, ci)] / maxEdgeDist)
+            // No side silhouette: dome the top silhouette via its distance
+            // transform (round) or a near-flat cap (box); base rests on plate.
+            let nd = min(1.0, edgeDist[corner(rr, cc)] / maxEdgeDist)
             let topShape: Float = transverseStrength > 0 ? sqrt(nd) : smoothstep01(nd * 3.0)
-            return y01 <= max(0.02, topShape)
+            return (0, max(0.02, topShape))
         }
 
         @inline(__always) func cornerX(_ cc: Int) -> Float {
@@ -1228,86 +1228,58 @@ final class MonocularVolumeEstimator {
             faces += [ia, ib, ic, ia, ic, id2]
         }
 
-        // ── Smooth surface extraction (Surface Nets) ──────────────────────
-        // Triangulate the EXACT two-silhouette hull occupancy with a dual-
-        // contouring mesher (one averaged vertex per surface cell) so the body
-        // is smooth/rounded instead of stair-stepped voxel faces. hullSolid is
-        // UNCHANGED — only HOW the same solid is triangulated changes, so the
-        // top + side silhouettes stay identical. Falls back to per-voxel quads.
-        var usedSurfaceNets = false
-        do {
-            var keys: [DepthFusion.VoxelKey] = []
-            keys.reserveCapacity(4096)
-            for ri in 0..<gr {
-                for ci in 0..<gc where on[cell(ri, ci)] {
-                    for yj in 0..<vny where hullSolid(ci, ri, yj) {
-                        keys.append(DepthFusion.VoxelKey(
-                            x: Int32(ci), y: Int32(yj), z: Int32(ri)))
-                    }
-                }
+        // ── Emit the smooth solid directly from the silhouette ────────────
+        // Cache a smooth top/bottom height (metres) at every silhouette corner,
+        // then for each "on" cell add a smooth top cap, a smooth underside, and
+        // a vertical wall ONLY where the cell borders empty space. The result
+        // is a watertight body whose top-down outline is the exact mask and
+        // whose surfaces vary smoothly — no stacked voxel layers, no cubes.
+        let cornerCount = (gr + 1) * cornerCols
+        var topYAt = [Float](repeating: 0, count: cornerCount)
+        var botYAt = [Float](repeating: 0, count: cornerCount)
+        for rr in 0...gr {
+            for cc in 0...gc {
+                let bnds = cornerBounds(rr, cc)
+                let bottomM = bnds.bottom * h
+                botYAt[corner(rr, cc)] = bottomM
+                topYAt[corner(rr, cc)] = max(bottomM + 0.0005, bnds.top * h)
             }
-            if keys.count >= 8 {
-                let sn = SurfaceNets.build(voxels: keys, voxelSizeM: 1.0)
-                if sn.vertices.count >= 8 && sn.faces.count >= 6 {
-                    // Map index-space (ci, yj, ri) → real metres. cornerX/cornerZ
-                    // are linear, so this per-axis affine map preserves the hull's
-                    // exact footprint width/depth and height.
-                    let originX = cornerX(0)
-                    let originZ = cornerZ(0)
-                    let cellW = cornerX(1) - cornerX(0)
-                    let cellD = cornerZ(1) - cornerZ(0)
-                    let layerH = h / Float(vny)
-                    vertices = sn.vertices.map { v in
-                        SIMD3<Float>(
-                            originX + v.x * cellW,
-                            max(0, v.y * layerH),
-                            originZ + v.z * cellD
-                        )
-                    }
-                    faces = sn.faces
-                    usedSurfaceNets = true
+        }
+        @inline(__always) func topP(_ rr: Int, _ cc: Int) -> SIMD3<Float> {
+            SIMD3<Float>(cornerX(cc), topYAt[corner(rr, cc)], cornerZ(rr))
+        }
+        @inline(__always) func botP(_ rr: Int, _ cc: Int) -> SIMD3<Float> {
+            SIMD3<Float>(cornerX(cc), botYAt[corner(rr, cc)], cornerZ(rr))
+        }
+        for ri in 0..<gr {
+            for ci in 0..<gc where on[cell(ri, ci)] {
+                // Smooth top cap (outward normal up).
+                addQuad(topP(ri, ci), topP(ri + 1, ci),
+                        topP(ri + 1, ci + 1), topP(ri, ci + 1))
+                // Smooth underside (outward normal down).
+                addQuad(botP(ri, ci), botP(ri, ci + 1),
+                        botP(ri + 1, ci + 1), botP(ri + 1, ci))
+                // Silhouette walls — only on cells bordering empty space, so the
+                // rim hugs the exact outline from underside to top cap.
+                if !isOn(ri, ci + 1) {
+                    addQuad(botP(ri + 1, ci + 1), botP(ri, ci + 1),
+                            topP(ri, ci + 1), topP(ri + 1, ci + 1))
+                }
+                if !isOn(ri, ci - 1) {
+                    addQuad(botP(ri, ci), botP(ri + 1, ci),
+                            topP(ri + 1, ci), topP(ri, ci))
+                }
+                if !isOn(ri + 1, ci) {
+                    addQuad(botP(ri + 1, ci), botP(ri + 1, ci + 1),
+                            topP(ri + 1, ci + 1), topP(ri + 1, ci))
+                }
+                if !isOn(ri - 1, ci) {
+                    addQuad(botP(ri, ci + 1), botP(ri, ci),
+                            topP(ri, ci), topP(ri, ci + 1))
                 }
             }
         }
 
-        @inline(__always) func vy(_ yj: Int) -> Float { (Float(yj) / Float(vny)) * h }
-        if !usedSurfaceNets {
-        for ri in 0..<gr {
-            for ci in 0..<gc where on[cell(ri, ci)] {
-                let x0 = cornerX(ci), x1 = cornerX(ci + 1)
-                let z0 = cornerZ(ri), z1 = cornerZ(ri + 1)
-                for yj in 0..<vny where hullSolid(ci, ri, yj) {
-                    let y0 = vy(yj), y1 = vy(yj + 1)
-                    // Emit a quad for each face bordering empty space, with
-                    // outward-facing winding so normals point out of the solid.
-                    if !hullSolid(ci + 1, ri, yj) {
-                        addQuad(SIMD3<Float>(x1, y0, z1), SIMD3<Float>(x1, y0, z0),
-                                SIMD3<Float>(x1, y1, z0), SIMD3<Float>(x1, y1, z1))
-                    }
-                    if !hullSolid(ci - 1, ri, yj) {
-                        addQuad(SIMD3<Float>(x0, y0, z0), SIMD3<Float>(x0, y0, z1),
-                                SIMD3<Float>(x0, y1, z1), SIMD3<Float>(x0, y1, z0))
-                    }
-                    if !hullSolid(ci, ri + 1, yj) {
-                        addQuad(SIMD3<Float>(x0, y0, z1), SIMD3<Float>(x0, y1, z1),
-                                SIMD3<Float>(x1, y1, z1), SIMD3<Float>(x1, y0, z1))
-                    }
-                    if !hullSolid(ci, ri - 1, yj) {
-                        addQuad(SIMD3<Float>(x1, y0, z0), SIMD3<Float>(x1, y1, z0),
-                                SIMD3<Float>(x0, y1, z0), SIMD3<Float>(x0, y0, z0))
-                    }
-                    if !hullSolid(ci, ri, yj + 1) {
-                        addQuad(SIMD3<Float>(x0, y1, z0), SIMD3<Float>(x1, y1, z0),
-                                SIMD3<Float>(x1, y1, z1), SIMD3<Float>(x0, y1, z1))
-                    }
-                    if !hullSolid(ci, ri, yj - 1) {
-                        addQuad(SIMD3<Float>(x0, y0, z1), SIMD3<Float>(x1, y0, z1),
-                                SIMD3<Float>(x1, y0, z0), SIMD3<Float>(x0, y0, z0))
-                    }
-                }
-            }
-        }
-        } // end if !usedSurfaceNets
         // Guarantee non-empty geometry so the viewer always has something.
         if faces.isEmpty {
             let x0 = cornerX(gc / 2), x1 = cornerX(gc / 2 + 1)
@@ -1321,10 +1293,11 @@ final class MonocularVolumeEstimator {
                     SIMD3<Float>(x1, y1, z1), SIMD3<Float>(x1, y1, z0))
         }
 
-        // Round the surface so rounded food gets round edges. Surface Nets is
-        // already smooth, so it needs only a light polish; the voxel-quad
-        // fallback needs more passes. The contact base (vertices on the table
-        // plane) is pinned so the food stays grounded with a crisp footprint.
+        // Round the surface so rounded food gets round edges. The silhouette
+        // height field is already continuous, so a moderate Taubin pass turns
+        // the dome + rim into a smooth organic body without shrinking it. The
+        // contact base (vertices on the table plane) is pinned so the food
+        // stays grounded with a crisp footprint.
         let basePin = max(Float(0.0006), h * 0.03)
         var pinnedBase = [Bool](repeating: false, count: vertices.count)
         for vi in 0..<vertices.count where vertices[vi].y <= basePin {
@@ -1333,7 +1306,7 @@ final class MonocularVolumeEstimator {
         taubinSmooth(
             &vertices,
             faces: faces,
-            iterations: usedSurfaceNets ? 6 : 14,
+            iterations: 8,
             pinned: pinnedBase
         )
 
