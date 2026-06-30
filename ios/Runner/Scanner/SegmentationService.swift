@@ -512,9 +512,14 @@ final class SegmentationService {
         var objects: [SegmentedObject] = []
         let totalPixels = max(1, width * height)
         let isMiniModel = totalClasses == SegmentationService.miniLabelMap.count
+        // Lowered (June 2026) so SMALL side items on a multi-item plate survive —
+        // a few cucumber/egg slices or a pepper at the plate edge are legitimate
+        // foods, not noise. The ML Kit food-presence gate + the (now
+        // confidence-aware) presence gate in InferencePipeline remain the
+        // primary hallucination defence, so these per-class floors can be lower.
         let minPixels = max(
-            isMiniModel ? 600 : 450,
-            Int(Double(totalPixels) * (isMiniModel ? 0.008 : 0.006))
+            isMiniModel ? 400 : 280,
+            Int(Double(totalPixels) * (isMiniModel ? 0.005 : 0.0035))
         )
         // Confidence is now a true softmax probability (see parse step)
         // attenuated by top-1 vs top-2 margin. We keep floors low here
@@ -522,7 +527,7 @@ final class SegmentationService {
         // the primary hallucination defence. Over-filtering here causes
         // the mini model to reject valid out-of-vocabulary foods (e.g.
         // banana, tomato) before the ML Kit label-override can fix them.
-        let minConfidence: Float = isMiniModel ? 0.35 : 0.40
+        let minConfidence: Float = isMiniModel ? 0.33 : 0.36
         for (cls, pixels) in classPixels {
             var mask = [[UInt8]](repeating: [UInt8](repeating: 0, count: width), count: height)
             var sumR = 0, sumC = 0

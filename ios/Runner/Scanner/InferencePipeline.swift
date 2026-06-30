@@ -517,20 +517,28 @@ final class InferencePipeline {
             print("[SCAN] foodPresenceGate: REJECT foodFraction < 0.015")
             return false
         }
-        if foodFraction > 0.65 && segments.count >= 2 {
-            print("[SCAN] foodPresenceGate: REJECT foodFraction > 0.65 with multiple segments")
+        // A CONFIDENT, food-filled frame is a real (possibly multi-item) plate —
+        // a slice of bread with cucumber, peppers and egg on the side is many
+        // segments with no single dominant item, which must NOT be mistaken for
+        // speckle noise. The "speckled / many-tiny / fills-the-frame" rejections
+        // below therefore only fire when confidence is ALSO weak (true
+        // hallucination on a non-food scene). This is what lets multi-item
+        // plates scan instead of being thrown away.
+        let confidentScene = avgConfidence >= 0.50
+        if avgConfidence < 0.32 {
+            print("[SCAN] foodPresenceGate: REJECT avgConfidence < 0.32")
             return false
         }
-        if segments.count >= 3 && largestFraction < foodFraction * 0.46 {
-            print("[SCAN] foodPresenceGate: REJECT speckled (3+ segs, largest too small)")
+        if foodFraction > 0.80 && segments.count >= 2 && !confidentScene {
+            print("[SCAN] foodPresenceGate: REJECT foodFraction > 0.80 with multiple low-confidence segments")
             return false
         }
-        if avgConfidence < 0.35 {
-            print("[SCAN] foodPresenceGate: REJECT avgConfidence < 0.35")
+        if segments.count >= 3 && largestFraction < foodFraction * 0.46 && !confidentScene {
+            print("[SCAN] foodPresenceGate: REJECT speckled (3+ low-confidence segs, largest too small)")
             return false
         }
-        if segments.count >= 4 && largestFraction < 0.05 {
-            print("[SCAN] foodPresenceGate: REJECT 4+ segments all tiny")
+        if segments.count >= 5 && largestFraction < 0.03 && !confidentScene {
+            print("[SCAN] foodPresenceGate: REJECT 5+ low-confidence segments all tiny")
             return false
         }
 
