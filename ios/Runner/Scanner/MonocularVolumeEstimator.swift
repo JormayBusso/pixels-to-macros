@@ -770,6 +770,48 @@ final class MonocularVolumeEstimator {
         return (volumeCm3, 1, false)
     }
 
+    /// Per-label EMA of a round food's width/depth/height (mm precision), so the
+    /// idealised ellipsoid body reconstructs at a STABLE size across repeated
+    /// scans of the same item instead of jittering. A capture whose volume
+    /// differs from the running estimate by > 50% is treated as a different
+    /// item and resets the smoother, so distinct foods are never blended.
+    private struct DimSmoother {
+        var widthCm: Double
+        var depthCm: Double
+        var heightCm: Double
+        var samples: Int
+    }
+    private static var roundDimsHistory: [String: DimSmoother] = [:]
+
+    private func stabilizedRoundDims(
+        label: String,
+        widthCm: Double,
+        depthCm: Double,
+        heightCm: Double
+    ) -> (widthCm: Double, depthCm: Double, heightCm: Double) {
+        let key = label.lowercased()
+        let alpha = 0.5
+        if let prev = MonocularVolumeEstimator.roundDimsHistory[key], prev.samples > 0 {
+            let prevVol = prev.widthCm * prev.depthCm * prev.heightCm
+            let newVol = widthCm * depthCm * heightCm
+            let jump = abs(newVol - prevVol) / max(prevVol, 0.0001)
+            if jump > 0.5 {
+                MonocularVolumeEstimator.roundDimsHistory[key] =
+                    DimSmoother(widthCm: widthCm, depthCm: depthCm, heightCm: heightCm, samples: 1)
+                return (widthCm, depthCm, heightCm)
+            }
+            let w = prev.widthCm * (1 - alpha) + widthCm * alpha
+            let d = prev.depthCm * (1 - alpha) + depthCm * alpha
+            let h = prev.heightCm * (1 - alpha) + heightCm * alpha
+            MonocularVolumeEstimator.roundDimsHistory[key] =
+                DimSmoother(widthCm: w, depthCm: d, heightCm: h, samples: prev.samples + 1)
+            return (w, d, h)
+        }
+        MonocularVolumeEstimator.roundDimsHistory[key] =
+            DimSmoother(widthCm: widthCm, depthCm: depthCm, heightCm: heightCm, samples: 1)
+        return (widthCm, depthCm, heightCm)
+    }
+
     /// Plate-vs-chosen scale agreement, logged for debugging only. Plate scale
     /// NEVER influences the returned `ScaleEstimate`; this just records how far
     /// a (noisy) plate-diameter assumption would have diverged from the
@@ -941,63 +983,6 @@ final class MonocularVolumeEstimator {
     /// This is purely the *visual* geometry of a camera estimate — the volume
     /// and calorie numbers come from the prism formula in `estimate(...)` and
     /// are NOT derived from this mesh.
-    /// Shrink-free Taubin smoothing. Turns the blocky exposed-voxel surface into
-    /// a smoothly curved one so round food gets round edges, while the alternating
-    /// positive (lambda) and negative (mu) passes cancel the volume shrink that a
-    /// plain Laplacian smooth would cause. Vertices flagged `pinned` (the contact
-    /// base on the table) never move, keeping the food grounded with a crisp
-    /// footprint while the body and rim are rounded to follow the true silhouette.
-    private func taubinSmooth(
-        _ verts: inout [SIMD3<Float>],
-        faces: [Int],
-        iterations: Int,
-        pinned: [Bool]
-    ) {
-        let n = verts.count
-        guard n > 4, faces.count >= 3 else { return }
-        var adjacency = [[Int]](repeating: [], count: n)
-        var seen = [Set<Int>](repeating: [], count: n)
-        @inline(__always) func link(_ a: Int, _ b: Int) {
-            guard a != b, a >= 0, a < n, b >= 0, b < n else { return }
-            if !seen[a].contains(b) {
-                seen[a].insert(b)
-                adjacency[a].append(b)
-            }
-        }
-        var i = 0
-        while i + 2 < faces.count {
-            let a = faces[i], b = faces[i + 1], c = faces[i + 2]
-            link(a, b); link(a, c)
-            link(b, a); link(b, c)
-            link(c, a); link(c, b)
-            i += 3
-        }
-        let lambda: Float = 0.5
-        let mu: Float = -0.53
-        var scratch = verts
-        @inline(__always) func pass(_ factor: Float) {
-            for v in 0..<n {
-                if v < pinned.count && pinned[v] {
-                    scratch[v] = verts[v]
-                    continue
-                }
-                let nb = adjacency[v]
-                if nb.isEmpty {
-                    scratch[v] = verts[v]
-                    continue
-                }
-                var sum = SIMD3<Float>(repeating: 0)
-                for j in nb { sum += verts[j] }
-                let avg = sum / Float(nb.count)
-                scratch[v] = verts[v] + (avg - verts[v]) * factor
-            }
-            swap(&verts, &scratch)
-        }
-        for _ in 0..<max(0, iterations) {
-            pass(lambda)
-            pass(mu)
-        }
-    }
 
     private func makeEstimatedObject(
         id: String,
@@ -1022,16 +1007,52 @@ final class MonocularVolumeEstimator {
         let offsetX = Float((centroid.col / Double(maskWidth)) - 0.5) * 0.28
         let offsetZ = Float((centroid.row / Double(maskHeight)) - 0.5) * 0.28
 
+        // Clearly round foods (tomato, apple, orange…) reconstruct as a smooth
+        // ellipsoid-of-revolution from the measured width/depth/height instead
+        // of a voxel/height-field hull. This removes the facets and layered
+        // look entirely and — together with per-label dimension smoothing — makes
+        // the SAME tomato come out the SAME smooth shape every scan. The exact
+        // same body is used by the LiDAR path, so both sensors look identical.
+        if MeshSmoothing.isClearlyRound(label) {
+            let dims = stabilizedRoundDims(
+                label: label,
+                widthCm: max(widthCm, 2.0),
+                depthCm: max(depthCm, 2.0),
+                heightCm: max(heightCm, 0.8))
+            let body = MeshSmoothing.roundBody(
+                centerX: offsetX,
+                centerY: Float(dims.heightCm / 200.0),
+                centerZ: offsetZ,
+                halfWidthM: Float(dims.widthCm / 200.0),
+                halfHeightM: Float(dims.heightCm / 200.0),
+                halfDepthM: Float(dims.depthCm / 200.0))
+            let color = dominantColor(topFrame: topFrame, mask: mask,
+                footprint: footprint, maskWidth: maskWidth, maskHeight: maskHeight)
+            var colors: [UInt8] = []
+            colors.reserveCapacity(body.vertices.count * 3)
+            for _ in body.vertices { colors += color }
+            return DepthFusion.Food3DObject(
+                id: id,
+                label: label,
+                instanceIndex: instanceIndex,
+                vertices: body.vertices,
+                faces: body.faces,
+                colors: colors,
+                uvs: [],
+                voxelCount: voxelCount,
+                volumeCm3: volumeCm3,
+                preserveCreases: false)
+        }
+
         // Downsample the silhouette to a bounded occupancy grid so the mesh
         // follows the food outline while keeping vertex counts small.
         let bboxW = max(1, footprint.maxCol - footprint.minCol + 1)
         let bboxH = max(1, footprint.maxRow - footprint.minRow + 1)
-        // Higher silhouette sampling resolution = the reconstructed mesh tracks
-        // the real top/side contour more tightly (finer rim, crisper outline)
-        // for a more accurate 3D object. 100 cells gives a smooth, mask-faithful
-        // outline (a round tomato reads round) while staying within a safe
-        // vertex budget for the viewer/exporter. Volume math is unaffected.
-        let maxCells = 100
+        // Silhouette sampling resolution for the cage. Irregular foods are Loop-
+        // subdivided afterwards (×4 faces/level), so a moderate 56-cell cage
+        // gives a faithful outline while keeping the SUBDIVIDED vertex count
+        // within a safe budget for the viewer/exporter. Volume math is unaffected.
+        let maxCells = 56
         let step = max(1, Int((Double(max(bboxW, bboxH)) / Double(maxCells)).rounded(.up)))
         let gc = max(1, Int((Double(bboxW) / Double(step)).rounded(.up)))
         let gr = max(1, Int((Double(bboxH) / Double(step)).rounded(.up)))
@@ -1293,22 +1314,17 @@ final class MonocularVolumeEstimator {
                     SIMD3<Float>(x1, y1, z1), SIMD3<Float>(x1, y1, z0))
         }
 
-        // Round the surface so rounded food gets round edges. The silhouette
-        // height field is already continuous, so a moderate Taubin pass turns
-        // the dome + rim into a smooth organic body without shrinking it. The
-        // contact base (vertices on the table plane) is pinned so the food
-        // stays grounded with a crisp footprint.
-        let basePin = max(Float(0.0006), h * 0.03)
-        var pinnedBase = [Bool](repeating: false, count: vertices.count)
-        for vi in 0..<vertices.count where vertices[vi].y <= basePin {
-            pinnedBase[vi] = true
-        }
-        taubinSmooth(
-            &vertices,
+        // Smooth the silhouette cage into an organic surface: one Loop
+        // subdivision level removes the triangle facets / straight lines, then a
+        // short Taubin pass polishes it (base pinned + re-grounded inside). This
+        // is the SAME post-process the LiDAR path uses, so both look identical.
+        let smoothed = MeshSmoothing.smooth(
+            vertices: vertices,
             faces: faces,
-            iterations: 8,
-            pinned: pinnedBase
-        )
+            subdivisionLevels: 1,
+            taubinIterations: 4)
+        vertices = smoothed.vertices
+        faces = smoothed.faces
 
         let color = dominantColor(topFrame: topFrame, mask: mask, footprint: footprint, maskWidth: maskWidth, maskHeight: maskHeight)
         var colors: [UInt8] = []

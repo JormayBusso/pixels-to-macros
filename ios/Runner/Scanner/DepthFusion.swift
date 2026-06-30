@@ -524,8 +524,24 @@ final class DepthFusion {
         objects.reserveCapacity(clusters.count)
 
         for cluster in clusters {
-            // Exactly ONE Surface Nets pass per cluster per scan.
-            let mesh = SurfaceNets.build(voxels: cluster.voxelKeys, voxelSizeM: voxelSizeM)
+            // Build the cage. Clearly round foods reconstruct as the SAME smooth
+            // ellipsoid the monocular path uses (so both sensors look identical),
+            // sized from the cluster's accurate measured extent. Irregular foods
+            // keep their real Surface-Nets surface, then the shared Loop+Taubin
+            // smoothing removes the voxel facets.
+            let mesh: SurfaceNets.Mesh
+            if MeshSmoothing.isClearlyRound(cluster.label) {
+                let body = roundBodyForCluster(cluster)
+                mesh = SurfaceNets.Mesh(vertices: body.vertices, faces: body.faces)
+            } else {
+                // Exactly ONE Surface Nets pass per cluster per scan.
+                let raw = SurfaceNets.build(voxels: cluster.voxelKeys, voxelSizeM: voxelSizeM)
+                guard !raw.vertices.isEmpty, raw.faces.count >= 3 else { continue }
+                let smoothed = MeshSmoothing.smooth(
+                    vertices: raw.vertices, faces: raw.faces,
+                    subdivisionLevels: 1, taubinIterations: 3)
+                mesh = SurfaceNets.Mesh(vertices: smoothed.vertices, faces: smoothed.faces)
+            }
             guard !mesh.vertices.isEmpty, mesh.faces.count >= 3 else { continue }
 
             var colors = [UInt8](repeating: 200, count: mesh.vertices.count * 3)
@@ -581,6 +597,32 @@ final class DepthFusion {
             ))
         }
         return objects
+    }
+
+    /// Build the idealised smooth ellipsoid for a clearly-round cluster, sized
+    /// and positioned from its accurate measured voxel extent in ARKit world
+    /// space. This is the SAME body the monocular estimator produces, so a
+    /// tomato looks identical on LiDAR and non-LiDAR devices — LiDAR just feeds
+    /// a more accurate size.
+    private func roundBodyForCluster(_ cluster: FoodVoxelCluster)
+        -> (vertices: [SIMD3<Float>], faces: [Int]) {
+        var minX = Int32.max, minY = Int32.max, minZ = Int32.max
+        var maxX = Int32.min, maxY = Int32.min, maxZ = Int32.min
+        for k in cluster.voxelKeys {
+            if k.x < minX { minX = k.x }; if k.x > maxX { maxX = k.x }
+            if k.y < minY { minY = k.y }; if k.y > maxY { maxY = k.y }
+            if k.z < minZ { minZ = k.z }; if k.z > maxZ { maxZ = k.z }
+        }
+        let vox = voxelSizeM
+        let cX = (Float(minX) + Float(maxX) + 1) * 0.5 * vox
+        let cY = (Float(minY) + Float(maxY) + 1) * 0.5 * vox
+        let cZ = (Float(minZ) + Float(maxZ) + 1) * 0.5 * vox
+        let hX = max(vox, (Float(maxX) + 1 - Float(minX)) * 0.5 * vox)
+        let hY = max(vox, (Float(maxY) + 1 - Float(minY)) * 0.5 * vox)
+        let hZ = max(vox, (Float(maxZ) + 1 - Float(minZ)) * 0.5 * vox)
+        return MeshSmoothing.roundBody(
+            centerX: cX, centerY: cY, centerZ: cZ,
+            halfWidthM: hX, halfHeightM: hY, halfDepthM: hZ)
     }
 
     // MARK: – Cluster helpers (plate plane + solidify + connected components)

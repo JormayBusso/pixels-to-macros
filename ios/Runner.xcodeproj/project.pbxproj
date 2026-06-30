@@ -44,6 +44,7 @@
 		AE6CD655BAAFDEAB3A9093F4 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E94BBFB04F45F07C2C97BB54 /* Pods_Runner.framework */; };
 		B8410DFB9E7D43B20984CA04 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD21DFEC0A22BBFCB8544CBC /* Pods_RunnerTests.framework */; };
 		B9F1794EDC74D4B66629E742 /* InferencePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FC2652E2325A3BB61C0433C /* InferencePipeline.swift */; };
+		BFBBF023731E53233CA98AD1 /* MeshSmoothing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EF951929ADAB6434D66D18D /* MeshSmoothing.swift */; };
 		C17EE1400334A1F1CBAEED47 /* MotionStabilityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1216872B75939DD9FC20D1E3 /* MotionStabilityMonitor.swift */; };
 		C22D5836EB3C91CD06874FAA /* DepthFusion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E044877C9BA5C5BD6249387 /* DepthFusion.swift */; };
 		C6902D46C1904645B9759B61 /* ARMeshVolumeEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54DB78DF1B2697AC7053B30 /* ARMeshVolumeEstimator.swift */; };
@@ -112,6 +113,7 @@
 		753DB09FA42E27044AE313AF /* SegmentationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SegmentationService.swift; sourceTree = "<group>"; };
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+		7EF951929ADAB6434D66D18D /* MeshSmoothing.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MeshSmoothing.swift; sourceTree = "<group>"; };
 		7FC2652E2325A3BB61C0433C /* InferencePipeline.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InferencePipeline.swift; sourceTree = "<group>"; };
 		88E243E09ACB6B5BAB44E8B6 /* ARSessionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ARSessionManager.swift; sourceTree = "<group>"; };
 		92BB1585E2EB52463132A421 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
@@ -213,6 +215,7 @@
 				6A247DD49A22C552B3A3F825 /* MonoDepthService.swift */,
 				1216872B75939DD9FC20D1E3 /* MotionStabilityMonitor.swift */,
 				F70FD3D45DA8AD693BA58B20 /* MobileCLIPService.swift */,
+				7EF951929ADAB6434D66D18D /* MeshSmoothing.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -568,6 +571,7 @@
 				EFF8B23A41BA9547D2527651 /* MonoDepthService.swift in Sources */,
 				C17EE1400334A1F1CBAEED47 /* MotionStabilityMonitor.swift in Sources */,
 				EE592D71C88D7676C21623A9 /* MobileCLIPService.swift in Sources */,
+				BFBBF023731E53233CA98AD1 /* MeshSmoothing.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
