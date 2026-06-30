@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
+import '../core/grocery_packaging.dart';
 import '../models/custom_meal.dart';
 import '../models/dietary_restriction.dart';
 import '../models/food_data.dart';
@@ -448,7 +449,8 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     // Aggregate REAL purchase quantities. Each planned slot is one serving, so
     // per-ingredient grams = recipe ingredient grams / recipe servings, scaled
     // by that slot's portion multiplier and the people cooking that day. Summed
-    // across the week and keyed by a normalised name.
+    // across the week and keyed by a canonical staple (so the same item across
+    // languages/recipes merges) or a cleaned name.
     final gramsByItem = <String, double>{};
     final displayName = <String, String>{};
     plan.assignments.forEach((key, recipe) {
@@ -458,17 +460,20 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
       final factor = portion * ppl;
       final servings = recipe.servings <= 0 ? 1 : recipe.servings;
       for (final ing in recipe.ingredients) {
-        final nm = _normaliseGroceryIngredient(ing.name);
-        final k = nm.toLowerCase().trim();
+        if (GroceryPackaging.isPantryAssumed(ing.name)) continue;
+        final staple = GroceryPackaging.stapleOf(ing.name);
+        final k = staple != null
+            ? 'staple:${staple.name}'
+            : GroceryPackaging.cleanName(ing.name);
         gramsByItem[k] =
             (gramsByItem[k] ?? 0) + (ing.grams / servings) * factor;
-        displayName.putIfAbsent(k, () => nm);
+        displayName.putIfAbsent(k, () => ing.name);
       }
     });
 
     final aggs = <_AggIngredient>[];
     gramsByItem.forEach((k, grams) {
-      final line = _groceryLine(displayName[k] ?? k, grams);
+      final line = GroceryPackaging.purchaseLine(displayName[k] ?? k, grams);
       if (line != null) {
         aggs.add(_AggIngredient(
           name: line.name,
@@ -522,79 +527,6 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
   /// sliced, fresh, …) to leave just the shoppable item ("mustard", "sesame
   /// oil", "avocados"). Egg and garlic variants collapse so quantities
   /// aggregate and convert to natural units (cloves, pieces).
-  static const Set<String> _ingredientNoiseWords = {
-    'warm', 'cold', 'hot', 'fresh', 'freshly', 'ripe', 'large', 'small',
-    'medium', 'big', 'extra', 'organic', 'raw', 'cooked', 'boiled', 'baked',
-    'roasted', 'grilled', 'fried', 'toasted', 'chopped', 'sliced', 'diced',
-    'minced', 'grated', 'shredded', 'crushed', 'ground', 'peeled', 'halved',
-    'quartered', 'cubed', 'crumbled', 'melted', 'softened', 'drained', 'rinsed',
-    'dried', 'frozen', 'canned', 'jarred', 'smoked', 'lean', 'boneless',
-    'skinless', 'virgin', 'unsalted', 'salted', 'plain', 'whole', 'light',
-    'optional', 'taste', 'finely', 'roughly', 'thinly', 'thickly', 'good',
-    'quality', 'your', 'favourite', 'favorite', 'some', 'few', 'little',
-    'pinch', 'of', 'a', 'an', 'the', 'for', 'and', 'with', 'into', 'about',
-    'approximately', 'to', 'or', 'plus', 'pieces', 'piece', 'slices', 'slice',
-    'beaten', 'warmed', 'room', 'temperature', 'packed', 'level', 'heaped',
-  };
-
-  static String _normaliseGroceryIngredient(String name) {
-    // Drop preparation notes after a comma / parenthesis / "—".
-    var core = name.toLowerCase().split(RegExp(r'[,(\u2013\u2014/]')).first;
-    // Keep only letters/spaces/hyphens, then drop descriptor noise words.
-    final tokens = core
-        .replaceAll(RegExp(r'[^a-z\s-]'), ' ')
-        .split(RegExp(r'\s+'))
-        .where((t) => t.isNotEmpty && !_ingredientNoiseWords.contains(t))
-        .toList();
-    var cleaned = tokens.join(' ').trim();
-    if (cleaned.isEmpty) cleaned = name.toLowerCase().trim();
-
-    if (RegExp(r'\begg\s*(white|yolk|whites|yolks)\b').hasMatch(cleaned)) {
-      return 'eggs';
-    }
-    if (cleaned == 'egg' || cleaned == 'eggs') return 'eggs';
-    if (cleaned.contains('garlic')) return 'garlic';
-
-    // Title-case for a tidy shopping list ("sesame oil" -> "Sesame Oil").
-    return cleaned
-        .split(' ')
-        .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
-        .join(' ');
-  }
-
-  /// Convert summed grams for a (normalised) ingredient into a purchasable
-  /// quantity + unit, e.g. garlic -> cloves, eggs -> pieces, everything else
-  /// -> grams rounded to a sensible amount. Returns null for trace/"to taste"
-  /// amounts and for water (not something you shop for).
-  static ({int quantity, String unit, String name})? _groceryLine(
-      String name, double grams) {
-    final l = name.toLowerCase().trim();
-    if (l == 'water' || grams < 1) return null;
-    if (l == 'garlic') {
-      var cloves = (grams / 5).round();
-      cloves = cloves.clamp(1, 40);
-      return (
-        quantity: cloves,
-        unit: cloves == 1 ? 'clove' : 'cloves',
-        name: 'garlic'
-      );
-    }
-    if (l == 'eggs') {
-      final n = (grams / 50).round().clamp(1, 60);
-      return (quantity: n, unit: n == 1 ? 'pc' : 'pcs', name: 'eggs');
-    }
-    int g;
-    if (grams < 50) {
-      g = (grams / 5).round() * 5;
-    } else if (grams < 500) {
-      g = (grams / 10).round() * 10;
-    } else {
-      g = (grams / 25).round() * 25;
-    }
-    if (g < 1) g = 1;
-    return (quantity: g, unit: 'g', name: name);
-  }
-
   String _guessCategory(String name) {
     final l = name.toLowerCase();
     const fruits = [
