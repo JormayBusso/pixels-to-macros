@@ -7,115 +7,16 @@ import simd
 /// LiDAR simply feeds a more accurate cage; the final surface treatment is
 /// identical.
 ///
-/// Two tools:
+/// One tool:
 ///   • `loopSubdivide` + `taubin` (via `smooth`) turn a coarse triangle cage
 ///     into a C²-ish organic surface — this is what removes the straight-line
 ///     facets the voxel/height-field cages leave behind (Loop subdivision is
 ///     the standard scheme for smooth triangle meshes).
-///   • `roundBody` builds a clean parametric ellipsoid-of-revolution for foods
-///     that are clearly round (a tomato, apple, orange…), so they reconstruct
-///     as a smooth, consistent body every scan instead of a noisy measured hull.
+///
+/// Both paths reconstruct every food from its ACTUAL captured geometry (the
+/// monocular two-silhouette visual hull, or the LiDAR voxel surface) and then
+/// run it through `smooth` — there is no primitive fitting anywhere.
 enum MeshSmoothing {
-
-    // MARK: – Round-food classification
-
-    /// Foods that should reconstruct as an idealised smooth round body. Kept
-    /// deliberately narrow (clearly spherical/ovoid produce) so irregular foods
-    /// (bread, banana, chicken) still use their real measured silhouette.
-    static func isClearlyRound(_ label: String) -> Bool {
-        let l = label.lowercased()
-        if l.contains("eggplant") { return false } // elongated, not round
-        let round = [
-            "tomato", "apple", "orange", "peach", "plum", "nectarine", "apricot",
-            "mandarin", "clementine", "tangerine", "grapefruit", "lemon", "lime",
-            "kiwi", "onion", "egg", "cherry", "grape", "melon", "cantaloupe",
-        ]
-        return round.contains { l.contains($0) }
-    }
-
-    // MARK: – Parametric round body (ellipsoid of revolution)
-
-    /// A smooth closed ellipsoid. Half-extents come from the measured
-    /// width/depth and height, so the silhouette (top-down ellipse) and the
-    /// height both match the food while the surface is perfectly smooth and
-    /// identical across scans. The center is explicit so the LiDAR path can
-    /// place it at the cluster's real world position; the monocular path passes
-    /// `centerY = halfHeightM` so the body rests on the plate (y = 0).
-    static func roundBody(
-        centerX: Float,
-        centerY: Float,
-        centerZ: Float,
-        halfWidthM ax: Float,
-        halfHeightM: Float,
-        halfDepthM az: Float,
-        longitude: Int = 48,
-        latitude: Int = 24
-    ) -> (vertices: [SIMD3<Float>], faces: [Int]) {
-        let ay = max(Float(0.002), halfHeightM)
-        let cx = centerX, cz = centerZ
-        let cy = centerY
-        let rings = max(3, latitude)
-        let cols = max(4, longitude)
-
-        var verts: [SIMD3<Float>] = []
-        var idx = [[Int]](repeating: [Int](repeating: -1, count: cols), count: rings + 1)
-        for i in 0...rings {
-            let v = Float(i) / Float(rings)        // 0…1 (bottom→top)
-            let phi = (-Float.pi / 2) + v * Float.pi // −π/2…π/2
-            let sy = sin(phi), cyl = cos(phi)
-            if i == 0 || i == rings {
-                verts.append(SIMD3<Float>(cx, cy + ay * sy, cz)) // collapsed pole
-                let p = verts.count - 1
-                for j in 0..<cols { idx[i][j] = p }
-                continue
-            }
-            for j in 0..<cols {
-                let theta = Float(j) / Float(cols) * 2 * Float.pi
-                verts.append(SIMD3<Float>(
-                    cx + ax * cyl * cos(theta),
-                    cy + ay * sy,
-                    cz + az * cyl * sin(theta)
-                ))
-                idx[i][j] = verts.count - 1
-            }
-        }
-
-        var faces: [Int] = []
-        for i in 0..<rings {
-            for j in 0..<cols {
-                let j2 = (j + 1) % cols
-                let a = idx[i][j], b = idx[i][j2]
-                let c = idx[i + 1][j2], d = idx[i + 1][j]
-                if i == 0 {
-                    faces += [a, d, c] // bottom pole fan
-                } else if i == rings - 1 {
-                    faces += [a, b, c] // top pole fan
-                } else {
-                    faces += [a, b, c, a, c, d]
-                }
-            }
-        }
-
-        // Guarantee outward winding (SceneKit back-face culls): flip any
-        // triangle whose normal points toward the body centre.
-        let center = SIMD3<Float>(cx, cy, cz)
-        var oriented: [Int] = []
-        oriented.reserveCapacity(faces.count)
-        var k = 0
-        while k + 2 < faces.count {
-            let i0 = faces[k], i1 = faces[k + 1], i2 = faces[k + 2]
-            let p0 = verts[i0], p1 = verts[i1], p2 = verts[i2]
-            let nrm = simd_cross(p1 - p0, p2 - p0)
-            let cen = (p0 + p1 + p2) / 3
-            if simd_dot(nrm, cen - center) >= 0 {
-                oriented += [i0, i1, i2]
-            } else {
-                oriented += [i0, i2, i1]
-            }
-            k += 3
-        }
-        return (verts, oriented)
-    }
 
     // MARK: – Smoothing (Loop subdivision + Taubin)
 

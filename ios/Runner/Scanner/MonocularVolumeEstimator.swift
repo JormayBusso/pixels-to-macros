@@ -770,48 +770,6 @@ final class MonocularVolumeEstimator {
         return (volumeCm3, 1, false)
     }
 
-    /// Per-label EMA of a round food's width/depth/height (mm precision), so the
-    /// idealised ellipsoid body reconstructs at a STABLE size across repeated
-    /// scans of the same item instead of jittering. A capture whose volume
-    /// differs from the running estimate by > 50% is treated as a different
-    /// item and resets the smoother, so distinct foods are never blended.
-    private struct DimSmoother {
-        var widthCm: Double
-        var depthCm: Double
-        var heightCm: Double
-        var samples: Int
-    }
-    private static var roundDimsHistory: [String: DimSmoother] = [:]
-
-    private func stabilizedRoundDims(
-        label: String,
-        widthCm: Double,
-        depthCm: Double,
-        heightCm: Double
-    ) -> (widthCm: Double, depthCm: Double, heightCm: Double) {
-        let key = label.lowercased()
-        let alpha = 0.5
-        if let prev = MonocularVolumeEstimator.roundDimsHistory[key], prev.samples > 0 {
-            let prevVol = prev.widthCm * prev.depthCm * prev.heightCm
-            let newVol = widthCm * depthCm * heightCm
-            let jump = abs(newVol - prevVol) / max(prevVol, 0.0001)
-            if jump > 0.5 {
-                MonocularVolumeEstimator.roundDimsHistory[key] =
-                    DimSmoother(widthCm: widthCm, depthCm: depthCm, heightCm: heightCm, samples: 1)
-                return (widthCm, depthCm, heightCm)
-            }
-            let w = prev.widthCm * (1 - alpha) + widthCm * alpha
-            let d = prev.depthCm * (1 - alpha) + depthCm * alpha
-            let h = prev.heightCm * (1 - alpha) + heightCm * alpha
-            MonocularVolumeEstimator.roundDimsHistory[key] =
-                DimSmoother(widthCm: w, depthCm: d, heightCm: h, samples: prev.samples + 1)
-            return (w, d, h)
-        }
-        MonocularVolumeEstimator.roundDimsHistory[key] =
-            DimSmoother(widthCm: widthCm, depthCm: depthCm, heightCm: heightCm, samples: 1)
-        return (widthCm, depthCm, heightCm)
-    }
-
     /// Plate-vs-chosen scale agreement, logged for debugging only. Plate scale
     /// NEVER influences the returned `ScaleEstimate`; this just records how far
     /// a (noisy) plate-diameter assumption would have diverged from the
@@ -1007,42 +965,14 @@ final class MonocularVolumeEstimator {
         let offsetX = Float((centroid.col / Double(maskWidth)) - 0.5) * 0.28
         let offsetZ = Float((centroid.row / Double(maskHeight)) - 0.5) * 0.28
 
-        // Clearly round foods (tomato, apple, orange…) reconstruct as a smooth
-        // ellipsoid-of-revolution from the measured width/depth/height instead
-        // of a voxel/height-field hull. This removes the facets and layered
-        // look entirely and — together with per-label dimension smoothing — makes
-        // the SAME tomato come out the SAME smooth shape every scan. The exact
-        // same body is used by the LiDAR path, so both sensors look identical.
-        if MeshSmoothing.isClearlyRound(label) {
-            let dims = stabilizedRoundDims(
-                label: label,
-                widthCm: max(widthCm, 2.0),
-                depthCm: max(depthCm, 2.0),
-                heightCm: max(heightCm, 0.8))
-            let body = MeshSmoothing.roundBody(
-                centerX: offsetX,
-                centerY: Float(dims.heightCm / 200.0),
-                centerZ: offsetZ,
-                halfWidthM: Float(dims.widthCm / 200.0),
-                halfHeightM: Float(dims.heightCm / 200.0),
-                halfDepthM: Float(dims.depthCm / 200.0))
-            let color = dominantColor(topFrame: topFrame, mask: mask,
-                footprint: footprint, maskWidth: maskWidth, maskHeight: maskHeight)
-            var colors: [UInt8] = []
-            colors.reserveCapacity(body.vertices.count * 3)
-            for _ in body.vertices { colors += color }
-            return DepthFusion.Food3DObject(
-                id: id,
-                label: label,
-                instanceIndex: instanceIndex,
-                vertices: body.vertices,
-                faces: body.faces,
-                colors: colors,
-                uvs: [],
-                voxelCount: voxelCount,
-                volumeCm3: volumeCm3,
-                preserveCreases: false)
-        }
+        // Every food — round or irregular — is reconstructed from its ACTUAL
+        // captured silhouettes, never from a fitted primitive: the top mask
+        // gives the on-plate footprint (vertical extrusion) and the side
+        // profile gives the per-column vertical bounds (horizontal extrusion);
+        // their overlap is the two-view visual hull. Round foods additionally
+        // round the single unobserved transverse axis, bounded by the top mask.
+        // The shared Loop+Taubin post-process then removes the facets, so the
+        // shape always follows the real food the user photographed.
 
         // Downsample the silhouette to a bounded occupancy grid so the mesh
         // follows the food outline while keeping vertex counts small.
