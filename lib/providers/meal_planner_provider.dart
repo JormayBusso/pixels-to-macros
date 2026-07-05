@@ -392,20 +392,15 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     // shuffles so the user can browse every dish; _autoTuneDayCalories then
     // rescales portions to hit the goal.
     if (dailyCalorieGoal > 0 && avoidWeekDuplicates) {
-      // Sum calories already assigned for this day
-      int usedCalories = 0;
-      for (final mt in RecipeMealType.values) {
-        final dayKey = MealPlanState.slotKey(dayOfWeek, mt);
-        if (dayKey == key) continue; // skip the slot we're filling
-        final r = state.assignments[dayKey];
-        if (r != null) usedCalories += r.caloriesPerServing(r.servings);
-      }
-      final remaining = dailyCalorieGoal - usedCalories;
-
-      // Prefer recipes within ±30% of a fair share of the remaining budget
-      final targetCal = remaining.clamp(100, dailyCalorieGoal);
-      final lo = (targetCal * 0.5).round();
-      final hi = (targetCal * 1.3).round();
+      // Give each meal type a sensible share of the day's budget so breakfasts
+      // stay lighter and dinners heftier, instead of every slot competing for
+      // the same calorie band. _autoTuneDayCalories still rescales the whole
+      // day afterwards to hit the exact calorie goal.
+      final fraction = _mealTypeCalorieFraction(mealType);
+      final targetCal =
+          (dailyCalorieGoal * fraction).round().clamp(120, dailyCalorieGoal);
+      final lo = (targetCal * 0.6).round();
+      final hi = (targetCal * 1.5).round();
       final calorieFiltered = pool
           .where((r) =>
               r.caloriesPerServing(r.servings) >= lo &&
@@ -443,6 +438,23 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
       recipeId: recipe.id,
       recipeName: recipe.name,
     );
+  }
+
+  /// Share of the day's calorie budget for each meal type — lighter breakfast,
+  /// heavier dinner — so auto-generated weeks have sensible meal sizes.
+  double _mealTypeCalorieFraction(RecipeMealType mt) {
+    switch (mt) {
+      case RecipeMealType.breakfast:
+        return 0.25;
+      case RecipeMealType.lunch:
+        return 0.32;
+      case RecipeMealType.dinner:
+        return 0.33;
+      case RecipeMealType.snack:
+        return 0.10;
+      case RecipeMealType.dessert:
+        return 0.12;
+    }
   }
 
   Recipe _pickRandomRecipe(
