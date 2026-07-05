@@ -15,8 +15,7 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         explanation: l10n.calcCaloriesExplain,
         legitimacy: l10n.calcCaloriesWhy,
         sourceLabel:
-            'National Academies — Dietary Reference Intakes for Energy (2023)',
-        sourceUrl: 'https://nap.nationalacademies.org/catalog/26818',
+            'European Food Safety Authority (EFSA) — Dietary Reference Values for energy',
       );
     case CalcInfoId.macroTargets:
       return CalcInfo(
@@ -25,8 +24,7 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         explanation: l10n.calcMacrosExplain,
         legitimacy: l10n.calcMacrosWhy,
         sourceLabel:
-            'National Academies — Acceptable Macronutrient Distribution Ranges',
-        sourceUrl: 'https://www.ncbi.nlm.nih.gov/books/NBK56068/',
+            'European Food Safety Authority (EFSA) — Dietary Reference Values for macronutrients',
       );
     case CalcInfoId.microTargets:
       return CalcInfo(
@@ -34,9 +32,8 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         title: l10n.calcMicroTitle,
         explanation: l10n.calcMicroExplain,
         legitimacy: l10n.calcMicroWhy,
-        sourceLabel: 'National Academies / NIH — Dietary Reference Intakes',
-        sourceUrl:
-            'https://www.nationalacademies.org/our-work/summary-report-of-the-dietary-reference-intakes',
+        sourceLabel:
+            'European Food Safety Authority (EFSA) — Dietary Reference Values for vitamins & minerals',
       );
     case CalcInfoId.plateScore:
       return CalcInfo(
@@ -44,8 +41,7 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         title: l10n.calcPlateTitle,
         explanation: l10n.calcPlateExplain,
         legitimacy: l10n.calcPlateWhy,
-        sourceLabel: 'USDA — Dietary Guidelines for Americans 2020–2025',
-        sourceUrl: 'https://www.dietaryguidelines.gov/',
+        sourceLabel: 'European Commission — Food-Based Dietary Guidelines',
       );
     case CalcInfoId.bodyMapScore:
       return CalcInfo(
@@ -53,9 +49,8 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         title: l10n.calcBodyMapTitle,
         explanation: l10n.calcBodyMapExplain,
         legitimacy: l10n.calcBodyMapWhy,
-        sourceLabel: 'National Academies / NIH — Dietary Reference Intakes',
-        sourceUrl:
-            'https://www.nationalacademies.org/our-work/summary-report-of-the-dietary-reference-intakes',
+        sourceLabel:
+            'European Food Safety Authority (EFSA) — Dietary Reference Values for vitamins & minerals',
       );
     case CalcInfoId.glycemicLoad:
       return CalcInfo(
@@ -63,9 +58,8 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         title: l10n.calcGlTitle,
         explanation: l10n.calcGlExplain,
         legitimacy: l10n.calcGlWhy,
-        sourceLabel: 'Harvard Health — Glycemic index and glycemic load',
-        sourceUrl:
-            'https://www.health.harvard.edu/diseases-and-conditions/glycemic-index-and-glycemic-load-for-100-foods',
+        sourceLabel:
+            'European Association for the Study of Diabetes (EASD) — Diabetes and Nutrition Study Group',
       );
     case CalcInfoId.bolusEstimate:
       return CalcInfo(
@@ -73,9 +67,8 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         title: l10n.calcBolusTitle,
         explanation: l10n.calcBolusExplain,
         legitimacy: l10n.calcBolusWhy,
-        sourceLabel: 'American Diabetes Association — Standards of Care',
-        sourceUrl:
-            'https://diabetesjournals.org/care/issue/48/Supplement_1',
+        sourceLabel:
+            'European Association for the Study of Diabetes (EASD) — clinical practice guidelines',
       );
     case CalcInfoId.insulinOnBoard:
       return CalcInfo(
@@ -83,9 +76,8 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         title: l10n.calcIobTitle,
         explanation: l10n.calcIobExplain,
         legitimacy: l10n.calcIobWhy,
-        sourceLabel: 'American Diabetes Association — Standards of Care',
-        sourceUrl:
-            'https://diabetesjournals.org/care/issue/48/Supplement_1',
+        sourceLabel:
+            'European Association for the Study of Diabetes (EASD) — clinical practice guidelines',
       );
     case CalcInfoId.insulinRatios:
       return CalcInfo(
@@ -93,9 +85,8 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         title: l10n.calcRatiosTitle,
         explanation: l10n.calcRatiosExplain,
         legitimacy: l10n.calcRatiosWhy,
-        sourceLabel: 'American Diabetes Association — Standards of Care',
-        sourceUrl:
-            'https://diabetesjournals.org/care/issue/48/Supplement_1',
+        sourceLabel:
+            'European Association for the Study of Diabetes (EASD) — clinical practice guidelines',
       );
     case CalcInfoId.recommendations:
       return CalcInfo(
@@ -103,8 +94,7 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         title: l10n.calcRecsTitle,
         explanation: l10n.calcRecsExplain,
         legitimacy: l10n.calcRecsWhy,
-        sourceLabel: 'USDA — Dietary Guidelines for Americans 2020–2025',
-        sourceUrl: 'https://www.dietaryguidelines.gov/',
+        sourceLabel: 'European Commission — Food-Based Dietary Guidelines',
       );
     case CalcInfoId.streak:
       return CalcInfo(
@@ -112,8 +102,7 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         title: l10n.calcStreakTitle,
         explanation: l10n.calcStreakExplain,
         legitimacy: l10n.calcStreakWhy,
-        sourceLabel: 'USDA — Dietary Guidelines for Americans 2020–2025',
-        sourceUrl: 'https://www.dietaryguidelines.gov/',
+        sourceLabel: 'European Commission — Food-Based Dietary Guidelines',
       );
     case CalcInfoId.weeklyBadges:
       return CalcInfo(
@@ -121,8 +110,7 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         title: l10n.calcBadgesTitle,
         explanation: l10n.calcBadgesExplain,
         legitimacy: l10n.calcBadgesWhy,
-        sourceLabel: 'USDA — Dietary Guidelines for Americans 2020–2025',
-        sourceUrl: 'https://www.dietaryguidelines.gov/',
+        sourceLabel: 'European Commission — Food-Based Dietary Guidelines',
       );
     case CalcInfoId.recipeGoalMatch:
       return CalcInfo(
@@ -130,8 +118,7 @@ CalcInfo calcInfoFor(BuildContext context, CalcInfoId id) {
         title: l10n.calcRecipeMatchTitle,
         explanation: l10n.calcRecipeMatchExplain,
         legitimacy: l10n.calcRecipeMatchWhy,
-        sourceLabel: 'USDA — Dietary Guidelines for Americans 2020–2025',
-        sourceUrl: 'https://www.dietaryguidelines.gov/',
+        sourceLabel: 'European Commission — Food-Based Dietary Guidelines',
       );
   }
 }
@@ -262,15 +249,6 @@ class _CalcInfoSheet extends StatelessWidget {
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: Colors.black87),
-              ),
-              const SizedBox(height: 2),
-              SelectableText(
-                info.sourceUrl,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF2563EB),
-                  decoration: TextDecoration.underline,
-                ),
               ),
               const SizedBox(height: 20),
               SizedBox(

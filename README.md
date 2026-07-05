@@ -2,8 +2,9 @@
 
 **Offline Multi-Food Calorie Scanner** — Academic thesis project.
 
-Uses on-device AR (ARKit) and ML (CoreML DeepLabV3) to estimate food volume
-and calculate calories with uncertainty ranges. 100% offline, iOS only.
+Uses on-device AR (ARKit) and ML (CoreML FoodSeg YOLO, MobileCLIP, and an
+optional Food-101 classifier) to estimate food volume and calculate calories
+with uncertainty ranges. 100% offline, iOS only.
 
 ---
 
@@ -13,9 +14,9 @@ and calculate calories with uncertainty ranges. 100% offline, iOS only.
 |-------|------|----------------|
 | **UI** | Flutter (Dart) + Riverpod | Screens, state machine, history, analytics |
 | **Bridge** | MethodChannel | JSON messages between Dart and Swift |
-| **Native** | Swift / ARKit / CoreML | AR session, depth, segmentation, volume |
+| **Native** | Swift / ARKit / CoreML | AR session, depth, segmentation, recognition, volume |
 | **Storage** | SQLite v7 (sqflite) | Food DB (42+ items), scan history, preferences, ground truth, benchmarks |
-| **Training** | PyTorch → ONNX → CoreML | DeepLabV3-MobileNetV3 on FoodSeg103 |
+| **Training** | PyTorch → CoreML | FoodSeg YOLO, MobileCLIP embeddings, Food-101 classifier exports |
 
 ---
 
@@ -25,7 +26,8 @@ and calculate calories with uncertainty ranges. 100% offline, iOS only.
 - **Camera guidance overlay** — reticle, distance hints, step progress bar
 - **First-scan tutorial** — 3-page walkthrough (shown once)
 - **Haptic feedback** — light/medium/heavy on capture, success, and error
-- **ML food segmentation** — CoreML DeepLabV3 with <200ms inference target
+- **ML food segmentation** — CoreML FoodSeg YOLO with SegFormer fallback
+- **Free food recognition models** — MobileCLIP-S2 open vocabulary plus optional Food-101 ViT crop classifier
 - **Volume → calorie estimation** — density-based model with min/max uncertainty
 - **Confidence scoring** — aggregate uncertainty metric (colour-coded badge + ring)
 - **Dashboard** — calorie ring, streak tracker, today's foods, recent scans
@@ -107,7 +109,10 @@ ios/Runner/
     ├── FramePreprocessor.swift       640×480 resize + normalisation
     ├── PointCloudExporter.swift     PLY 3D point cloud generation
     ├── PlateDetector.swift           Ellipse fitting for plate boundary
-    ├── SegmentationService.swift     CoreML DeepLabV3 inference
+    ├── SegmentationService.swift     SegFormer/FoodSeg fallback inference
+    ├── YOLOSegmentationService.swift FoodSeg YOLO instance segmentation
+    ├── MobileCLIPService.swift       Free open-vocabulary crop recognition
+    ├── FoodClassifierService.swift   Optional Food-101 ViT crop classifier
     ├── VolumeCalculator.swift        Depth → volume (cm³)
     └── InferencePipeline.swift       Orchestrates full pipeline
 
@@ -115,7 +120,9 @@ training/
 ├── requirements.txt                  PyTorch, coremltools, etc.
 ├── dataset.py                        FoodSeg103 data loader
 ├── train.py                          DeepLabV3-MobileNetV3 training
-└── export_coreml.py                  ONNX → CoreML FP16 conversion
+├── export_coreml.py                  SegFormer/CoreML FP16 conversion
+├── export_mobileclip.py              MobileCLIP-S2 image encoder + label embeddings
+└── export_food_classifier.py         Food-101 ViT CoreML classifier export
 ```
 
 ---

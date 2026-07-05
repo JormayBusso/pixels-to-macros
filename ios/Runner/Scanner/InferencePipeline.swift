@@ -244,49 +244,39 @@ final class InferencePipeline {
         // ── 3b. Non-LiDAR camera fallback ──────────────────────────────
         // If ARKit did not provide scene depth, do NOT force the device
         // through DepthFusion. Generate an estimated 3-D object from the
-        // segmentation mask, plate/intrinsics scale, and food shape priors.
+        // top-view segmentation mask, using the side view only when its
+        // silhouette validates as a profile for those top-view objects.
         if !recorder.hasDepthData {
-            // ── Dual-silhouette gate (MANDATORY — no single-silhouette fallback) ──
-            // A monocular reconstruction requires BOTH a valid top silhouette
-            // and a valid side silhouette. We retry side segmentation +
-            // silhouette extraction + alignment up to 3 times; if it still fails
-            // we throw `dualSilhouetteFailed` (the UI shows actionable guidance
-            // and a Retry button) instead of exporting a degraded single-view
-            // shape. There is no centroid/sphere/dome/single-view fallback.
-            guard let sideFrame = recorder.sideFrame else {
+            var sideProfiles: [MonocularVolumeEstimator.SideProfile] = []
+            if let sideFrame = recorder.sideFrame {
+                let extractedProfiles = autoreleasepool {
+                    extractSideProfiles(from: sideFrame, topFrame: topFrame)
+                }
+                let check = monocularEstimator.validateDualSilhouette(
+                    segments: segments, sideProfiles: extractedProfiles)
+                let debug = dualSilhouetteDebugJSON(
+                    topValid: check.topValid, sideValid: check.sideValid,
+                    alignment: check.alignmentScore, segConfTop: check.segConfTop,
+                    segConfSide: check.segConfSide, attempt: 1, reason: check.reason)
+                print("[DUALHULL] \(debug)")
+                if check.valid {
+                    sideProfiles = extractedProfiles
+                    print("[PIPELINE] camera fallback: accepted sideProfiles=\(sideProfiles.count)")
+                } else {
+                    print("[PIPELINE] camera fallback: side invalid (\(check.reason)); using top-mask fallback")
+                }
+            } else {
                 let dbg = dualSilhouetteDebugJSON(
                     topValid: true, sideValid: false, alignment: 0,
                     segConfTop: segments.map { $0.confidence }.max() ?? 0,
                     segConfSide: 0, attempt: 1, reason: "missing_side_view")
                 print("[DUALHULL] \(dbg)")
-                throw PipelineError.dualSilhouetteFailed("missing_side_view", dbg)
-            }
-            var sideProfiles: [MonocularVolumeEstimator.SideProfile] = []
-            var lastDebug = ""
-            var lastReason = "side_silhouette_invalid"
-            var accepted = false
-            let maxAttempts = 3
-            for attempt in 1...maxAttempts {
-                sideProfiles = autoreleasepool {
-                    extractSideProfiles(from: sideFrame, topFrame: topFrame)
-                }
-                let check = monocularEstimator.validateDualSilhouette(
-                    segments: segments, sideProfiles: sideProfiles)
-                lastDebug = dualSilhouetteDebugJSON(
-                    topValid: check.topValid, sideValid: check.sideValid,
-                    alignment: check.alignmentScore, segConfTop: check.segConfTop,
-                    segConfSide: check.segConfSide, attempt: attempt, reason: check.reason)
-                print("[DUALHULL] \(lastDebug)")
-                if check.valid { accepted = true; break }
-                lastReason = check.reason
-            }
-            if !accepted {
-                throw PipelineError.dualSilhouetteFailed(lastReason, lastDebug)
+                print("[PIPELINE] camera fallback: missing side view; using top-mask fallback")
             }
             let estimate = try monocularEstimator.estimate(
                 segments: segments,
                 topFrame: topFrame,
-                sideFrame: sideFrame,
+                sideFrame: recorder.sideFrame,
                 sideProfiles: sideProfiles,
                 maskWidth: preprocessor.modelInputWidth,
                 maskHeight: preprocessor.modelInputHeight,
@@ -298,6 +288,7 @@ final class InferencePipeline {
             lastModel3DObjects = estimate.objects
             print("[PIPELINE] camera estimate success: true")
             print("[PIPELINE] model3dPath: \(estimate.modelPath)")
+            print("[PIPELINE] file exists: \(FileManager.default.fileExists(atPath: estimate.modelPath))")
             return estimate.json
         }
 
@@ -385,7 +376,12 @@ final class InferencePipeline {
             topTransform:   topFrame.cameraTransform,
             topIntrinsics:  topFrame.cameraIntrinsics,
             imageWidth:     CVPixelBufferGetWidth(topFrame.pixelBuffer),
-            imageHeight:    CVPixelBufferGetHeight(topFrame.pixelBuffer)
+            imageHeight:    CVPixelBufferGetHeight(topFrame.pixelBuffer),
+            sidePixelBuffer: recorder.sideFrame?.pixelBuffer,
+            sideTransform: recorder.sideFrame?.cameraTransform,
+            sideIntrinsics: recorder.sideFrame?.cameraIntrinsics,
+            sideImageWidth: recorder.sideFrame.map { CVPixelBufferGetWidth($0.pixelBuffer) } ?? 0,
+            sideImageHeight: recorder.sideFrame.map { CVPixelBufferGetHeight($0.pixelBuffer) } ?? 0
         )
         print("[SCAN] exportFoodObjects: \(foodObjects.count) meshes — \(foodObjects.map { "\($0.id)(v=\($0.vertices.count),f=\($0.faces.count/3))" }.joined(separator: ", "))")
         guard !foodObjects.isEmpty else {
@@ -418,8 +414,7 @@ final class InferencePipeline {
         let baseName = "scan3d_\(Int(Date().timeIntervalSince1970 * 1000))"
         guard let url = exporter.export(
             objects: foodObjects,
-            baseName: baseName,
-            textureSource: topFrame.pixelBuffer
+            baseName: baseName
         ) else {
             print("[PIPELINE] export success: false")
             print("[PIPELINE] model3dPath: nil")
@@ -442,6 +437,7 @@ final class InferencePipeline {
         }
         lastModel3DObjects = foodObjects.map { obj -> [String: Any] in
             let confidence = Double(segByLabel[obj.label]?.confidence ?? 1.0)
+            let dims = Self.meshDimensionsCm(obj.vertices)
             return [
                 "id":           obj.id,
                 "label":        obj.label,
@@ -449,6 +445,13 @@ final class InferencePipeline {
                 "voxel_count":  obj.voxelCount,
                 "confidence":   round(confidence * 1000) / 1000,
                 "scan_mode":    "lidar_mesh",
+                "volume_source": "display_mesh",
+                "display_mesh_volume_cm3": round(obj.volumeCm3 * 10) / 10,
+                "mesh_volume_cm3": round(obj.volumeCm3 * 10) / 10,
+                "surface_extraction_mode": "lidar_surface_nets",
+                "width_cm": round(dims.width * 10) / 10,
+                "depth_cm": round(dims.depth * 10) / 10,
+                "height_cm": round(dims.height * 10) / 10,
                 "estimated":    false,
             ]
         }
@@ -458,6 +461,7 @@ final class InferencePipeline {
         for obj in foodObjects {
             let seg = segByLabel[obj.label]
             let confidence = Double(seg?.confidence ?? 1.0)
+            let dims = Self.meshDimensionsCm(obj.vertices)
             var d = [String: Any]()
             d["id"]          = obj.id
             d["label"]       = obj.label
@@ -467,6 +471,13 @@ final class InferencePipeline {
             d["confidence"]  = round(confidence * 1000) / 1000
             d["frames_used"] = recorder.lightFrames.count
             d["scan_mode"] = "lidar_mesh"
+            d["volume_source"] = "display_mesh"
+            d["display_mesh_volume_cm3"] = round(obj.volumeCm3 * 10) / 10
+            d["mesh_volume_cm3"] = round(obj.volumeCm3 * 10) / 10
+            d["surface_extraction_mode"] = "lidar_surface_nets"
+            d["width_cm"] = round(dims.width * 10) / 10
+            d["depth_cm"] = round(dims.depth * 10) / 10
+            d["height_cm"] = round(dims.height * 10) / 10
             d["estimated"] = false
             d["depth_min_m"] = 0.0
             d["depth_max_m"] = 0.0
@@ -492,6 +503,23 @@ final class InferencePipeline {
         print("─────────────────────────────────────────")
 
         return json
+    }
+
+    private static func meshDimensionsCm(_ vertices: [SIMD3<Float>]) -> (width: Double, depth: Double, height: Double) {
+        guard let first = vertices.first else { return (0, 0, 0) }
+        var minX = first.x, maxX = first.x
+        var minY = first.y, maxY = first.y
+        var minZ = first.z, maxZ = first.z
+        for vertex in vertices.dropFirst() {
+            minX = min(minX, vertex.x); maxX = max(maxX, vertex.x)
+            minY = min(minY, vertex.y); maxY = max(maxY, vertex.y)
+            minZ = min(minZ, vertex.z); maxZ = max(maxZ, vertex.z)
+        }
+        return (
+            width: Double(maxX - minX) * 100.0,
+            depth: Double(maxZ - minZ) * 100.0,
+            height: Double(maxY - minY) * 100.0
+        )
     }
 
     private func passesFoodPresenceGate(
@@ -525,9 +553,15 @@ final class InferencePipeline {
         // hallucination on a non-food scene). This is what lets multi-item
         // plates scan instead of being thrown away.
         let confidentScene = avgConfidence >= 0.50
+        let strongTopSilhouette = (segments.first?.pixelCount ?? 0) >= 650 &&
+            largestFraction >= 0.006 && foodFraction >= 0.015
         if avgConfidence < 0.32 {
-            print("[SCAN] foodPresenceGate: REJECT avgConfidence < 0.32")
-            return false
+            if strongTopSilhouette {
+                print("[SCAN] foodPresenceGate: ALLOW low-confidence but clear top silhouette")
+            } else {
+                print("[SCAN] foodPresenceGate: REJECT avgConfidence < 0.32")
+                return false
+            }
         }
         if foodFraction > 0.80 && segments.count >= 2 && !confidentScene {
             print("[SCAN] foodPresenceGate: REJECT foodFraction > 0.80 with multiple low-confidence segments")
@@ -699,7 +733,7 @@ final class InferencePipeline {
 
         let horizontalExtent = maxHorizontal - minHorizontal + 1
         let verticalExtent = maxVertical - minVertical + 1
-        let sampleCount = min(64, max(12, horizontalExtent))
+        let sampleCount = min(192, max(24, horizontalExtent))
         var heights = [Double](repeating: 0, count: sampleCount)
         var bottoms = [Double](repeating: 0, count: sampleCount)
         var tops = [Double](repeating: 0, count: sampleCount)
@@ -781,19 +815,13 @@ final class InferencePipeline {
             }
         }
 
-        var smoothed = heights
-        var smoothedBottoms = bottoms
-        var smoothedTops = tops
-        if sampleCount >= 3 {
-            for i in 1..<(sampleCount - 1) {
-                smoothed[i] = heights[i - 1] * 0.25 + heights[i] * 0.5 + heights[i + 1] * 0.25
-                smoothedBottoms[i] = bottoms[i - 1] * 0.25 + bottoms[i] * 0.5 + bottoms[i + 1] * 0.25
-                smoothedTops[i] = tops[i - 1] * 0.25 + tops[i] * 0.5 + tops[i + 1] * 0.25
-            }
-        }
-        smoothed = smoothed.map { min(1.0, max(0.0, $0)) }
-        smoothedBottoms = smoothedBottoms.map { min(1.0, max(0.0, $0)) }
-        smoothedTops = smoothedTops.map { min(1.0, max(0.0, $0)) }
+        // Keep the side silhouette as extracted from the photo. We still fill
+        // tiny missing interior samples above, but we do not blur the contour;
+        // smoothing here made the displayed mesh prettier while moving the side
+        // outline away from the exact captured mask.
+        let exactHeights = heights.map { min(1.0, max(0.0, $0)) }
+        let exactBottoms = bottoms.map { min(1.0, max(0.0, $0)) }
+        let exactTops = tops.map { min(1.0, max(0.0, $0)) }
 
         let verticalMaskDim = Double(axes.verticalUsesColumns ? maskW : maskH)
         let horizontalMaskDim = Double(axes.verticalUsesColumns ? maskH : maskW)
@@ -810,13 +838,18 @@ final class InferencePipeline {
             classIndex: segment.classIndex,
             topAxis: axes.topAxis,
             reversed: axes.reversed,
-            normalizedHeights: smoothed,
-            normalizedBottoms: smoothedBottoms,
-            normalizedTops: smoothedTops,
+            normalizedHeights: exactHeights,
+            normalizedBottoms: exactBottoms,
+            normalizedTops: exactTops,
             aspectRatio: aspectRatio,
             coverage: coverage,
             confidence: segment.confidence,
-            pixelCount: segment.pixelCount
+            pixelCount: segment.pixelCount,
+            textureHorizontalUsesRows: axes.verticalUsesColumns,
+            textureHorizontalMin: Double(minHorizontal) / max(1.0, horizontalMaskDim),
+            textureHorizontalMax: Double(maxHorizontal + 1) / max(1.0, horizontalMaskDim),
+            textureVerticalMin: Double(minVertical) / max(1.0, verticalMaskDim),
+            textureVerticalMax: Double(maxVertical + 1) / max(1.0, verticalMaskDim)
         )
     }
 
@@ -976,14 +1009,13 @@ final class InferencePipeline {
         }
         defer { foodClassifier.unload() }
 
-        let topK = 4
-        // Floor below which a classifier guess is ignored entirely.
-        let confidenceFloor: Float = 0.22
-        // A confident dedicated-classifier guess overrides the segmentation
-        // label outright; a weaker guess only overrides when the segmentation
-        // itself was unsure, so a US-centric Food-101 misfire can't clobber a
-        // confident food-trained YOLO label.
-        let strongOverride: Float = 0.45
+        let topK = min(6, max(4, segments.count))
+        // The dedicated Food-101 classifier is useful, but its label space is
+        // incomplete for raw produce. Only strong or same-family predictions
+        // can rename a segment; medium guesses are diagnostics, not truth.
+        let confidenceFloor: Float = 0.35
+        let unsureSegmentation: Float = 0.32
+        let strongOverride: Float = 0.68
         let order = segments.indices.sorted {
             segments[$0].pixelCount > segments[$1].pixelCount
         }
@@ -997,21 +1029,34 @@ final class InferencePipeline {
                 guard let (label, confidence) = try foodClassifier.classify(
                     pixelBuffer: frame, regionOfInterest: roi
                 ), confidence >= confidenceFloor else { continue }
-                let segmentationUnsure = segment.confidence < strongOverride
+                let segmentationUnsure = segment.confidence < unsureSegmentation
                 let classifierStrong = confidence >= strongOverride
-                guard classifierStrong || segmentationUnsure else {
-                    print("[Classifier] kept \(segment.label) (conf \(String(format: "%.2f", segment.confidence))) over weak guess \(label) (\(String(format: "%.2f", confidence)))")
+                let sameFood = Self.labelsCompatible(segment.label, label)
+                // Never let a multi-ingredient composite dish rename a clear
+                // single whole food (e.g. a tomato → "caprese salad").
+                if Self.isCompositeDish(label), Self.isWholeProduce(segment.label), !sameFood {
+                    print("[Classifier] blocked composite \(label) from overriding produce \(segment.label)")
                     continue
                 }
+                let usableCorrection = classifierStrong ||
+                    (segmentationUnsure && confidence >= 0.50) ||
+                    (sameFood && confidence >= 0.45)
+                guard usableCorrection else {
+                    print("[Classifier] kept \(segment.label) (seg \(String(format: "%.2f", segment.confidence))) over \(label) (\(String(format: "%.2f", confidence)); strong=\(classifierStrong); same=\(sameFood))")
+                    continue
+                }
+                let chosenLabel = sameFood && !classifierStrong && !segmentationUnsure
+                    ? segment.label
+                    : label
                 updated[index] = SegmentationService.SegmentedObject(
-                    label: label,
+                    label: chosenLabel,
                     classIndex: segment.classIndex,
                     mask: segment.mask,
                     pixelCount: segment.pixelCount,
                     centroid: segment.centroid,
                     confidence: max(segment.confidence, confidence)
                 )
-                print("[Classifier] refined \(segment.label) → \(label) (\(String(format: "%.2f", confidence)))")
+                print("[Classifier] \(chosenLabel == segment.label ? "confirmed" : "refined") \(segment.label) → \(chosenLabel) (\(String(format: "%.2f", confidence)))")
             } catch {
                 print("[Classifier] classify failed: \(error)")
                 break // model trouble — stop refining this scan
@@ -1037,9 +1082,13 @@ final class InferencePipeline {
         }
         defer { mobileClip.unload() }
 
-        let topK = 4
-        let confidenceFloor: Float = 0.18
-        let strongOverride: Float = 0.40
+        let topK = min(8, max(4, segments.count))
+        let confidenceFloor: Float = 0.25
+        let unsureSegmentation: Float = 0.32
+        let strongConfidence: Float = 0.64
+        let strongMargin: Float = 0.025
+        let veryStrongConfidence: Float = 0.78
+        let veryStrongMargin: Float = 0.045
         let order = segments.indices.sorted {
             segments[$0].pixelCount > segments[$1].pixelCount
         }
@@ -1050,30 +1099,126 @@ final class InferencePipeline {
                 for: segment.mask, width: maskWidth, height: maskHeight
             ) else { continue }
             do {
-                guard let (label, confidence) = try mobileClip.classify(
-                    pixelBuffer: frame, regionOfInterest: roi
-                ), confidence >= confidenceFloor else { continue }
-                let segmentationUnsure = segment.confidence < strongOverride
-                let clipStrong = confidence >= strongOverride
-                guard clipStrong || segmentationUnsure else {
-                    print("[MobileCLIP] kept \(segment.label) over weak guess \(label) (\(String(format: "%.2f", confidence)))")
+                let candidates = try mobileClip.classifyTopK(
+                    pixelBuffer: frame,
+                    regionOfInterest: roi,
+                    limit: 5
+                )
+                guard let best = candidates.first,
+                      best.confidence >= confidenceFloor else { continue }
+                let runnerUpCosine = candidates.dropFirst().first?.cosine ?? best.cosine
+                let margin = max(0, best.cosine - runnerUpCosine)
+                let segmentationUnsure = segment.confidence < unsureSegmentation
+                let sameFood = Self.labelsCompatible(segment.label, best.label)
+                // Never let a multi-ingredient composite dish rename a clear
+                // single whole food (e.g. a tomato → "caprese salad"). A red
+                // produce blob is a classic false match for tomato-based dishes.
+                if Self.isCompositeDish(best.label), Self.isWholeProduce(segment.label), !sameFood {
+                    print("[MobileCLIP] blocked composite \(best.label) from overriding produce \(segment.label)")
                     continue
                 }
+                let clipStrong = best.confidence >= strongConfidence && margin >= strongMargin
+                let clipVeryStrong = best.confidence >= veryStrongConfidence && margin >= veryStrongMargin
+                let topSummary = candidates.prefix(3)
+                    .map { candidate in
+                        "\(candidate.label)(p=\(String(format: "%.2f", candidate.confidence)),cos=\(String(format: "%.3f", candidate.cosine)))"
+                    }
+                    .joined(separator: ", ")
+                // A confident open-vocabulary name may correct a WRONG base
+                // label on non-produce items. Cooked, meat and composite foods
+                // are exactly where the base segmenter mislabels (a beige
+                // tuna-mayo filling read as "pork"), and where a strong CLIP
+                // match is trustworthy. Whole produce is intentionally excluded
+                // here — it still needs a very-strong match to be renamed, so a
+                // red blob can never become "caprese salad".
+                let correctsNonProduce = !Self.isWholeProduce(segment.label) && clipStrong
+                let usableCorrection = sameFood || clipVeryStrong || correctsNonProduce || (segmentationUnsure && clipStrong)
+                guard usableCorrection else {
+                    print("[MobileCLIP] kept \(segment.label) (seg \(String(format: "%.2f", segment.confidence))) over \(best.label) margin=\(String(format: "%.3f", margin)) top=[\(topSummary)]")
+                    continue
+                }
+                let chosenLabel = sameFood && !clipVeryStrong && !segmentationUnsure && !correctsNonProduce
+                    ? segment.label
+                    : best.label
                 updated[index] = SegmentationService.SegmentedObject(
-                    label: label,
+                    label: chosenLabel,
                     classIndex: segment.classIndex,
                     mask: segment.mask,
                     pixelCount: segment.pixelCount,
                     centroid: segment.centroid,
-                    confidence: max(segment.confidence, confidence)
+                    confidence: max(segment.confidence, best.confidence)
                 )
-                print("[MobileCLIP] refined \(segment.label) → \(label) (\(String(format: "%.2f", confidence)))")
+                print("[MobileCLIP] \(chosenLabel == segment.label ? "confirmed" : "refined") \(segment.label) → \(chosenLabel) margin=\(String(format: "%.3f", margin)) top=[\(topSummary)]")
             } catch {
                 print("[MobileCLIP] classify failed: \(error)")
                 break
             }
         }
         return updated
+    }
+
+    private static let recognitionDescriptorWords: Set<String> = [
+        "baked", "black", "boiled", "brown", "chopped", "cooked", "diced",
+        "fresh", "fried", "green", "grilled", "large", "organic", "plain",
+        "raw", "red", "roasted", "sliced", "small", "steamed", "white",
+        "whole", "yellow",
+    ]
+
+    /// Multi-ingredient composite dishes. Their weight and nutrition bear no
+    /// resemblance to a raw ingredient, so they must never silently rename a
+    /// clearly single whole food (see `isWholeProduce`).
+    private static let compositeDishLabels: Set<String> = [
+        "caprese", "salad", "bruschetta", "pizza", "sandwich", "burger",
+        "taco", "burrito", "wrap", "lasagna", "casserole", "stew", "curry",
+        "soup", "platter", "skewer", "kebab", "quesadilla", "nachos",
+        "sushi", "risotto", "paella", "omelette", "frittata", "parmigiana",
+    ]
+
+    /// Whole, single foods (mostly raw produce) that are visually uniform and a
+    /// classic false match for composite dishes built around them.
+    private static let wholeProduceLabels: Set<String> = [
+        "tomato", "apple", "orange", "banana", "egg", "onion", "potato",
+        "peach", "plum", "lemon", "lime", "cherry", "grape", "strawberry",
+        "carrot", "cucumber", "pepper", "mushroom", "avocado", "pear",
+        "mango", "kiwi", "melon", "watermelon", "pineapple", "broccoli",
+        "cauliflower", "radish", "beet", "corn", "zucchini", "eggplant",
+    ]
+
+    private static func isCompositeDish(_ label: String) -> Bool {
+        !recognitionTokens(label).isDisjoint(with: compositeDishLabels)
+    }
+
+    private static func isWholeProduce(_ label: String) -> Bool {
+        !recognitionTokens(label).isDisjoint(with: wholeProduceLabels)
+    }
+
+    private static func labelsCompatible(_ first: String, _ second: String) -> Bool {
+        let firstTokens = recognitionTokens(first)
+        let secondTokens = recognitionTokens(second)
+        guard !firstTokens.isEmpty, !secondTokens.isEmpty else { return false }
+        return !firstTokens.intersection(secondTokens).isEmpty
+    }
+
+    private static func recognitionTokens(_ label: String) -> Set<String> {
+        let words = label.lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .map { singularRecognitionToken($0) }
+            .filter { token in
+                token.count > 2 && !recognitionDescriptorWords.contains(token)
+            }
+        return Set(words)
+    }
+
+    private static func singularRecognitionToken(_ rawToken: String) -> String {
+        var token = rawToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        if token.hasSuffix("ies"), token.count > 4 {
+            token = String(token.dropLast(3)) + "y"
+        } else if token.hasSuffix("oes"), token.count > 4 {
+            token = String(token.dropLast(2))
+        } else if token.hasSuffix("s"), token.count > 3 {
+            token = String(token.dropLast())
+        }
+        return token
     }
 
     /// Tight bounding box of a binary mask as a Vision region of interest

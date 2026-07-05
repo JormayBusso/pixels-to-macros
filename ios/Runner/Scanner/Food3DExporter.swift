@@ -26,7 +26,8 @@ final class Food3DExporter {
     func export(
         objects: [DepthFusion.Food3DObject],
         baseName: String,
-        textureSource: CVPixelBuffer? = nil
+        textureSource: CVPixelBuffer? = nil,
+        sideTextureSource: CVPixelBuffer? = nil
     ) -> URL? {
         guard !objects.isEmpty else { return nil }
 
@@ -35,14 +36,34 @@ final class Food3DExporter {
             in: .userDomainMask
         ).first!
 
-        // Bake the top-frame photo once; every food mesh shares it as its
-        // baseColor texture so the model looks like the real food (not grey).
-        var textureURL: URL?
+        // Per-vertex colour sidecar. USD/USDZ export via ModelIO silently DROPS
+        // the vertex colour source (verified: a round-trip keeps positions and
+        // normals but returns colorSources=0), so the exported scene renders as a
+        // single dull averaged baseColour instead of the real sampled food
+        // colours. The SceneKit viewer rebuilds geometry from this sidecar — an
+        // in-process SCNGeometry keeps its colour source — so the inline preview
+        // shows the true per-vertex colours. The USD file remains the AR / Quick
+        // Look artefact; this sidecar is the colour-accurate source for the viewer.
+        writeMeshSidecar(
+            objects: objects,
+            to: docs.appendingPathComponent("\(baseName).p2mesh")
+        )
+
+        // Paste the real captured photo onto the mesh. Earlier builds disabled
+        // this because the top+side ATLAS stretched side-image rows into visible
+        // stripes; the monocular estimator now emits a single seamless top-down
+        // projection UV instead (no atlas, no side strip), so writing the top
+        // photo as one continuous baseColor texture renders the food in its true
+        // colour with no seams. `textureSource` is the mask-aligned preprocessed
+        // top RGB, so its pixels line up exactly with the projected UVs.
+        var textureURL: URL? = nil
         if let textureSource {
             let candidate = docs.appendingPathComponent("\(baseName)_texture.png")
             if Food3DTextureBaker.writeTexture(from: textureSource, to: candidate) {
                 textureURL = candidate
-                print("[Food3DExporter] Baked texture: \(candidate.lastPathComponent)")
+                print("[Food3DExporter] baked photo texture -> \(candidate.lastPathComponent)")
+            } else {
+                print("[Food3DExporter] texture bake failed; using sampled colour")
             }
         }
 
@@ -64,6 +85,72 @@ final class Food3DExporter {
         }
         print("[Food3DExporter] No supported export format succeeded")
         return nil
+    }
+
+    // MARK: – Per-vertex colour sidecar
+
+    /// Binary layout (little-endian, matches SceneKit's native byte order):
+    ///
+    ///     magic       : 4 bytes  'P','2','M','1'
+    ///     objectCount : UInt32
+    ///     per object:
+    ///       idLength   : UInt32   + id UTF-8 bytes
+    ///       avgColor   : 3 × Float32   (r,g,b in 0…1, fallback tint)
+    ///       vertexCount: UInt32
+    ///       positions  : vertexCount × 3 × Float32   (x,y,z, same space as USD)
+    ///       colors     : vertexCount × 4 × UInt8     (r,g,b,a)
+    ///       indexCount : UInt32
+    ///       indices    : indexCount × UInt32
+    ///
+    /// A strict CONSUMER of `Food3DObject`: it copies the pipeline's vertices,
+    /// colours and faces verbatim — never re-sampling or re-meshing.
+    private func writeMeshSidecar(
+        objects: [DepthFusion.Food3DObject],
+        to url: URL
+    ) {
+        var data = Data()
+        func append<T>(_ value: T) {
+            var v = value
+            withUnsafeBytes(of: &v) { data.append(contentsOf: $0) }
+        }
+
+        data.append(contentsOf: [0x50, 0x32, 0x4D, 0x31]) // 'P','2','M','1'
+        append(UInt32(objects.count))
+
+        for object in objects {
+            let idBytes = Array(object.id.utf8)
+            append(UInt32(idBytes.count))
+            data.append(contentsOf: idBytes)
+
+            let avg = Self.averageColor(of: object.colors) ?? SIMD3<Float>(0.78, 0.78, 0.78)
+            append(avg.x); append(avg.y); append(avg.z)
+
+            let vertexCount = object.vertices.count
+            append(UInt32(vertexCount))
+            for v in object.vertices {
+                append(v.x); append(v.y); append(v.z)
+            }
+            for i in 0..<vertexCount {
+                let c = i * 3
+                data.append(c     < object.colors.count ? object.colors[c]     : 200)
+                data.append(c + 1 < object.colors.count ? object.colors[c + 1] : 200)
+                data.append(c + 2 < object.colors.count ? object.colors[c + 2] : 200)
+                data.append(255)
+            }
+
+            append(UInt32(object.faces.count))
+            for face in object.faces {
+                append(UInt32(face))
+            }
+        }
+
+        do {
+            try data.write(to: url, options: .atomic)
+            print("[Food3DExporter] wrote mesh sidecar \(url.lastPathComponent) " +
+                  "objects=\(objects.count) bytes=\(data.count)")
+        } catch {
+            print("[Food3DExporter] mesh sidecar write failed: \(error)")
+        }
     }
 
     // MARK: – Asset construction
@@ -110,7 +197,8 @@ final class Food3DExporter {
         let vertexCount = object.vertices.count
         guard vertexCount > 0, object.faces.count >= 3 else { return nil }
 
-        // Texture only when we have both a baked photo and a UV per vertex.
+        // Texture only when explicitly enabled. Current scan UX uses solid
+        // per-object sampled colours, so `textureURL` is intentionally nil.
         let hasTexture = textureURL != nil && object.uvs.count == vertexCount
 
         // Interleaved layout: position (3 × Float32) + RGBA (4 × UInt8), plus a
@@ -230,9 +318,9 @@ final class Food3DExporter {
         scatter.metallic.floatValue = 0.0
         let material = MDLMaterial(name: sanitised(label: label), scatteringFunction: scatter)
 
-        // Bake the food photo onto the surface as the baseColor texture. This
-        // is what actually renders in USDZ/QuickLook/RealityKit (vertex colours
-        // are ignored), so the food looks real instead of grey.
+        // Photo projection is intentionally disabled for generated scans; it
+        // created visible stripes when the top/side atlas stretched across the
+        // reconstructed surface. Prefer the sampled food/object colour.
         if let textureURL {
             let sampler = MDLTextureSampler()
             sampler.texture = MDLURLTexture(
@@ -243,9 +331,8 @@ final class Food3DExporter {
             baseColor.textureSamplerValue = sampler
             material.setProperty(baseColor)
         } else if let averageColor {
-            // No texture (e.g. the monocular path): use the food's average
-            // sampled colour as a solid baseColor so it renders in real colour
-            // rather than plain white/grey.
+            // Use the food's sampled colour as a solid baseColor so it renders
+            // in real colour rather than plain white/grey.
             let baseColor = MDLMaterialProperty(name: "baseColor", semantic: .baseColor)
             baseColor.type = .float3
             baseColor.float3Value = averageColor

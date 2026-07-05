@@ -28,6 +28,12 @@ final class MobileCLIPService {
         case unexpectedOutput
     }
 
+    struct Prediction {
+        let label: String
+        let confidence: Float
+        let cosine: Float
+    }
+
     /// Keep the encoder resident between scans (faster, more RAM). Default off.
     var keepLoaded = false
 
@@ -153,10 +159,43 @@ final class MobileCLIPService {
         pixelBuffer: CVPixelBuffer,
         regionOfInterest roi: CGRect
     ) throws -> (label: String, confidence: Float)? {
+        guard let top = try classifyTopK(
+            pixelBuffer: pixelBuffer,
+            regionOfInterest: roi,
+            limit: 1
+        ).first else { return nil }
+        return (top.label, top.confidence)
+    }
+
+    /// Return the top open-vocabulary candidates so the fusion layer can use
+    /// the best-vs-runner-up margin instead of trusting a single softmax score.
+    func classifyTopK(
+        pixelBuffer: CVPixelBuffer,
+        regionOfInterest roi: CGRect,
+        limit: Int = 5
+    ) throws -> [Prediction] {
         try ensureLoaded()
-        guard let visionModel = model, let table else {
+        guard let table else {
             throw CLIPError.modelNotFound
         }
+
+        guard let vec = try imageEmbedding(
+            pixelBuffer: pixelBuffer,
+            regionOfInterest: roi
+        ) else { return [] }
+
+        return Self.nearestLabels(
+            imageEmbedding: vec,
+            table: table,
+            limit: max(1, limit)
+        )
+    }
+
+    private func imageEmbedding(
+        pixelBuffer: CVPixelBuffer,
+        regionOfInterest roi: CGRect
+    ) throws -> [Float]? {
+        guard let visionModel = model else { throw CLIPError.modelNotFound }
 
         var embedding: [Float]?
         var requestError: Error?
@@ -191,34 +230,42 @@ final class MobileCLIPService {
         guard norm > 0 else { return nil }
         for i in 0..<vec.count { vec[i] /= norm }
 
-        return Self.nearestLabel(imageEmbedding: vec, table: table)
+        return vec
     }
 
     // MARK: - Helpers
 
-    private static func nearestLabel(
+    private static func nearestLabels(
         imageEmbedding vec: [Float],
-        table: LabelEmbeddings
-    ) -> (label: String, confidence: Float)? {
-        var cosines = [Float](repeating: 0, count: table.vectors.count)
-        var bestIndex = -1
-        var bestCos = -Float.greatestFiniteMagnitude
-        for (i, v) in table.vectors.enumerated() {
-            guard v.count == vec.count else { continue }
+        table: LabelEmbeddings,
+        limit: Int
+    ) -> [Prediction] {
+        var scored: [(index: Int, cosine: Float)] = []
+        scored.reserveCapacity(table.vectors.count)
+        for (index, vector) in table.vectors.enumerated() {
+            guard vector.count == vec.count else { continue }
             var dot: Float = 0
-            for k in 0..<vec.count { dot += vec[k] * v[k] }
-            cosines[i] = dot
-            if dot > bestCos { bestCos = dot; bestIndex = i }
+            for component in 0..<vec.count { dot += vec[component] * vector[component] }
+            scored.append((index, dot))
         }
-        guard bestIndex >= 0 else { return nil }
+        scored.sort { $0.cosine > $1.cosine }
+        guard let best = scored.first else { return [] }
 
         // Softmax over (cosine * logit_scale) for a calibrated confidence.
         let scale = table.logitScale
-        let maxScaled = bestCos * scale
+        let maxScaled = best.cosine * scale
         var sum: Float = 0
-        for c in cosines { sum += expf(c * scale - maxScaled) }
-        let confidence = sum > 0 ? 1.0 / sum : 1.0
-        return (table.labels[bestIndex], confidence)
+        for score in scored { sum += expf(score.cosine * scale - maxScaled) }
+        return scored.prefix(limit).map { score in
+            let confidence = sum > 0
+                ? expf(score.cosine * scale - maxScaled) / sum
+                : 0
+            return Prediction(
+                label: table.labels[score.index],
+                confidence: confidence,
+                cosine: score.cosine
+            )
+        }
     }
 
     private static func floats(from array: MLMultiArray) -> [Float] {

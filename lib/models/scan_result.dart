@@ -18,6 +18,7 @@ class ScanResult {
   final String? topImagePath;
   final String? sideImagePath;
   final String? modelPath;
+  final String? modelObjectsJson;
 
   const ScanResult({
     this.id,
@@ -32,6 +33,7 @@ class ScanResult {
     this.topImagePath,
     this.sideImagePath,
     this.modelPath,
+    this.modelObjectsJson,
   });
 
   double get totalCaloriesMin =>
@@ -53,6 +55,7 @@ class ScanResult {
       if (topImagePath != null) 'top_image_path': topImagePath,
       if (sideImagePath != null) 'side_image_path': sideImagePath,
       if (modelPath != null) 'model_path': modelPath,
+      if (modelObjectsJson != null) 'model_objects_json': modelObjectsJson,
     };
   }
 
@@ -71,6 +74,7 @@ class ScanResult {
       topImagePath: map['top_image_path'] as String?,
       sideImagePath: map['side_image_path'] as String?,
       modelPath: map['model_path'] as String?,
+      modelObjectsJson: map['model_objects_json'] as String?,
     );
   }
 }

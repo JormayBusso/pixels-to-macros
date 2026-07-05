@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 
+import '../core/app_localizations.dart';
 import '../core/constants.dart';
 
 /// Result from a native barcode scan + OpenFoodFacts lookup.
@@ -103,16 +104,29 @@ class BarcodeLookupService {
   /// Present the native barcode scanner, scan, and return nutrition data.
   /// Returns null if the user cancels or the product has no nutrition data.
   /// If [themeColor] is provided, the scanner rectangle will use that color.
-  Future<BarcodeFood?> scanAndLookup({Color? themeColor}) async {
+  /// Pass [l10n] to localise the native scanner's on-screen text.
+  Future<BarcodeFood?> scanAndLookup({
+    Color? themeColor,
+    AppLocalizations? l10n,
+  }) async {
     try {
-      final args = themeColor != null
-          ? {
-              'r': themeColor.r,
-              'g': themeColor.g,
-              'b': themeColor.b,
-            }
-          : null;
-      final raw = await _channel.invokeMethod<String>('scanBarcode', args);
+      final args = <String, dynamic>{};
+      if (themeColor != null) {
+        args['r'] = themeColor.r;
+        args['g'] = themeColor.g;
+        args['b'] = themeColor.b;
+      }
+      if (l10n != null) {
+        args['instruction'] = l10n.barcodePointCamera;
+        args['cancel'] = l10n.cancel;
+        args['ok'] = l10n.ok;
+        args['error'] = l10n.barcodeErrorTitle;
+        args['notFoundTitle'] = l10n.barcodeNotFoundTitle;
+        args['notFoundBody'] = l10n.barcodeNotFoundBody;
+        args['scanAgain'] = l10n.barcodeScanAgain;
+      }
+      final raw = await _channel.invokeMethod<String>(
+          'scanBarcode', args.isEmpty ? null : args);
       if (raw == null) return null;
       final map = jsonDecode(raw) as Map<String, dynamic>;
       return BarcodeFood.fromMap(map);

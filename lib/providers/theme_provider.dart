@@ -8,18 +8,20 @@ import 'user_prefs_provider.dart';
 /// Provides a [ThemeData] derived from the user's chosen [AppColorSeed].
 /// Automatically rebuilds whenever [userPrefsProvider] changes.
 ///
-/// Premium seeds only take effect while the premium pack is unlocked; otherwise
-/// the effective theme falls back to the default so premium stays paid-only.
-/// The user's stored seed is preserved and re-applies automatically on unlock.
+/// All color themes (including premium seeds) are available to everyone.
+/// Premium themes additionally honour the user's light/dark preference
+/// ([UserPreferences.premiumThemeLight]); free themes are always light.
 final themeProvider = Provider<ThemeData>((ref) {
   final prefs = ref.watch(userPrefsProvider);
-  final seed = effectiveColorSeed(prefs.themeColorSeed, prefs.premiumUnlocked);
-  return AppTheme.fromSeed(seed);
+  final seed = effectiveColorSeed(prefs.themeColorSeed);
+  final brightness = (seed.isPremium && prefs.premiumThemeLight)
+      ? Brightness.light
+      : Brightness.dark;
+  return AppTheme.fromSeed(seed, brightness: brightness);
 });
 
-/// The seed that should actually be applied: premium seeds collapse to
-/// [AppColorSeed.green] until [premiumUnlocked] is true.
-AppColorSeed effectiveColorSeed(AppColorSeed seed, bool premiumUnlocked) {
-  if (seed.isPremium && !premiumUnlocked) return AppColorSeed.green;
-  return seed;
-}
+/// The seed that should actually be applied.
+///
+/// Premium color themes are unlocked for everyone, so the user's chosen seed is
+/// always honoured.
+AppColorSeed effectiveColorSeed(AppColorSeed seed) => seed;

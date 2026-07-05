@@ -15,7 +15,8 @@ final class BarcodeScannerPlugin: NSObject {
 
     // MARK: – Handle MethodChannel call
 
-    static func present(result: @escaping FlutterResult, themeColor: UIColor? = nil) {
+    static func present(result: @escaping FlutterResult, themeColor: UIColor? = nil,
+                        strings: [String: String] = [:]) {
         DispatchQueue.main.async {
             guard let rootVC = UIApplication.shared.windows.first?.rootViewController else {
                 result(FlutterError(code: "NO_VC",
@@ -24,6 +25,7 @@ final class BarcodeScannerPlugin: NSObject {
             }
             let vc = BarcodeScanViewController()
             vc.themeColor = themeColor ?? UIColor(red: 0.18, green: 0.78, blue: 0.45, alpha: 1)
+            vc.applyStrings(strings)
             vc.modalPresentationStyle = .fullScreen
             vc.onResult = { nutritionJSON in
                 DispatchQueue.main.async {
@@ -45,6 +47,25 @@ private final class BarcodeScanViewController: UIViewController,
 
     var onResult: ((String?) -> Void)?
     var themeColor: UIColor = UIColor(red: 0.18, green: 0.78, blue: 0.45, alpha: 1)
+
+    // Localised UI strings (English defaults; overridden from Dart via applyStrings).
+    private var instructionText = "Point camera at a food barcode"
+    private var cancelText      = "Cancel"
+    private var okText          = "OK"
+    private var errorTitleText  = "Error"
+    private var notFoundTitle   = "Product Not Found"
+    private var notFoundBody    = "No nutrition data found for this barcode.\nTry a different product."
+    private var scanAgainText   = "Scan Again"
+
+    fileprivate func applyStrings(_ s: [String: String]) {
+        if let v = s["instruction"]   { instructionText = v }
+        if let v = s["cancel"]        { cancelText = v }
+        if let v = s["ok"]            { okText = v }
+        if let v = s["error"]         { errorTitleText = v }
+        if let v = s["notFoundTitle"] { notFoundTitle = v }
+        if let v = s["notFoundBody"]  { notFoundBody = v }
+        if let v = s["scanAgain"]     { scanAgainText = v }
+    }
 
     private let session        = AVCaptureSession()
     private var previewLayer   : AVCaptureVideoPreviewLayer!
@@ -166,7 +187,7 @@ private final class BarcodeScanViewController: UIViewController,
 
         // Instruction label.
         let label            = UILabel()
-        label.text           = "Point camera at a food barcode"
+        label.text           = instructionText
         label.textColor      = .white
         label.font           = .systemFont(ofSize: 16, weight: .medium)
         label.textAlignment  = .center
@@ -190,7 +211,7 @@ private final class BarcodeScanViewController: UIViewController,
 
         // Cancel button.
         let cancel = UIButton(type: .system)
-        cancel.setTitle("Cancel", for: .normal)
+        cancel.setTitle(cancelText, for: .normal)
         cancel.setTitleColor(.white, for: .normal)
         cancel.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
         cancel.backgroundColor  = UIColor.white.withAlphaComponent(0.25)
@@ -219,9 +240,9 @@ private final class BarcodeScanViewController: UIViewController,
     }
 
     private func showError(_ message: String) {
-        let alert = UIAlertController(title: "Error",
+        let alert = UIAlertController(title: errorTitleText,
             message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: okText, style: .default) { [weak self] _ in
             self?.dismiss(animated: true) { self?.onResult?(nil) }
         })
         present(alert, animated: true)
@@ -254,46 +275,81 @@ private final class BarcodeScanViewController: UIViewController,
 
     // MARK: OpenFoodFacts lookup
 
+    /// Barcode variants to try — Open Food Facts often stores UPC-A (12 digits)
+    /// as EAN-13 with a leading zero (and vice-versa), and EAN-8 padded to 13.
+    /// Trying these normalisations finds many products a single exact lookup
+    /// would miss.
+    private func barcodeCandidates(_ code: String) -> [String] {
+        var out = [code]
+        if code.count == 12 { out.append("0" + code) }
+        if code.count == 13, code.hasPrefix("0") { out.append(String(code.dropFirst())) }
+        if code.count == 8 { out.append(String(repeating: "0", count: 5) + code) }
+        var seen = Set<String>()
+        return out.filter { seen.insert($0).inserted }
+    }
+
     private func lookupNutrition(barcode: String) {
-        let urlStr = "https://world.openfoodfacts.org/api/v2/product/\(barcode).json"
-        guard let url = URL(string: urlStr) else {
-            finishWith(json: nil, barcode: barcode, error: "Invalid barcode URL")
+        tryLookup(candidates: barcodeCandidates(barcode), index: 0, original: barcode)
+    }
+
+    /// Try each barcode candidate in turn; the first that returns a product is
+    /// used. If none are in Open Food Facts, show the not-found alert.
+    private func tryLookup(candidates: [String], index: Int, original: String) {
+        guard index < candidates.count else {
+            activityView?.stopAnimating()
+            showNotFoundAlert(barcode: original)
             return
         }
-
-        var request        = URLRequest(url: url)
+        let code = candidates[index]
+        guard let url = URL(string:
+            "https://world.openfoodfacts.org/api/v2/product/\(code).json") else {
+            tryLookup(candidates: candidates, index: index + 1, original: original)
+            return
+        }
+        var request = URLRequest(url: url)
         request.timeoutInterval = 8
-        request.addValue("PixelsToMacros/1.0 (thesis project)", forHTTPHeaderField: "User-Agent")
+        // Open Food Facts asks every app to send a custom User-Agent.
+        request.addValue("PixelsToMacros/1.0 (thesis project)",
+                         forHTTPHeaderField: "User-Agent")
 
         URLSession.shared.dataTask(with: request) { [weak self] data, _, error in
             DispatchQueue.main.async {
                 guard let self else { return }
-                self.activityView?.stopAnimating()
-
-                if let error {
-                    self.finishWith(json: nil, barcode: barcode,
-                                    error: "Network error: \(error.localizedDescription)")
-                    return
+                if error == nil, let data,
+                   let product = BarcodeScanViewController.extractProduct(from: data) {
+                    self.activityView?.stopAnimating()
+                    self.parseAndFinish(product: product, barcode: original)
+                } else {
+                    // Not in OFF (or a transient error) — try the next variant.
+                    self.tryLookup(candidates: candidates, index: index + 1,
+                                   original: original)
                 }
-                guard let data else {
-                    self.finishWith(json: nil, barcode: barcode, error: "No data received")
-                    return
-                }
-                self.parseAndFinish(data: data, barcode: barcode)
             }
         }.resume()
     }
 
-    private func parseAndFinish(data: Data, barcode: String) {
-        guard
-            let json     = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            (json["status"] as? Int) == 1,
-            let product  = json["product"] as? [String: Any]
-        else {
-            showNotFoundAlert(barcode: barcode)
-            return
-        }
+    private static func extractProduct(from data: Data) -> [String: Any]? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              (json["status"] as? Int) == 1,
+              let product = json["product"] as? [String: Any]
+        else { return nil }
+        return product
+    }
 
+    /// Resolve energy per 100 g in kcal, trying (in order) the kcal field, the
+    /// kJ field converted to kcal, the raw energy field (OFF stores it in kJ),
+    /// and finally an Atwater estimate from macros. Many EU products list only
+    /// kJ, so this recovers usable data the old kcal-only check rejected.
+    private func resolveKcal(_ nutrients: [String: Any],
+                             protein: Double, carbs: Double, fat: Double) -> Double? {
+        if let k = doubleFrom(nutrients, "energy-kcal_100g"), k > 0 { return k }
+        if let kj = doubleFrom(nutrients, "energy-kj_100g"), kj > 0 { return kj / 4.184 }
+        if let e = doubleFrom(nutrients, "energy_100g"), e > 0 { return e / 4.184 }
+        let fromMacros = protein * 4 + carbs * 4 + fat * 9
+        return fromMacros > 0 ? fromMacros : nil
+    }
+
+    private func parseAndFinish(product: [String: Any], barcode: String) {
         let nutrients   = product["nutriments"] as? [String: Any] ?? [:]
         let rawName     = (product["product_name"] as? String)?.trimmingCharacters(in: .whitespaces)
                        ?? (product["generic_name"] as? String)?.trimmingCharacters(in: .whitespaces)
@@ -303,8 +359,11 @@ private final class BarcodeScanViewController: UIViewController,
             return
         }
 
-        guard let kcal = doubleFrom(nutrients, "energy-kcal_100g") else {
-            // No calorie data → not useful.
+        let protein = doubleFrom(nutrients, "proteins_100g")      ?? 0.0
+        let carbs   = doubleFrom(nutrients, "carbohydrates_100g") ?? 0.0
+        let fat     = doubleFrom(nutrients, "fat_100g")           ?? 0.0
+        guard let kcal = resolveKcal(nutrients, protein: protein, carbs: carbs, fat: fat) else {
+            // No usable energy (kcal, kJ, or from macros) → not useful.
             showNotFoundAlert(barcode: barcode)
             return
         }
@@ -313,9 +372,9 @@ private final class BarcodeScanViewController: UIViewController,
             "barcode":       barcode,
             "name":          rawName,
             "kcal_per_100g": kcal,
-            "protein":       doubleFrom(nutrients, "proteins_100g")       ?? 0.0,
-            "carbs":         doubleFrom(nutrients, "carbohydrates_100g")  ?? 0.0,
-            "fat":           doubleFrom(nutrients, "fat_100g")            ?? 0.0,
+            "protein":       protein,
+            "carbs":         carbs,
+            "fat":           fat,
             // Fiber
             "fiber":         doubleFrom(nutrients, "fiber_100g")          ?? 0.0,
             // Sugars
@@ -365,15 +424,15 @@ private final class BarcodeScanViewController: UIViewController,
 
     private func showNotFoundAlert(barcode: String) {
         let alert = UIAlertController(
-            title:   "Product Not Found",
-            message: "No nutrition data found for barcode \(barcode).\nTry a different product.",
+            title:   notFoundTitle,
+            message: notFoundBody,
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: "Scan Again", style: .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: scanAgainText, style: .default) { [weak self] _ in
             self?.hasScanned = false
             DispatchQueue.global(qos: .userInitiated).async { self?.session.startRunning() }
         })
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: cancelText, style: .cancel) { [weak self] _ in
             self?.dismiss(animated: true) { self?.onResult?(nil) }
         })
         present(alert, animated: true)

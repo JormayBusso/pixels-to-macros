@@ -23,6 +23,7 @@ import '../widgets/calc_info_button.dart';
 import '../widgets/drink_sheet.dart';
 import '../widgets/goal_mascot_widget.dart';
 import '../widgets/premium_theme_effects.dart';
+import '../widgets/scan_3d_viewer.dart';
 import '../widgets/tour_keys.dart';
 import '../widgets/weekly_challenges_card.dart';
 import 'body_map_screen.dart';
@@ -376,7 +377,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   CircularProgressIndicator(color: context.primary500),
                   SizedBox(height: 16),
                   Text(
-                    'Loading your data…',
+                    AppLocalizations.of(context).loadingYourData,
                     style: TextStyle(color: context.appMutedTextColor),
                   ),
                 ],
@@ -453,7 +454,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                               : Colors.white)),
                                   const SizedBox(width: 8),
                                   Text(
-                                    '${streak.currentStreak} day streak',
+                                    AppLocalizations.of(context)
+                                        .dayStreakLabel(streak.currentStreak),
                                     style: TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.w900,
@@ -478,7 +480,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _todayLabel(),
+                      _todayLabel(context),
                       style: TextStyle(
                         fontSize: 14,
                         color: context.appMutedTextColor,
@@ -600,7 +602,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  'No food logged yet today.\nScan or add food to start tracking!',
+                                  AppLocalizations.of(context)
+                                      .noFoodLoggedTodayLong,
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: context.appMutedTextColor,
@@ -811,6 +814,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         final thumbPath = ScanMediaResolver.resolve(
                             scan.topImagePath ?? scan.imagePath);
                         final hasThumb = thumbPath != null;
+                        // Show the 3D model for ANY scan whose model file is
+                        // still on disk (kept for the media-retention window),
+                        // not just today's — older scans keep their 3D view too.
+                        final modelPath =
+                            ScanMediaResolver.resolve(scan.modelPath);
+                        final hasModel = modelPath != null;
 
                         final card = GestureDetector(
                           onTap: () {
@@ -831,57 +840,80 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               : () => _toggleScanSelected(scan.id!),
                           child: Card(
                             color: selected ? context.primary50 : null,
-                            child: ListTile(
-                              leading: selecting
-                                  ? Icon(
-                                      selected
-                                          ? Icons.check_circle
-                                          : Icons.circle_outlined,
-                                      color: selected
-                                          ? context.primary600
-                                          : AppTheme.gray300,
-                                    )
-                                  : Hero(
-                                      tag: 'scan_icon_${scan.id}',
-                                      child: Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: context.primary100,
-                                          borderRadius:
-                                              BorderRadius.circular(10),
+                            child: Column(
+                              children: [
+                                ListTile(
+                                  leading: selecting
+                                      ? Icon(
+                                          selected
+                                              ? Icons.check_circle
+                                              : Icons.circle_outlined,
+                                          color: selected
+                                              ? context.primary600
+                                              : AppTheme.gray300,
+                                        )
+                                      : Hero(
+                                          tag: 'scan_icon_${scan.id}',
+                                          child: Container(
+                                            width: 40,
+                                            height: 40,
+                                            decoration: BoxDecoration(
+                                              color: context.primary100,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            clipBehavior: Clip.antiAlias,
+                                            child: hasThumb
+                                                ? Image.file(
+                                                    File(thumbPath),
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                : Icon(Icons.fastfood,
+                                                    color: context.primary600,
+                                                    size: 20),
+                                          ),
                                         ),
-                                        clipBehavior: Clip.antiAlias,
-                                        child: hasThumb
-                                            ? Image.file(
-                                                File(thumbPath),
-                                                fit: BoxFit.cover,
-                                              )
-                                            : Icon(Icons.fastfood,
-                                                color: context.primary600,
-                                                size: 20),
+                                  title: Text(
+                                    AppLocalizations.of(context)
+                                        .scanItemCount(scan.foods.length),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                  subtitle: Text(
+                                    hasModel
+                                        ? '${_timeAgo(context, scan.timestamp)} • ${AppLocalizations.of(context).scan3dModelTag}'
+                                        : _timeAgo(context, scan.timestamp),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: context.appMutedTextColor,
+                                    ),
+                                  ),
+                                  trailing: Text(
+                                    '${avg.round()} kcal',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: context.primary700,
+                                    ),
+                                  ),
+                                ),
+                                if (hasModel && !selecting)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        12, 0, 12, 12),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: SizedBox(
+                                        height: 180,
+                                        width: double.infinity,
+                                        child: IgnorePointer(
+                                          child: Scan3DViewer(
+                                            modelPath: modelPath,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                              title: Text(
-                                AppLocalizations.of(context)
-                                    .scanItemCount(scan.foods.length),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600),
-                              ),
-                              subtitle: Text(
-                                _timeAgo(scan.timestamp),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: context.appMutedTextColor,
-                                ),
-                              ),
-                              trailing: Text(
-                                '${avg.round()} kcal',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: context.primary700,
-                                ),
-                              ),
+                                  ),
+                              ],
                             ),
                           ),
                         );
@@ -953,32 +985,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  String _todayLabel() {
+  String _todayLabel(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final now = DateTime.now();
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    return '${days[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}';
+    return '${l10n.weekdayShort(now.weekday)}, ${l10n.monthShort(now.month)} ${now.day}';
   }
 
-  String _timeAgo(DateTime dt) {
+  String _timeAgo(BuildContext context, DateTime dt) {
+    final l10n = AppLocalizations.of(context);
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
+    if (diff.inMinutes < 1) return l10n.timeJustNow;
+    if (diff.inHours < 1) return l10n.minutesAgoShort(diff.inMinutes);
+    if (diff.inDays < 1) return l10n.hoursAgoShort(diff.inHours);
+    return l10n.daysAgoShort(diff.inDays);
   }
 }
 
@@ -1564,7 +1583,7 @@ class _RecommendationsCard extends ConsumerWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  'Smart Recommendations',
+                  AppLocalizations.of(context).smartRecommendations,
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
@@ -1581,7 +1600,7 @@ class _RecommendationsCard extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    '${state.recs.length} tips',
+                    AppLocalizations.of(context).tipsCount(state.recs.length),
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -1713,7 +1732,7 @@ class _HydrationCard extends ConsumerWidget {
           Row(
             children: [
               Text(
-                'Hydration',
+                AppLocalizations.of(context).hydrationTitle,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -1725,7 +1744,7 @@ class _HydrationCard extends ConsumerWidget {
               IconButton(
                 icon: const Icon(Icons.remove_circle_outline, size: 20),
                 color: intake > 0 ? waterAccent : context.appMutedTextColor,
-                tooltip: 'Remove 250 ml',
+                tooltip: AppLocalizations.of(context).removeWaterTooltip,
                 onPressed:
                     intake > 0 ? () => _removeWater(context, ref, 250) : null,
               ),
@@ -1733,13 +1752,13 @@ class _HydrationCard extends ConsumerWidget {
                 key: TourKeys.hydrationAddDrink,
                 icon: const Icon(Icons.add_circle_outline, size: 22),
                 color: waterAccent,
-                tooltip: 'Add drink',
+                tooltip: AppLocalizations.of(context).addDrinkTooltip,
                 onPressed: () => _showDrinkSheet(context, ref),
               ),
               IconButton(
                 icon: const Icon(Icons.tune, size: 20),
                 color: context.appMutedTextColor,
-                tooltip: 'Adjust water goal',
+                tooltip: AppLocalizations.of(context).adjustWaterGoalTooltip,
                 onPressed: () => _showGoalDialog(context, ref, goal),
               ),
             ],
@@ -1788,8 +1807,9 @@ class _HydrationCard extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text(
                       progress >= 1.0
-                          ? '🎉 Hydration goal reached!'
-                          : '${_fmtMl((goal - intake).clamp(0, goal))} remaining',
+                          ? AppLocalizations.of(context).hydrationGoalReached
+                          : AppLocalizations.of(context).waterRemaining(
+                              _fmtMl((goal - intake).clamp(0, goal))),
                       style: TextStyle(
                           fontSize: 11, color: context.appMutedTextColor),
                     ),
@@ -1849,7 +1869,8 @@ class _HydrationCard extends ConsumerWidget {
               ),
               Text(
                 AppLocalizations.of(context).waterMinMax,
-                style: TextStyle(fontSize: 11, color: context.appMutedTextColor),
+                style:
+                    TextStyle(fontSize: 11, color: context.appMutedTextColor),
               ),
             ],
           ),
@@ -1905,7 +1926,8 @@ class _HydrationCard extends ConsumerWidget {
             category: 'drink',
             perMl: true,
           );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('HydrationCard: drink food lookup failed for "$label": $e');
       food = FoodData(
         label: label,
         densityMin: 1.0,
@@ -1939,7 +1961,8 @@ class _HydrationCard extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(AppLocalizations.of(context).waterLogged(ml.round(), food.label)),
+        content: Text(
+            AppLocalizations.of(context).waterLogged(ml.round(), food.label)),
         duration: const Duration(seconds: 1),
       ),
     );

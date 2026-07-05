@@ -64,4 +64,14 @@ class PantryItem {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  /// Normalised key for matching a pantry item against a logged food label or
+  /// another item name (case-insensitive, trimmed, plural-tolerant).
+  static String normalizeKey(String raw) {
+    var s = raw.trim().toLowerCase();
+    if (s.length > 3 && s.endsWith('s')) {
+      s = s.substring(0, s.length - 1);
+    }
+    return s;
+  }
 }

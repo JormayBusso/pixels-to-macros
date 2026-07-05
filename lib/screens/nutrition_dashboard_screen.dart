@@ -343,11 +343,11 @@ class _GoalContextNote extends StatelessWidget {
       case NutritionGoalType.diabetes:
         note = 'Your targets are adjusted for blood-sugar management: higher '
             'fiber, magnesium, vitamin D, chromium (insulin co-factor), and '
-            'omega-3 for cardiovascular protection. (ADA 2024)';
+            'omega-3 for cardiovascular protection. (EASD 2023)';
       case NutritionGoalType.weightLoss:
         note = 'Calorie restriction does not lower your micronutrient needs. '
             'Targets for calcium, iron, and fiber are slightly raised to protect '
-            'against common deficiencies during a deficit. (DGA 2025)';
+            'against common deficiencies during a deficit. (EFSA)';
       case NutritionGoalType.keto:
         note = 'Keto causes rapid electrolyte loss. Magnesium, potassium, and '
             'sodium targets are increased. Aim to get these from food or a '
@@ -370,7 +370,7 @@ class _GoalContextNote extends StatelessWidget {
             'fiber-rich plants, legumes, whole grains, olive oil, nuts, fish, '
             'and tighter sodium control.';
       case NutritionGoalType.maintain:
-        note = 'Targets are standard NASEM/NIH Dietary Reference Intakes for '
+        note = 'Targets are standard EFSA Dietary Reference Values for '
             'healthy adults, adjusted for your biological sex.';
     }
     return Container(

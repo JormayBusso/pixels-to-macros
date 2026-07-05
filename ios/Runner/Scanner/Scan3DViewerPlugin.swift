@@ -1,6 +1,7 @@
 import Flutter
 import SceneKit
 import UIKit
+import simd
 
 /// Flutter platform-view factory for the interactive Stage 3 viewer.
 ///
@@ -261,36 +262,35 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
             return
         }
 
+        // Prefer the per-vertex-colour mesh sidecar written next to the scene.
+        // USD/USDZ export drops the vertex colour source, so the exported file
+        // renders as a single dull averaged colour. Rebuilding the geometry in
+        // process from the sidecar keeps a real SCNGeometrySource(.color), and
+        // `configure(scene:)` then forces diffuse to white so the true sampled
+        // food colours render at full brightness — the top crown, the silhouette
+        // sides and the reasoned underside all in their captured colour.
+        let sidecarURL = url.deletingPathExtension().appendingPathExtension("p2mesh")
+        if let objects = loadMeshSidecar(at: sidecarURL), !objects.isEmpty {
+            let scene = buildScene(fromSidecar: objects)
+            configure(scene: scene, modelURL: url)
+            sceneView.scene = scene
+            placeholderLabel.isHidden = true
+            print("[SCAN] SceneKit: LOADED from mesh sidecar " +
+                  "\(sidecarURL.lastPathComponent), foodNodes=\(foodNodes.count)")
+            announceLoaded()
+            return
+        }
+
         do {
             let scene = try SCNScene(url: url, options: [
                 .checkConsistency: false,
                 .createNormalsIfAbsent: true,
             ])
-            configure(scene: scene)
+            configure(scene: scene, modelURL: url)
             sceneView.scene = scene
             placeholderLabel.isHidden = true
             print("[SCAN] SceneKit: LOADED scene successfully, foodNodes=\(foodNodes.count)")
-
-            // ── Verification gate ───────────────────────────────────────
-            // Validate that the number of scene food nodes matches the
-            // metadata object count Flutter passed at creation. A mismatch
-            // means the USDZ file has drifted from the pipeline output and
-            // downstream selection / volume display will be wrong.
-            let sceneNodeCount = foodNodes.count
-            let metaCount = objectMeta.count
-            if sceneNodeCount != metaCount && metaCount > 0 {
-                print("[Scan3DViewer] ⚠️ scene_metadata_desync — " +
-                      "scene nodes: \(sceneNodeCount), metadata objects: \(metaCount)")
-                channel.invokeMethod("onError", arguments: [
-                    "error": "scene_metadata_desync",
-                    "expected": metaCount,
-                    "actual": sceneNodeCount,
-                ])
-            }
-
-            channel.invokeMethod("onObjectsReady", arguments: [
-                "ids": Array(foodNodes.keys).sorted()
-            ])
+            announceLoaded()
         } catch {
             print("[Scan3DViewer] Failed to load \(url.lastPathComponent): \(error)")
             sendInvalidModel(reason: "scenekit_load_failed", details: error.localizedDescription)
@@ -306,15 +306,255 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
         ])
     }
 
+    /// Push the loaded object list to Flutter and flag any drift between the
+    /// number of food nodes in the scene and the metadata object count Flutter
+    /// supplied at creation. A mismatch means selection / volume display would
+    /// be wrong, so Dart is warned via `onError`.
+    private func announceLoaded() {
+        let sceneNodeCount = foodNodes.count
+        let metaCount = objectMeta.count
+        if sceneNodeCount != metaCount && metaCount > 0 {
+            print("[Scan3DViewer] ⚠️ scene_metadata_desync — " +
+                  "scene nodes: \(sceneNodeCount), metadata objects: \(metaCount)")
+            channel.invokeMethod("onError", arguments: [
+                "error": "scene_metadata_desync",
+                "expected": metaCount,
+                "actual": sceneNodeCount,
+            ])
+        }
+        channel.invokeMethod("onObjectsReady", arguments: [
+            "ids": Array(foodNodes.keys).sorted()
+        ])
+    }
+
+    // MARK: – Per-vertex colour sidecar
+
+    /// One food object decoded from the `.p2mesh` sidecar. Positions share the
+    /// USD coordinate space; colours are RGBA bytes (one per vertex).
+    private struct SidecarObject {
+        let id: String
+        let averageColor: SCNVector3
+        let positions: [SCNVector3]
+        let colors: [UInt8]
+        let indices: [UInt32]
+    }
+
+    /// Decode the binary sidecar written by `Food3DExporter.writeMeshSidecar`.
+    /// Returns nil on any structural inconsistency so the caller falls back to
+    /// loading the USD scene. Every read is bounds-checked — the file is app
+    /// generated but treated defensively so a truncated file can never crash.
+    private func loadMeshSidecar(at url: URL) -> [SidecarObject]? {
+        guard let data = try? Data(contentsOf: url), data.count > 8 else { return nil }
+        let bytes = [UInt8](data)
+        guard bytes[0] == 0x50, bytes[1] == 0x32,
+              bytes[2] == 0x4D, bytes[3] == 0x31 else { return nil } // 'P2M1'
+
+        var offset = 4
+        func readU32() -> UInt32? {
+            guard offset + 4 <= bytes.count else { return nil }
+            let v = UInt32(bytes[offset])
+                | (UInt32(bytes[offset + 1]) << 8)
+                | (UInt32(bytes[offset + 2]) << 16)
+                | (UInt32(bytes[offset + 3]) << 24)
+            offset += 4
+            return v
+        }
+        func readF32() -> Float? {
+            guard let bits = readU32() else { return nil }
+            return Float(bitPattern: bits)
+        }
+
+        guard let objectCount = readU32() else { return nil }
+        var objects: [SidecarObject] = []
+        objects.reserveCapacity(Int(objectCount))
+
+        for _ in 0..<objectCount {
+            guard let idLen = readU32(),
+                  offset + Int(idLen) <= bytes.count else { return nil }
+            let id = String(bytes: bytes[offset..<offset + Int(idLen)], encoding: .utf8) ?? ""
+            offset += Int(idLen)
+            guard !id.isEmpty else { return nil }
+
+            // Average colour (RGB, 0…1). Used as the material diffuse so the
+            // food renders in its real sampled colour even when the device does
+            // not honour the raw per-vertex colour source — it is never white.
+            guard let avgR = readF32(), let avgG = readF32(), let avgB = readF32() else { return nil }
+
+            guard let vCountRaw = readU32() else { return nil }
+            let vCount = Int(vCountRaw)
+            guard offset + vCount * 12 <= bytes.count else { return nil }
+            var positions = [SCNVector3]()
+            positions.reserveCapacity(vCount)
+            for _ in 0..<vCount {
+                guard let x = readF32(), let y = readF32(), let z = readF32() else { return nil }
+                positions.append(SCNVector3(x, y, z))
+            }
+
+            guard offset + vCount * 4 <= bytes.count else { return nil }
+            let colors = Array(bytes[offset..<offset + vCount * 4])
+            offset += vCount * 4
+
+            guard let iCountRaw = readU32() else { return nil }
+            let iCount = Int(iCountRaw)
+            guard offset + iCount * 4 <= bytes.count else { return nil }
+            var indices = [UInt32]()
+            indices.reserveCapacity(iCount)
+            for _ in 0..<iCount {
+                guard let idx = readU32() else { return nil }
+                indices.append(idx)
+            }
+
+            objects.append(SidecarObject(
+                id: id,
+                averageColor: SCNVector3(avgR, avgG, avgB),
+                positions: positions, colors: colors, indices: indices
+            ))
+        }
+        return objects
+    }
+
+    /// Geometry-stage shader modifier: forward each vertex's sampled colour
+    /// (`_geometry.color` is the `SCNGeometrySource(.color)` attribute) into a
+    /// custom varying so the surface stage can read the interpolated value.
+    private static let vertexColorGeometryModifier = """
+    #pragma varyings
+    float3 p2mVertexColor;
+    #pragma body
+    out.p2mVertexColor = _geometry.color.rgb;
+    """
+
+    /// Surface-stage shader modifier: write the interpolated per-vertex colour
+    /// straight into the diffuse. This makes the captured photo colours render
+    /// per-vertex regardless of whether the device multiplies the raw `.color`
+    /// source under `.physicallyBased` — the cause of the earlier flat-white
+    /// food. If the modifier fails to compile SceneKit ignores it and the
+    /// material's average-colour diffuse (see buildScene) shows instead — still
+    /// never white.
+    private static let vertexColorSurfaceModifier = """
+    #pragma body
+    _surface.diffuse.rgb = in.p2mVertexColor;
+    """
+
+    /// Build a scene whose geometry keeps a real `SCNGeometrySource(.color)` so
+    /// the sampled per-vertex food colours render (USD would have dropped them).
+    /// Node names are the stable food ids, matching the metadata Flutter passed,
+    /// so selection / isolation keep working exactly as with the USD path.
+    private func buildScene(fromSidecar objects: [SidecarObject]) -> SCNScene {
+        let scene = SCNScene()
+        for object in objects {
+            guard object.positions.count >= 3, object.indices.count >= 3 else { continue }
+
+            let positionSource = SCNGeometrySource(vertices: object.positions)
+            let normals = computeSmoothNormals(
+                positions: object.positions, indices: object.indices
+            )
+            let normalSource = SCNGeometrySource(normals: normals)
+            let colorSource = SCNGeometrySource(
+                data: Data(object.colors),
+                semantic: .color,
+                vectorCount: object.positions.count,
+                usesFloatComponents: false,
+                componentsPerVector: 4,
+                bytesPerComponent: MemoryLayout<UInt8>.size,
+                dataOffset: 0,
+                dataStride: 4
+            )
+            let element = SCNGeometryElement(
+                indices: object.indices, primitiveType: .triangles
+            )
+            let geometry = SCNGeometry(
+                sources: [positionSource, normalSource, colorSource],
+                elements: [element]
+            )
+            // Drive the diffuse from the sampled average colour (never white)
+            // and attach shader modifiers that write each vertex's own sampled
+            // colour into the surface diffuse, so the captured photo colours
+            // render per-vertex. If the modifiers are unavailable on this device
+            // the diffuse still shows the real average food colour, never white.
+            let material = SCNMaterial()
+            material.diffuse.contents = UIColor(
+                red: CGFloat(max(0, min(1, object.averageColor.x))),
+                green: CGFloat(max(0, min(1, object.averageColor.y))),
+                blue: CGFloat(max(0, min(1, object.averageColor.z))),
+                alpha: 1.0
+            )
+            material.shaderModifiers = [
+                .geometry: Self.vertexColorGeometryModifier,
+                .surface: Self.vertexColorSurfaceModifier,
+            ]
+            geometry.materials = [material]
+
+            print("[Scan3DViewer] sidecar node=\(object.id) " +
+                  "verts=\(object.positions.count) avgColor=(" +
+                  "\(String(format: "%.2f", object.averageColor.x))," +
+                  "\(String(format: "%.2f", object.averageColor.y))," +
+                  "\(String(format: "%.2f", object.averageColor.z)))")
+
+            let node = SCNNode(geometry: geometry)
+            node.name = object.id
+            scene.rootNode.addChildNode(node)
+        }
+        return scene
+    }
+
+    /// Area-weighted smooth per-vertex normals from the triangle list. Smooth
+    /// shading reads as a rounded food surface, matching the USD export (which
+    /// used a moderate crease threshold) closely enough for the inline viewer.
+    private func computeSmoothNormals(
+        positions: [SCNVector3], indices: [UInt32]
+    ) -> [SCNVector3] {
+        var accum = [SIMD3<Float>](repeating: .zero, count: positions.count)
+        var i = 0
+        while i + 2 < indices.count {
+            let a = Int(indices[i]), b = Int(indices[i + 1]), c = Int(indices[i + 2])
+            i += 3
+            guard a < positions.count, b < positions.count, c < positions.count else { continue }
+            let pa = SIMD3<Float>(Float(positions[a].x), Float(positions[a].y), Float(positions[a].z))
+            let pb = SIMD3<Float>(Float(positions[b].x), Float(positions[b].y), Float(positions[b].z))
+            let pc = SIMD3<Float>(Float(positions[c].x), Float(positions[c].y), Float(positions[c].z))
+            let faceNormal = cross(pb - pa, pc - pa) // magnitude ∝ triangle area
+            accum[a] += faceNormal
+            accum[b] += faceNormal
+            accum[c] += faceNormal
+        }
+        return accum.map { v in
+            let length = simd_length(v)
+            let unit = length > 1e-8 ? v / length : SIMD3<Float>(0, 1, 0)
+            return SCNVector3(unit.x, unit.y, unit.z)
+        }
+    }
+
     /// CONTRACT: this method must NEVER flatten the imported node graph.
-    private func configure(scene: SCNScene) {
+    private func configure(scene: SCNScene, modelURL: URL) {
         scene.background.contents = UIColor(white: 0.06, alpha: 1.0)
 
+        // Render the mesh with its REAL per-vertex colours (each vertex is
+        // sampled from the captured photos at its own position: the top crown
+        // from the top photo, the sides from the silhouette rim = the true side
+        // colour, and a reasoned darker underside). The per-vertex path avoids
+        // the planar-projection artefacts a baked photo texture produced —
+        // stretched vertical streaks down the sides, the top image bleeding onto
+        // the underside, and edge seams — because every vertex simply carries
+        // its own colour with no UV projection to stretch.
+        //
+        // The sidecar material (see buildScene) already carries a shader
+        // modifier that writes each vertex's sampled colour into the diffuse,
+        // plus a real average-colour diffuse as the fallback. Earlier this method
+        // forced the diffuse to white expecting SceneKit to multiply it by the
+        // `.color` source, but `.physicallyBased` does NOT reliably do that
+        // multiply, so the food rendered flat WHITE. We therefore keep the
+        // diffuse buildScene set and only apply shared PBR styling here.
         scene.rootNode.enumerateHierarchy { node, _ in
             guard let geometry = node.geometry else { return }
+            let hasVertexColors = geometry.sources(for: .color).isEmpty == false
+            if let name = node.name {
+                print("[Scan3DViewer] node=\(name) vertexColors=\(hasVertexColors)")
+            }
             for material in geometry.materials {
                 material.lightingModel = .physicallyBased
                 material.isDoubleSided = true
+                material.roughness.contents = 0.68
+                material.metalness.contents = 0.0
             }
         }
 

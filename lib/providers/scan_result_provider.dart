@@ -60,7 +60,12 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     'egg tart': 'egg',
     'white rice': 'rice',
     'brown rice': 'rice',
-    'fried rice': 'rice',
+    'fried rice': 'fried rice',
+    'vegetable rice': 'fried rice',
+    'rice with vegetables': 'fried rice',
+    'rice with peas': 'fried rice',
+    'rice with carrots': 'fried rice',
+    'rice with peas and carrots': 'fried rice',
     'steamed rice': 'rice',
     'french fries': 'french fries',
     'fries': 'french fries',
@@ -73,6 +78,7 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     'steak': 'beef',
     'ground beef': 'beef',
     'grilled salmon': 'salmon',
+    'salmon fillet': 'salmon',
     'grilled fish': 'fish',
     'fried fish': 'fish',
     'orange juice': 'orange juice',
@@ -89,16 +95,28 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     'bell pepper': 'pepper',
     'red pepper': 'pepper',
     'green pepper': 'pepper',
+    'carrots': 'carrot',
+    'baby carrots': 'carrot',
+    'peas': 'green peas',
+    'pea': 'green peas',
+    'green pea': 'green peas',
+    'mixed vegetables': 'green peas',
     // Food-101 / classifier vocabulary -> canonical DB base foods. The fuzzy
     // resolver catches shared-word cases ("smoked salmon" -> "salmon"); these
     // cover composite dish names that share no word with a base food.
     'smoked salmon': 'salmon',
-    'salmon fillet': 'salmon',
+    'lox': 'salmon',
     'french toast': 'bread',
     'garlic bread': 'bread',
     'avocado toast': 'bread',
     'club sandwich': 'sandwich',
     'open sandwich': 'bread',
+    'tuna sandwich': 'sandwich',
+    'tuna melt': 'sandwich',
+    'pulled pork sandwich': 'sandwich',
+    'tuna salad': 'tuna',
+    'tuna mayo': 'tuna',
+    'canned tuna': 'tuna',
     'omelette': 'egg',
     'omelet': 'egg',
     'deviled eggs': 'egg',
@@ -112,6 +130,22 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     'macaroni': 'pasta',
     'mashed potatoes': 'potato',
     'baked potato': 'potato',
+    'tomato sauce': 'sauce',
+    'cream sauce': 'sauce',
+    'cheese sauce': 'sauce',
+    'bbq sauce': 'sauce',
+    'barbecue sauce': 'sauce',
+    'hot sauce': 'sauce',
+    'sriracha': 'sauce',
+    'gravy': 'sauce',
+    'salad dressing': 'sauce',
+    'ranch dressing': 'sauce',
+    'dressing': 'sauce',
+    'teriyaki sauce': 'sauce',
+    'sweet chili sauce': 'sauce',
+    'sweet chilli sauce': 'sauce',
+    'aioli': 'mayonnaise',
+    'tzatziki': 'yogurt',
   };
 
   // Labels that are NOT foods — model noise, non-food objects, or sentence fragments.
@@ -293,10 +327,11 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     required double? confidence,
   }) {
     // Non-food labels are already filtered by _normaliseLabel; this gate
-    // only applies physical size/confidence thresholds.
+    // only applies physical size thresholds. Native confidence is retained for
+    // diagnostics and low-confidence UI, but a valid exported 3-D object must
+    // not be erased solely because the fallback path was cautious.
     if (volumeCm3 < 6.0) return false;
     if (pixelCount < 650) return false;
-    if (confidence != null && confidence < 0.62) return false;
     return true;
   }
 

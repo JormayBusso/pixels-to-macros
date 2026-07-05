@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -48,7 +49,8 @@ class RecipeRepository {
           .cast<Map<String, dynamic>>()
           .map(Recipe.fromJson)
           .toList(growable: false);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('RecipeRepository: failed to load "$assetPath": $e');
       return const <Recipe>[];
     }
   }

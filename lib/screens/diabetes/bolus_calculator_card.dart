@@ -126,8 +126,8 @@ class _BolusCalculatorCardState extends ConsumerState<BolusCalculatorCard> {
           const SizedBox(height: 4),
           Text(
             AppLocalizations.of(context).diabetesGeneralDisclaimer,
-            style:
-                const TextStyle(fontSize: 11, color: AppTheme.gray500, height: 1.4),
+            style: TextStyle(
+                fontSize: 11, color: context.appMutedTextColor, height: 1.4),
           ),
           const SizedBox(height: 14),
           TextField(

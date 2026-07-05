@@ -210,6 +210,34 @@ class _AiProcessingPainter extends CustomPainter {
         ).createShader(Rect.fromCircle(center: center, radius: coreRadius)),
     );
 
+    // Rotating "scan sweep" beam — a soft conic wedge that reads as an active
+    // sensor sweeping the reconstruction volume.
+    final sweepRect = Rect.fromCircle(center: center, radius: base * 0.9);
+    canvas.drawCircle(
+      center,
+      base * 0.9,
+      Paint()
+        ..blendMode = BlendMode.plus
+        ..shader = SweepGradient(
+          startAngle: angle,
+          endAngle: angle + 2 * math.pi,
+          colors: [
+            colors.last.withValues(alpha: 0.0),
+            colors.last.withValues(alpha: 0.0),
+            colors[1 % colors.length].withValues(alpha: 0.10 + 0.08 * pulse),
+            colors.first.withValues(alpha: 0.20 + 0.10 * pulse),
+            colors.last.withValues(alpha: 0.0),
+          ],
+          stops: const [0.0, 0.62, 0.80, 0.94, 1.0],
+        ).createShader(sweepRect),
+    );
+
+    // Forming 3-D reconstruction point cloud: points distributed on a sphere
+    // (golden-spiral), rotated about the vertical axis. Front points are larger
+    // and brighter, back points dim — so it reads as a rotating volume being
+    // assembled, not a flat spinner.
+    _drawPointCloud(canvas, center, base * 0.60, angle);
+
     // Concentric reconstruction arcs rotating at different speeds/directions.
     final arcSpecs = <({double r, double sweep, int dir, double width})>[
       (r: base * 0.42, sweep: 2.1, dir: 1, width: 3.0),
@@ -238,18 +266,63 @@ class _AiProcessingPainter extends CustomPainter {
       );
     }
 
-    // Orbiting particles.
-    for (var i = 0; i < 5; i++) {
-      final t = angle * (i.isEven ? 1 : -1) + i * (2 * math.pi / 5);
-      final r = base * (0.46 + 0.30 * (i / 5));
+    // Orbiting particles with soft trailing glow.
+    for (var i = 0; i < 6; i++) {
+      final t = angle * (i.isEven ? 1 : -1) + i * (2 * math.pi / 6);
+      final r = base * (0.46 + 0.30 * (i / 6));
       final p = center + Offset(math.cos(t) * r, math.sin(t) * r);
       final color = colors[i % colors.length];
+      // Trailing streak.
+      final trail = center +
+          Offset(math.cos(t - 0.22 * (i.isEven ? 1 : -1)) * r,
+              math.sin(t - 0.22 * (i.isEven ? 1 : -1)) * r);
+      canvas.drawLine(
+        trail,
+        p,
+        Paint()
+          ..color = color.withValues(alpha: 0.28)
+          ..strokeWidth = 1.6
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+      );
       canvas.drawCircle(
         p,
         2.6 + 1.4 * pulse,
         Paint()
-          ..color = color.withValues(alpha: 0.85)
+          ..color = color.withValues(alpha: 0.9)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+      );
+    }
+  }
+
+  /// Draws a rotating golden-spiral sphere of points, depth-shaded so it reads
+  /// as a 3-D volume being reconstructed.
+  void _drawPointCloud(Canvas canvas, Offset center, double radius, double a) {
+    const count = 64;
+    const goldenAngle = math.pi * (3.0 - 2.23606797749979); // π(3−√5)
+    final cosA = math.cos(a);
+    final sinA = math.sin(a);
+    for (var i = 0; i < count; i++) {
+      final y = 1.0 - (i / (count - 1)) * 2.0; // 1 → −1
+      final ring = math.sqrt(math.max(0.0, 1.0 - y * y));
+      final theta = goldenAngle * i;
+      final x = math.cos(theta) * ring;
+      final z = math.sin(theta) * ring;
+      // Rotate about the vertical (Y) axis.
+      final xr = x * cosA - z * sinA;
+      final zr = x * sinA + z * cosA;
+      final sx = center.dx + xr * radius;
+      final sy = center.dy + y * radius * 0.92;
+      final depth = (zr + 1.0) / 2.0; // 0 (back) → 1 (front)
+      final color = colors[i % colors.length];
+      canvas.drawCircle(
+        Offset(sx, sy),
+        1.0 + 2.0 * depth,
+        Paint()
+          ..color = color.withValues(alpha: 0.18 + 0.62 * depth)
+          ..maskFilter = depth > 0.6
+              ? const MaskFilter.blur(BlurStyle.normal, 1.2)
+              : null,
       );
     }
   }

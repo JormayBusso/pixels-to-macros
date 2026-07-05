@@ -50,7 +50,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 40,
+      version: 43,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -103,7 +103,8 @@ class DatabaseService {
         image_path            TEXT,
         top_image_path        TEXT,
         side_image_path       TEXT,
-        model_path            TEXT
+        model_path            TEXT,
+        model_objects_json    TEXT
       )
     ''');
 
@@ -158,7 +159,8 @@ class DatabaseService {
         water_reminder_enabled   INTEGER NOT NULL DEFAULT 1,
         weekly_badge_recap_enabled INTEGER NOT NULL DEFAULT 1,
         last_weekly_badge_recap_week TEXT NOT NULL DEFAULT '',
-        premium_unlocked         INTEGER NOT NULL DEFAULT 0
+        premium_unlocked         INTEGER NOT NULL DEFAULT 0,
+        premium_theme_light      INTEGER NOT NULL DEFAULT 0
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
@@ -391,7 +393,7 @@ class DatabaseService {
         ('pineapple', 0.85, 0.97), // fresh cut flesh
         ('lemon', 0.95, 1.05), // citrus close to water density
         ('grape', 0.88, 0.98), // fresh grape, quite dense
-        ('tomato', 0.85, 0.98), // tomato flesh ~0.9-1.0
+        ('tomato', 1.05, 1.20), // whole tomato calibration from measured scans
         ('cucumber', 0.88, 0.98), // ~96% water
         ('white radish', 0.87, 0.97), // firm daikon
         ('carrot', 0.95, 1.05), // dense root vegetable
@@ -710,6 +712,26 @@ class DatabaseService {
     }
     if (oldVersion < 40) {
       await _createGroceryLeftoverTable(db);
+    }
+    if (oldVersion < 41) {
+      await db.update(
+        'food_data',
+        {'density_min': 1.05, 'density_max': 1.20},
+        where: 'label = ?',
+        whereArgs: ['tomato'],
+      );
+    }
+    if (oldVersion < 42) {
+      try {
+        await db.execute(
+            'ALTER TABLE scan_results ADD COLUMN model_objects_json TEXT');
+      } catch (_) {}
+    }
+    if (oldVersion < 43) {
+      try {
+        await db.execute(
+            'ALTER TABLE user_preferences ADD COLUMN premium_theme_light INTEGER NOT NULL DEFAULT 0');
+      } catch (_) {}
     }
   }
 
@@ -1629,8 +1651,8 @@ class DatabaseService {
           fatPer100g: 0.3),
       FoodData(
           label: 'tomato',
-          densityMin: 0.85,
-          densityMax: 0.98,
+          densityMin: 1.05,
+          densityMax: 1.20,
           kcalPer100g: 18,
           category: 'vegetable',
           proteinPer100g: 0.9,
@@ -4444,10 +4466,39 @@ class DatabaseService {
   /// own (cooking styles, articles, fillers). A shared "salmon" is meaningful;
   /// a shared "fried" is not.
   static const Set<String> _fuzzyStopWords = {
-    'and', 'the', 'with', 'for', 'raw', 'hot', 'cold', 'mini', 'big',
-    'fried', 'baked', 'grilled', 'roast', 'roasted', 'boiled', 'steamed',
-    'fresh', 'whole', 'plain', 'sweet', 'sour', 'spicy', 'mixed', 'sliced',
-    'half', 'piece', 'plate', 'bowl', 'cup', 'dish', 'meal', 'food', 'side',
+    'and',
+    'the',
+    'with',
+    'for',
+    'raw',
+    'hot',
+    'cold',
+    'mini',
+    'big',
+    'fried',
+    'baked',
+    'grilled',
+    'roast',
+    'roasted',
+    'boiled',
+    'steamed',
+    'fresh',
+    'whole',
+    'plain',
+    'sweet',
+    'sour',
+    'spicy',
+    'mixed',
+    'sliced',
+    'half',
+    'piece',
+    'plate',
+    'bowl',
+    'cup',
+    'dish',
+    'meal',
+    'food',
+    'side',
   };
 
   /// Pure, testable fuzzy matcher: pick the food-database [candidates] label
@@ -4456,11 +4507,29 @@ class DatabaseService {
   /// "sandwich" so a recognised-but-unlisted food still gets real nutrition
   /// instead of a generic fallback. Returns null when nothing meaningful
   /// overlaps (so we never silently mislabel an unrelated food).
-  static String? bestFuzzyLabelMatch(String query, Iterable<String> candidates) {
+  static String? bestFuzzyLabelMatch(
+      String query, Iterable<String> candidates) {
     final q = query.toLowerCase().trim();
     if (q.isEmpty) return null;
+    String singularToken(String token) {
+      if (token.endsWith('ies') && token.length > 4) {
+        return '${token.substring(0, token.length - 3)}y';
+      }
+      if (token.endsWith('oes') && token.length > 4) {
+        return token.substring(0, token.length - 2);
+      }
+      if (token.endsWith('ses') && token.length > 4) {
+        return token.substring(0, token.length - 2);
+      }
+      if (token.endsWith('s') && token.length > 3) {
+        return token.substring(0, token.length - 1);
+      }
+      return token;
+    }
+
     Set<String> contentTokens(String s) => s
         .split(RegExp(r'[^a-z]+'))
+        .map(singularToken)
         .where((t) => t.length >= 3 && !_fuzzyStopWords.contains(t))
         .toSet();
     final qTokens = contentTokens(q);
@@ -4575,10 +4644,20 @@ class DatabaseService {
   /// while KEEPING the scan row, detected foods, macros and nutrition data.
   ///
   /// Returns the number of scans whose media was purged.
+  /// Scan media (thumbnails, capture photos, 3D models) is kept for this many
+  /// days so the scan history stays fully visible — with its images and 3D
+  /// model — well beyond the capture day. Only media OLDER than this window is
+  /// purged to bound disk use. The scan nutrition rows themselves are NEVER
+  /// deleted here, so the Analytics tab always retains the full history.
+  static const int scanMediaRetentionDays = 30;
+
   Future<int> purgeExpiredScanMedia() async {
     final db = await database;
     final now = DateTime.now();
     final startOfToday = DateTime(now.year, now.month, now.day);
+    final cutoff = startOfToday.subtract(
+      const Duration(days: scanMediaRetentionDays),
+    );
 
     final rows = await db.query(
       'scan_results',
@@ -4592,7 +4671,7 @@ class DatabaseService {
       where: 'timestamp < ? AND '
           '(image_path IS NOT NULL OR top_image_path IS NOT NULL OR '
           'side_image_path IS NOT NULL OR model_path IS NOT NULL)',
-      whereArgs: [startOfToday.toIso8601String()],
+      whereArgs: [cutoff.toIso8601String()],
     );
     if (rows.isEmpty) return 0;
 
@@ -4613,7 +4692,16 @@ class DatabaseService {
           candidates.add('$docsPath/scan_captures/$name');
         }
       }
+      final expanded = <String>[...candidates];
       for (final path in candidates) {
+        final dot = path.lastIndexOf('.');
+        if (dot > 0) {
+          final base = path.substring(0, dot);
+          expanded.add('${base}_texture.png');
+          expanded.add('$base.mtl');
+        }
+      }
+      for (final path in expanded) {
         try {
           final file = File(path);
           if (file.existsSync()) file.deleteSync();
@@ -5060,8 +5148,8 @@ class DatabaseService {
       }
     }
     for (final key in expired) {
-      await db.delete('grocery_leftovers',
-          where: 'item_key = ?', whereArgs: [key]);
+      await db
+          .delete('grocery_leftovers', where: 'item_key = ?', whereArgs: [key]);
     }
     return out;
   }

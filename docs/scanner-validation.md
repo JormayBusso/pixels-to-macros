@@ -20,6 +20,32 @@ the **side** silhouette was applied, whether a **fallback** prior was used, and
 whether the **volume guardrail** softened the result. Use **Copy all** to paste
 a run into notes.
 
+## Free trained model stack
+
+The current on-device recognition path uses only free, local models:
+
+| Purpose | Model/resource | Notes |
+| ------- | -------------- | ----- |
+| Food masks | `FoodSegYolo.mlmodelc` | Primary instance segmentation and crop masks. |
+| Open-vocabulary labels | `MobileCLIPImage.mlmodelc` + `FoodLabelEmbeddings.json` | Apple MobileCLIP-S2/datacompdr image encoder with a 361-label food table generated from [training/food_vocab.txt](../training/food_vocab.txt). |
+| Fine-grained fallback labels | `FoodClassifier.mlmodelc` + `FoodClassifierLabels.json` | Free `nateraw/food` Food-101 ViT classifier. It only overrides when its confidence clears the conservative gate in `InferencePipeline`. |
+
+Refresh the free recognition resources after editing the vocabulary:
+
+```bash
+/Users/jormaybusso/pixels-to-macros/.venv/bin/python training/export_mobileclip.py --compile_ios
+ruby scripts/add_yolo_model.rb MobileCLIPImage.mlmodelc
+ruby scripts/add_yolo_model.rb FoodLabelEmbeddings.json
+```
+
+Refresh the optional Food-101 classifier:
+
+```bash
+/Users/jormaybusso/pixels-to-macros/.venv/bin/python training/export_food_classifier.py --compile_ios
+ruby scripts/add_yolo_model.rb FoodClassifier.mlmodelc
+ruby scripts/add_yolo_model.rb FoodClassifierLabels.json
+```
+
 ## Test items (known, easy to verify)
 
 | Item            | Approx. real volume | Approx. real weight |
@@ -66,6 +92,7 @@ For each item, capture top + side as guided, then open Scanner Diagnostics:
 | ---------------------------------------------- | ---------------------------------------------------------- |
 | `scale_source = fallback_22cm`                 | Plate not detected — improve plate framing/contrast.       |
 | `side=false`, `fallback=true`                  | Side mask rejected by `usableSideProfile` gates.           |
+| Visible horizontal layers                      | Monocular mesh should report `surface_extraction_mode = contour_loft`; otherwise an old layered hull path is still being used. |
 | Cube/cylinder shape                            | Mesh smoothing/rim taper regression (Food3DExporter).      |
 | `guardrail: softened` on a normal portion      | Raw volume overshoot — review envelope for that label.     |
 | `volume_cm3` swings wildly on identical scans  | Unstable scale or silhouette extraction.                   |

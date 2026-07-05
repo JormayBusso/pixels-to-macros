@@ -566,6 +566,7 @@ class _AddIngredientSheetState extends State<_AddIngredientSheet> {
 
     final result = await BarcodeLookupService.instance.scanAndLookup(
       themeColor: themeColor,
+      l10n: AppLocalizations.of(context),
     );
     if (result == null || !mounted) return;
 

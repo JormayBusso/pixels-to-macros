@@ -302,7 +302,6 @@ class _GeneratedFoodPainter extends CustomPainter {
         baseHeight,
         color,
         itemProgress,
-        drawWireframe: isBuilding && progress < 0.70,
       );
     }
 
@@ -380,11 +379,9 @@ class _GeneratedFoodPainter extends CustomPainter {
     double width,
     double height,
     Color color,
-    double progress, {
-    required bool drawWireframe,
-  }) {
+    double progress,
+  ) {
     final eased = Curves.easeOutBack.transform(_unit(progress));
-    const layers = 7;
     final moundHeight = height * 0.78 * eased;
 
     canvas.drawOval(
@@ -398,35 +395,64 @@ class _GeneratedFoodPainter extends CustomPainter {
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
     );
 
-    for (var layer = layers - 1; layer >= 0; layer--) {
-      final layerT = layer / (layers - 1);
-      final y = center.dy - moundHeight * layerT * 0.72;
-      final layerWidth = width * (1.0 - layerT * 0.22);
-      final layerHeight = height * (0.58 - layerT * 0.22);
-      final layerColor = Color.lerp(
-        color,
-        Colors.white,
-        0.10 + layerT * 0.18,
-      )!;
-      final rect = Rect.fromCenter(
-        center: Offset(center.dx, y),
-        width: layerWidth,
-        height: layerHeight,
-      );
-      canvas.drawOval(
-        rect,
-        Paint()..color = layerColor.withValues(alpha: 0.90 * progress),
-      );
-      if (drawWireframe) {
-        canvas.drawOval(
-          rect,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1
-            ..color = Colors.white.withValues(alpha: 0.18 * progress),
-        );
-      }
-    }
+    final bodyRect = Rect.fromCenter(
+      center: center.translate(0, -moundHeight * 0.18),
+      width: width,
+      height: height * 0.78,
+    );
+    final bodyPath = Path()
+      ..moveTo(bodyRect.left, center.dy + height * 0.16)
+      ..cubicTo(
+        bodyRect.left + width * 0.08,
+        center.dy - moundHeight * 0.68,
+        bodyRect.left + width * 0.33,
+        center.dy - moundHeight,
+        center.dx,
+        center.dy - moundHeight,
+      )
+      ..cubicTo(
+        bodyRect.right - width * 0.33,
+        center.dy - moundHeight,
+        bodyRect.right - width * 0.08,
+        center.dy - moundHeight * 0.68,
+        bodyRect.right,
+        center.dy + height * 0.16,
+      )
+      ..cubicTo(
+        bodyRect.right - width * 0.18,
+        center.dy + height * 0.38,
+        bodyRect.left + width * 0.18,
+        center.dy + height * 0.38,
+        bodyRect.left,
+        center.dy + height * 0.16,
+      )
+      ..close();
+    canvas.drawPath(
+      bodyPath,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.lerp(color, Colors.white, 0.22)!
+                .withValues(alpha: 0.96 * progress),
+            color.withValues(alpha: 0.94 * progress),
+            Color.lerp(color, Colors.black, 0.18)!
+                .withValues(alpha: 0.92 * progress),
+          ],
+        ).createShader(bodyRect),
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: center.translate(0, height * 0.12),
+        width: width * 0.94,
+        height: height * 0.34,
+      ),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..color = Colors.white.withValues(alpha: 0.12 * progress),
+    );
 
     final highlightRect = Rect.fromCenter(
       center: center.translate(-width * 0.15, -moundHeight * 0.32),

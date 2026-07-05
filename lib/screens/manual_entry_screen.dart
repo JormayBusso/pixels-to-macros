@@ -272,10 +272,9 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              '⚠️ Barcode scanning requires an internet connection to look up product info.'),
-          duration: Duration(seconds: 4),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).barcodeNeedsInternet),
+          duration: const Duration(seconds: 4),
         ),
       );
       return;
@@ -285,7 +284,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     // performs the OpenFoodFacts lookup using URLSession — no Flutter
     // packages required.
     final result = await BarcodeLookupService.instance
-        .scanAndLookup(themeColor: themeColor);
+        .scanAndLookup(themeColor: themeColor, l10n: AppLocalizations.of(context));
     if (result == null || !mounted) return;
 
     // Check if food is already in our database.

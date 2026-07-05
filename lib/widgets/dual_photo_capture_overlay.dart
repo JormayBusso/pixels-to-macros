@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../core/scan_state.dart';
@@ -292,23 +290,18 @@ class _AlignmentFrame extends StatelessWidget {
         return Transform.scale(
           scale: scale,
           child: SizedBox(
-            width: 230,
-            height: 230,
+            width: 300,
+            height: 300,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 CustomPaint(
-                  size: const Size(230, 230),
+                  size: const Size(300, 300),
                   painter: _FramePainter(color: color, isTop: isTop),
                 ),
-                if (confirming)
-                  Icon(Icons.check_circle, size: 64, color: color)
-                else if (!aligned)
-                  Icon(
-                    isTop ? Icons.arrow_downward : Icons.arrow_upward,
-                    size: 48,
-                    color: color.withValues(alpha: 0.88),
-                  ),
+                // Only a brief success tick when the shot is captured — no
+                // arrows or brackets, so the camera feed stays uncluttered.
+                if (confirming) Icon(Icons.check_circle, size: 64, color: color),
               ],
             ),
           ),
@@ -327,52 +320,18 @@ class _FramePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
     final cy = size.height / 2;
+    final radius = size.width * 0.45;
 
     final guide = Paint()
-      ..color = color.withValues(alpha: 0.62)
+      ..color = color.withValues(alpha: 0.7)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
+      ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round;
 
-    // Both capture steps share the same rounded (circular) framing guide so
-    // the top and side captures stay visually consistent (no square frame).
-    canvas.drawCircle(Offset(cx, cy), size.width * 0.43, guide);
-
-    // Ghost guide: dashed plate circle (top) or horizon line (side).
-    final ghost = Paint()
-      ..color = color.withValues(alpha: 0.34)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    if (isTop) {
-      _drawDashedCircle(canvas, Offset(cx, cy), size.width * 0.34, ghost);
-    } else {
-      _drawDashedLine(
-          canvas, Offset(28, cy), Offset(size.width - 28, cy), ghost);
-    }
-  }
-
-  void _drawDashedCircle(Canvas canvas, Offset c, double r, Paint p) {
-    const dashes = 28;
-    const sweep = (2 * math.pi) / dashes;
-    for (var i = 0; i < dashes; i += 2) {
-      final start = i * sweep;
-      canvas.drawArc(
-          Rect.fromCircle(center: c, radius: r), start, sweep, false, p);
-    }
-  }
-
-  void _drawDashedLine(Canvas canvas, Offset a, Offset b, Paint p) {
-    const dash = 8.0;
-    const gap = 6.0;
-    final total = (b - a).distance;
-    final dir = (b - a) / total;
-    var d = 0.0;
-    while (d < total) {
-      final s = a + dir * d;
-      final e = a + dir * math.min(d + dash, total);
-      canvas.drawLine(s, e, p);
-      d += dash + gap;
-    }
+    // A single circular framing guide: the food only needs to sit inside this
+    // circle. No corner brackets, reticle, ticks, horizon line or arrows — the
+    // camera feed stays calm and uncluttered.
+    canvas.drawCircle(Offset(cx, cy), radius, guide);
   }
 
   @override
@@ -527,8 +486,8 @@ class _GuidancePanel extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         _isTop
-                            ? 'Frame the full food area from above'
-                            : 'Keep the camera near plate level',
+                            ? 'Center the food · fill the circle · shoot straight down'
+                            : 'Drop to plate level · keep the food in the ring',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(

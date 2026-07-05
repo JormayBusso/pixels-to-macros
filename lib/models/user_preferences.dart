@@ -98,6 +98,11 @@ class UserPreferences {
   /// Whether the user has unlocked the premium theme pack via in-app purchase.
   final bool premiumUnlocked;
 
+  /// Light/dark preference for PREMIUM colour themes only. Premium themes ship
+  /// as deep dark palettes (false); when true they render a bright light
+  /// variant. Free themes are always light and ignore this flag.
+  final bool premiumThemeLight;
+
   const UserPreferences({
     this.id,
     this.name = '',
@@ -129,6 +134,7 @@ class UserPreferences {
     this.weeklyBadgeRecapEnabled = true,
     this.lastWeeklyBadgeRecapWeek = '',
     this.premiumUnlocked = false,
+    this.premiumThemeLight = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -164,6 +170,7 @@ class UserPreferences {
       'weekly_badge_recap_enabled': weeklyBadgeRecapEnabled ? 1 : 0,
       'last_weekly_badge_recap_week': lastWeeklyBadgeRecapWeek,
       'premium_unlocked': premiumUnlocked ? 1 : 0,
+      'premium_theme_light': premiumThemeLight ? 1 : 0,
     };
   }
 
@@ -207,6 +214,7 @@ class UserPreferences {
       lastWeeklyBadgeRecapWeek:
           map['last_weekly_badge_recap_week'] as String? ?? '',
       premiumUnlocked: (map['premium_unlocked'] as int?) == 1,
+      premiumThemeLight: (map['premium_theme_light'] as int?) == 1,
     );
   }
 
@@ -240,6 +248,7 @@ class UserPreferences {
     bool? weeklyBadgeRecapEnabled,
     String? lastWeeklyBadgeRecapWeek,
     bool? premiumUnlocked,
+    bool? premiumThemeLight,
   }) {
     return UserPreferences(
       id: id,
@@ -277,6 +286,7 @@ class UserPreferences {
       lastWeeklyBadgeRecapWeek:
           lastWeeklyBadgeRecapWeek ?? this.lastWeeklyBadgeRecapWeek,
       premiumUnlocked: premiumUnlocked ?? this.premiumUnlocked,
+      premiumThemeLight: premiumThemeLight ?? this.premiumThemeLight,
     );
   }
 }

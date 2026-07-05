@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_localizations.dart';
+import 'food_group_screen.dart';
 import '../models/badge_catalog.dart';
 import '../models/calc_info.dart';
 import '../models/earned_badge.dart';
@@ -97,6 +98,33 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     proteinTarget: proteinTarget,
                     carbsTarget: carbsTarget,
                     fatTarget: fatTarget,
+                  ),
+                  const SizedBox(height: 16),
+                  Card(
+                    child: ListTile(
+                      leading: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: context.primary100,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.eco_outlined,
+                            color: context.primary600),
+                      ),
+                      title: Text(
+                        AppLocalizations.of(context).foodGroupBalanceTitle,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text(
+                          AppLocalizations.of(context).foodGroupBalanceSubtitle),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const FoodGroupScreen(),
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   _WeekdayPatternCard(state: analytics, goal: goal),
@@ -240,6 +268,7 @@ class _CalorieTrendCard extends StatelessWidget {
                 painter: _CaloriesLinePainter(
                   days: days,
                   goal: goal,
+                  goalLabel: AppLocalizations.of(context).analyticsGoalLabel,
                   primary: context.primary500,
                   primarySoft: context.primary100,
                   highlightIndex: selectedIndex,
@@ -261,6 +290,7 @@ class _CaloriesLinePainter extends CustomPainter {
   _CaloriesLinePainter({
     required this.days,
     required this.goal,
+    required this.goalLabel,
     required this.primary,
     required this.primarySoft,
     required this.highlightIndex,
@@ -268,6 +298,7 @@ class _CaloriesLinePainter extends CustomPainter {
 
   final List<DaySummary> days;
   final double goal;
+  final String goalLabel;
   final Color primary;
   final Color primarySoft;
   final int? highlightIndex;
@@ -307,7 +338,7 @@ class _CaloriesLinePainter extends CustomPainter {
     }
     final goalLabelTp = TextPainter(
       text: TextSpan(
-        text: 'Goal ${goal.round()}',
+        text: '$goalLabel ${goal.round()}',
         style: const TextStyle(
           fontSize: 9,
           color: AppTheme.amber700,
@@ -581,7 +612,7 @@ class _MacroDonutCard extends StatelessWidget {
     final fPct = total > 0 ? fCal / total : 0.0;
 
     return _CardShell(
-      title: 'Average macros',
+      title: AppLocalizations.of(context).analyticsAverageMacros,
       subtitle: total > 0 ? null : 'No food logged in this range',
       child: Padding(
         padding: const EdgeInsets.only(top: 8),
@@ -765,8 +796,8 @@ class _WeekdayPatternCard extends StatelessWidget {
     final maxVal = wd.values.fold<double>(0, math.max);
 
     return _CardShell(
-      title: 'Weekday pattern',
-      subtitle: 'Average kcal per weekday',
+      title: AppLocalizations.of(context).analyticsWeekdayPattern,
+      subtitle: AppLocalizations.of(context).analyticsWeekdayPatternSub,
       child: SizedBox(
         height: 120,
         child: Padding(
@@ -816,7 +847,7 @@ class _WeekdayPatternCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      _wdShort(wdNum),
+                      AppLocalizations.of(context).weekdayShort(wdNum),
                       style: TextStyle(
                         fontSize: 10,
                         color: context.appMutedTextColor,
@@ -831,9 +862,6 @@ class _WeekdayPatternCard extends StatelessWidget {
       ),
     );
   }
-
-  String _wdShort(int wd) =>
-      const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][wd - 1];
 }
 
 // ─────────────────────────── Insight card ───────────────────────────
@@ -963,7 +991,7 @@ class _DayBreakdownCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CardShell(
-      title: 'Day by day',
+      title: AppLocalizations.of(context).analyticsDayByDay,
       child: Column(
         children: state.days.reversed.map((d) {
           final pct = goal > 0 ? (d.caloriesAvg / goal).clamp(0.0, 1.5) : 0.0;

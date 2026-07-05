@@ -297,8 +297,9 @@ final class DepthFusion {
     // MARK: – 3-D export (Stage 1+ hardened)
     //
     // Contract — these invariants are enforced in code and MUST hold:
-    //   1. The SAME voxel set is the source of truth for both volume math
-    //      (`clusterVolumes()`) and mesh export (`exportFoodObjects()`).
+    //   1. The SAME voxel set is the source of truth for reconstruction; the
+    //      final displayed mesh exported from that set is the source of the
+    //      reported `Food3DObject.volumeCm3`.
     //   2. Per-food separation is decided at the VOXEL level (connected
     //      components per label), not at the mesh / SceneKit level.
     //      Clusters are never merged downstream.
@@ -311,8 +312,8 @@ final class DepthFusion {
     /// before it is solidified and exported. This is a noise floor applied to
     /// the raw depth shell (NOT the final volume): clusters with fewer skin
     /// voxels than this are almost always mis-segmentation or sensor noise.
-    /// The reported `volumeCm3` is derived AFTER column solidification, so it
-    /// is typically much larger than this count.
+    /// The displayed volume is measured from the exported mesh; this threshold
+    /// only gates the measured shell before solidification and meshing.
     ///
     /// Lowered 200 → 80 (#3): at 1 cm voxel resolution ~200 skin voxels means a
     /// ~14 cm footprint, which silently dropped small/medium foods (an egg is
@@ -340,8 +341,9 @@ final class DepthFusion {
     }
 
     /// One reconstructed food object: per-instance voxel cluster turned into
-    /// a triangle mesh with per-vertex RGB colours sampled from the top
-    /// frame. `volumeCm3` mirrors the source cluster's volume exactly.
+    /// the triangle mesh shown to the user, with per-vertex RGB colours sampled
+    /// from the top frame. `volumeCm3` is measured from that final displayed
+    /// mesh, while `voxelCount` preserves the backing solid voxel density.
     struct Food3DObject {
         /// Same stable id as the source `FoodVoxelCluster`.
         let id: String
@@ -481,9 +483,16 @@ final class DepthFusion {
         topIntrinsics: simd_float3x3,
         imageWidth: Int,
         imageHeight: Int,
+        sidePixelBuffer: CVPixelBuffer? = nil,
+        sideTransform: simd_float4x4? = nil,
+        sideIntrinsics: simd_float3x3? = nil,
+        sideImageWidth: Int = 0,
+        sideImageHeight: Int = 0,
         minVoxelCount: Int = defaultMinVoxelsPerCluster
     ) -> [Food3DObject] {
-        // Single source of truth: clusters drive both volume + mesh output.
+        // Single source of truth: clusters drive mesh output, and the final
+        // displayed mesh drives the reported volume so user-visible geometry
+        // and nutrition math stay in lockstep.
         let clusters = voxelClusters(minVoxelCount: minVoxelCount)
         guard !clusters.isEmpty else { return [] }
 
@@ -520,6 +529,55 @@ final class DepthFusion {
         let canProject = bgraBase != nil && bgraWidth > 0 && bgraHeight > 0
             && abs(fx) > 0.0001 && abs(fy) > 0.0001
 
+        let sideCamInv = sideTransform?.inverse
+        let sideCameraPosition = sideTransform.map {
+            SIMD3<Float>($0.columns.3.x, $0.columns.3.y, $0.columns.3.z)
+        }
+        let sideFx = sideIntrinsics?.columns.0.x ?? 0
+        let sideFy = sideIntrinsics?.columns.1.y ?? 0
+        let sideCx = sideIntrinsics?.columns.2.x ?? 0
+        let sideCy = sideIntrinsics?.columns.2.y ?? 0
+        let hasSideAtlas = sidePixelBuffer != nil && sideCamInv != nil &&
+            sideImageWidth > 0 && sideImageHeight > 0 &&
+            abs(sideFx) > 0.0001 && abs(sideFy) > 0.0001
+
+        @inline(__always) func clamp01(_ value: Float) -> Float {
+            min(max(value, 0), 1)
+        }
+
+        @inline(__always) func atlasUV(u0: Float, u1: Float, sourceU: Float, sourceVTopOrigin: Float) -> SIMD2<Float> {
+            SIMD2<Float>(u0 + (u1 - u0) * clamp01(sourceU), 1.0 - clamp01(sourceVTopOrigin))
+        }
+
+        @inline(__always) func unknownAtlasUV() -> SIMD2<Float> {
+            SIMD2<Float>((Food3DTextureBaker.atlasUnknownU0 + Food3DTextureBaker.atlasUnknownU1) * 0.5, 0.5)
+        }
+
+        func vertexNormals(vertices: [SIMD3<Float>], faces: [Int]) -> [SIMD3<Float>] {
+            var accum = [SIMD3<Float>](repeating: SIMD3<Float>(repeating: 0), count: vertices.count)
+            var normals = [SIMD3<Float>](repeating: SIMD3<Float>(0, 1, 0), count: vertices.count)
+            var i = 0
+            while i + 2 < faces.count {
+                let a = faces[i], b = faces[i + 1], c = faces[i + 2]
+                if a >= 0, a < vertices.count,
+                   b >= 0, b < vertices.count,
+                   c >= 0, c < vertices.count {
+                    let n = simd_cross(vertices[b] - vertices[a], vertices[c] - vertices[a])
+                    if simd_length(n) > 0.000001 {
+                        accum[a] += n
+                        accum[b] += n
+                        accum[c] += n
+                    }
+                }
+                i += 3
+            }
+            for idx in 0..<accum.count {
+                let len = simd_length(accum[idx])
+                if len > 0.000001 { normals[idx] = accum[idx] / len }
+            }
+            return normals
+        }
+
         var objects: [Food3DObject] = []
         objects.reserveCapacity(clusters.count)
 
@@ -536,6 +594,11 @@ final class DepthFusion {
                 subdivisionLevels: 1, taubinIterations: 3)
             let mesh = SurfaceNets.Mesh(vertices: smoothed.vertices, faces: smoothed.faces)
             guard !mesh.vertices.isEmpty, mesh.faces.count >= 3 else { continue }
+            let meshVolumeCm3 = Self.meshVolumeCm3(vertices: mesh.vertices, faces: mesh.faces)
+            let displayedVolumeCm3 = meshVolumeCm3.isFinite && meshVolumeCm3 > 1.0
+                ? meshVolumeCm3
+                : cluster.volumeCm3
+            print("[DepthFusion] exportFoodObjects volume label=\(cluster.label) id=\(cluster.id) displayMesh=\(String(format: "%.1f", displayedVolumeCm3))cm3 voxel=\(String(format: "%.1f", cluster.volumeCm3))cm3")
 
             var colors = [UInt8](repeating: 200, count: mesh.vertices.count * 3)
             if canProject, let ptr = bgraBase {
@@ -554,25 +617,62 @@ final class DepthFusion {
                 }
             }
 
-            // Per-vertex UVs: project each world vertex into the top frame so
-            // the exporter can bake the real RGB photo as a baseColor texture.
-            // Independent of the (BGRA) colour path above — UVs need only the
-            // camera projection, so they work even when colour sampling can't
-            // read the planar YCbCr buffer.
+            // Per-vertex UVs: top-facing vertices sample the top photo; side-
+            // facing vertices that the side camera actually saw sample the
+            // side atlas tile. Unseen faces use the atlas fill colour instead
+            // of wrapping a photographed blemish around the hidden side.
             var uvs = [SIMD2<Float>](repeating: SIMD2(0.5, 0.5),
                                      count: mesh.vertices.count)
             if abs(fx) > 0.0001, abs(fy) > 0.0001, imageWidth > 0, imageHeight > 0 {
                 let iw = Float(imageWidth)
                 let ih = Float(imageHeight)
+                let normals = vertexNormals(vertices: mesh.vertices, faces: mesh.faces)
                 for i in 0..<mesh.vertices.count {
-                    let v = mesh.vertices[i]
-                    let cam = camInv * simd_float4(v.x, v.y, v.z, 1)
-                    guard cam.z > 0.001 else { continue }
-                    let upx = fx * cam.x / cam.z + cx
-                    let vpx = fy * cam.y / cam.z + cy
-                    let uu = min(max(upx / iw, 0), 1)
-                    let vv = min(max(vpx / ih, 0), 1)
-                    uvs[i] = SIMD2(uu, 1 - vv) // USD `st` origin is bottom-left
+                    let vertex = mesh.vertices[i]
+                    let normal = i < normals.count ? normals[i] : SIMD3<Float>(0, 1, 0)
+
+                    if hasSideAtlas,
+                       abs(normal.y) < 0.72,
+                       let sideCamInv,
+                       let sideCameraPosition {
+                        let viewDirection = simd_normalize(sideCameraPosition - vertex)
+                        let sideVisible = simd_dot(normal, viewDirection) > 0.12
+                        let sideCam = sideCamInv * simd_float4(vertex.x, vertex.y, vertex.z, 1)
+                        if sideVisible, sideCam.z > 0.001 {
+                            let sideU = sideFx * sideCam.x / sideCam.z + sideCx
+                            let sideV = sideFy * sideCam.y / sideCam.z + sideCy
+                            if sideU >= 0, sideU <= Float(sideImageWidth),
+                               sideV >= 0, sideV <= Float(sideImageHeight) {
+                                uvs[i] = atlasUV(
+                                    u0: Food3DTextureBaker.atlasSideU0,
+                                    u1: Food3DTextureBaker.atlasSideU1,
+                                    sourceU: sideU / Float(sideImageWidth),
+                                    sourceVTopOrigin: sideV / Float(sideImageHeight)
+                                )
+                                continue
+                            }
+                        }
+                    }
+
+                    let topCam = camInv * simd_float4(vertex.x, vertex.y, vertex.z, 1)
+                    guard topCam.z > 0.001 else {
+                        uvs[i] = hasSideAtlas ? unknownAtlasUV() : SIMD2(0.5, 0.5)
+                        continue
+                    }
+                    let topU = fx * topCam.x / topCam.z + cx
+                    let topV = fy * topCam.y / topCam.z + cy
+                    let uu = clamp01(topU / iw)
+                    let vv = clamp01(topV / ih)
+                    if hasSideAtlas {
+                        uvs[i] = atlasUV(
+                            u0: Food3DTextureBaker.atlasTopU0,
+                            u1: Food3DTextureBaker.atlasTopU1,
+                            sourceU: uu,
+                            sourceVTopOrigin: vv
+                        )
+                    } else {
+                        uvs[i] = SIMD2(uu, 1 - vv) // USD `st` origin is bottom-left
+                    }
                 }
             }
 
@@ -585,11 +685,34 @@ final class DepthFusion {
                 colors: colors,
                 uvs: uvs,
                 voxelCount: cluster.voxelKeys.count,
-                volumeCm3: cluster.volumeCm3,
+                volumeCm3: displayedVolumeCm3,
                 preserveCreases: false
             ))
         }
         return objects
+    }
+
+    private static func meshVolumeCm3(vertices: [SIMD3<Float>], faces: [Int]) -> Double {
+        guard vertices.count >= 4, faces.count >= 3 else { return 0 }
+        var origin = SIMD3<Float>(repeating: 0)
+        for p in vertices { origin += p }
+        origin /= Float(vertices.count)
+
+        var volumeM3 = 0.0
+        var i = 0
+        while i + 2 < faces.count {
+            let ia = faces[i], ib = faces[i + 1], ic = faces[i + 2]
+            if ia >= 0, ia < vertices.count,
+               ib >= 0, ib < vertices.count,
+               ic >= 0, ic < vertices.count {
+                let a = vertices[ia] - origin
+                let b = vertices[ib] - origin
+                let c = vertices[ic] - origin
+                volumeM3 += Double(simd_dot(a, simd_cross(b, c))) / 6.0
+            }
+            i += 3
+        }
+        return abs(volumeM3) * 1_000_000.0
     }
 
     // MARK: – Cluster helpers (plate plane + solidify + connected components)

@@ -20,7 +20,7 @@ precompute; a laptop CPU finishes in a couple of minutes.
 
 Usage
 -----
-    pip install open_clip_torch torch coremltools
+    pip install -r training/requirements.txt
     python training/export_mobileclip.py --compile_ios
 
 Then bundle both resources in the Runner target:
@@ -29,8 +29,32 @@ Then bundle both resources in the Runner target:
 
 Model choice
 ------------
-Default ``MobileCLIP-S2`` (good accuracy / size balance, ~256px). Lighter:
-``MobileCLIP-S1``/``MobileCLIP-S0``. Pass ``--model``/``--pretrained`` to change.
+**Default: MobileCLIP2** (TMLR 2025) — Apple's reinforced-training successor.
+It reaches materially higher zero-shot accuracy at the *same* on-device latency
+and size because it reuses the exact MobileCLIP architecture (only the weights
+differ)::
+
+    MobileCLIP2-S2   77.2% ImageNet zero-shot   (vs 74.4% for MobileCLIP-S2)
+    MobileCLIP2-B    79.4%
+    MobileCLIP2-S0   71.5%                       (smallest / fastest)
+
+Because the architecture is shared, we load the v2 weights straight into the
+existing open_clip ``MobileCLIP-S2`` config. This script auto-downloads the
+reinforced checkpoint from ``apple/MobileCLIP2-S2`` (``--mobileclip2-repo``) via
+``huggingface_hub`` and reparameterises the MobileOne/FastViT branches for
+inference — no source patching, one command. The 512-d embedding is unchanged,
+so ``FoodLabelEmbeddings.json`` and the on-device cosine-nearest match in
+``MobileCLIPService`` need no changes.
+
+    # default — MobileCLIP2-S2:
+    python training/export_mobileclip.py --compile_ios
+
+    # a different v2 size (match the architecture to the repo):
+    python training/export_mobileclip.py \
+        --model MobileCLIP-B --mobileclip2-repo apple/MobileCLIP2-B --compile_ios
+
+    # original MobileCLIP v1 weights (datacompdr):
+    python training/export_mobileclip.py --legacy-v1 --compile_ios
 """
 
 from __future__ import annotations
@@ -46,8 +70,9 @@ import coremltools as ct
 import torch
 from torch import nn
 
-DEFAULT_MODEL = "MobileCLIP-S2"
-DEFAULT_PRETRAINED = "datacompdr"
+DEFAULT_MODEL = "MobileCLIP-S2"  # open_clip architecture (shared by v1 + v2)
+DEFAULT_MOBILECLIP2_REPO = "apple/MobileCLIP2-S2"  # reinforced v2 weights (default)
+DEFAULT_PRETRAINED = "datacompdr"  # original v1 tag; used only with --legacy-v1
 DEFAULT_VOCAB = "training/food_vocab.txt"
 
 # OpenAI CLIP normalisation (MobileCLIP datacompdr uses these unless the model
@@ -82,18 +107,59 @@ class _ImageEncoder(nn.Module):
         return feat / feat.norm(dim=-1, keepdim=True)
 
 
+def _reparameterize(model):
+    """Fuse MobileOne/FastViT training-time branches into single conv layers for
+    faster on-device inference. Output is mathematically identical, so any
+    failure here is non-fatal — we simply export the unfused graph."""
+    for module_path, attr in (
+        ("timm.utils.model", "reparameterize_model"),
+        ("mobileclip.modules.common.mobileone", "reparameterize_model"),
+    ):
+        try:
+            mod = __import__(module_path, fromlist=[attr])
+            reparam = getattr(mod, attr)(model)
+            print(f"Reparameterised for inference via {module_path}.{attr}")
+            return reparam
+        except Exception:  # noqa: BLE001 - optimisation only, never fatal
+            continue
+    return model
+
+
+def _download_mobileclip2(repo_id: str) -> str:
+    """Fetch the reinforced MobileCLIP2 checkpoint from the HuggingFace Hub and
+    return a local path that open_clip loads into the matching MobileCLIP-* config
+    (v2 shares v1's architecture; only the weights differ)."""
+    try:
+        from huggingface_hub import hf_hub_download, list_repo_files
+    except ImportError as exc:  # pragma: no cover - dependency hint
+        raise SystemExit(
+            "huggingface_hub is required for MobileCLIP2 weights "
+            "(pip install -r training/requirements.txt), or pass --legacy-v1."
+        ) from exc
+
+    checkpoints = sorted(
+        (f for f in list_repo_files(repo_id) if f.endswith(".pt")), key=len
+    )
+    if not checkpoints:
+        raise SystemExit(f"No .pt checkpoint found in HuggingFace repo '{repo_id}'.")
+    path = hf_hub_download(repo_id=repo_id, filename=checkpoints[0])
+    print(f"MobileCLIP2 weights: {repo_id}/{checkpoints[0]}")
+    return path
+
+
 def _load(model_name: str, pretrained: str):
     try:
         import open_clip
     except ImportError as exc:  # pragma: no cover - dependency hint
         raise SystemExit(
-            "open_clip_torch is required: pip install open_clip_torch torch"
+            "open_clip_torch is required: pip install -r training/requirements.txt"
         ) from exc
 
     model, _, _ = open_clip.create_model_and_transforms(
         model_name, pretrained=pretrained
     )
     model.eval()
+    model = _reparameterize(model)
     tokenizer = open_clip.get_tokenizer(model_name)
 
     visual = model.visual
@@ -140,14 +206,21 @@ def _text_embeddings(model, tokenizer, labels: list[str]) -> torch.Tensor:
 def export(args) -> tuple[Path, Path]:
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    model, tokenizer, size, mean, std, logit_scale = _load(args.model, args.pretrained)
-    print(f"Loaded {args.model}/{args.pretrained}: input {size}px, scale {logit_scale:.1f}")
+
+    if args.legacy_v1:
+        pretrained, variant = args.pretrained, args.model
+    else:
+        pretrained = _download_mobileclip2(args.mobileclip2_repo)
+        variant = f"{args.model} / MobileCLIP2 ({args.mobileclip2_repo})"
+
+    model, tokenizer, size, mean, std, logit_scale = _load(args.model, pretrained)
+    print(f"Loaded {variant}: input {size}px, scale {logit_scale:.1f}")
 
     # ── Text embedding table ───────────────────────────────────────────────
     labels = _read_vocab(Path(args.vocab))
     text = _text_embeddings(model, tokenizer, labels)
     table = {
-        "model": args.model,
+        "model": variant,
         "dim": int(text.shape[1]),
         "logit_scale": logit_scale,
         "labels": labels,
@@ -178,7 +251,7 @@ def export(args) -> tuple[Path, Path]:
         compute_precision=ct.precision.FLOAT16,
         convert_to="mlprogram",
     )
-    mlmodel.short_description = f"MobileCLIP ({args.model}) image encoder; unit embedding."
+    mlmodel.short_description = f"{variant} image encoder; unit embedding."
     mlmodel.input_description["image"] = "RGB food crop (resized to square)."
 
     pkg_path = out_dir / "MobileCLIPImage.mlpackage"
@@ -210,9 +283,30 @@ def compile_for_ios(pkg_path: Path, json_path: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--pretrained", default=DEFAULT_PRETRAINED)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_MODEL,
+        help="open_clip architecture; MobileCLIP2 reuses the MobileCLIP-* configs.",
+    )
+    parser.add_argument(
+        "--mobileclip2-repo",
+        default=DEFAULT_MOBILECLIP2_REPO,
+        help="HuggingFace repo with the reinforced MobileCLIP2 checkpoint (default weights).",
+    )
+    parser.add_argument(
+        "--legacy-v1",
+        action="store_true",
+        help="Export original MobileCLIP v1 (--pretrained tag) instead of MobileCLIP2.",
+    )
+    parser.add_argument(
+        "--pretrained",
+        default=DEFAULT_PRETRAINED,
+        help="open_clip pretrained tag, used only with --legacy-v1.",
+    )
     parser.add_argument("--vocab", default=DEFAULT_VOCAB)
     parser.add_argument("--output_dir", default="training/output")
     parser.add_argument("--compile_ios", action="store_true")

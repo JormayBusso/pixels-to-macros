@@ -110,13 +110,13 @@ class NutrientTotals {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NutrientDRV — adult daily reference targets (NASEM / NIH)
+// NutrientDRV — adult daily reference targets (EFSA Dietary Reference Values)
 //
 // Sources:
-//   • NASEM Dietary Reference Intakes (DRI) and NIH ODS fact sheets
-//   • ADA Standards of Care in Diabetes (current annual guidance)
+//   • EFSA Dietary Reference Values (DRV) — PRI/AI/RI for EU adults
+//   • EASD/EFSA nutrition guidance for diabetes (fibre, sodium control)
 //   • ISSN position stands / sports nutrition reviews for training goals
-//   • AHA dietary guidance for cardiometabolic risk reduction
+//   • EFSA cardiometabolic guidance (sodium ≤2 g/d, potassium, fibre)
 //
 // Use [NutrientDRV.forContext] to get goal- and gender-adjusted values.
 // The legacy static constants are kept for backward compatibility.
@@ -168,25 +168,25 @@ class NutrientDRV {
     required bool isMale,
     required NutritionGoalType goal,
   }) {
-    // ── 1. Baseline gender-specific values (NASEM DRI 2024) ──────────────
-    final fiber = isMale ? 38.0 : 25.0; // AI g/d
-    final vitA = isMale ? 900.0 : 700.0; // RDA μg RAE
-    final vitC = isMale ? 90.0 : 75.0; // RDA mg
-    const vitD = 20.0; // RDA μg (Endocrine Soc. 2024 ≥20 μg)
-    const vitE = 15.0; // RDA mg α-TE
-    final vitK = isMale ? 120.0 : 90.0; // AI μg
-    const folate = 400.0; // RDA μg DFE
-    const b12 = 2.4; // RDA μg
-    const calcium = 1000.0; // RDA mg
-    final iron = isMale ? 8.0 : 18.0; // RDA mg (pre-menopausal women)
-    final magnesium = isMale ? 420.0 : 320.0; // RDA mg
-    final potassium = isMale ? 3400.0 : 2600.0; // AI mg
-    const sodiumMax = 2300.0; // UL mg (AHA/NIH dietary limit)
-    final zinc = isMale ? 11.0 : 8.0; // RDA mg
-    final omega3 = isMale ? 1.6 : 1.1; // AI g ALA (plus DHA+EPA boost below)
-    const selenium = 55.0; // RDA μg
-    const iodine = 150.0; // RDA μg
-    final chromium = isMale ? 35.0 : 25.0; // AI μg
+    // ── 1. Baseline values — EFSA Dietary Reference Values (adults 19–50) ─
+    const fiber = 25.0; // AI g/d (EFSA: 25 g/d adequate, both sexes)
+    final vitA = isMale ? 750.0 : 650.0; // PRI μg RE
+    final vitC = isMale ? 110.0 : 95.0; // PRI mg
+    const vitD = 15.0; // AI μg (EFSA adults)
+    final vitE = isMale ? 13.0 : 11.0; // AI mg α-tocopherol
+    const vitK = 70.0; // AI μg (EFSA: ~1 μg/kg, both sexes)
+    const folate = 330.0; // PRI μg DFE
+    const b12 = 4.0; // AI μg (EFSA 2015, up from the older 2.4)
+    const calcium = 950.0; // PRI mg (EFSA adults ≥25 y)
+    final iron = isMale ? 11.0 : 16.0; // PRI mg (menstruating women)
+    final magnesium = isMale ? 350.0 : 300.0; // AI mg
+    const potassium = 3500.0; // AI mg (EFSA adults, both sexes)
+    const sodiumMax = 2000.0; // Safe/adequate mg (EFSA: 2 g/d ≈ 5 g salt)
+    final zinc = isMale ? 11.0 : 8.0; // PRI mg (moderate phytate intake)
+    final omega3 = isMale ? 1.6 : 1.1; // AI g ALA (EFSA 0.5 en%; +EPA/DHA below)
+    const selenium = 70.0; // AI μg (EFSA adults)
+    const iodine = 150.0; // AI μg (EFSA adults)
+    final chromium = isMale ? 35.0 : 25.0; // no EFSA DRV; US AI retained
 
     // ── 2. Goal-specific overrides / increases ───────────────────────────
     switch (goal) {
@@ -222,7 +222,7 @@ class NutrientDRV {
         // while using standard RDA/AI levels unless a clinician diagnoses a
         // deficiency or prescribes supplementation.
         return NutrientDRV(
-          fiberG: isMale ? 38.0 : 30.0, // ADA recommends ≥25–38 g/day
+          fiberG: 35.0, // EASD 2023: ≥35 g/day fibre
           vitaminAUg: vitA,
           vitaminCMg: vitC,
           vitaminDUg: vitD,
@@ -234,7 +234,7 @@ class NutrientDRV {
           ironMg: iron,
           magnesiumMg: magnesium,
           potassiumMg: potassium,
-          sodiumMaxMg: 2300.0,
+          sodiumMaxMg: 2000.0,
           zincMg: zinc,
           omega3G: omega3,
           seleniumMcg: selenium,
@@ -246,10 +246,10 @@ class NutrientDRV {
         // Under calorie restriction, micronutrient needs don't decrease —
         // calcium and iron are at risk; fiber aids satiety. (DGA 2025)
         return NutrientDRV(
-          fiberG: isMale ? 38.0 : 28.0, // higher fiber for satiety
+          fiberG: isMale ? 35.0 : 30.0, // higher fibre for satiety
           vitaminAUg: vitA,
           vitaminCMg: vitC,
-          vitaminDUg: 20.0,
+          vitaminDUg: 15.0,
           vitaminEMg: vitE,
           vitaminKUg: vitK,
           folateMcg: folate,
@@ -260,7 +260,7 @@ class NutrientDRV {
               : 20.0, // slight increase: deficit diets risk deficiency
           magnesiumMg: magnesium,
           potassiumMg: potassium,
-          sodiumMaxMg: 2300.0,
+          sodiumMaxMg: 2000.0,
           zincMg: zinc,
           omega3G: isMale ? 1.6 : 1.1,
           seleniumMcg: selenium,
@@ -275,7 +275,7 @@ class NutrientDRV {
           fiberG: isMale ? 30.0 : 20.0, // harder to meet on low-carb; aim lower
           vitaminAUg: vitA,
           vitaminCMg: vitC,
-          vitaminDUg: 20.0,
+          vitaminDUg: 15.0,
           vitaminEMg: vitE,
           vitaminKUg: vitK,
           folateMcg: folate,
@@ -416,26 +416,26 @@ class NutrientDRV {
   }
 
   // ── Legacy static constants (backward-compat for any callers not yet  ──
-  // ── updated to use NutrientDRV.forContext()).                         ──
-  static const double fiberG_male = 38.0;
+  // ── updated to use NutrientDRV.forContext()). EFSA DRVs.              ──
+  static const double fiberG_male = 25.0;
   static const double fiberG_female = 25.0;
 
-  static const double vitaminAUg_male = 900.0;
-  static const double vitaminCMg_male = 90.0;
-  static const double vitaminKUg_male = 120.0;
-  static const double calciumMg_male = 1000.0;
-  static const double ironMg_male = 8.0;
-  static const double magnesiumMg_male = 420.0;
-  static const double potassiumMg_male = 3400.0;
+  static const double vitaminAUg_male = 750.0;
+  static const double vitaminCMg_male = 110.0;
+  static const double vitaminKUg_male = 70.0;
+  static const double calciumMg_male = 950.0;
+  static const double ironMg_male = 11.0;
+  static const double magnesiumMg_male = 350.0;
+  static const double potassiumMg_male = 3500.0;
   static const double zincMg_male = 11.0;
 
-  static const double vitaminAUg_female = 700.0;
-  static const double vitaminCMg_female = 75.0;
-  static const double vitaminKUg_female = 90.0;
-  static const double calciumMg_female = 1000.0;
-  static const double ironMg_female = 18.0;
-  static const double magnesiumMg_female = 320.0;
-  static const double potassiumMg_female = 2600.0;
+  static const double vitaminAUg_female = 650.0;
+  static const double vitaminCMg_female = 95.0;
+  static const double vitaminKUg_female = 70.0;
+  static const double calciumMg_female = 950.0;
+  static const double ironMg_female = 16.0;
+  static const double magnesiumMg_female = 300.0;
+  static const double potassiumMg_female = 3500.0;
   static const double zincMg_female = 8.0;
 }
 

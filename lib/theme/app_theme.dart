@@ -44,10 +44,23 @@ class AppTheme {
   static ThemeData get light => fromSeed(AppColorSeed.green);
 
   /// Build a light theme from any [AppColorSeed].
-  static ThemeData fromSeed(AppColorSeed seed) {
-    final primary = seed.color;
+  ///
+  /// [brightness] only affects PREMIUM seeds: premium themes ship as deep,
+  /// dark palettes (the default) but can also render a bright light variant
+  /// when [brightness] is [Brightness.light]. Free seeds are always light and
+  /// ignore this parameter.
+  static ThemeData fromSeed(
+    AppColorSeed seed, {
+    Brightness brightness = Brightness.dark,
+  }) {
     final premium = seed.isPremium;
-    final visual = AppVisualTheme.fromSeed(seed);
+    final visual = AppVisualTheme.fromSeed(seed, brightness: brightness);
+    // Premium light mode uses the theme's readable accent — a premium theme's
+    // deep-mode accent can be too pale for a white surface — so primary buttons
+    // stay legible. Premium dark and free seeds keep the seed's own colour.
+    final primary = (premium && brightness == Brightness.light)
+        ? visual.primaryAccent
+        : seed.color;
     final surface = premium ? visual.background : seed.surfaceColor;
 
     // Compute lighter variants from the seed for borders/fills
@@ -372,9 +385,13 @@ class AppVisualTheme {
     required this.gradient,
     required this.motionStyle,
     required this.motionDuration,
+    this.brightness = Brightness.dark,
   });
 
-  factory AppVisualTheme.fromSeed(AppColorSeed seed) {
+  factory AppVisualTheme.fromSeed(
+    AppColorSeed seed, {
+    Brightness brightness = Brightness.dark,
+  }) {
     if (!seed.isPremium) {
       final card = Color.alphaBlend(
         seed.color.withValues(alpha: 0.045),
@@ -407,6 +424,12 @@ class AppVisualTheme {
       );
     }
 
+    final dark = _premiumDark(seed);
+    return brightness == Brightness.light ? _premiumLight(dark) : dark;
+  }
+
+  /// The deep, dark rendering of each premium theme (the original palettes).
+  static AppVisualTheme _premiumDark(AppColorSeed seed) {
     switch (seed) {
       case AppColorSeed.aiAurora:
         return const AppVisualTheme(
@@ -630,6 +653,49 @@ class AppVisualTheme {
     }
   }
 
+  /// Bright rendering of a premium theme. Keeps the theme's signature accent
+  /// and gradient — so each premium theme stays instantly recognisable — but
+  /// swaps the deep backgrounds for light, lightly-tinted surfaces with dark
+  /// text. Accents that are too pale to read on white (e.g. the glass theme's
+  /// near-white accent) are darkened while preserving their hue.
+  static AppVisualTheme _premiumLight(AppVisualTheme dark) {
+    Color readable(Color c) {
+      if (c.computeLuminance() <= 0.55) return c;
+      final hsl = HSLColor.fromColor(c);
+      return hsl
+          .withLightness((hsl.lightness * 0.55).clamp(0.30, 0.52))
+          .withSaturation(hsl.saturation.clamp(0.35, 1.0))
+          .toColor();
+    }
+
+    final accent = readable(dark.primaryAccent);
+    final secondary = readable(dark.secondaryAccent);
+    Color tint(double a) =>
+        Color.alphaBlend(accent.withValues(alpha: a), Colors.white);
+
+    return AppVisualTheme(
+      seed: dark.seed,
+      premium: true,
+      brightness: Brightness.light,
+      background: tint(0.05),
+      surface: Colors.white,
+      cardColor: tint(0.06),
+      appBarColor: tint(0.05),
+      navBarColor: tint(0.045),
+      inputFillColor: tint(0.05),
+      borderColor: accent.withValues(alpha: 0.32),
+      primaryAccent: accent,
+      secondaryAccent: secondary,
+      glowColor: accent.withValues(alpha: 0.28),
+      onSurface: AppTheme.gray900,
+      onDark: AppTheme.gray900,
+      onMuted: AppTheme.gray500,
+      gradient: dark.gradient.map(readable).toList(),
+      motionStyle: dark.motionStyle,
+      motionDuration: dark.motionDuration,
+    );
+  }
+
   final AppColorSeed seed;
   final bool premium;
   final Color background;
@@ -648,6 +714,15 @@ class AppVisualTheme {
   final List<Color> gradient;
   final AppPremiumMotionStyle motionStyle;
   final Duration motionDuration;
+
+  /// Whether this is the light or dark rendering of the theme. Only premium
+  /// themes vary; free themes are always [Brightness.light].
+  final Brightness brightness;
+
+  /// True when this is the bright rendering of a premium theme. Consumers use
+  /// it to darken "prominent" shades (which are lightened in dark mode) so text
+  /// and icons keep contrast on the light surfaces.
+  bool get isLight => brightness == Brightness.light;
 }
 
 /// Stores the vivid seed color in the theme so it can be retrieved anywhere
@@ -719,7 +794,7 @@ extension ThemeColors on BuildContext {
       : Color.alphaBlend(_seed.withValues(alpha: 0.35), Colors.white);
 
   /// Medium shades — icons, badges, active states.
-  Color get primary400 => visualTheme.premium
+  Color get primary400 => (visualTheme.premium && !visualTheme.isLight)
       ? Color.alphaBlend(Colors.white.withValues(alpha: 0.16), _seed)
       : Color.alphaBlend(_seed.withValues(alpha: 0.55), Colors.white);
 
@@ -727,10 +802,10 @@ extension ThemeColors on BuildContext {
   Color get primary500 => _seed;
 
   /// Darker shades — text, prominent UI.
-  Color get primary600 => visualTheme.premium
+  Color get primary600 => (visualTheme.premium && !visualTheme.isLight)
       ? Color.alphaBlend(Colors.white.withValues(alpha: 0.10), _seed)
       : Color.alphaBlend(Colors.black.withValues(alpha: 0.18), _seed);
-  Color get primary700 => visualTheme.premium
+  Color get primary700 => (visualTheme.premium && !visualTheme.isLight)
       ? Color.alphaBlend(Colors.white.withValues(alpha: 0.22), _seed)
       : Color.alphaBlend(Colors.black.withValues(alpha: 0.35), _seed);
 }

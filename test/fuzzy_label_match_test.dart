@@ -7,12 +7,17 @@ void main() {
       'salmon',
       'bread',
       'rice',
+      'fried rice',
       'chicken',
       'egg',
       'avocado',
       'ice cream',
       'eggplant',
       'pasta',
+      'green peas',
+      'carrot',
+      'sauce',
+      'mayonnaise',
     ];
 
     test('maps a specialised name to its base food via shared word', () {
@@ -24,6 +29,13 @@ void main() {
 
     test('case-insensitive exact match wins', () {
       expect(DatabaseService.bestFuzzyLabelMatch('Bread', dbLabels), 'bread');
+    });
+
+    test('exact mixed-dish labels stay mixed when available', () {
+      expect(
+        DatabaseService.bestFuzzyLabelMatch('fried rice', dbLabels),
+        'fried rice',
+      );
     });
 
     test('does not match on accidental substrings (rice vs ice cream)', () {
@@ -50,6 +62,25 @@ void main() {
       expect(
         DatabaseService.bestFuzzyLabelMatch('grilled mystery', dbLabels),
         isNull,
+      );
+    });
+
+    test('plural visible vegetables map to base foods', () {
+      expect(DatabaseService.bestFuzzyLabelMatch('carrots', dbLabels), 'carrot');
+      expect(
+        DatabaseService.bestFuzzyLabelMatch('peas', dbLabels),
+        'green peas',
+      );
+    });
+
+    test('sauce variants map to available condiment nutrition', () {
+      expect(
+        DatabaseService.bestFuzzyLabelMatch('tomato sauce', dbLabels),
+        'sauce',
+      );
+      expect(
+        DatabaseService.bestFuzzyLabelMatch('garlic mayonnaise', dbLabels),
+        'mayonnaise',
       );
     });
   });

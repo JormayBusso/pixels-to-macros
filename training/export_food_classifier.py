@@ -41,8 +41,9 @@ Recommended models (all free, pretrained)
     nateraw/food                         Food-101 ViT (default; 101 dishes)
     Kaludi/food-category-classification-v2.0   ~11 robust categories (Bread,
                                          Seafood, ...) — coarse but very reliable
-For the best open-vocabulary accuracy on arbitrary foods, see the note at the
-bottom of this file about Apple's MobileCLIP (CoreML-ready, free).
+For the best open-vocabulary accuracy on arbitrary foods, use the already wired
+MobileCLIP path (`training/export_mobileclip.py`) and keep this classifier as a
+second, Food-101-specific crop signal.
 """
 
 from __future__ import annotations
@@ -185,13 +186,11 @@ if __name__ == "__main__":
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Best future upgrade — open-vocabulary recognition (free, pretrained)
+# Implemented companion — open-vocabulary recognition (free, pretrained)
 # ──────────────────────────────────────────────────────────────────────────
-# A fixed 101-class head can't name foods outside its list. Apple's MobileCLIP
-# (https://github.com/apple/ml-mobileclip) ships small CoreML image + text
-# encoders. Embed the app's own food-database names once as text vectors, then
-# at scan time embed the crop and take the nearest food by cosine similarity.
-# That recognises *any* food you put in the database (including regional dishes)
-# and maps directly to nutrition — no retraining. It is a larger Swift change
-# (a MobileCLIPService + a precomputed label-embedding table) and is the
-# recommended next step once the Food-101 classifier above is validated.
+# A fixed 101-class head cannot name foods outside its list. The app therefore
+# also ships Apple's MobileCLIP image encoder plus `FoodLabelEmbeddings.json`,
+# generated from `training/food_vocab.txt`. At scan time `MobileCLIPService`
+# embeds the crop and takes the nearest food label by cosine similarity. Add
+# regional dishes or nutrition-database labels to the vocabulary, regenerate the
+# embedding table, and the Swift runtime can use them without retraining.

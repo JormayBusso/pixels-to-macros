@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -162,13 +163,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   /// Force the app into landscape for the duration of the scan sweep so the
   /// user clearly knows to hold the phone sideways.
+  ///
+  /// We lock to a SINGLE landscape orientation (not both) so the rear camera
+  /// sits on the LOWER end of the phone rather than the upper end. ARKit's
+  /// native sensor orientation is `landscapeRight`, which places the rear
+  /// camera on the far/upper end while scanning; forcing `landscapeLeft`
+  /// (the opposite side) puts the camera on the lower end so the user doesn't
+  /// have to drop the phone as far down to frame food on the table. The native
+  /// preview layer rotates 180° for `landscapeLeft`, so the feed stays upright.
   Future<void> _lockLandscape() async {
     if (mounted && _orientationReady) {
       setState(() => _orientationReady = false);
     }
     await SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
     ]);
     await WidgetsBinding.instance.endOfFrame;
     if (mounted) {
@@ -627,6 +635,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         topImagePath: capturePaths['topImagePath'] as String?,
         sideImagePath: capturePaths['sideImagePath'] as String?,
         modelPath: model3dPath,
+        modelObjectsJson: model3dObjects.isEmpty
+            ? null
+            : jsonEncode(model3dObjects.map((o) => o.toMap()).toList()),
       );
       await ref.read(historyProvider.notifier).addScan(scanResult);
       if (!mounted) return;

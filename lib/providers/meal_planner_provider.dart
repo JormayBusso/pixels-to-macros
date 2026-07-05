@@ -122,7 +122,7 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
   }
 
   /// Toggle a slot on/off. When turned on, auto-assigns a recipe.
-  Future<void> toggleSlot(
+  Future<bool> toggleSlot(
     int dayOfWeek,
     RecipeMealType mealType,
     NutritionGoalType goal, {
@@ -162,8 +162,18 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
           dietaryRestrictions: dietaryRestrictions,
           pantryNames: pantryNames,
           swapIntent: pantryNames.isEmpty ? null : SmartSwapIntent.pantryFirst);
+      if (state.assignments[key] == null) {
+        // No eligible recipe found — revert the toggle so the slot isn't left
+        // stuck showing "Finding recipe…" forever. Caller surfaces a message.
+        state = state.copyWith(
+          enabledSlots: {...state.enabledSlots}..remove(key),
+          portionMultipliers: {...state.portionMultipliers}..remove(key),
+        );
+        return false;
+      }
       await _autoTuneDayCalories(dayOfWeek, goal, dailyCalorieGoal);
     }
+    return true;
   }
 
   /// Re-roll the recipe for an already-enabled slot.

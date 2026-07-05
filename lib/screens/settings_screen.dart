@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_localizations.dart';
 import '../core/app_locale.dart';
 import '../models/calc_info.dart';
-import '../models/dietary_restriction.dart';
 import '../models/mascot_type.dart';
 import '../models/glucose_unit.dart';
 import '../models/nutrition_goal.dart';
@@ -17,6 +16,7 @@ import '../providers/scroll_trigger_provider.dart';
 import '../providers/locale_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../providers/diabetes_provider.dart';
+import '../providers/pantry_provider.dart';
 import '../providers/weight_tracking_provider.dart';
 import '../services/data_export_service.dart';
 import '../services/database_service.dart';
@@ -25,7 +25,7 @@ import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
 import '../widgets/calc_info_button.dart';
-import '../widgets/premium_paywall_sheet.dart';
+import '../widgets/badge_gallery_screen.dart';
 import '../widgets/premium_theme_effects.dart';
 import '../widgets/tour_keys.dart';
 import 'auth_screen.dart';
@@ -766,6 +766,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           key: TourKeys.weeklyReviewCard,
           child: const _WeeklyBadgeRecapCard(),
         ),
+        const SizedBox(height: 12),
+        Card(
+          child: ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: context.primary100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.emoji_events_outlined,
+                  color: context.primary600),
+            ),
+            title: Text(l10n.badgeCollectionTitle,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text(l10n.badgeCollectionSubtitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const BadgeGalleryScreen(),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        _SectionHeader(l10n.smartGroceryTitle),
+        const SizedBox(height: 12),
+        const _SmartGroceryToggleCard(),
         const SizedBox(height: 24),
 
         _SectionHeader(l10n.vacationMode),
@@ -1616,6 +1645,48 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+class _SmartGroceryToggleCard extends ConsumerWidget {
+  const _SmartGroceryToggleCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final enabled = ref.watch(smartGroceryEnabledProvider);
+    return Card(
+      child: SwitchListTile(
+        value: enabled,
+        onChanged: (value) =>
+            ref.read(smartGroceryEnabledProvider.notifier).setEnabled(value),
+        secondary: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: context.primary100,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(Icons.kitchen_outlined, color: context.primary600),
+        ),
+        title: Text(
+          l10n.smartGroceryTitle,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: context.appTextColor,
+          ),
+        ),
+        subtitle: Text(
+          l10n.smartGrocerySubtitle,
+          style: TextStyle(
+            fontSize: 12,
+            color: context.appMutedTextColor,
+            height: 1.35,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _WeeklyBadgeRecapCard extends ConsumerWidget {
   const _WeeklyBadgeRecapCard();
 
@@ -1978,15 +2049,12 @@ class _ThemeColorPickerCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(userPrefsProvider);
     final current = prefs.themeColorSeed;
-    final premiumUnlocked = prefs.premiumUnlocked;
+    // All color themes are unlocked for everyone.
+    const premiumUnlocked = true;
     final premiumSeeds = AppColorSeed.values.where((seed) => seed.isPremium);
     final standardSeeds = AppColorSeed.values.where((seed) => !seed.isPremium);
 
     Future<void> selectSeed(AppColorSeed seed) async {
-      if (seed.isPremium && !prefs.premiumUnlocked) {
-        await showPremiumPaywall(context, selectSeedOnUnlock: seed);
-        return;
-      }
       final updated = prefs.copyWith(themeColorSeed: seed);
       await ref.read(userPrefsProvider.notifier).update(updated);
     }
@@ -1997,6 +2065,18 @@ class _ThemeColorPickerCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Premium themes ship in both a deep dark and a bright light
+            // rendering; free themes are always light, so only surface the
+            // toggle when the active theme is premium.
+            if (current.isPremium) ...[
+              _PremiumBrightnessToggle(
+                isLight: prefs.premiumThemeLight,
+                onChanged: (light) => ref
+                    .read(userPrefsProvider.notifier)
+                    .update(prefs.copyWith(premiumThemeLight: light)),
+              ),
+              const SizedBox(height: 18),
+            ],
             LayoutBuilder(
               builder: (context, constraints) {
                 const spacing = 8.0;
@@ -2078,6 +2158,53 @@ class _ThemePickerSectionHeader extends StatelessWidget {
             fontSize: 12,
             fontWeight: FontWeight.w900,
             letterSpacing: 0.8,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Light / dark switch for premium colour themes. Shown only while a premium
+/// theme is active (free themes are always light).
+class _PremiumBrightnessToggle extends StatelessWidget {
+  const _PremiumBrightnessToggle({
+    required this.isLight,
+    required this.onChanged,
+  });
+
+  final bool isLight;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ThemePickerSectionHeader(
+          label: l10n.premiumThemeAppearance,
+          color: context.visualTheme.primaryAccent,
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<bool>(
+            segments: [
+              ButtonSegment<bool>(
+                value: false,
+                icon: const Icon(Icons.dark_mode_outlined, size: 18),
+                label: Text(l10n.premiumThemeDarkMode),
+              ),
+              ButtonSegment<bool>(
+                value: true,
+                icon: const Icon(Icons.light_mode_outlined, size: 18),
+                label: Text(l10n.premiumThemeLightMode),
+              ),
+            ],
+            selected: {isLight},
+            showSelectedIcon: false,
+            onSelectionChanged: (selection) => onChanged(selection.first),
           ),
         ),
       ],

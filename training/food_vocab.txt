@@ -1,124 +1,236 @@
 # Open-vocabulary food labels for MobileCLIP recognition.
 # One food per line. Lines starting with '#' are ignored.
-# Add any food you eat — re-run training/export_mobileclip.py to embed it.
-# These names are matched on device; the app's fuzzy resolver maps them to
-# the nutrition database (e.g. "smoked salmon" -> "salmon").
+# Add foods from the app database, common plated dishes, and regional staples,
+# then re-run training/export_mobileclip.py to refresh FoodLabelEmbeddings.json.
+# Keep labels concrete and visible in a camera crop; avoid pantry-only items
+# unless they are commonly scanned as part of a plate.
 
-# Breads & baked
+# Breads and baked foods
 bread
 white bread
 whole wheat bread
+rye bread
+sourdough bread
 toast
 baguette
+bread roll
+bun
+brioche
 croissant
 bagel
 pita bread
 tortilla
+wrap
 naan
+pretzel
+biscuit
+muffin
 pancake
 waffle
 french toast
-muffin
-croutons
 crackers
 breadsticks
+croutons
+pastry
+pie
+quiche
 
-# Eggs & dairy
+# Eggs and dairy
 egg
 fried egg
 scrambled eggs
 boiled egg
+poached egg
 omelette
+egg tart
 cheese
 cheddar cheese
 mozzarella
-yogurt
-greek yogurt
-butter
+feta cheese
+parmesan
+ricotta
+cream cheese
 cottage cheese
+greek yogurt
+yogurt
+kefir
 milk
+oat milk
+soy milk
+butter
+sour cream
+mascarpone
+whipped cream
 
-# Fish & seafood
-salmon
-smoked salmon
-grilled salmon
-tuna
-shrimp
+# Fish and seafood
 fish
 fish fillet
+grilled fish
+fish and chips
+salmon
+grilled salmon
+smoked salmon
+tuna
+cod
+tilapia
 sardines
 mackerel
-cod
+anchovies
+shrimp
+prawns
 crab
+lobster
 mussels
+scallops
+shellfish
+sushi
 
-# Meat & poultry
+# Meat and poultry
 chicken
 grilled chicken
 fried chicken
 chicken breast
+chicken thigh
+chicken wing
+chicken nuggets
 beef
 steak
+rib eye steak
+ground beef
+roast beef
 hamburger
 meatballs
 pork
+pulled pork
 bacon
 sausage
 ham
 turkey
 lamb
+duck
+bison
+venison
+hot dog
+kebab
+shawarma
+fried meat
+liver
 
-# Pasta, rice & grains
+# Pasta, rice, grains and starches
 rice
 white rice
-fried rice
 brown rice
+wild rice
+fried rice
+vegetable rice
+rice with vegetables
+rice with peas
+rice with carrots
+rice with peas and carrots
 risotto
-sushi
+paella
 pasta
 spaghetti
 spaghetti bolognese
 macaroni
-noodles
+mac and cheese
 lasagna
+noodles
+rice noodles
+ramen
+pho
+pad thai
 couscous
 quinoa
 oatmeal
+oats
+muesli
+granola
 cereal
+barley
+buckwheat
+bulgur
+millet
+polenta
+potato
+baked potato
+mashed potatoes
+french fries
+sweet potato
+taro
+pumpkin
+corn
+corn on the cob
 
 # Vegetables
 salad
 green salad
+coleslaw
 tomato
+cherry tomato
 cucumber
 carrot
 broccoli
 cauliflower
 spinach
 lettuce
+arugula
+kale
+endive
+watercress
+swiss chard
 bell pepper
+pepper
 onion
-potato
-mashed potatoes
-french fries
-sweet potato
-corn
-peas
-green beans
+spring onion
+leek
+garlic
 mushroom
+white mushroom
+shiitake mushroom
+enoki mushroom
+oyster mushroom
+king oyster mushroom
 avocado
 zucchini
 eggplant
 asparagus
 cabbage
+bok choy
+brussels sprouts
 beetroot
+beet
+celery
+fennel
+artichoke
+okra
+radish
+white radish
+parsnip
+turnip
+snow peas
+green peas
+green beans
+french beans
+bamboo shoots
+bean sprouts
+seaweed
+kelp
+roasted vegetables
+pickles
+sauerkraut
+kimchi
 
 # Fruit
 apple
 banana
 orange
 strawberry
+blueberry
 blueberries
+blackberry
+raspberry
+raspberries
 grapes
 watermelon
 pineapple
@@ -127,39 +239,153 @@ peach
 pear
 kiwi
 lemon
+lime
 plum
+cherry
 cherries
-raspberries
+apricot
+fig
+dates
+cranberry
+dried cranberries
+raisins
+grapefruit
+melon
+cantaloupe
+honeydew
+papaya
+guava
+lychee
+nectarine
+pomegranate
+passion fruit
+dragon fruit
+fruit salad
+dried fruit
 
-# Legumes & nuts
+# Legumes, soy, nuts and seeds
 beans
+black beans
+white beans
+kidney beans
+red beans
 chickpeas
 lentils
+red lentils
 hummus
+falafel
+tofu
+seitan
+soy
+edamame
+peanut
 peanut butter
-almonds
+almond
+almond butter
 walnuts
 cashews
+pecans
+brazil nuts
+hazelnut
+macadamia
+pistachio
+pine nuts
+mixed nuts
+trail mix
+chia seeds
+flax seeds
+pumpkin seeds
+sunflower seeds
+sesame seeds
+poppy seeds
+hemp seeds
 
-# Dishes & snacks
+# Composite dishes and snacks
 pizza
 sandwich
 club sandwich
+tuna sandwich
+tuna salad
+tuna mayo
+tuna melt
+canned tuna
+pulled pork sandwich
 burrito
 taco
+quesadilla
 soup
 tomato soup
 stew
+chili
 curry
 dumplings
+gyoza
+wonton dumplings
 spring rolls
-fries
+bao
+hanamaki baozi
+pierogi
+bigos
+golabki
+kielbasa
+schnitzel
+potato pancakes
+zapiekanka
+salad bowl
+grain bowl
+protein bowl
 nachos
-popcorn
 chips
+tortilla chips
+potato chips
+popcorn
+fries
+protein bar
+energy ball
+granola bar
+fish cake
 
-# Sweets & desserts
+# Sauces, spreads and condiments
+pesto
+green pesto
+red pesto
+salsa
+guacamole
+ranch dressing
+salad dressing
+mayonnaise
+aioli
+mustard
+ketchup
+bbq sauce
+barbecue sauce
+hot sauce
+sriracha
+chili sauce
+sweet chili sauce
+sweet chilli sauce
+tomato sauce
+marinara sauce
+cream sauce
+cheese sauce
+gravy
+teriyaki sauce
+soy sauce
+tahini
+tzatziki
+jam
+honey
+maple syrup
+chocolate spread
+olive oil
+sesame oil
+coconut oil
+olives
+
+# Sweets and desserts
 chocolate
+dark chocolate
+white chocolate
 cookie
 brownie
 cake
@@ -168,13 +394,25 @@ ice cream
 donut
 pancakes with syrup
 pudding
-fruit salad
+tiramisu
+candy
+jelly
+fruit tart
+sweet pastry
 
 # Drinks
+water
 coffee
 tea
+hot chocolate
 orange juice
 apple juice
+juice
 smoothie
+protein shake
+milkshake
 soda
-water
+lemonade
+coconut water
+beer
+wine

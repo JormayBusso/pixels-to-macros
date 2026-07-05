@@ -27,7 +27,6 @@ class CalcInfo {
     required this.explanation,
     required this.legitimacy,
     required this.sourceLabel,
-    required this.sourceUrl,
   });
 
   final CalcInfoId id;
@@ -43,9 +42,6 @@ class CalcInfo {
 
   /// Human-readable citation label (institution / publication).
   final String sourceLabel;
-
-  /// Verifiable citation URL (kept un-localised — it is a proper noun link).
-  final String sourceUrl;
 
   /// Stable key used to persist the "already auto-shown" flag.
   String get seenPrefKey => 'calc_info_seen_${id.name}';

@@ -428,7 +428,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                 : resultsAsync.when(
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Center(child: Text('Error: $e')),
+                    error: (e, _) => Center(child: Text(l10n.recipeLoadError)),
                     data: (recipes) {
                       if (recipes.isEmpty) {
                         return Center(
@@ -1743,7 +1743,8 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
       return;
     }
 
-    final result = await BarcodeLookupService.instance.scanAndLookup();
+    final result = await BarcodeLookupService.instance
+        .scanAndLookup(l10n: AppLocalizations.of(context));
     if (result == null || !mounted) return;
 
     // Add to food DB if not already present

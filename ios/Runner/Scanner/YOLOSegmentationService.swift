@@ -350,7 +350,7 @@ final class YOLOSegmentationService {
                 let px1 = clamp(Int((detection.x1 * boxToProtoX).rounded(.up)), px0 + 1, pw)
                 let bw = px1 - px0
 
-                var protoMask = [Bool](repeating: false, count: (py1 - py0) * bw)
+                var protoLogits = [Float](repeating: 0, count: (py1 - py0) * bw)
                 for y in py0..<py1 {
                     let rowBase = y * strideY
                     for x in px0..<px1 {
@@ -359,10 +359,26 @@ final class YOLOSegmentationService {
                         for c in 0..<protoChannels {
                             logit += detection.coeffs[c] * read(c * strideK + base)
                         }
-                        if Self.sigmoid(logit) > maskThreshold {
-                            protoMask[(y - py0) * bw + (x - px0)] = true
-                        }
+                        protoLogits[(y - py0) * bw + (x - px0)] = logit
                     }
+                }
+
+                @inline(__always) func sampledLogit(protoY: Float, protoX: Float) -> Float {
+                    let clampedY = min(max(protoY, Float(py0)), Float(py1 - 1))
+                    let clampedX = min(max(protoX, Float(px0)), Float(px1 - 1))
+                    let y0 = Int(floor(clampedY))
+                    let x0 = Int(floor(clampedX))
+                    let y1 = min(py1 - 1, y0 + 1)
+                    let x1 = min(px1 - 1, x0 + 1)
+                    let ty = clampedY - Float(y0)
+                    let tx = clampedX - Float(x0)
+                    let v00 = protoLogits[(y0 - py0) * bw + (x0 - px0)]
+                    let v01 = protoLogits[(y0 - py0) * bw + (x1 - px0)]
+                    let v10 = protoLogits[(y1 - py0) * bw + (x0 - px0)]
+                    let v11 = protoLogits[(y1 - py0) * bw + (x1 - px0)]
+                    let top = v00 * (1 - tx) + v01 * tx
+                    let bottom = v10 * (1 - tx) + v11 * tx
+                    return top * (1 - ty) + bottom * ty
                 }
 
                 // Target-space bbox, clipped to the frame.
@@ -379,10 +395,10 @@ final class YOLOSegmentationService {
                 var sumRow = 0
                 var sumCol = 0
                 for r in ty0..<ty1 {
-                    let py = clamp(Int(Float(r) * targetToProtoY), py0, py1 - 1)
                     for c in tx0..<tx1 {
-                        let px = clamp(Int(Float(c) * targetToProtoX), px0, px1 - 1)
-                        if protoMask[(py - py0) * bw + (px - px0)] {
+                        let protoY = (Float(r) + 0.5) * targetToProtoY
+                        let protoX = (Float(c) + 0.5) * targetToProtoX
+                        if Self.sigmoid(sampledLogit(protoY: protoY, protoX: protoX)) > maskThreshold {
                             mask[r][c] = 1
                             pixelCount += 1
                             sumRow += r

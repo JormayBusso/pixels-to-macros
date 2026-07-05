@@ -133,13 +133,14 @@ class NativeBridge {
 
   /// Run multi-frame 3-D reconstruction + segmentation on the recorded sweep.
   /// Returns JSON metadata only after a 3-D model file exists on disk.
-  /// Times out after 30 s to prevent UI freezes.
+  /// Times out after 75 s to avoid false scan failures on cold model load or
+  /// USDZ export while still bounding genuine native hangs.
   Future<List<Map<String, dynamic>>> runVideoInference() async {
     debugPrint('[SCAN] NativeBridge.runVideoInference() called');
     try {
       final raw = await _channel
           .invokeMethod<String>('runVideoInference')
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 75));
       debugPrint('[SCAN] NativeBridge.runVideoInference() raw=${raw?.substring(0, (raw.length > 200 ? 200 : raw.length))}');
       if (raw == null) return [];
       final list = jsonDecode(raw) as List;

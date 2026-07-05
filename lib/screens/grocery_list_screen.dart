@@ -9,8 +9,10 @@ import 'package:image_picker/image_picker.dart';
 
 import '../core/app_localizations.dart';
 import '../models/grocery_item.dart';
+import '../models/pantry_item.dart';
 import '../providers/grocery_provider.dart';
 import '../providers/history_provider.dart';
+import '../providers/pantry_provider.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/premium_theme_effects.dart';
@@ -64,7 +66,64 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
   Future<void> _load() async {
     await ref.read(groceryProvider.notifier).load();
+    await ref.read(pantryProvider.notifier).load();
     if (mounted) setState(() => _loaded = true);
+  }
+
+  /// Left action: the user took/bought this item — move it into the pantry
+  /// (what they have at home) and off the buy list. Revertible via the snackbar.
+  Future<void> _markBought(GroceryItem item) async {
+    final l10n = AppLocalizations.of(context);
+    final qty = item.quantity <= 0 ? 1.0 : item.quantity.toDouble();
+    await ref.read(pantryProvider.notifier).addOrIncrement(
+          item.name,
+          category: item.category,
+          quantity: qty,
+          unit: item.unit,
+        );
+    await ref.read(groceryProvider.notifier).deleteItem(item);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.addedToPantrySnack(item.name)),
+        action: SnackBarAction(
+          label: l10n.undoAction,
+          onPressed: () async {
+            await ref
+                .read(pantryProvider.notifier)
+                .consume(item.name, amount: qty);
+            await ref.read(groceryProvider.notifier).addItem(
+                  item.name,
+                  category: item.category,
+                  quantity: item.quantity,
+                  unit: item.unit,
+                );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Right action: don't buy this anymore — remove it from the list.
+  /// Revertible via the snackbar.
+  Future<void> _dontBuy(GroceryItem item) async {
+    final l10n = AppLocalizations.of(context);
+    await ref.read(groceryProvider.notifier).deleteItem(item);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.removedFromListSnack(item.name)),
+        action: SnackBarAction(
+          label: l10n.undoAction,
+          onPressed: () => ref.read(groceryProvider.notifier).addItem(
+                item.name,
+                category: item.category,
+                quantity: item.quantity,
+                unit: item.unit,
+              ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -254,6 +313,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     );
     if (file == null || !mounted) return;
     final l10n = AppLocalizations.of(context);
+    final smartEnabled = ref.read(smartGroceryEnabledProvider);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -302,6 +362,15 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                 .any((term) => term.contains(word) || word.contains(term)));
         if (found) {
           ref.read(groceryProvider.notifier).toggleChecked(item);
+          if (smartEnabled) {
+            // Fridge/basket scan stocks what you have into the pantry.
+            unawaited(ref.read(pantryProvider.notifier).addOrIncrement(
+                  item.name,
+                  category: item.category,
+                  quantity: item.quantity <= 0 ? 1.0 : item.quantity.toDouble(),
+                  unit: item.unit,
+                ));
+          }
           checkedOff++;
         }
       }
@@ -325,7 +394,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
           ),
         );
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('GroceryList: "scan what I have" failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -748,17 +818,18 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       if (!mounted) return;
       if (added > 0 || updated > 0) {
         final sample = candidates.values.take(3).map((c) => c.name).join(', ');
+        final found = '$sample${candidates.length > 3 ? '…' : ''}';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Photo scan complete: +$added new, $updated updated. Found: $sample${candidates.length > 3 ? '…' : ''}',
-            ),
+            content: Text(AppLocalizations.of(context)
+                .groceryPhotoScanComplete(added, updated, found)),
             duration: const Duration(seconds: 3),
           ),
         );
       }
-    } catch (_) {
-      // ML Kit not available (e.g. simulator) — silently skip.
+    } catch (e) {
+      // ML Kit not available (e.g. simulator) — skip, but log for diagnosis.
+      debugPrint('GroceryList: photo food analysis failed: $e');
     }
   }
 
@@ -923,7 +994,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                       children: [
                         // Photo slots
                         Text(
-                          'Snap your fridge, pantry or basket (optional)',
+                          l10n.grocerySnapFridge,
                           style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -931,7 +1002,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Photos stay on your device and are never uploaded.',
+                          l10n.groceryPhotosLocal,
                           style: TextStyle(
                               fontSize: 11, color: context.appMutedTextColor),
                         ),
@@ -1042,7 +1113,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                           color: context.appMutedTextColor)),
                                   SizedBox(height: 4),
                                   Text(
-                                    'Scan a meal first to get personalised suggestions.',
+                                    l10n.groceryScanMealFirst,
                                     style: TextStyle(
                                         fontSize: 12,
                                         color: context.appMutedTextColor),
@@ -1107,8 +1178,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                           child: ElevatedButton.icon(
                             icon: const Icon(Icons.add_shopping_cart),
                             label: Text(
-                              'Add ${selected.length} '
-                              'item${selected.length > 1 ? "s" : ""} to list',
+                              l10n.groceryAddItemsToList(selected.length),
                             ),
                             onPressed: () {
                               for (final idx in selected) {
@@ -1140,6 +1210,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     final grocery = ref.watch(groceryProvider);
     final unchecked = grocery.items.where((i) => !i.checked).toList();
     final checked = grocery.items.where((i) => i.checked).toList();
+    final smartEnabled = ref.watch(smartGroceryEnabledProvider);
+    final pantryItems = smartEnabled
+        ? ref.watch(pantryProvider).availableItems
+        : const <PantryItem>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -1148,40 +1222,39 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
           // Scan what you have — check off ingredients from photos
           IconButton(
             icon: const Icon(Icons.camera_alt_outlined),
-            tooltip: 'Scan what you have at home',
+            tooltip: l10n.groceryScanWhatYouHave,
             onPressed: _scanWhatIHave,
           ),
           // Smart suggestion — always visible
           IconButton(
             icon: const Icon(Icons.auto_awesome_outlined),
-            tooltip: 'Smart suggestions from history',
+            tooltip: l10n.grocerySmartSuggestionsTooltip,
             onPressed: _showSmartSuggestSheet,
           ),
           // Manual add — always visible
           IconButton(
             icon: const Icon(Icons.add),
-            tooltip: 'Add item',
+            tooltip: l10n.groceryAddItemTooltip,
             onPressed: _showAddDialog,
           ),
           if (checked.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep),
-              tooltip: 'Clear purchased items',
+              tooltip: l10n.groceryClearPurchased,
               onPressed: () =>
                   ref.read(groceryProvider.notifier).clearChecked(),
             ),
           if (grocery.items.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_outline),
-              tooltip: 'Select all & delete',
+              tooltip: l10n.grocerySelectAllDelete,
               onPressed: () async {
                 final ok = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: Text(l10n.deleteEntireList),
                     content: Text(
-                      'This removes all ${grocery.items.length} items from '
-                      'your grocery list.',
+                      l10n.groceryDeleteAllBody(grocery.items.length),
                     ),
                     actions: [
                       TextButton(
@@ -1207,7 +1280,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       ),
       body: !_loaded
           ? const Center(child: CircularProgressIndicator())
-          : grocery.items.isEmpty
+          : (grocery.items.isEmpty && pantryItems.isEmpty)
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1215,54 +1288,60 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                       Icon(Icons.shopping_cart_outlined,
                           size: 64, color: AppTheme.gray300),
                       const SizedBox(height: 16),
-                      Text('Your ${l10n.groceryList.toLowerCase()} is empty',
+                      Text(l10n.groceryListEmpty,
                           style: TextStyle(
                               fontSize: 16, color: context.appMutedTextColor)),
                       const SizedBox(height: 16),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          FilledButton.icon(
-                            icon: const Icon(Icons.add, size: 18),
-                            label: Text(l10n.addToGroceryList),
-                            onPressed: _showAddDialog,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: context.isPremiumTheme
-                                  ? context.visualTheme.primaryAccent
-                                  : context.primary500,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size.fromHeight(44),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          PremiumMotionSurface(
-                            borderRadius: BorderRadius.circular(12),
-                            glow: true,
-                            animate: true,
-                            borderWidth: 3.4,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.auto_awesome, size: 18),
-                              label: Text(l10n.scanReceipt),
-                              onPressed: _showSmartSuggestSheet,
-                              style: ElevatedButton.styleFrom(
+                      // Keep both buttons a normal width (not full-screen) and
+                      // equal to each other: IntrinsicWidth sizes the column to
+                      // the widest button's label, so it auto-fits every
+                      // language while both buttons stay the same width.
+                      IntrinsicWidth(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            FilledButton.icon(
+                              icon: const Icon(Icons.add, size: 18),
+                              label: Text(l10n.addToGroceryList),
+                              onPressed: _showAddDialog,
+                              style: FilledButton.styleFrom(
                                 backgroundColor: context.isPremiumTheme
-                                    ? context.visualTheme.cardColor
-                                    : context.primary500,
-                                foregroundColor: context.isPremiumTheme
                                     ? context.visualTheme.primaryAccent
-                                    : Colors.white,
+                                    : context.primary500,
+                                foregroundColor: Colors.white,
                                 minimumSize: const Size.fromHeight(44),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 10),
+                            PremiumMotionSurface(
+                              borderRadius: BorderRadius.circular(12),
+                              glow: true,
+                              animate: true,
+                              borderWidth: 3.4,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.auto_awesome, size: 18),
+                                label: Text(l10n.scanReceipt),
+                                onPressed: _showSmartSuggestSheet,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: context.isPremiumTheme
+                                      ? context.visualTheme.cardColor
+                                      : context.primary500,
+                                  foregroundColor: context.isPremiumTheme
+                                      ? context.visualTheme.primaryAccent
+                                      : Colors.white,
+                                  minimumSize: const Size.fromHeight(44),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -1270,31 +1349,87 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
               : ListView(
                   padding: const EdgeInsets.only(bottom: 24),
                   children: [
+                    if (smartEnabled) ...[
+                      _SectionLabel(
+                        '${l10n.pantrySectionTitle} (${pantryItems.length})',
+                        color: context.primary700,
+                      ),
+                      if (pantryItems.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                          child: Text(
+                            l10n.pantryEmptyHint,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              height: 1.3,
+                              color: context.appMutedTextColor,
+                            ),
+                          ),
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: pantryItems.map((p) {
+                              final q = p.quantity;
+                              final qStr = q == q.roundToDouble()
+                                  ? q.toInt().toString()
+                                  : q.toStringAsFixed(1);
+                              final qtyLabel = p.unit != null
+                                  ? ' $qStr ${p.unit}'
+                                  : (q > 1 ? ' ×$qStr' : '');
+                              return InputChip(
+                                label: Text('${p.name}$qtyLabel'),
+                                backgroundColor: context.appSubtleFillColor,
+                                labelStyle: TextStyle(
+                                  fontSize: 12.5,
+                                  color: context.appTextColor,
+                                ),
+                                deleteIconColor: context.appMutedTextColor,
+                                onDeleted: () => ref
+                                    .read(pantryProvider.notifier)
+                                    .deleteItem(p),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      const Divider(height: 1),
+                    ],
                     if (unchecked.isNotEmpty) ...[
-                      _SectionLabel('To Buy (${unchecked.length})',
+                      _SectionLabel(l10n.groceryToBuy(unchecked.length),
                           color: context.primary700),
                       ...unchecked.map((item) => _GroceryTile(
                             item: item,
+                            smartEnabled: smartEnabled,
+                            onBought: () => _markBought(item),
                             onToggle: () => ref
                                 .read(groceryProvider.notifier)
                                 .toggleChecked(item),
-                            onDelete: () => ref
-                                .read(groceryProvider.notifier)
-                                .deleteItem(item),
+                            onDelete: () => smartEnabled
+                                ? _dontBuy(item)
+                                : ref
+                                    .read(groceryProvider.notifier)
+                                    .deleteItem(item),
                             onEdit: () => _editItem(item),
                           )),
                     ],
                     if (checked.isNotEmpty) ...[
-                      _SectionLabel('Purchased (${checked.length})',
+                      _SectionLabel(l10n.groceryPurchased(checked.length),
                           color: context.appMutedTextColor),
                       ...checked.map((item) => _GroceryTile(
                             item: item,
+                            smartEnabled: smartEnabled,
+                            onBought: () => _markBought(item),
                             onToggle: () => ref
                                 .read(groceryProvider.notifier)
                                 .toggleChecked(item),
-                            onDelete: () => ref
-                                .read(groceryProvider.notifier)
-                                .deleteItem(item),
+                            onDelete: () => smartEnabled
+                                ? _dontBuy(item)
+                                : ref
+                                    .read(groceryProvider.notifier)
+                                    .deleteItem(item),
                             onEdit: () => _editItem(item),
                           )),
                     ],
@@ -1353,15 +1488,89 @@ class _GroceryTile extends StatelessWidget {
     required this.onToggle,
     required this.onDelete,
     required this.onEdit,
+    this.smartEnabled = false,
+    this.onBought,
   });
 
   final GroceryItem item;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
+  final bool smartEnabled;
+  final VoidCallback? onBought;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    final Widget? qtyBadge = (item.quantity > 0 || item.unit != null)
+        ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: context.primary100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+                item.unit != null
+                    ? '${item.quantity} ${item.unit}'
+                    : 'x${item.quantity}',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: context.primary700)),
+          )
+        : null;
+
+    final Widget? subtitle = item.category != null
+        ? Text(l10n.groceryCategoryLabel(item.category!),
+            style: TextStyle(fontSize: 12, color: context.appMutedTextColor))
+        : null;
+
+    // Smart mode: left = "bought" (adds to pantry), right = "don't buy".
+    if (smartEnabled && onBought != null) {
+      return Dismissible(
+        key: ValueKey(item.id),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          color: AppTheme.red500,
+          child: const Icon(Icons.close, color: Colors.white),
+        ),
+        onDismissed: (_) => onDelete(),
+        child: ListTile(
+          onTap: onEdit,
+          leading: IconButton(
+            icon: const Icon(Icons.check_circle_outline),
+            color: Colors.green,
+            tooltip: l10n.markBoughtTooltip,
+            onPressed: onBought,
+          ),
+          title: Text(
+            item.name,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: context.appTextColor,
+            ),
+          ),
+          subtitle: subtitle,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (qtyBadge != null) qtyBadge,
+              IconButton(
+                icon: const Icon(Icons.cancel_outlined),
+                color: AppTheme.red500,
+                tooltip: l10n.dontBuyTooltip,
+                onPressed: onDelete,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Dismissible(
       key: ValueKey(item.id),
       direction: DismissDirection.endToStart,
@@ -1389,28 +1598,8 @@ class _GroceryTile extends StatelessWidget {
                 item.checked ? context.appMutedTextColor : context.appTextColor,
           ),
         ),
-        subtitle: item.category != null
-            ? Text(AppLocalizations.of(context).groceryCategoryLabel(item.category!),
-                style:
-                    TextStyle(fontSize: 12, color: context.appMutedTextColor))
-            : null,
-        trailing: item.quantity > 0 || item.unit != null
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: context.primary100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                    item.unit != null
-                        ? '${item.quantity} ${item.unit}'
-                        : 'x${item.quantity}',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: context.primary700)),
-              )
-            : null,
+        subtitle: subtitle,
+        trailing: qtyBadge,
       ),
     );
   }

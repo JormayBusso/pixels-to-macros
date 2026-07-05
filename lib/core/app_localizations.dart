@@ -3725,15 +3725,15 @@ class AppLocalizations {
 
   String get calcMacrosWhy => _t({
         'en':
-            'The splits stay within the Acceptable Macronutrient Distribution Ranges published by the National Academies and follow goal-specific clinical guidance.',
+            'The splits stay within the macronutrient reference intake ranges published by the European Food Safety Authority (EFSA) and follow goal-specific clinical guidance.',
         'pl':
-            'Proporcje mieszczą się w zakresach AMDR opublikowanych przez National Academies i są zgodne z wytycznymi klinicznymi dla danego celu.',
+            'Proporcje mieszczą się w referencyjnych zakresach spożycia makroskładników opublikowanych przez Europejski Urząd ds. Bezpieczeństwa Żywności (EFSA) i są zgodne z wytycznymi klinicznymi dla danego celu.',
         'nl':
-            'De verdelingen blijven binnen de Acceptable Macronutrient Distribution Ranges van de National Academies en volgen doelgerichte klinische richtlijnen.',
+            'De verdelingen blijven binnen de referentie-innamebereiken voor macronutriënten van de Europese Autoriteit voor voedselveiligheid (EFSA) en volgen doelgerichte klinische richtlijnen.',
         'es':
-            'Las proporciones se mantienen dentro de los Rangos Aceptables de Distribución de Macronutrientes publicados por las National Academies y siguen pautas clínicas según tu objetivo.',
+            'Las proporciones se mantienen dentro de los rangos de ingesta de referencia de macronutrientes publicados por la Autoridad Europea de Seguridad Alimentaria (EFSA) y siguen pautas clínicas según tu objetivo.',
         'de':
-            'Die Aufteilungen bleiben innerhalb der von den National Academies veröffentlichten Acceptable Macronutrient Distribution Ranges und folgen zielspezifischen klinischen Leitlinien.',
+            'Die Aufteilungen bleiben innerhalb der von der Europäischen Behörde für Lebensmittelsicherheit (EFSA) veröffentlichten Referenzbereiche für die Makronährstoffzufuhr und folgen zielspezifischen klinischen Leitlinien.',
       });
 
   String get calcMicroTitle => _t({
@@ -3746,28 +3746,28 @@ class AppLocalizations {
 
   String get calcMicroExplain => _t({
         'en':
-            'Each micronutrient target is the Dietary Reference Intake for your sex, fine-tuned for your goal (for example more iron and B12 on a vegan diet, more fibre for diabetes).',
+            'Each micronutrient target is the EFSA Dietary Reference Value for your sex, fine-tuned for your goal (for example more iron and B12 on a vegan diet, more fibre for diabetes).',
         'pl':
-            'Każdy cel mikroskładnika to referencyjne spożycie (DRI) dla Twojej płci, dostosowane do celu (np. więcej żelaza i witaminy B12 na diecie wegańskiej, więcej błonnika przy cukrzycy).',
+            'Każdy cel mikroskładnika to referencyjna wartość spożycia EFSA (DRV) dla Twojej płci, dostosowana do celu (np. więcej żelaza i witaminy B12 na diecie wegańskiej, więcej błonnika przy cukrzycy).',
         'nl':
-            'Elk micronutriëntdoel is de referentie-inname (DRI) voor jouw geslacht, afgestemd op je doel (bijvoorbeeld meer ijzer en B12 bij een veganistisch dieet, meer vezels bij diabetes).',
+            'Elk micronutriëntdoel is de EFSA-referentiewaarde (DRV) voor jouw geslacht, afgestemd op je doel (bijvoorbeeld meer ijzer en B12 bij een veganistisch dieet, meer vezels bij diabetes).',
         'es':
-            'Cada objetivo de micronutriente es la Ingesta Dietética de Referencia para tu sexo, ajustada a tu objetivo (por ejemplo, más hierro y B12 en una dieta vegana, más fibra para la diabetes).',
+            'Cada objetivo de micronutriente es el Valor Dietético de Referencia de la EFSA para tu sexo, ajustado a tu objetivo (por ejemplo, más hierro y B12 en una dieta vegana, más fibra para la diabetes).',
         'de':
-            'Jeder Mikronährstoff-Zielwert ist die Referenzzufuhr (DRI) für dein Geschlecht, abgestimmt auf dein Ziel (z. B. mehr Eisen und B12 bei veganer Ernährung, mehr Ballaststoffe bei Diabetes).',
+            'Jeder Mikronährstoff-Zielwert ist der EFSA-Referenzwert (DRV) für dein Geschlecht, abgestimmt auf dein Ziel (z. B. mehr Eisen und B12 bei veganer Ernährung, mehr Ballaststoffe bei Diabetes).',
       });
 
   String get calcMicroWhy => _t({
         'en':
-            'Values come from the National Academies / NIH Dietary Reference Intakes, the standard reference used by dietitians and public-health bodies.',
+            'Values come from the European Food Safety Authority (EFSA) Dietary Reference Values, the standard reference used by dietitians and public-health bodies across the EU.',
         'pl':
-            'Wartości pochodzą z referencyjnych spożyć (DRI) National Academies / NIH — standardu używanego przez dietetyków i instytucje zdrowia publicznego.',
+            'Wartości pochodzą z referencyjnych wartości spożycia (DRV) Europejskiego Urzędu ds. Bezpieczeństwa Żywności (EFSA) — standardu używanego przez dietetyków i instytucje zdrowia publicznego w UE.',
         'nl':
-            'De waarden komen uit de Dietary Reference Intakes van de National Academies / NIH, de standaardreferentie van diëtisten en volksgezondheidsinstanties.',
+            'De waarden komen uit de Dietary Reference Values van de Europese Autoriteit voor voedselveiligheid (EFSA), de standaardreferentie van diëtisten en volksgezondheidsinstanties in de EU.',
         'es':
-            'Los valores provienen de las Ingestas Dietéticas de Referencia de las National Academies / NIH, la referencia estándar que usan dietistas y organismos de salud pública.',
+            'Los valores provienen de los Valores Dietéticos de Referencia de la Autoridad Europea de Seguridad Alimentaria (EFSA), la referencia estándar que usan dietistas y organismos de salud pública en la UE.',
         'de':
-            'Die Werte stammen aus den Dietary Reference Intakes der National Academies / NIH, der Standardreferenz von Ernährungsfachkräften und Gesundheitsbehörden.',
+            'Die Werte stammen aus den Dietary Reference Values der Europäischen Behörde für Lebensmittelsicherheit (EFSA), der Standardreferenz von Ernährungsfachkräften und Gesundheitsbehörden in der EU.',
       });
 
   String get calcPlateTitle => _t({
@@ -3793,15 +3793,15 @@ class AppLocalizations {
 
   String get calcPlateWhy => _t({
         'en':
-            'The components reflect the USDA Dietary Guidelines and widely used diet-quality indices. It is a helpful guide, not a medical diagnosis.',
+            'The components reflect the EU food-based dietary guidelines and widely used diet-quality indices. It is a helpful guide, not a medical diagnosis.',
         'pl':
-            'Składowe odzwierciedlają wytyczne żywieniowe USDA i powszechnie stosowane wskaźniki jakości diety. To pomocna wskazówka, a nie diagnoza medyczna.',
+            'Składowe odzwierciedlają unijne wytyczne żywieniowe oparte na żywności i powszechnie stosowane wskaźniki jakości diety. To pomocna wskazówka, a nie diagnoza medyczna.',
         'nl':
-            'De onderdelen weerspiegelen de USDA-voedingsrichtlijnen en veelgebruikte indexen voor dieetkwaliteit. Het is een handige richtlijn, geen medische diagnose.',
+            'De onderdelen weerspiegelen de EU-voedingsrichtlijnen op basis van voedingsmiddelen en veelgebruikte indexen voor dieetkwaliteit. Het is een handige richtlijn, geen medische diagnose.',
         'es':
-            'Los componentes reflejan las Guías Alimentarias del USDA e índices de calidad de la dieta ampliamente usados. Es una guía útil, no un diagnóstico médico.',
+            'Los componentes reflejan las guías alimentarias de la UE basadas en alimentos e índices de calidad de la dieta ampliamente usados. Es una guía útil, no un diagnóstico médico.',
         'de':
-            'Die Bestandteile orientieren sich an den USDA-Ernährungsrichtlinien und gängigen Indizes zur Ernährungsqualität. Es ist eine hilfreiche Orientierung, keine medizinische Diagnose.',
+            'Die Bestandteile orientieren sich an den lebensmittelbasierten Ernährungsrichtlinien der EU und gängigen Indizes zur Ernährungsqualität. Es ist eine hilfreiche Orientierung, keine medizinische Diagnose.',
       });
 
   String get calcBodyMapTitle => _t({
@@ -3827,15 +3827,15 @@ class AppLocalizations {
 
   String get calcBodyMapWhy => _t({
         'en':
-            'Coverage is measured against the Dietary Reference Intakes (National Academies / NIH), including tolerable upper limits where they exist.',
+            'Coverage is measured against the Dietary Reference Values (European Food Safety Authority, EFSA), including tolerable upper intake levels where they exist.',
         'pl':
-            'Pokrycie jest mierzone względem referencyjnych spożyć (DRI, National Academies / NIH), w tym tolerowanych górnych limitów, jeśli istnieją.',
+            'Pokrycie jest mierzone względem referencyjnych wartości spożycia (DRV, EFSA), w tym tolerowanych górnych limitów spożycia, jeśli istnieją.',
         'nl':
-            'De dekking wordt gemeten ten opzichte van de Dietary Reference Intakes (National Academies / NIH), inclusief aanvaardbare bovengrenzen waar die bestaan.',
+            'De dekking wordt gemeten ten opzichte van de Dietary Reference Values (Europese Autoriteit voor voedselveiligheid, EFSA), inclusief aanvaardbare bovengrenzen waar die bestaan.',
         'es':
-            'La cobertura se mide frente a las Ingestas Dietéticas de Referencia (National Academies / NIH), incluidos los límites superiores tolerables cuando existen.',
+            'La cobertura se mide frente a los Valores Dietéticos de Referencia (Autoridad Europea de Seguridad Alimentaria, EFSA), incluidos los niveles máximos tolerables de ingesta cuando existen.',
         'de':
-            'Die Abdeckung wird an den Dietary Reference Intakes (National Academies / NIH) gemessen, einschließlich tolerierbarer Obergrenzen, sofern vorhanden.',
+            'Die Abdeckung wird an den Dietary Reference Values (Europäische Behörde für Lebensmittelsicherheit, EFSA) gemessen, einschließlich tolerierbarer oberer Aufnahmemengen, sofern vorhanden.',
       });
 
   String get calcGlTitle => _t({
@@ -3861,15 +3861,15 @@ class AppLocalizations {
 
   String get calcGlWhy => _t({
         'en':
-            'It uses the internationally recognised glycemic index/load method described by Harvard Health and used in diabetes research.',
+            'It uses the internationally recognised glycemic index/load method used by the European Association for the Study of Diabetes (EASD) in diabetes research.',
         'pl':
-            'Wykorzystuje uznaną na świecie metodę indeksu/ładunku glikemicznego opisaną przez Harvard Health i stosowaną w badaniach nad cukrzycą.',
+            'Wykorzystuje uznaną na świecie metodę indeksu/ładunku glikemicznego stosowaną przez Europejskie Towarzystwo Badań nad Cukrzycą (EASD) w badaniach nad cukrzycą.',
         'nl':
-            'Het gebruikt de internationaal erkende methode voor glykemische index/lading die door Harvard Health wordt beschreven en in diabetesonderzoek wordt gebruikt.',
+            'Het gebruikt de internationaal erkende methode voor glykemische index/lading die de Europese Vereniging voor de Studie van Diabetes (EASD) in diabetesonderzoek gebruikt.',
         'es':
-            'Utiliza el método de índice/carga glucémica reconocido internacionalmente descrito por Harvard Health y usado en la investigación sobre diabetes.',
+            'Utiliza el método de índice/carga glucémica reconocido internacionalmente que usa la Asociación Europea para el Estudio de la Diabetes (EASD) en la investigación sobre diabetes.',
         'de':
-            'Sie verwendet die international anerkannte Methode des glykämischen Index/der glykämischen Last, die von Harvard Health beschrieben und in der Diabetesforschung genutzt wird.',
+            'Sie verwendet die international anerkannte Methode des glykämischen Index/der glykämischen Last, die die Europäische Diabetes-Gesellschaft (EASD) in der Diabetesforschung nutzt.',
       });
 
   String get calcBolusTitle => _t({
@@ -3997,15 +3997,15 @@ class AppLocalizations {
 
   String get calcRecsWhy => _t({
         'en':
-            'The thresholds and priorities reflect the USDA Dietary Guidelines. Tips are general guidance, not medical advice.',
+            'The thresholds and priorities reflect the EU food-based dietary guidelines. Tips are general guidance, not medical advice.',
         'pl':
-            'Progi i priorytety odzwierciedlają wytyczne żywieniowe USDA. Wskazówki to ogólne porady, a nie porada medyczna.',
+            'Progi i priorytety odzwierciedlają unijne wytyczne żywieniowe oparte na żywności. Wskazówki to ogólne porady, a nie porada medyczna.',
         'nl':
-            'De drempels en prioriteiten weerspiegelen de USDA-voedingsrichtlijnen. Tips zijn algemene richtlijnen, geen medisch advies.',
+            'De drempels en prioriteiten weerspiegelen de EU-voedingsrichtlijnen op basis van voedingsmiddelen. Tips zijn algemene richtlijnen, geen medisch advies.',
         'es':
-            'Los umbrales y prioridades reflejan las Guías Alimentarias del USDA. Los consejos son orientación general, no consejo médico.',
+            'Los umbrales y prioridades reflejan las guías alimentarias de la UE basadas en alimentos. Los consejos son orientación general, no consejo médico.',
         'de':
-            'Die Schwellen und Prioritäten orientieren sich an den USDA-Ernährungsrichtlinien. Tipps sind allgemeine Orientierung, kein medizinischer Rat.',
+            'Die Schwellen und Prioritäten orientieren sich an den lebensmittelbasierten Ernährungsrichtlinien der EU. Tipps sind allgemeine Orientierung, kein medizinischer Rat.',
       });
 
   String get calcStreakTitle => _t({
@@ -4031,15 +4031,15 @@ class AppLocalizations {
 
   String get calcStreakWhy => _t({
         'en':
-            'Regular self-monitoring is linked to better dietary adherence in the evidence behind the USDA Dietary Guidelines. The streak is a motivator, not a health measure.',
+            'Regular self-monitoring is linked to better dietary adherence in the evidence behind the EU food-based dietary guidelines. The streak is a motivator, not a health measure.',
         'pl':
-            'Regularne samokontrolowanie wiąże się z lepszym przestrzeganiem diety w dowodach stojących za wytycznymi USDA. Seria to motywator, a nie miara zdrowia.',
+            'Regularne samokontrolowanie wiąże się z lepszym przestrzeganiem diety w dowodach stojących za unijnymi wytycznymi żywieniowymi. Seria to motywator, a nie miara zdrowia.',
         'nl':
-            'Regelmatige zelfmonitoring hangt samen met betere dieettrouw in het bewijs achter de USDA-richtlijnen. De reeks is een motivator, geen gezondheidsmaat.',
+            'Regelmatige zelfmonitoring hangt samen met betere dieettrouw in het bewijs achter de EU-voedingsrichtlijnen. De reeks is een motivator, geen gezondheidsmaat.',
         'es':
-            'El autocontrol regular se asocia con una mejor adherencia dietética en la evidencia de las Guías del USDA. La racha es un motivador, no una medida de salud.',
+            'El autocontrol regular se asocia con una mejor adherencia dietética en la evidencia de las guías alimentarias de la UE. La racha es un motivador, no una medida de salud.',
         'de':
-            'Regelmäßige Selbstkontrolle ist in der Evidenz hinter den USDA-Richtlinien mit besserer Ernährungstreue verbunden. Die Serie ist ein Motivator, kein Gesundheitsmaß.',
+            'Regelmäßige Selbstkontrolle ist in der Evidenz hinter den EU-Ernährungsrichtlinien mit besserer Ernährungstreue verbunden. Die Serie ist ein Motivator, kein Gesundheitsmaß.',
       });
 
   String get calcBadgesTitle => _t({
@@ -4065,15 +4065,15 @@ class AppLocalizations {
 
   String get calcBadgesWhy => _t({
         'en':
-            'The criteria reward the consistency and balance encouraged by the USDA Dietary Guidelines. Badges celebrate habits and are not a health assessment.',
+            'The criteria reward the consistency and balance encouraged by the EU food-based dietary guidelines. Badges celebrate habits and are not a health assessment.',
         'pl':
-            'Kryteria nagradzają regularność i równowagę zalecane przez wytyczne USDA. Odznaki świętują nawyki i nie są oceną zdrowia.',
+            'Kryteria nagradzają regularność i równowagę zalecane przez unijne wytyczne żywieniowe. Odznaki świętują nawyki i nie są oceną zdrowia.',
         'nl':
-            'De criteria belonen de consistentie en balans die de USDA-richtlijnen aanmoedigen. Badges vieren gewoonten en zijn geen gezondheidsbeoordeling.',
+            'De criteria belonen de consistentie en balans die de EU-voedingsrichtlijnen aanmoedigen. Badges vieren gewoonten en zijn geen gezondheidsbeoordeling.',
         'es':
-            'Los criterios premian la constancia y el equilibrio que fomentan las Guías del USDA. Las insignias celebran hábitos y no son una evaluación de salud.',
+            'Los criterios premian la constancia y el equilibrio que fomentan las guías alimentarias de la UE. Las insignias celebran hábitos y no son una evaluación de salud.',
         'de':
-            'Die Kriterien belohnen die von den USDA-Richtlinien geförderte Beständigkeit und Ausgewogenheit. Abzeichen würdigen Gewohnheiten und sind keine Gesundheitsbewertung.',
+            'Die Kriterien belohnen die von den EU-Ernährungsrichtlinien geförderte Beständigkeit und Ausgewogenheit. Abzeichen würdigen Gewohnheiten und sind keine Gesundheitsbewertung.',
       });
 
   String get calcRecipeMatchTitle => _t({
@@ -4099,15 +4099,15 @@ class AppLocalizations {
 
   String get calcRecipeMatchWhy => _t({
         'en':
-            'The thresholds follow goal-specific guidance from the USDA Dietary Guidelines and standard clinical nutrition. They help you browse, but you can still see every recipe.',
+            'The thresholds follow goal-specific guidance from the EU food-based dietary guidelines and standard clinical nutrition. They help you browse, but you can still see every recipe.',
         'pl':
-            'Progi są zgodne z zaleceniami dla danego celu z wytycznych USDA i standardowej dietetyki klinicznej. Pomagają przeglądać, ale nadal widzisz wszystkie przepisy.',
+            'Progi są zgodne z zaleceniami dla danego celu z unijnych wytycznych żywieniowych i standardowej dietetyki klinicznej. Pomagają przeglądać, ale nadal widzisz wszystkie przepisy.',
         'nl':
-            'De drempels volgen doelgerichte richtlijnen uit de USDA-voedingsrichtlijnen en standaard klinische voeding. Ze helpen je bladeren, maar je ziet nog steeds elk recept.',
+            'De drempels volgen doelgerichte richtlijnen uit de EU-voedingsrichtlijnen en standaard klinische voeding. Ze helpen je bladeren, maar je ziet nog steeds elk recept.',
         'es':
-            'Los umbrales siguen las pautas específicas por objetivo de las Guías del USDA y la nutrición clínica estándar. Te ayudan a explorar, pero aún puedes ver todas las recetas.',
+            'Los umbrales siguen las pautas específicas por objetivo de las guías alimentarias de la UE y la nutrición clínica estándar. Te ayudan a explorar, pero aún puedes ver todas las recetas.',
         'de':
-            'Die Schwellen folgen zielspezifischen Vorgaben der USDA-Richtlinien und der üblichen klinischen Ernährung. Sie helfen beim Stöbern, aber du siehst weiterhin jedes Rezept.',
+            'Die Schwellen folgen zielspezifischen Vorgaben der lebensmittelbasierten Ernährungsrichtlinien der EU und der üblichen klinischen Ernährung. Sie helfen beim Stöbern, aber du siehst weiterhin jedes Rezept.',
       });
 
   String get foodUpdated => _t({
@@ -4732,11 +4732,11 @@ class AppLocalizations {
       });
 
   String get nutritionDisclaimer => _t({
-        'en': '* Targets shown are goal- and gender-adjusted Dietary Reference Intakes (NASEM / NIH, updated 2024–2025). Micronutrient values are estimated from USDA FoodData Central averages. For personalised advice, consult a registered dietitian.',
-        'pl': '* Pokazane cele to referencyjne spożycie dostosowane do celu i płci (NASEM / NIH, aktualizacja 2024–2025). Wartości mikroskładników szacowane są na podstawie średnich USDA FoodData Central. Po indywidualną poradę zwróć się do dietetyka.',
-        'nl': '* De getoonde doelen zijn op doel en geslacht afgestemde referentie-innames (NASEM / NIH, bijgewerkt 2024–2025). Micronutriëntwaarden zijn geschat op basis van USDA FoodData Central-gemiddelden. Raadpleeg voor persoonlijk advies een diëtist.',
-        'es': '* Los objetivos mostrados son ingestas de referencia ajustadas por meta y sexo (NASEM / NIH, actualizadas 2024–2025). Los valores de micronutrientes se estiman a partir de promedios de USDA FoodData Central. Para asesoramiento personalizado, consulta a un dietista.',
-        'de': '* Die angezeigten Ziele sind ziel- und geschlechtsangepasste Referenzwerte für die Zufuhr (NASEM / NIH, aktualisiert 2024–2025). Mikronährstoffwerte werden aus Durchschnittswerten der USDA FoodData Central geschätzt. Für persönliche Beratung wende dich an eine Ernährungsfachkraft.',
+        'en': '* Targets shown are goal- and gender-adjusted Dietary Reference Values (European Food Safety Authority, EFSA). Micronutrient values are estimated from European food composition databases (EuroFIR). For personalised advice, consult a registered dietitian.',
+        'pl': '* Pokazane cele to referencyjne wartości spożycia dostosowane do celu i płci (Europejski Urząd ds. Bezpieczeństwa Żywności, EFSA). Wartości mikroskładników szacowane są na podstawie europejskich baz składu żywności (EuroFIR). Po indywidualną poradę zwróć się do dietetyka.',
+        'nl': '* De getoonde doelen zijn op doel en geslacht afgestemde Dietary Reference Values (Europese Autoriteit voor voedselveiligheid, EFSA). Micronutriëntwaarden zijn geschat op basis van Europese voedingsmiddelendatabases (EuroFIR). Raadpleeg voor persoonlijk advies een diëtist.',
+        'es': '* Los objetivos mostrados son valores dietéticos de referencia ajustados por meta y sexo (Autoridad Europea de Seguridad Alimentaria, EFSA). Los valores de micronutrientes se estiman a partir de bases de datos europeas de composición de alimentos (EuroFIR). Para asesoramiento personalizado, consulta a un dietista.',
+        'de': '* Die angezeigten Ziele sind ziel- und geschlechtsangepasste Dietary Reference Values (Europäische Behörde für Lebensmittelsicherheit, EFSA). Mikronährstoffwerte werden aus europäischen Lebensmittel-Zusammensetzungsdatenbanken (EuroFIR) geschätzt. Für persönliche Beratung wende dich an eine Ernährungsfachkraft.',
       });
 
   // ── Analytics ──
@@ -5594,6 +5594,30 @@ class AppLocalizations {
         'de': 'Standard',
       });
 
+  String get premiumThemeAppearance => _t({
+        'en': 'Appearance',
+        'pl': 'Wygląd',
+        'nl': 'Weergave',
+        'es': 'Apariencia',
+        'de': 'Darstellung',
+      });
+
+  String get premiumThemeLightMode => _t({
+        'en': 'Light',
+        'pl': 'Jasny',
+        'nl': 'Licht',
+        'es': 'Claro',
+        'de': 'Hell',
+      });
+
+  String get premiumThemeDarkMode => _t({
+        'en': 'Dark',
+        'pl': 'Ciemny',
+        'nl': 'Donker',
+        'es': 'Oscuro',
+        'de': 'Dunkel',
+      });
+
   // ── Premium theme paywall ────────────────────────────────────────────────
 
   String get premiumThemesTitle => _t({
@@ -5870,6 +5894,901 @@ class AppLocalizations {
         return (title: id, subtitle: '');
     }
   }
+
+  /// How a badge is earned, phrased as a goal (used for locked badges).
+  String weeklyBadgeHowTo(String id) {
+    switch (id) {
+      case 'perfect_log_week':
+        return _t({
+          'en': 'Log food every day for a full week.',
+          'pl': 'Zapisuj jedzenie codziennie przez cały tydzień.',
+          'nl': 'Log elke dag eten, een hele week lang.',
+          'es': 'Registra comida todos los días durante una semana completa.',
+          'de': 'Logge eine ganze Woche lang jeden Tag Essen.',
+        });
+      case 'steady_tracker':
+        return _t({
+          'en': 'Log food on at least 5 days in a week.',
+          'pl': 'Zapisuj jedzenie przez co najmniej 5 dni w tygodniu.',
+          'nl': 'Log eten op minstens 5 dagen in een week.',
+          'es': 'Registra comida al menos 5 días en una semana.',
+          'de': 'Logge an mindestens 5 Tagen pro Woche Essen.',
+        });
+      case 'streak_builder':
+        return _t({
+          'en': 'Log food 3 or more days in a row.',
+          'pl': 'Zapisuj jedzenie przez 3 lub więcej dni z rzędu.',
+          'nl': 'Log eten 3 of meer dagen op rij.',
+          'es': 'Registra comida 3 o más días seguidos.',
+          'de': 'Logge an 3 oder mehr Tagen in Folge Essen.',
+        });
+      case 'scanner_momentum':
+        return _t({
+          'en': 'Record at least 10 food logs in a week.',
+          'pl': 'Zarejestruj co najmniej 10 wpisów jedzenia w tygodniu.',
+          'nl': 'Registreer minstens 10 voedingslogs in een week.',
+          'es': 'Registra al menos 10 comidas en una semana.',
+          'de': 'Erfasse mindestens 10 Essenseinträge in einer Woche.',
+        });
+      case 'protein_focus':
+        return _t({
+          'en': 'Hit your protein target on 4 or more days.',
+          'pl': 'Osiągnij cel białkowy przez 4 lub więcej dni.',
+          'nl': 'Haal je eiwitdoel op 4 of meer dagen.',
+          'es': 'Alcanza tu objetivo de proteína 4 o más días.',
+          'de': 'Erreiche dein Proteinziel an 4 oder mehr Tagen.',
+        });
+      case 'balanced_plate':
+        return _t({
+          'en': 'Keep calories and protein balanced on 3 or more days.',
+          'pl': 'Utrzymaj zrównoważone kalorie i białko przez 3 lub więcej dni.',
+          'nl': 'Houd calorieën en eiwit in balans op 3 of meer dagen.',
+          'es': 'Mantén calorías y proteína equilibradas 3 o más días.',
+          'de': 'Halte Kalorien und Protein an 3 oder mehr Tagen ausgewogen.',
+        });
+      case 'micronutrient_pro':
+        return _t({
+          'en': 'Reach broad vitamin and mineral coverage on 3 or more days.',
+          'pl': 'Osiągnij szerokie pokrycie witamin i minerałów przez 3 lub więcej dni.',
+          'nl': 'Bereik brede vitamine- en mineralendekking op 3 of meer dagen.',
+          'es': 'Alcanza amplia cobertura de vitaminas y minerales 3 o más días.',
+          'de': 'Erreiche an 3 oder mehr Tagen breite Vitamin- und Mineralstoffabdeckung.',
+        });
+      case 'hydration_rhythm':
+        return _t({
+          'en': 'Log drinks on 4 or more days in a week.',
+          'pl': 'Zapisuj napoje przez 4 lub więcej dni w tygodniu.',
+          'nl': 'Log drankjes op 4 of meer dagen in een week.',
+          'es': 'Registra bebidas 4 o más días en una semana.',
+          'de': 'Logge an 4 oder mehr Tagen pro Woche Getränke.',
+        });
+      default:
+        return '';
+    }
+  }
+
+  String get badgeCollectionSubtitle => _t({
+        'en': "See every badge you've earned and what's left to unlock.",
+        'pl': 'Zobacz wszystkie zdobyte odznaki i te do odblokowania.',
+        'nl': 'Bekijk elke verdiende badge en wat je nog kunt ontgrendelen.',
+        'es': 'Mira cada insignia ganada y lo que falta por desbloquear.',
+        'de': 'Sieh jedes verdiente Abzeichen und was noch zu holen ist.',
+      });
+
+  String get badgeEarnedLabel => _t({
+        'en': 'Earned',
+        'pl': 'Zdobyto',
+        'nl': 'Verdiend',
+        'es': 'Ganada',
+        'de': 'Verdient',
+      });
+
+  String get badgeLockedLabel => _t({
+        'en': 'Locked',
+        'pl': 'Zablokowana',
+        'nl': 'Vergrendeld',
+        'es': 'Bloqueada',
+        'de': 'Gesperrt',
+      });
+
+  String get badgeHowToEarnLabel => _t({
+        'en': 'How to earn',
+        'pl': 'Jak zdobyć',
+        'nl': 'Hoe te verdienen',
+        'es': 'Cómo ganarla',
+        'de': 'So verdienst du es',
+      });
+
+  String get weeklyChallengesTitle => _t({
+        'en': 'Weekly Challenges',
+        'pl': 'Tygodniowe wyzwania',
+        'nl': 'Wekelijkse uitdagingen',
+        'es': 'Desafíos semanales',
+        'de': 'Wöchentliche Herausforderungen',
+      });
+
+  String get challengeHowToTitle => _t({
+        'en': 'How to complete',
+        'pl': 'Jak ukończyć',
+        'nl': 'Hoe te voltooien',
+        'es': 'Cómo completar',
+        'de': 'So schaffst du es',
+      });
+
+  String get challengeCompletedLabel => _t({
+        'en': 'Completed!',
+        'pl': 'Ukończono!',
+        'nl': 'Voltooid!',
+        'es': '¡Completado!',
+        'de': 'Abgeschlossen!',
+      });
+
+  /// Localized title + how-to for a weekly challenge id (ChallengeType.name).
+  ({String title, String howTo}) weeklyChallengeText(String id) {
+    switch (id) {
+      case 'scanStreak3':
+        return (
+          title: _t({
+            'en': '3-Day Scan Streak',
+            'pl': 'Seria 3 dni skanowania',
+            'nl': 'Scanreeks van 3 dagen',
+            'es': 'Racha de escaneo de 3 días',
+            'de': '3-Tage-Scan-Serie',
+          }),
+          howTo: _t({
+            'en': 'Scan at least one meal for 3 consecutive days.',
+            'pl': 'Zeskanuj co najmniej jeden posiłek przez 3 kolejne dni.',
+            'nl': 'Scan minstens één maaltijd op 3 opeenvolgende dagen.',
+            'es': 'Escanea al menos una comida durante 3 días seguidos.',
+            'de': 'Scanne an 3 aufeinanderfolgenden Tagen mindestens eine Mahlzeit.',
+          }),
+        );
+      case 'hitGoal5Days':
+        return (
+          title: _t({
+            'en': 'On Target',
+            'pl': 'W celu',
+            'nl': 'Op koers',
+            'es': 'En el objetivo',
+            'de': 'Im Ziel',
+          }),
+          howTo: _t({
+            'en': 'Stay within 10% of your calorie goal for 5 days.',
+            'pl': 'Utrzymaj się w granicach 10% celu kalorycznego przez 5 dni.',
+            'nl': 'Blijf 5 dagen binnen 10% van je caloriedoel.',
+            'es': 'Mantente dentro del 10% de tu objetivo de calorías durante 5 días.',
+            'de': 'Bleibe an 5 Tagen innerhalb von 10 % deines Kalorienziels.',
+          }),
+        );
+      case 'logProtein80':
+        return (
+          title: _t({
+            'en': 'Protein Power',
+            'pl': 'Moc białka',
+            'nl': 'Eiwitkracht',
+            'es': 'Poder proteico',
+            'de': 'Protein-Power',
+          }),
+          howTo: _t({
+            'en': 'Log at least 80 g protein for 4 days.',
+            'pl': 'Zapisz co najmniej 80 g białka przez 4 dni.',
+            'nl': 'Log minstens 80 g eiwit op 4 dagen.',
+            'es': 'Registra al menos 80 g de proteína durante 4 días.',
+            'de': 'Logge an 4 Tagen mindestens 80 g Protein.',
+          }),
+        );
+      case 'drinkWater7Days':
+        return (
+          title: _t({
+            'en': 'Hydration Hero',
+            'pl': 'Bohater nawodnienia',
+            'nl': 'Hydratatieheld',
+            'es': 'Héroe de la hidratación',
+            'de': 'Hydrations-Held',
+          }),
+          howTo: _t({
+            'en': 'Hit your water goal every day this week.',
+            'pl': 'Osiągaj swój cel wodny każdego dnia w tym tygodniu.',
+            'nl': 'Haal je waterdoel elke dag deze week.',
+            'es': 'Alcanza tu objetivo de agua todos los días esta semana.',
+            'de': 'Erreiche diese Woche jeden Tag dein Wasserziel.',
+          }),
+        );
+      case 'scan10Foods':
+        return (
+          title: _t({
+            'en': 'Food Explorer',
+            'pl': 'Odkrywca jedzenia',
+            'nl': 'Voedselontdekker',
+            'es': 'Explorador de alimentos',
+            'de': 'Essens-Entdecker',
+          }),
+          howTo: _t({
+            'en': 'Scan 10 different foods this week.',
+            'pl': 'Zeskanuj 10 różnych produktów w tym tygodniu.',
+            'nl': 'Scan 10 verschillende voedingsmiddelen deze week.',
+            'es': 'Escanea 10 alimentos diferentes esta semana.',
+            'de': 'Scanne diese Woche 10 verschiedene Lebensmittel.',
+          }),
+        );
+      case 'noSugarSpike':
+        return (
+          title: _t({
+            'en': 'Steady Sugar',
+            'pl': 'Stabilny cukier',
+            'nl': 'Stabiele suiker',
+            'es': 'Azúcar estable',
+            'de': 'Stabiler Zucker',
+          }),
+          howTo: _t({
+            'en': 'Keep all meals under GL 20 for 3 days.',
+            'pl': 'Utrzymaj wszystkie posiłki poniżej ładunku glikemicznego 20 przez 3 dni.',
+            'nl': 'Houd alle maaltijden onder GL 20 gedurende 3 dagen.',
+            'es': 'Mantén todas las comidas por debajo de CG 20 durante 3 días.',
+            'de': 'Halte alle Mahlzeiten an 3 Tagen unter GL 20.',
+          }),
+        );
+      default:
+        return (title: id, howTo: '');
+    }
+  }
+
+  // ── Home / dashboard ──
+
+  String get loadingYourData => _t({
+        'en': 'Loading your data…',
+        'pl': 'Ładowanie danych…',
+        'nl': 'Je gegevens laden…',
+        'es': 'Cargando tus datos…',
+        'de': 'Deine Daten werden geladen…',
+      });
+
+  String editFoodTitle(String label) => _t({
+        'en': 'Edit "$label"',
+        'pl': 'Edytuj „$label"',
+        'nl': '"$label" bewerken',
+        'es': 'Editar "$label"',
+        'de': '"$label" bearbeiten',
+      });
+
+  String get noFoodLoggedTodayLong => _t({
+        'en': 'No food logged yet today.\nScan or add food to start tracking!',
+        'pl': 'Nie zapisano dziś jeszcze jedzenia.\nZeskanuj lub dodaj jedzenie, aby zacząć śledzić!',
+        'nl': 'Nog geen eten gelogd vandaag.\nScan of voeg eten toe om te beginnen met bijhouden!',
+        'es': 'Aún no has registrado comida hoy.\n¡Escanea o añade comida para empezar a registrar!',
+        'de': 'Heute noch kein Essen geloggt.\nScanne oder füge Essen hinzu, um zu starten!',
+      });
+
+  String get smartRecommendations => _t({
+        'en': 'Smart Recommendations',
+        'pl': 'Inteligentne rekomendacje',
+        'nl': 'Slimme aanbevelingen',
+        'es': 'Recomendaciones inteligentes',
+        'de': 'Intelligente Empfehlungen',
+      });
+
+  String tipsCount(int n) => _t({
+        'en': '$n tips',
+        'pl': n == 1 ? '$n wskazówka' : '$n wskazówek',
+        'nl': n == 1 ? '$n tip' : '$n tips',
+        'es': n == 1 ? '$n consejo' : '$n consejos',
+        'de': n == 1 ? '$n Tipp' : '$n Tipps',
+      });
+
+  String dayStreakLabel(int n) => _t({
+        'en': '$n day streak',
+        'pl': '$n-dniowa passa',
+        'nl': 'reeks van $n dagen',
+        'es': 'racha de $n días',
+        'de': '$n-Tage-Serie',
+      });
+
+  String get hydrationTitle => _t({
+        'en': 'Hydration',
+        'pl': 'Nawodnienie',
+        'nl': 'Hydratatie',
+        'es': 'Hidratación',
+        'de': 'Flüssigkeitszufuhr',
+      });
+
+  String get hydrationGoalReached => _t({
+        'en': '🎉 Hydration goal reached!',
+        'pl': '🎉 Cel nawodnienia osiągnięty!',
+        'nl': '🎉 Hydratatiedoel bereikt!',
+        'es': '🎉 ¡Objetivo de hidratación alcanzado!',
+        'de': '🎉 Hydrationsziel erreicht!',
+      });
+
+  String waterRemaining(String amount) => _t({
+        'en': '$amount remaining',
+        'pl': 'pozostało $amount',
+        'nl': '$amount resterend',
+        'es': '$amount restante',
+        'de': '$amount übrig',
+      });
+
+  String get removeWaterTooltip => _t({
+        'en': 'Remove 250 ml',
+        'pl': 'Usuń 250 ml',
+        'nl': '250 ml verwijderen',
+        'es': 'Quitar 250 ml',
+        'de': '250 ml entfernen',
+      });
+
+  String get addDrinkTooltip => _t({
+        'en': 'Add drink',
+        'pl': 'Dodaj napój',
+        'nl': 'Drankje toevoegen',
+        'es': 'Añadir bebida',
+        'de': 'Getränk hinzufügen',
+      });
+
+  String get adjustWaterGoalTooltip => _t({
+        'en': 'Adjust water goal',
+        'pl': 'Dostosuj cel wody',
+        'nl': 'Waterdoel aanpassen',
+        'es': 'Ajustar objetivo de agua',
+        'de': 'Wasserziel anpassen',
+      });
+
+  String get scan3dModelTag => _t({
+        'en': '3D model',
+        'pl': 'model 3D',
+        'nl': '3D-model',
+        'es': 'modelo 3D',
+        'de': '3D-Modell',
+      });
+
+  String get timeJustNow => _t({
+        'en': 'just now',
+        'pl': 'przed chwilą',
+        'nl': 'zojuist',
+        'es': 'ahora mismo',
+        'de': 'gerade eben',
+      });
+
+  String minutesAgoShort(int n) => _t({
+        'en': '${n}m ago',
+        'pl': '$n min temu',
+        'nl': '$n min geleden',
+        'es': 'hace $n min',
+        'de': 'vor $n Min.',
+      });
+
+  String hoursAgoShort(int n) => _t({
+        'en': '${n}h ago',
+        'pl': '$n godz. temu',
+        'nl': '$n uur geleden',
+        'es': 'hace $n h',
+        'de': 'vor $n Std.',
+      });
+
+  String daysAgoShort(int n) => _t({
+        'en': '${n}d ago',
+        'pl': '$n dni temu',
+        'nl': '$n dagen geleden',
+        'es': 'hace $n d',
+        'de': 'vor $n T.',
+      });
+
+  /// Localized 3-letter weekday name. [weekday]: 1 = Mon … 7 = Sun.
+  String weekdayShort(int weekday) {
+    final i = (weekday - 1) % 7;
+    switch (_lang) {
+      case 'pl':
+        return const ['Pon', 'Wto', 'Śro', 'Czw', 'Pią', 'Sob', 'Nie'][i];
+      case 'nl':
+        return const ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'][i];
+      case 'es':
+        return const ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][i];
+      case 'de':
+        return const ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][i];
+      default:
+        return const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i];
+    }
+  }
+
+  /// Localized 3-letter month name. [month]: 1 = Jan … 12 = Dec.
+  String monthShort(int month) {
+    final i = (month - 1) % 12;
+    switch (_lang) {
+      case 'pl':
+        return const ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'][i];
+      case 'nl':
+        return const ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'][i];
+      case 'es':
+        return const ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][i];
+      case 'de':
+        return const ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'][i];
+      default:
+        return const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i];
+    }
+  }
+
+  // ── Analytics ──
+
+  String get analyticsAverageMacros => _t({
+        'en': 'Average macros',
+        'pl': 'Średnie makroskładniki',
+        'nl': 'Gemiddelde macro’s',
+        'es': 'Macros promedio',
+        'de': 'Durchschnittliche Makros',
+      });
+
+  String get analyticsWeekdayPattern => _t({
+        'en': 'Weekday pattern',
+        'pl': 'Wzorzec dni tygodnia',
+        'nl': 'Weekdagpatroon',
+        'es': 'Patrón por día de la semana',
+        'de': 'Wochentag-Muster',
+      });
+
+  String get analyticsWeekdayPatternSub => _t({
+        'en': 'Average kcal per weekday',
+        'pl': 'Średnie kcal na dzień tygodnia',
+        'nl': 'Gemiddelde kcal per weekdag',
+        'es': 'Kcal promedio por día',
+        'de': 'Durchschnittliche kcal pro Wochentag',
+      });
+
+  String get analyticsDayByDay => _t({
+        'en': 'Day by day',
+        'pl': 'Dzień po dniu',
+        'nl': 'Dag voor dag',
+        'es': 'Día a día',
+        'de': 'Tag für Tag',
+      });
+
+  String get analyticsGoalLabel => _t({
+        'en': 'Goal',
+        'pl': 'Cel',
+        'nl': 'Doel',
+        'es': 'Meta',
+        'de': 'Ziel',
+      });
+
+  /// Localized full weekday name. [weekday]: 1 = Mon … 7 = Sun.
+  String weekdayFull(int weekday) {
+    final i = (weekday - 1) % 7;
+    switch (_lang) {
+      case 'pl':
+        return const ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela'][i];
+      case 'nl':
+        return const ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'][i];
+      case 'es':
+        return const ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][i];
+      case 'de':
+        return const ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][i];
+      default:
+        return const ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][i];
+    }
+  }
+
+  // ── Voice / manual / recipes errors ──
+
+  String get voiceErrNoMatch => _t({
+        'en': 'I didn\'t catch that. Tap the mic and clearly say the food and amount, e.g. "a banana" or "200 grams of chicken".',
+        'pl': 'Nie zrozumiałem. Dotknij mikrofonu i wyraźnie powiedz jedzenie i ilość, np. „banan" lub „200 gramów kurczaka".',
+        'nl': 'Ik verstond dat niet. Tik op de microfoon en zeg duidelijk het eten en de hoeveelheid, bijv. "een banaan" of "200 gram kip".',
+        'es': 'No lo entendí. Toca el micrófono y di claramente la comida y la cantidad, p. ej. "un plátano" o "200 gramos de pollo".',
+        'de': 'Das habe ich nicht verstanden. Tippe auf das Mikrofon und sage Essen und Menge deutlich, z. B. "eine Banane" oder "200 Gramm Hähnchen".',
+      });
+
+  String get voiceErrPermission => _t({
+        'en': 'Microphone or speech permission is off. Enable it in your phone settings to use voice logging.',
+        'pl': 'Uprawnienia mikrofonu lub mowy są wyłączone. Włącz je w ustawieniach telefonu, aby korzystać z logowania głosowego.',
+        'nl': 'Microfoon- of spraaktoestemming staat uit. Schakel deze in bij je telefooninstellingen om spraakloggen te gebruiken.',
+        'es': 'El permiso de micrófono o voz está desactivado. Actívalo en los ajustes del teléfono para usar el registro por voz.',
+        'de': 'Mikrofon- oder Sprachberechtigung ist aus. Aktiviere sie in den Telefoneinstellungen, um die Sprachaufzeichnung zu nutzen.',
+      });
+
+  String get voiceErrNetwork => _t({
+        'en': 'Voice recognition needs a connection right now. Check your network and try again.',
+        'pl': 'Rozpoznawanie mowy wymaga teraz połączenia. Sprawdź sieć i spróbuj ponownie.',
+        'nl': 'Spraakherkenning heeft nu een verbinding nodig. Controleer je netwerk en probeer opnieuw.',
+        'es': 'El reconocimiento de voz necesita conexión ahora. Revisa tu red e inténtalo de nuevo.',
+        'de': 'Die Spracherkennung braucht gerade eine Verbindung. Prüfe dein Netzwerk und versuche es erneut.',
+      });
+
+  String get voiceErrBusy => _t({
+        'en': 'The microphone is busy. Wait a moment, then try again.',
+        'pl': 'Mikrofon jest zajęty. Poczekaj chwilę i spróbuj ponownie.',
+        'nl': 'De microfoon is bezig. Wacht even en probeer opnieuw.',
+        'es': 'El micrófono está ocupado. Espera un momento e inténtalo de nuevo.',
+        'de': 'Das Mikrofon ist belegt. Warte einen Moment und versuche es erneut.',
+      });
+
+  String get voiceErrGeneric => _t({
+        'en': 'I couldn\'t process that audio. Please try again.',
+        'pl': 'Nie udało się przetworzyć tego dźwięku. Spróbuj ponownie.',
+        'nl': 'Ik kon die audio niet verwerken. Probeer het opnieuw.',
+        'es': 'No pude procesar ese audio. Inténtalo de nuevo.',
+        'de': 'Ich konnte dieses Audio nicht verarbeiten. Bitte versuche es erneut.',
+      });
+
+  String get voiceRecognitionUnavailable => _t({
+        'en': 'Speech recognition is unavailable right now.',
+        'pl': 'Rozpoznawanie mowy jest obecnie niedostępne.',
+        'nl': 'Spraakherkenning is momenteel niet beschikbaar.',
+        'es': 'El reconocimiento de voz no está disponible ahora.',
+        'de': 'Die Spracherkennung ist derzeit nicht verfügbar.',
+      });
+
+  String get voiceNotAvailableOnDevice => _t({
+        'en': 'Speech recognition is not available on this device.',
+        'pl': 'Rozpoznawanie mowy nie jest dostępne na tym urządzeniu.',
+        'nl': 'Spraakherkenning is niet beschikbaar op dit apparaat.',
+        'es': 'El reconocimiento de voz no está disponible en este dispositivo.',
+        'de': 'Die Spracherkennung ist auf diesem Gerät nicht verfügbar.',
+      });
+
+  String get barcodeProductNotFound => _t({
+        'en': 'Product not found in the OpenFoodFacts database. Try adding it manually.',
+        'pl': 'Nie znaleziono produktu w bazie OpenFoodFacts. Spróbuj dodać go ręcznie.',
+        'nl': 'Product niet gevonden in de OpenFoodFacts-database. Voeg het handmatig toe.',
+        'es': 'Producto no encontrado en la base de datos de OpenFoodFacts. Intenta añadirlo manualmente.',
+        'de': 'Produkt nicht in der OpenFoodFacts-Datenbank gefunden. Füge es manuell hinzu.',
+      });
+
+  String get recipeLoadError => _t({
+        'en': 'Couldn\'t load recipes. Pull down to refresh or try again.',
+        'pl': 'Nie udało się załadować przepisów. Pociągnij, aby odświeżyć, lub spróbuj ponownie.',
+        'nl': 'Kon recepten niet laden. Trek omlaag om te vernieuwen of probeer opnieuw.',
+        'es': 'No se pudieron cargar las recetas. Desliza para actualizar o inténtalo de nuevo.',
+        'de': 'Rezepte konnten nicht geladen werden. Zum Aktualisieren nach unten ziehen oder erneut versuchen.',
+      });
+
+  // ── Smart grocery / pantry ──
+
+  String get smartGroceryTitle => _t({
+        'en': 'Smart grocery & pantry',
+        'pl': 'Inteligentne zakupy i spiżarnia',
+        'nl': 'Slimme boodschappen & voorraad',
+        'es': 'Compra y despensa inteligentes',
+        'de': 'Smarte Einkäufe & Vorrat',
+      });
+
+  String get smartGrocerySubtitle => _t({
+        'en': 'Track what you have at home. Marking groceries as bought fills your pantry; logging food uses it up.',
+        'pl': 'Śledź, co masz w domu. Oznaczanie zakupów jako kupione uzupełnia spiżarnię; logowanie jedzenia ją zużywa.',
+        'nl': 'Houd bij wat je in huis hebt. Boodschappen als gekocht markeren vult je voorraad; eten loggen gebruikt het op.',
+        'es': 'Controla lo que tienes en casa. Marcar la compra como comprada llena tu despensa; registrar comida la consume.',
+        'de': 'Behalte im Blick, was du zu Hause hast. Als gekauft markierte Einkäufe füllen den Vorrat; Essen loggen verbraucht ihn.',
+      });
+
+  String get pantrySectionTitle => _t({
+        'en': 'What you have at home',
+        'pl': 'Co masz w domu',
+        'nl': 'Wat je in huis hebt',
+        'es': 'Lo que tienes en casa',
+        'de': 'Was du zu Hause hast',
+      });
+
+  String get pantryEmptyHint => _t({
+        'en': 'Nothing here yet. Mark grocery items as bought to fill your pantry.',
+        'pl': 'Jeszcze nic tu nie ma. Oznacz produkty jako kupione, aby uzupełnić spiżarnię.',
+        'nl': 'Nog niets hier. Markeer boodschappen als gekocht om je voorraad te vullen.',
+        'es': 'Aún no hay nada. Marca productos como comprados para llenar tu despensa.',
+        'de': 'Noch nichts hier. Markiere Einkäufe als gekauft, um deinen Vorrat zu füllen.',
+      });
+
+  String pantryItemsCount(int n) => _t({
+        'en': n == 1 ? '$n item' : '$n items',
+        'pl': n == 1 ? '$n produkt' : '$n produktów',
+        'nl': n == 1 ? '$n item' : '$n items',
+        'es': n == 1 ? '$n artículo' : '$n artículos',
+        'de': n == 1 ? '$n Artikel' : '$n Artikel',
+      });
+
+  String get markBoughtTooltip => _t({
+        'en': 'Bought — add to pantry',
+        'pl': 'Kupione — dodaj do spiżarni',
+        'nl': 'Gekocht — aan voorraad toevoegen',
+        'es': 'Comprado — añadir a la despensa',
+        'de': 'Gekauft — zum Vorrat hinzufügen',
+      });
+
+  String get dontBuyTooltip => _t({
+        'en': 'Don\'t buy',
+        'pl': 'Nie kupuj',
+        'nl': 'Niet kopen',
+        'es': 'No comprar',
+        'de': 'Nicht kaufen',
+      });
+
+  String addedToPantrySnack(String name) => _t({
+        'en': '$name added to your pantry',
+        'pl': 'Dodano $name do spiżarni',
+        'nl': '$name toegevoegd aan je voorraad',
+        'es': '$name añadido a tu despensa',
+        'de': '$name zum Vorrat hinzugefügt',
+      });
+
+  String removedFromListSnack(String name) => _t({
+        'en': '$name removed',
+        'pl': 'Usunięto $name',
+        'nl': '$name verwijderd',
+        'es': '$name eliminado',
+        'de': '$name entfernt',
+      });
+
+  String get undoAction => _t({
+        'en': 'Undo',
+        'pl': 'Cofnij',
+        'nl': 'Ongedaan maken',
+        'es': 'Deshacer',
+        'de': 'Rückgängig',
+      });
+
+  String get pantryAddedFromPhoto => _t({
+        'en': 'Added to your pantry from the photo',
+        'pl': 'Dodano do spiżarni ze zdjęcia',
+        'nl': 'Toegevoegd aan je voorraad vanaf de foto',
+        'es': 'Añadido a tu despensa desde la foto',
+        'de': 'Aus dem Foto zum Vorrat hinzugefügt',
+      });
+
+  String groceryToBuy(int n) => _t({
+        'en': 'To buy ($n)',
+        'pl': 'Do kupienia ($n)',
+        'nl': 'Te kopen ($n)',
+        'es': 'Por comprar ($n)',
+        'de': 'Einzukaufen ($n)',
+      });
+
+  String groceryPurchased(int n) => _t({
+        'en': 'Purchased ($n)',
+        'pl': 'Kupione ($n)',
+        'nl': 'Gekocht ($n)',
+        'es': 'Comprado ($n)',
+        'de': 'Gekauft ($n)',
+      });
+
+  // ── Food-group balance ──
+
+  String get foodGroupBalanceTitle => _t({
+        'en': 'Food group balance',
+        'pl': 'Bilans grup żywności',
+        'nl': 'Voedingsgroepen-balans',
+        'es': 'Equilibrio de grupos de alimentos',
+        'de': 'Lebensmittelgruppen-Balance',
+      });
+
+  String get foodGroupBalanceSubtitle => _t({
+        'en': 'See how your fruit, veg, protein and more compare to daily targets.',
+        'pl': 'Zobacz, jak owoce, warzywa, białko i inne wypadają wobec dziennych celów.',
+        'nl': 'Zie hoe je fruit, groente, eiwit en meer zich verhouden tot dagdoelen.',
+        'es': 'Mira cómo tus frutas, verduras, proteína y más se comparan con los objetivos diarios.',
+        'de': 'Sieh, wie Obst, Gemüse, Protein und mehr im Vergleich zu den Tageszielen stehen.',
+      });
+
+  String get periodToday => _t({
+        'en': 'Today',
+        'pl': 'Dziś',
+        'nl': 'Vandaag',
+        'es': 'Hoy',
+        'de': 'Heute',
+      });
+
+  String get periodThisWeek => _t({
+        'en': 'This week',
+        'pl': 'Ten tydzień',
+        'nl': 'Deze week',
+        'es': 'Esta semana',
+        'de': 'Diese Woche',
+      });
+
+  String servingsProgress(String current, String target) => _t({
+        'en': '$current / $target servings',
+        'pl': '$current / $target porcji',
+        'nl': '$current / $target porties',
+        'es': '$current / $target porciones',
+        'de': '$current / $target Portionen',
+      });
+
+  String get foodGroupGuidanceNote => _t({
+        'en': 'General healthy-eating guidance, not medical advice.',
+        'pl': 'Ogólne wskazówki dotyczące zdrowego odżywiania, nie porada medyczna.',
+        'nl': 'Algemene richtlijn voor gezond eten, geen medisch advies.',
+        'es': 'Orientación general de alimentación saludable, no consejo médico.',
+        'de': 'Allgemeine Empfehlung zur gesunden Ernährung, kein medizinischer Rat.',
+      });
+
+  /// Localized name of a [FoodGroup] (id = FoodGroup.name).
+  String foodGroupName(String id) {
+    switch (id) {
+      case 'fruit':
+        return _t({
+          'en': 'Fruit',
+          'pl': 'Owoce',
+          'nl': 'Fruit',
+          'es': 'Frutas',
+          'de': 'Obst',
+        });
+      case 'vegetables':
+        return _t({
+          'en': 'Vegetables',
+          'pl': 'Warzywa',
+          'nl': 'Groenten',
+          'es': 'Verduras',
+          'de': 'Gemüse',
+        });
+      case 'protein':
+        return _t({
+          'en': 'Protein',
+          'pl': 'Białko',
+          'nl': 'Eiwit',
+          'es': 'Proteína',
+          'de': 'Protein',
+        });
+      case 'dairy':
+        return _t({
+          'en': 'Dairy',
+          'pl': 'Nabiał',
+          'nl': 'Zuivel',
+          'es': 'Lácteos',
+          'de': 'Milchprodukte',
+        });
+      case 'grains':
+        return _t({
+          'en': 'Grains',
+          'pl': 'Zboża',
+          'nl': 'Granen',
+          'es': 'Cereales',
+          'de': 'Getreide',
+        });
+      default:
+        return id;
+    }
+  }
+
+  // ── Grocery tab chrome ──
+
+  String get groceryScanWhatYouHave => _t({
+        'en': 'Scan what you have at home',
+        'pl': 'Zeskanuj, co masz w domu',
+        'nl': 'Scan wat je in huis hebt',
+        'es': 'Escanea lo que tienes en casa',
+        'de': 'Scanne, was du zu Hause hast',
+      });
+
+  String get grocerySmartSuggestionsTooltip => _t({
+        'en': 'Smart suggestions from history',
+        'pl': 'Inteligentne sugestie z historii',
+        'nl': 'Slimme suggesties uit geschiedenis',
+        'es': 'Sugerencias inteligentes del historial',
+        'de': 'Intelligente Vorschläge aus dem Verlauf',
+      });
+
+  String get groceryAddItemTooltip => _t({
+        'en': 'Add item',
+        'pl': 'Dodaj produkt',
+        'nl': 'Item toevoegen',
+        'es': 'Añadir artículo',
+        'de': 'Artikel hinzufügen',
+      });
+
+  String get groceryClearPurchased => _t({
+        'en': 'Clear purchased items',
+        'pl': 'Wyczyść kupione produkty',
+        'nl': 'Gekochte items wissen',
+        'es': 'Borrar artículos comprados',
+        'de': 'Gekaufte Artikel löschen',
+      });
+
+  String get grocerySelectAllDelete => _t({
+        'en': 'Select all & delete',
+        'pl': 'Zaznacz wszystko i usuń',
+        'nl': 'Alles selecteren en verwijderen',
+        'es': 'Seleccionar todo y eliminar',
+        'de': 'Alle auswählen & löschen',
+      });
+
+  String groceryDeleteAllBody(int n) => _t({
+        'en': 'This removes all $n items from your grocery list.',
+        'pl': 'To usunie wszystkie $n produktów z Twojej listy zakupów.',
+        'nl': 'Hiermee verwijder je alle $n items van je boodschappenlijst.',
+        'es': 'Esto elimina los $n artículos de tu lista de compras.',
+        'de': 'Dies entfernt alle $n Artikel von deiner Einkaufsliste.',
+      });
+
+  String get groceryListEmpty => _t({
+        'en': 'Your grocery list is empty',
+        'pl': 'Twoja lista zakupów jest pusta',
+        'nl': 'Je boodschappenlijst is leeg',
+        'es': 'Tu lista de compras está vacía',
+        'de': 'Deine Einkaufsliste ist leer',
+      });
+
+  String get grocerySnapFridge => _t({
+        'en': 'Snap your fridge, pantry or basket (optional)',
+        'pl': 'Zrób zdjęcie lodówki, spiżarni lub koszyka (opcjonalnie)',
+        'nl': 'Fotografeer je koelkast, voorraad of mandje (optioneel)',
+        'es': 'Haz una foto de tu nevera, despensa o cesta (opcional)',
+        'de': 'Fotografiere deinen Kühlschrank, Vorrat oder Korb (optional)',
+      });
+
+  String get groceryPhotosLocal => _t({
+        'en': 'Photos stay on your device and are never uploaded.',
+        'pl': 'Zdjęcia pozostają na urządzeniu i nigdy nie są przesyłane.',
+        'nl': 'Foto’s blijven op je apparaat en worden nooit geüpload.',
+        'es': 'Las fotos permanecen en tu dispositivo y nunca se suben.',
+        'de': 'Fotos bleiben auf deinem Gerät und werden nie hochgeladen.',
+      });
+
+  String get groceryScanMealFirst => _t({
+        'en': 'Scan a meal first to get personalised suggestions.',
+        'pl': 'Najpierw zeskanuj posiłek, aby otrzymać spersonalizowane sugestie.',
+        'nl': 'Scan eerst een maaltijd voor persoonlijke suggesties.',
+        'es': 'Escanea una comida primero para recibir sugerencias personalizadas.',
+        'de': 'Scanne zuerst eine Mahlzeit für personalisierte Vorschläge.',
+      });
+
+  String groceryAddItemsToList(int n) => _t({
+        'en': n == 1 ? 'Add 1 item to list' : 'Add $n items to list',
+        'pl': 'Dodaj do listy ($n)',
+        'nl': n == 1 ? '1 item toevoegen' : '$n items toevoegen',
+        'es': 'Añadir a la lista ($n)',
+        'de': n == 1 ? '1 Artikel hinzufügen' : '$n Artikel hinzufügen',
+      });
+
+  String groceryPhotoScanComplete(int added, int updated, String found) => _t({
+        'en': 'Photo scan complete: +$added new, $updated updated. Found: $found',
+        'pl': 'Skan zdjęcia gotowy: +$added nowych, $updated zaktualizowanych. Znaleziono: $found',
+        'nl': 'Fotoscan voltooid: +$added nieuw, $updated bijgewerkt. Gevonden: $found',
+        'es': 'Escaneo de foto completo: +$added nuevos, $updated actualizados. Encontrado: $found',
+        'de': 'Fotoscan abgeschlossen: +$added neu, $updated aktualisiert. Gefunden: $found',
+      });
+
+  String get noRecipesForSlot => _t({
+        'en': 'No recipes match this slot. Try adjusting your goal or dietary filters.',
+        'pl': 'Brak przepisów pasujących do tego miejsca. Zmień cel lub filtry dietetyczne.',
+        'nl': 'Geen recepten voor dit vak. Pas je doel of dieetfilters aan.',
+        'es': 'No hay recetas para este espacio. Ajusta tu objetivo o filtros dietéticos.',
+        'de': 'Keine passenden Rezepte für diesen Slot. Passe dein Ziel oder deine Diätfilter an.',
+      });
+
+  // ── Barcode scanner (native UI) ──
+
+  String get barcodePointCamera => _t({
+        'en': 'Point camera at a food barcode',
+        'pl': 'Skieruj aparat na kod kreskowy produktu',
+        'nl': 'Richt de camera op een streepjescode',
+        'es': 'Apunta la cámara a un código de barras',
+        'de': 'Richte die Kamera auf einen Barcode',
+      });
+
+  String get barcodeErrorTitle => _t({
+        'en': 'Error',
+        'pl': 'Błąd',
+        'nl': 'Fout',
+        'es': 'Error',
+        'de': 'Fehler',
+      });
+
+  String get barcodeNotFoundTitle => _t({
+        'en': 'Product not found',
+        'pl': 'Nie znaleziono produktu',
+        'nl': 'Product niet gevonden',
+        'es': 'Producto no encontrado',
+        'de': 'Produkt nicht gefunden',
+      });
+
+  String get barcodeNotFoundBody => _t({
+        'en': 'No nutrition data found for this barcode. Try a different product.',
+        'pl': 'Nie znaleziono danych odżywczych dla tego kodu. Spróbuj innego produktu.',
+        'nl': 'Geen voedingswaarden gevonden voor deze streepjescode. Probeer een ander product.',
+        'es': 'No se encontraron datos nutricionales para este código. Prueba con otro producto.',
+        'de': 'Keine Nährwertdaten für diesen Barcode gefunden. Versuche ein anderes Produkt.',
+      });
+
+  String get barcodeScanAgain => _t({
+        'en': 'Scan again',
+        'pl': 'Skanuj ponownie',
+        'nl': 'Opnieuw scannen',
+        'es': 'Escanear de nuevo',
+        'de': 'Erneut scannen',
+      });
 
   String get heightLabel => _t({
         'en': 'Height',

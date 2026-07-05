@@ -338,7 +338,9 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     } catch (e) {
       _available = false;
       if (mounted) {
-        setState(() => _error = 'Speech recognition unavailable: $e');
+        debugPrint('Speech recognition unavailable: $e');
+        setState(() =>
+            _error = AppLocalizations.of(context).voiceRecognitionUnavailable);
       }
     }
     if (mounted) setState(() {});
@@ -347,32 +349,30 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   /// Turns raw speech-plugin error codes (e.g. "error_no_match") into clear,
   /// reassuring guidance instead of an alarming "unknown error".
   String _friendlySpeechError(String code) {
+    final l10n = AppLocalizations.of(context);
     final c = code.toLowerCase();
     if (c.contains('no_match') ||
         c.contains('nomatch') ||
         c.contains('speech_timeout') ||
         c.contains('timeout')) {
-      return 'I didn\'t catch that. Tap the mic and clearly say the food and '
-          'amount, e.g. "a banana" or "200 grams of chicken".';
+      return l10n.voiceErrNoMatch;
     }
     if (c.contains('permission') || c.contains('denied')) {
-      return 'Microphone or speech permission is off. Enable it in your phone '
-          'settings to use voice logging.';
+      return l10n.voiceErrPermission;
     }
     if (c.contains('network')) {
-      return 'Voice recognition needs a connection right now. Check your '
-          'network and try again.';
+      return l10n.voiceErrNetwork;
     }
     if (c.contains('busy')) {
-      return 'The microphone is busy. Wait a moment, then try again.';
+      return l10n.voiceErrBusy;
     }
-    return 'I couldn\'t process that audio. Please try again.';
+    return l10n.voiceErrGeneric;
   }
 
   void _startListening() {
     if (!_available) {
-      setState(
-          () => _error = 'Speech recognition not available on this device.');
+      setState(() =>
+          _error = AppLocalizations.of(context).voiceNotAvailableOnDevice);
       return;
     }
     setState(() {

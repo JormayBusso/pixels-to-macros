@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/scan_result.dart';
 import '../services/database_service.dart';
+import 'pantry_provider.dart';
 
 /// Holds the list of past scan results loaded from SQLite.
 class HistoryState {
@@ -19,10 +20,13 @@ class HistoryState {
 }
 
 class HistoryNotifier extends StateNotifier<HistoryState> {
-  HistoryNotifier() : super(const HistoryState());
+  HistoryNotifier(this._ref) : super(const HistoryState());
+
+  final Ref _ref;
 
   Future<void> load() async {
     state = state.copyWith(loading: true);
+    await DatabaseService.instance.purgeExpiredScanMedia();
     final scans = await DatabaseService.instance.getAllScanResults();
     state = HistoryState(scans: scans);
   }
@@ -30,6 +34,23 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
   Future<void> addScan(ScanResult result) async {
     await DatabaseService.instance.insertScanResult(result);
     await load(); // refresh
+    await _consumeFromPantry(result);
+  }
+
+  /// When the smart grocery/pantry system is on, logging real food marks any
+  /// matching pantry items as used up (best-effort match by name). Hydration
+  /// (water) entries never touch the pantry.
+  Future<void> _consumeFromPantry(ScanResult result) async {
+    if (result.depthMode == 'hydration') return;
+    if (result.foods.isEmpty) return;
+    if (!_ref.read(smartGroceryEnabledProvider)) return;
+    final notifier = _ref.read(pantryProvider.notifier);
+    if (_ref.read(pantryProvider).items.isEmpty) {
+      await notifier.load();
+    }
+    for (final food in result.foods) {
+      await notifier.consume(food.label);
+    }
   }
 
   Future<void> deleteScan(int scanId) async {
@@ -51,7 +72,6 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
   }
 }
 
-final historyProvider =
-    StateNotifierProvider<HistoryNotifier, HistoryState>(
-  (ref) => HistoryNotifier(),
+final historyProvider = StateNotifierProvider<HistoryNotifier, HistoryState>(
+  (ref) => HistoryNotifier(ref),
 );

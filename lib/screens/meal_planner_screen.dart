@@ -143,6 +143,16 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     // "All goals" maps to maintain for filtering (every recipe qualifies).
     final selectedGoal = plannerGoalRaw ?? NutritionGoalType.maintain;
 
+    // Selected-chip colours with guaranteed contrast in EVERY theme: choose the
+    // label/checkmark colour from the perceived brightness of the selected
+    // background, so a selected goal or allergy stays readable on premium and
+    // standard themes alike.
+    final chipSelectedBg = context.primary500;
+    final chipSelectedFg =
+        ThemeData.estimateBrightnessForColor(chipSelectedBg) == Brightness.dark
+            ? Colors.white
+            : Colors.black;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -244,11 +254,23 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                         child: ChoiceChip(
                           label: Text(
                             l10n.allGoals,
-                            style: const TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isAllGoals
+                                  ? chipSelectedFg
+                                  : context.appTextColor,
+                            ),
                           ),
                           selected: isAllGoals,
                           showCheckmark: false,
+                          selectedColor: chipSelectedBg,
+                          backgroundColor: context.appSubtleFillColor,
+                          side: BorderSide(
+                            color: isAllGoals
+                                ? Colors.transparent
+                                : context.appBorderColor,
+                          ),
                           onSelected: (_) => ref
                               .read(plannerGoalProvider.notifier)
                               .state = null,
@@ -260,11 +282,23 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                           child: ChoiceChip(
                             label: Text(
                               '${g.emoji} ${_localizedGoalLabel(l10n, g)}',
-                              style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: plannerGoalRaw == g
+                                    ? chipSelectedFg
+                                    : context.appTextColor,
+                              ),
                             ),
                             selected: plannerGoalRaw == g,
                             showCheckmark: false,
+                            selectedColor: chipSelectedBg,
+                            backgroundColor: context.appSubtleFillColor,
+                            side: BorderSide(
+                              color: plannerGoalRaw == g
+                                  ? Colors.transparent
+                                  : context.appBorderColor,
+                            ),
                             onSelected: (_) => ref
                                 .read(plannerGoalProvider.notifier)
                                 .state = g,
@@ -294,9 +328,22 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                           child: FilterChip(
                             label: Text(
                               l10n.dietaryRestrictionLabel(r.name),
-                              style: const TextStyle(fontSize: 12),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: prefs.dietaryRestrictions.contains(r)
+                                    ? chipSelectedFg
+                                    : context.appTextColor,
+                              ),
                             ),
                             selected: prefs.dietaryRestrictions.contains(r),
+                            selectedColor: chipSelectedBg,
+                            backgroundColor: context.appSubtleFillColor,
+                            checkmarkColor: chipSelectedFg,
+                            side: BorderSide(
+                              color: prefs.dietaryRestrictions.contains(r)
+                                  ? Colors.transparent
+                                  : context.appBorderColor,
+                            ),
                             onSelected: (_) {
                               final updated = {...prefs.dietaryRestrictions};
                               if (updated.contains(r)) {
@@ -325,7 +372,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                       final dayIndex = index + 1; // 1=Mon, 7=Sun
                       return _DayCard(
                         dayIndex: dayIndex,
-                        dayName: kWeekDays[index],
+                        dayName: AppLocalizations.of(context).weekdayFull(dayIndex),
                         mealTypes: _mealTypes,
                       );
                     },
@@ -666,25 +713,32 @@ class _PlannerActionBar extends ConsumerWidget {
       child: Row(
         children: [
           Expanded(
-            child: PremiumMotionSurface(
-              borderRadius: BorderRadius.circular(12),
-              glow: true,
-              animate: true,
-              borderWidth: 3.4,
-              child: FilledButton.icon(
-                onPressed: onAutopilot,
-                icon: const Icon(Icons.auto_awesome, size: 18),
-                label: Text(l10n.mealPlanAutopilot),
-                style: FilledButton.styleFrom(
-                  backgroundColor: context.isPremiumTheme
-                      ? context.visualTheme.cardColor
-                      : context.primary500,
-                  foregroundColor: context.isPremiumTheme
-                      ? context.visualTheme.primaryAccent
-                      : Colors.white,
-                  minimumSize: const Size.fromHeight(42),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            // Inset the button so the 5px premium glow halo has clear room to
+            // show on BOTH sides — previously the full-width button left no
+            // space for the glow next to the pantry chip. Also makes the button
+            // a touch less wide, as requested.
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: PremiumMotionSurface(
+                borderRadius: BorderRadius.circular(12),
+                glow: true,
+                animate: true,
+                borderWidth: 3.4,
+                child: FilledButton.icon(
+                  onPressed: onAutopilot,
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: Text(l10n.mealPlanAutopilot),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: context.isPremiumTheme
+                        ? context.visualTheme.cardColor
+                        : context.primary500,
+                    foregroundColor: context.isPremiumTheme
+                        ? context.visualTheme.primaryAccent
+                        : Colors.white,
+                    minimumSize: const Size.fromHeight(42),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -811,7 +865,7 @@ class _DayCard extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: hasAny ? context.primary500 : AppTheme.gray700,
+                    color: hasAny ? context.primary500 : context.appMutedTextColor,
                   ),
                 ),
                 const Spacer(),
@@ -902,11 +956,19 @@ class _MealSlotRow extends ConsumerWidget {
             // Slot header toggle
             InkWell(
               borderRadius: BorderRadius.circular(10),
-              onTap: () => ref.read(mealPlanProvider.notifier).toggleSlot(
-                  dayIndex, mealType, goal,
-                  dailyCalorieGoal: dailyCal,
-                  dietaryRestrictions: restrictions,
-                  pantryNames: pantryNames),
+              onTap: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                final ok = await ref
+                    .read(mealPlanProvider.notifier)
+                    .toggleSlot(dayIndex, mealType, goal,
+                        dailyCalorieGoal: dailyCal,
+                        dietaryRestrictions: restrictions,
+                        pantryNames: pantryNames);
+                if (!ok) {
+                  messenger.showSnackBar(
+                      SnackBar(content: Text(l10n.noRecipesForSlot)));
+                }
+              },
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -946,12 +1008,19 @@ class _MealSlotRow extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Switch.adaptive(
                       value: isEnabled,
-                      onChanged: (_) => ref
-                          .read(mealPlanProvider.notifier)
-                          .toggleSlot(dayIndex, mealType, goal,
-                              dailyCalorieGoal: dailyCal,
-                              dietaryRestrictions: restrictions,
-                              pantryNames: pantryNames),
+                      onChanged: (_) async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final ok = await ref
+                            .read(mealPlanProvider.notifier)
+                            .toggleSlot(dayIndex, mealType, goal,
+                                dailyCalorieGoal: dailyCal,
+                                dietaryRestrictions: restrictions,
+                                pantryNames: pantryNames);
+                        if (!ok) {
+                          messenger.showSnackBar(
+                              SnackBar(content: Text(l10n.noRecipesForSlot)));
+                        }
+                      },
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ],
@@ -1598,7 +1667,7 @@ class _PeoplePerDayDialogState extends State<_PeoplePerDayDialog> {
               ),
               const SizedBox(height: 8),
               ...widget.days.map((d) {
-                final label = kWeekDays[(d - 1).clamp(0, 6)];
+                final label = AppLocalizations.of(context).weekdayFull(d);
                 return Row(
                   children: [
                     Expanded(child: Text(label)),

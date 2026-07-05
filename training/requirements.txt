@@ -16,3 +16,7 @@ tqdm>=4.66.0
 matplotlib>=3.8.0
 scikit-learn>=1.4.0
 coremltools>=7.2
+open_clip_torch>=3.3.0
+# MobileCLIP2 export: auto-download reinforced weights + reparameterise FastViT/MobileOne branches
+huggingface_hub>=0.24.0
+timm>=1.0.9

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -23,6 +24,7 @@ import '../widgets/confidence_badge.dart';
 import '../widgets/food_score_badge.dart';
 import '../widgets/glucose_spike_card.dart';
 import '../widgets/plate_score_widget.dart';
+import '../widgets/scan_3d_viewer.dart' show Scan3DObject;
 import 'diabetes/bolus_calculator_card.dart';
 import 'diabetes/diabetes_review_screen.dart';
 import 'edit_food_screen.dart';
@@ -583,10 +585,12 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
     final modelPath = ScanMediaResolver.resolve(_scan.modelPath);
 
     void openModel() {
+      final objects = _scan3DObjectsForViewer();
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => Scan3DViewerScreen(
             modelPath: modelPath,
+            objects: objects,
             scanId: _scan.id,
           ),
         ),
@@ -674,6 +678,44 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
         ),
       ),
     );
+  }
+
+  List<Scan3DObject> _scan3DObjectsForViewer() {
+    final raw = _scan.modelObjectsJson;
+    if (raw == null || raw.isEmpty) return _fallbackScan3DObjectsFromFoods();
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      final objects = decoded
+          .whereType<Map>()
+          .map((m) => Scan3DObject.fromMap(
+                m.map((key, value) => MapEntry(key.toString(), value)),
+              ))
+          .where((object) => object.id.isNotEmpty)
+          .toList(growable: false);
+      return objects.isEmpty ? _fallbackScan3DObjectsFromFoods() : objects;
+    } catch (_) {
+      return _fallbackScan3DObjectsFromFoods();
+    }
+  }
+
+  List<Scan3DObject> _fallbackScan3DObjectsFromFoods() {
+    return [
+      for (var i = 0; i < _scan.foods.length; i++)
+        Scan3DObject(
+          id: '${_scannerObjectId(_scan.foods[i].label)}_$i',
+          label: _scan.foods[i].label,
+          volumeCm3: _scan.foods[i].volumeCm3,
+          voxelCount: 0,
+          confidence: 1,
+        ),
+    ];
+  }
+
+  String _scannerObjectId(String label) {
+    final cleaned = label
+        .replaceAll(' ', '_')
+        .replaceAll(RegExp(r'[^A-Za-z0-9_]'), '_');
+    return cleaned.isEmpty ? 'food' : cleaned;
   }
 
   String _formatTime(DateTime dt) {

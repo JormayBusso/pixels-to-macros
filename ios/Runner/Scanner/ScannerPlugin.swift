@@ -237,13 +237,19 @@ final class ScannerPlugin {
             // Present the native barcode scanner, query OpenFoodFacts,
             // and return a JSON string (or nil on cancel/not found).
             var color: UIColor? = nil
-            if let args = call.arguments as? [String: Any],
-               let r = args["r"] as? Double,
-               let g = args["g"] as? Double,
-               let b = args["b"] as? Double {
-                color = UIColor(red: r, green: g, blue: b, alpha: 1)
+            var strings: [String: String] = [:]
+            if let args = call.arguments as? [String: Any] {
+                if let r = args["r"] as? Double,
+                   let g = args["g"] as? Double,
+                   let b = args["b"] as? Double {
+                    color = UIColor(red: r, green: g, blue: b, alpha: 1)
+                }
+                for k in ["instruction", "cancel", "ok", "error",
+                          "notFoundTitle", "notFoundBody", "scanAgain"] {
+                    if let v = args[k] as? String { strings[k] = v }
+                }
             }
-            BarcodeScannerPlugin.present(result: result, themeColor: color)
+            BarcodeScannerPlugin.present(result: result, themeColor: color, strings: strings)
 
         case "setTorch":
             // Toggle the device flashlight. Args: { "on": Bool }.

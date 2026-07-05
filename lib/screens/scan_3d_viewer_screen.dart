@@ -32,7 +32,36 @@ class Scan3DViewerScreen extends StatefulWidget {
 }
 
 class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
+  final GlobalKey<_IngredientPanelState> _ingredientPanelKey =
+      GlobalKey<_IngredientPanelState>();
+
   Map<String, dynamic>? _viewerError;
+  Scan3DViewerController? _viewerController;
+  String? _selectedObjectId;
+
+  Scan3DObject? get _selectedObject {
+    final id = _selectedObjectId;
+    if (id == null) return null;
+    for (final object in widget.objects) {
+      if (object.id == id) return object;
+    }
+    return null;
+  }
+
+  void _handleObjectSelection(String? id) {
+    if (!mounted) return;
+    setState(() => _selectedObjectId = id);
+  }
+
+  Future<void> _editSelectedObject() async {
+    final object = _selectedObject;
+    if (object == null) return;
+    final edited = await _ingredientPanelKey.currentState?.editObject(object);
+    if (!mounted || edited == true) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Selected ${object.label}; no saved ingredient row matched it yet.')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +95,10 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
                     child: Scan3DViewer(
                       modelPath: widget.modelPath,
                       objects: widget.objects,
+                      onControllerReady: (controller) {
+                        _viewerController = controller;
+                      },
+                      onSelectionChanged: _handleObjectSelection,
                       onError: (error) {
                         if (!mounted) return;
                         setState(() => _viewerError = error);
@@ -76,11 +109,27 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
                     const Positioned.fill(
                       child: _ViewerErrorOverlay(),
                     ),
-                  _DepthDebugOverlay(objects: widget.objects),
+                  _DepthDebugButton(objects: widget.objects),
+                  if (_selectedObject != null)
+                    _SelectedObjectBanner(
+                      object: _selectedObject!,
+                      onEdit: _editSelectedObject,
+                      onClear: () async {
+                        await _viewerController?.clearSelection();
+                        if (mounted) setState(() => _selectedObjectId = null);
+                      },
+                    ),
                 ],
               ),
             ),
-            if (widget.scanId != null) _IngredientPanel(scanId: widget.scanId!),
+            if (widget.scanId != null)
+              _IngredientPanel(
+                key: _ingredientPanelKey,
+                scanId: widget.scanId!,
+                objects: widget.objects,
+                selectedObjectId: _selectedObjectId,
+                onFocusObject: (id) => _viewerController?.focus(id),
+              ),
             // Explicit "log" confirmation. The scan is already saved to today's
             // diary on capture, but users expect a clear button to finish and
             // log it — this confirms and returns home.
@@ -117,75 +166,199 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
   }
 }
 
-/// On-screen depth/scale diagnostics so the numbers can be read directly off
-/// the phone (no Xcode console). Only shows objects that carry a `debug` line.
-class _DepthDebugOverlay extends StatefulWidget {
-  const _DepthDebugOverlay({required this.objects});
+/// Depth/scale diagnostics entry point. The full readout opens in a draggable,
+/// scrollable sheet so ingredients can never cover it.
+class _DepthDebugButton extends StatelessWidget {
+  const _DepthDebugButton({required this.objects});
 
   final List<Scan3DObject> objects;
 
   @override
-  State<_DepthDebugOverlay> createState() => _DepthDebugOverlayState();
-}
-
-class _DepthDebugOverlayState extends State<_DepthDebugOverlay> {
-  bool _expanded = true;
-
-  @override
   Widget build(BuildContext context) {
-    final rows = widget.objects.where((o) => o.debug != null).toList();
+    final rows = objects.where((o) => o.debug != null).toList();
     if (rows.isEmpty) return const SizedBox.shrink();
     return Positioned(
       top: 8,
       left: 8,
-      right: 8,
-      child: GestureDetector(
-        onTap: () => setState(() => _expanded = !_expanded),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.72),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.5)),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => _showDepthDebugSheet(context, rows),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.78),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.55)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.bug_report, color: Colors.tealAccent, size: 15),
+                SizedBox(width: 6),
+                Text(
+                  'Depth debug',
+                  style: TextStyle(
+                    color: Colors.tealAccent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.bug_report,
-                      color: Colors.tealAccent, size: 14),
-                  const SizedBox(width: 6),
-                  Text(
-                    'DEPTH DEBUG (tap to ${_expanded ? 'hide' : 'show'})',
-                    style: const TextStyle(
-                      color: Colors.tealAccent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  void _showDepthDebugSheet(BuildContext context, List<Scan3DObject> rows) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.72,
+        minChildSize: 0.35,
+        maxChildSize: 0.94,
+        expand: false,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF0B0F10),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+              border: Border(top: BorderSide(color: Colors.white12)),
+            ),
+            child: ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(999),
                     ),
                   ),
-                ],
-              ),
-              if (_expanded) ...[
-                const SizedBox(height: 6),
-                for (final o in rows)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      '${o.label}\n${o.debug}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        height: 1.3,
-                        fontFeatures: [FontFeature.tabularFigures()],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    const Icon(Icons.bug_report, color: Colors.tealAccent, size: 18),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Depth debug',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
+                    ),
+                    IconButton(
+                      tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close, color: Colors.white70),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                for (final object in rows)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          object.label,
+                          style: const TextStyle(
+                            color: Colors.tealAccent,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        SelectableText(
+                          object.debug ?? '',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            height: 1.35,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],
-            ],
-          ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SelectedObjectBanner extends StatelessWidget {
+  const _SelectedObjectBanner({
+    required this.object,
+    required this.onEdit,
+    required this.onClear,
+  });
+
+  final Scan3DObject object;
+  final VoidCallback onEdit;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: 12,
+      right: 12,
+      bottom: 12,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.82),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.touch_app, color: Colors.tealAccent, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Selected ${object.label}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: onEdit,
+              child: const Text('Edit'),
+            ),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: onClear,
+              icon: const Icon(Icons.close, color: Colors.white60, size: 18),
+            ),
+          ],
         ),
       ),
     );
@@ -230,9 +403,18 @@ class _ViewerErrorOverlay extends StatelessWidget {
 /// each food's weight (g) and calories, plus tap-to-edit, swipe-to-delete and
 /// add. Edits persist to the scan and refresh the daily totals.
 class _IngredientPanel extends ConsumerStatefulWidget {
-  const _IngredientPanel({required this.scanId});
+  const _IngredientPanel({
+    super.key,
+    required this.scanId,
+    required this.objects,
+    required this.selectedObjectId,
+    required this.onFocusObject,
+  });
 
   final int scanId;
+  final List<Scan3DObject> objects;
+  final String? selectedObjectId;
+  final ValueChanged<String> onFocusObject;
 
   @override
   ConsumerState<_IngredientPanel> createState() => _IngredientPanelState();
@@ -274,6 +456,14 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
   }
 
   Future<void> _edit(DetectedFood food) async {
+    if (food.label.trim().isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Editing ${food.label}'),
+          duration: const Duration(milliseconds: 900),
+        ),
+      );
+    }
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => EditFoodScreen(scanId: widget.scanId, food: food),
@@ -281,6 +471,35 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
     );
     await ref.read(dailyIntakeProvider.notifier).load();
     await _reload();
+  }
+
+  Future<bool> editObject(Scan3DObject object) async {
+    final row = _rowForObject(object);
+    if (row == null) return false;
+    await _edit(row.food);
+    return true;
+  }
+
+  _FoodRow? _rowForObject(Scan3DObject object) {
+    final objectLabel = _normaliseIngredientName(object.label);
+    for (final row in _rows) {
+      if (_normaliseIngredientName(row.food.label) == objectLabel) return row;
+    }
+    return null;
+  }
+
+  Scan3DObject? _objectForFood(DetectedFood food) {
+    final foodLabel = _normaliseIngredientName(food.label);
+    for (final object in widget.objects) {
+      if (_normaliseIngredientName(object.label) == foodLabel) return object;
+    }
+    return null;
+  }
+
+  bool _isSelected(DetectedFood food) {
+    final selected = widget.selectedObjectId;
+    if (selected == null) return false;
+    return _objectForFood(food)?.id == selected;
   }
 
   Future<void> _delete(DetectedFood food) async {
@@ -377,6 +596,7 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
                   final gramsText = r.grams >= 10
                       ? r.grams.toStringAsFixed(0)
                       : r.grams.toStringAsFixed(1);
+                  final selected = _isSelected(r.food);
                   return Dismissible(
                     key: ValueKey(r.food.id ?? 'row$i'),
                     direction: DismissDirection.endToStart,
@@ -387,21 +607,42 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
                       child: const Icon(Icons.delete, color: Colors.white),
                     ),
                     onDismissed: (_) => _delete(r.food),
-                    child: ListTile(
-                      title: Text(
-                        r.food.label.isEmpty ? '—' : r.food.label,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? Colors.tealAccent.withValues(alpha: 0.10)
+                            : Colors.transparent,
+                        border: selected
+                            ? const Border(
+                                left: BorderSide(
+                                  color: Colors.tealAccent,
+                                  width: 3,
+                                ),
+                              )
+                            : null,
+                      ),
+                      child: ListTile(
+                        title: Text(
+                          r.food.label.isEmpty ? '—' : r.food.label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
+                        subtitle: Text(
+                          selected
+                              ? '$gramsText g · $kcal kcal · selected in 3D'
+                              : '$gramsText g · $kcal kcal · tap to edit',
+                          style: const TextStyle(color: Colors.white60),
+                        ),
+                        trailing: const Icon(Icons.chevron_right,
+                            color: Colors.white38),
+                        onTap: () {
+                          final object = _objectForFood(r.food);
+                          if (object != null) widget.onFocusObject(object.id);
+                          _edit(r.food);
+                        },
                       ),
-                      subtitle: Text(
-                        '$gramsText g · $kcal kcal',
-                        style: const TextStyle(color: Colors.white60),
-                      ),
-                      trailing: const Icon(Icons.chevron_right,
-                          color: Colors.white38),
-                      onTap: () => _edit(r.food),
                     ),
                   );
                 },
@@ -412,3 +653,8 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
     );
   }
 }
+
+String _normaliseIngredientName(String value) => value
+    .toLowerCase()
+    .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+    .trim();
