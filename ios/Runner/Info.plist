@@ -52,6 +52,11 @@
 	<!-- Speech recognition (required by speech_to_text) -->
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Pixels to Macros uses speech recognition to convert your voice into food items.</string>
+	<!-- Apple Health (read-only: weight + active energy for adaptive calorie targets) -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>Pixels to Macros reads your weight and active energy from Apple Health to keep your daily calorie target adaptive to your body and activity.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Pixels to Macros does not write to Apple Health; it only reads weight and active energy to adapt your calorie target.</string>
 	<!-- ARKit world tracking -->
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>

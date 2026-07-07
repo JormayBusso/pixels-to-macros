@@ -409,6 +409,16 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
       if (calorieFiltered.isNotEmpty) pool = calorieFiltered;
     }
 
+    // ── Smart weekly plan refinement ──────────────────────────────────────
+    // For auto-fill and single-slot enables (avoidWeekDuplicates), narrow the
+    // eligible pool to the dishes that best fit the WHOLE week: keep the goal's
+    // macro split on track, avoid repeating the same main ingredient on nearby
+    // days, and prefer recipes explicitly labelled safe for the user's dietary
+    // restrictions. Manual shuffles skip this so the user can browse freely.
+    if (avoidWeekDuplicates) {
+      pool = _refinePoolForPlan(pool, goal, dayOfWeek, dietaryRestrictions);
+    }
+
     final recipe = swapIntent == null
         ? _pickRandomRecipe(pool, key, dayOfWeek, mealType)
         : (_pickSwapWithVariety(
@@ -455,6 +465,162 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
       case RecipeMealType.dessert:
         return 0.12;
     }
+  }
+
+  // ── Smart weekly plan refinement (macro balance + variety + restrictions) ──
+
+  /// Target macro split (energy fractions carb/protein/fat) per goal, grounded
+  /// in EFSA reference intakes (carbohydrate 45–60% E, fat 20–35% E, protein
+  /// near the population reference intake) tightened with each goal's standard
+  /// guidance: classic ketogenic ≈5/25/70; higher protein for weight-loss and
+  /// muscle (satiety / lean-mass); Diabetes UK moderate lower-GI carbs with
+  /// healthy unsaturated fats; Mediterranean higher unsaturated fat. Dietary
+  /// *patterns* (vegan/vegetarian/pescatarian) constrain foods, not macros, so
+  /// they use the balanced maintenance split.
+  ({double carb, double protein, double fat}) _macroTargetFor(
+      NutritionGoalType goal) {
+    switch (goal) {
+      case NutritionGoalType.keto:
+        return (carb: 0.05, protein: 0.25, fat: 0.70);
+      case NutritionGoalType.muscleGrowth:
+        return (carb: 0.45, protein: 0.30, fat: 0.25);
+      case NutritionGoalType.weightLoss:
+        return (carb: 0.40, protein: 0.30, fat: 0.30);
+      case NutritionGoalType.diabetes:
+        return (carb: 0.40, protein: 0.25, fat: 0.35);
+      case NutritionGoalType.mediterranean:
+        return (carb: 0.45, protein: 0.18, fat: 0.37);
+      case NutritionGoalType.maintain:
+      case NutritionGoalType.vegan:
+      case NutritionGoalType.vegetarian:
+      case NutritionGoalType.pescatarian:
+        return (carb: 0.50, protein: 0.20, fat: 0.30);
+    }
+  }
+
+  /// Cumulative macro energy (kcal from carb×4 / protein×4 / fat×9) already
+  /// assigned this week — used to steer each new pick toward the goal's target
+  /// split so the week as a whole stays on ratio instead of drifting per day.
+  ({double carb, double protein, double fat}) _runningMacroEnergy() {
+    var c = 0.0, p = 0.0, f = 0.0;
+    for (final r in state.assignments.values) {
+      c += r.carbsPerServing(r.servings) * 4;
+      p += r.proteinPerServing(r.servings) * 4;
+      f += r.fatPerServing(r.servings) * 9;
+    }
+    return (carb: c, protein: p, fat: f);
+  }
+
+  /// Higher when [r]'s macro profile leans toward the macros the week still
+  /// needs to reach [target] given what's assigned so far ([running]). Keeps a
+  /// "keto week" keto and a "muscle week" protein-forward.
+  double _macroSteerScore(
+    Recipe r,
+    ({double carb, double protein, double fat}) target,
+    ({double carb, double protein, double fat}) running,
+  ) {
+    final rc = r.carbsPerServing(r.servings) * 4;
+    final rp = r.proteinPerServing(r.servings) * 4;
+    final rf = r.fatPerServing(r.servings) * 9;
+    final rTot = rc + rp + rf;
+    if (rTot <= 0) return 0;
+    final runTot = running.carb + running.protein + running.fat;
+    final curC = runTot > 0 ? running.carb / runTot : target.carb;
+    final curP = runTot > 0 ? running.protein / runTot : target.protein;
+    final curF = runTot > 0 ? running.fat / runTot : target.fat;
+    // need = target − current (positive → the week is short on this macro);
+    // reward the recipe's share of each macro weighted by how much it's needed.
+    return (rc / rTot) * (target.carb - curC) +
+        (rp / rTot) * (target.protein - curP) +
+        (rf / rTot) * (target.fat - curF);
+  }
+
+  static const _plannerStapleIngredients = <String>{
+    'oil', 'olive', 'salt', 'pepper', 'water', 'butter', 'sugar', 'flour',
+    'garlic', 'onion', 'stock', 'broth', 'spice', 'herbs', 'sauce', 'vinegar',
+    'milk', 'cream', 'honey', 'yeast', 'baking',
+  };
+
+  /// The recipe's 1–2 "hero" ingredients (highest weight, excluding staples),
+  /// reduced to a coarse key so repeats can be spotted across days.
+  Set<String> _heroIngredients(Recipe r) {
+    final sorted = [...r.ingredients]
+      ..sort((a, b) => b.grams.compareTo(a.grams));
+    final out = <String>{};
+    for (final ing in sorted) {
+      final key = _ingredientKey(ing.name);
+      if (key.isEmpty || _plannerStapleIngredients.contains(key)) continue;
+      out.add(key);
+      if (out.length >= 2) break;
+    }
+    return out;
+  }
+
+  String _ingredientKey(String name) {
+    final words = name
+        .toLowerCase()
+        .replaceAll(RegExp('[^a-z ]'), ' ')
+        .split(RegExp(r'\s+'))
+        .where((w) => w.length > 3)
+        .toList();
+    if (words.isEmpty) return '';
+    // The main noun is usually the first substantial word ("chicken breast").
+    return words.first;
+  }
+
+  /// Hero ingredients used on [dayOfWeek] and the day before — recipes reusing
+  /// these are penalised so the week isn't "chicken every day".
+  Set<String> _recentHeroIngredients(int dayOfWeek) {
+    final out = <String>{};
+    for (final d in [dayOfWeek, dayOfWeek - 1]) {
+      if (d < 1) continue;
+      for (final mt in RecipeMealType.values) {
+        final r = state.assignments[MealPlanState.slotKey(d, mt)];
+        if (r != null) out.addAll(_heroIngredients(r));
+      }
+    }
+    return out;
+  }
+
+  /// Small bonus for recipes explicitly labelled free of an active restriction
+  /// (e.g. a "gluten-free" tag for a gluten-free user), so clearly-safe dishes
+  /// rank above merely-not-excluded ones.
+  double _restrictionBonus(Recipe r, Set<DietaryRestriction> restrictions) {
+    if (restrictions.isEmpty) return 0;
+    final text = '${r.name} ${r.tags.join(' ')}';
+    var bonus = 0.0;
+    for (final res in restrictions) {
+      if (res.isExplicitlyFree(text)) bonus += 1;
+    }
+    return bonus;
+  }
+
+  /// Narrow an already goal/allergy-valid pool to the dishes that best fit the
+  /// week: closest to the goal's macro split, least ingredient repetition on
+  /// nearby days, and (with restrictions) explicitly-safe dishes preferred.
+  /// Keeps the better ~half (min 5) so the downstream picker still has variety.
+  List<Recipe> _refinePoolForPlan(
+    List<Recipe> pool,
+    NutritionGoalType goal,
+    int dayOfWeek,
+    Set<DietaryRestriction> restrictions,
+  ) {
+    if (pool.length <= 6) return pool;
+    final target = _macroTargetFor(goal);
+    final running = _runningMacroEnergy();
+    final recent = _recentHeroIngredients(dayOfWeek);
+    final scores = <String, double>{};
+    for (final r in pool) {
+      final macro = _macroSteerScore(r, target, running);
+      final repeats =
+          _heroIngredients(r).where(recent.contains).length.toDouble();
+      final restr = _restrictionBonus(r, restrictions);
+      scores[r.id] = macro * 3.0 - repeats * 1.2 + restr * 0.8;
+    }
+    final scored = [...pool]
+      ..sort((a, b) => scores[b.id]!.compareTo(scores[a.id]!));
+    final keep = (scored.length / 2).ceil().clamp(5, scored.length);
+    return scored.take(keep).toList();
   }
 
   Recipe _pickRandomRecipe(

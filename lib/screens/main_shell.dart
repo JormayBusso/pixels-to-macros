@@ -7,6 +7,7 @@ import '../core/app_localizations.dart';
 import '../providers/scan_state_provider.dart';
 import '../providers/tab_navigation_provider.dart';
 import '../providers/user_prefs_provider.dart';
+import '../providers/health_sync_provider.dart';
 import '../services/app_recovery_service.dart';
 import '../services/debug_log.dart';
 import '../services/notification_service.dart';
@@ -64,6 +65,7 @@ class _MainShellState extends ConsumerState<MainShell>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final showingTutorial = _checkTutorial();
       unawaited(_initNotifications());
+      _initHealthSync();
       if (!showingTutorial) {
         unawaited(_checkWeeklyBadgeRecap());
       }
@@ -85,7 +87,17 @@ class _MainShellState extends ConsumerState<MainShell>
     // reflected, cancelling reminders that no longer apply.
     if (state == AppLifecycleState.resumed) {
       unawaited(NotificationService.instance.refreshMealReminders());
+      unawaited(ref.read(healthSyncProvider.notifier).syncNow());
     }
+  }
+
+  /// Mirror the persisted Health-sync flag into provider state and, when it is
+  /// on, pull the latest weight + active energy so the daily calorie target is
+  /// adaptive from the first frame.
+  void _initHealthSync() {
+    final notifier = ref.read(healthSyncProvider.notifier);
+    notifier.loadFromPrefs();
+    unawaited(notifier.syncNow());
   }
 
   Future<void> _initNotifications() async {

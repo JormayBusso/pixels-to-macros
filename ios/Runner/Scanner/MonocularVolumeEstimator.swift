@@ -151,6 +151,29 @@ final class MonocularVolumeEstimator {
         let topSilhouetteEdgeSnapVertices: Int
     }
 
+    /// A detected bowl/deep container the food sits inside. The side view is
+    /// occluded by the bowl walls, so the hidden lower portion of the food is
+    /// reconstructed as a rounded cavity (deepest at the centre, rising to the
+    /// rim) from the exact top-view footprint, with a common wall thickness
+    /// removed so the bowl material is never counted as food.
+    private struct BowlModel {
+        /// Food fill depth below the visible surface (cm), wall already removed.
+        let innerDepthCm: Double
+        /// Common bowl wall thickness removed from the food (cm).
+        let wallCm: Double
+    }
+
+    /// Foods commonly served in a bowl. Bowl reconstruction is gated on one of
+    /// these being the dominant food inside a detected circular rim, so a flat
+    /// plated food (steak, pizza, sandwich) never triggers the cavity model.
+    private static let bowlFoodKeywords: [String] = [
+        "salad", "rice", "noodle", "pasta", "soup", "cereal", "oatmeal",
+        "porridge", "yogurt", "yoghurt", "granola", "muesli", "bean", "curry",
+        "stew", "grain", "poke", "ramen", "pho", "chili", "chilli", "quinoa",
+        "couscous", "congee", "chowder", "pudding", "risotto", "cornflakes",
+        "fruit salad", "berries", "lentil", "miso",
+    ]
+
     /// Metric-depth (Depth Anything V2 metric-indoor) is OUT-OF-DOMAIN at the
     /// 10–30 cm hold distance used for plated food: device testing showed 4–9×
     /// absolute scale error and ~3× height overestimation (the "everything looks
@@ -216,6 +239,23 @@ final class MonocularVolumeEstimator {
         let hasDominantPrimary = primaryPixelCount > 0 &&
             Double(primaryPixelCount) / Double(max(totalSegmentPixels, 1)) >= 0.55
 
+        // Bowl detection (occluded side view). When the dominant food sits in a
+        // detected rim and fills it, its hidden lower part is reconstructed as a
+        // rounded bowl cavity instead of the (occluded) side silhouette.
+        let bowlModel = detectBowl(
+            segments: segments,
+            primaryIndex: primarySegmentIndex,
+            plate: plateForFocal,
+            scale: scale,
+            sideProfiles: sideProfiles,
+            maskWidth: maskWidth,
+            maskHeight: maskHeight
+        )
+        if let bowlModel {
+            let name = primarySegmentIndex.map { segments[$0].label } ?? "?"
+            print("[BOWL] detected primary=\(name) innerDepth=\(String(format: "%.1f", bowlModel.innerDepthCm))cm wall=\(String(format: "%.1f", bowlModel.wallCm))cm")
+        }
+
         for (idx, seg) in segments.enumerated() {
             guard let footprint = footprintStats(seg.mask, maskWidth: maskWidth, maskHeight: maskHeight) else {
                 print("[MonocularEstimator] top-footprint missing food#\(idx) \(seg.label): pixels=\(seg.pixelCount)")
@@ -242,6 +282,9 @@ final class MonocularVolumeEstimator {
             let lateralBoundCm = max(0.8, max(widthCm, depthCm))
             let priorBoundCm = min(prior.heightCm, lateralBoundCm)
 
+            // Bowl mode applies only to the dominant food inside a detected rim.
+            let bowl = (idx == primarySegmentIndex) ? bowlModel : nil
+
             // 1) Metric depth integral (currently disabled). 2) Real side-view
             // contour visual hull. 3) Legacy side height. 4) Bounded prior.
             let depthResult = depthGrid.flatMap { grid in
@@ -265,12 +308,31 @@ final class MonocularVolumeEstimator {
                 in: sideProfiles,
                 excluding: usedSideProfileIndices
             )
-            let profile = usableSideProfile(profileMatch?.profile, for: seg.label)
-            if profile == nil {
+            // A bowl's side view is the container, so no side profile is used or
+            // consumed for the bowl food.
+            let profile = bowl == nil
+                ? usableSideProfile(profileMatch?.profile, for: seg.label)
+                : nil
+            if profile == nil, bowl == nil {
                 print("[MonocularEstimator] top-mask fallback food#\(idx) \(seg.label): sideProfile=none, pixels=\(seg.pixelCount), dominantPrimary=\(hasDominantPrimary)")
             }
             if profile != nil, let profileMatch { usedSideProfileIndices.insert(profileMatch.index) }
-            if let dr = depthResult {
+            if let bowl {
+                // Food fills the rounded bowl cavity up to the visible surface.
+                // The display mesh (makeEstimatedObject) is the volume source, so
+                // this hemispherical-cap value is telemetry only.
+                heightCm = bowl.innerDepthCm
+                let rCm = 0.25 * (widthCm + depthCm)
+                rawVolumeCm3 = (2.0 / 3.0) * Double.pi * rCm * rCm * heightCm
+                volumeCm3 = rawVolumeCm3
+                guardrailUpperCm3 = nil
+                guardrailApplied = false
+                scanMode = "monocular_bowl"
+                debugInfo = String(
+                    format: "bowl: depth=%.1fcm wall=%.1fcm r=%.1fcm vol=%.0fcm³",
+                    heightCm, bowl.wallCm, rCm, volumeCm3)
+                print("[MonocularEstimator] bowl food#\(idx) \(seg.label): foodW=\(String(format: "%.1f", widthCm))cm foodD=\(String(format: "%.1f", depthCm))cm innerDepth=\(String(format: "%.2f", heightCm))cm r=\(String(format: "%.2f", rCm))cm vol=\(String(format: "%.1f", volumeCm3))cm3")
+            } else if let dr = depthResult {
                 heightCm = dr.meanHeightCm
                 volumeCm3 = max(6.0, dr.volumeCm3)
                 rawVolumeCm3 = dr.volumeCm3
@@ -364,9 +426,11 @@ final class MonocularVolumeEstimator {
                 depthCm: depthCm,
                 heightCm: heightCm,
                 topFrame: topFrame,
+                colorFrame: preprocessedRGB,
                 maskWidth: maskWidth,
                 maskHeight: maskHeight,
-                sideProfile: profile
+                sideProfile: profile,
+                bowl: bowl
             )
             let object = estimatedObject.object
             objects.append(object)
@@ -385,7 +449,7 @@ final class MonocularVolumeEstimator {
                 )
             } ?? ""
             let sideApplied = profile != nil
-            let fallbackUsed = depthResult == nil && profile == nil
+            let fallbackUsed = bowl == nil && depthResult == nil && profile == nil
             let sideProfileSummary = profile.map { sideProfile in
                 let heightSamples = [0.0, 0.25, 0.5, 0.75, 1.0]
                     .map { position in
@@ -1046,6 +1110,85 @@ final class MonocularVolumeEstimator {
         return (minRow, maxRow, minCol, maxCol, (sumRow / count, sumCol / count))
     }
 
+    // MARK: – Bowl detection (occluded container)
+
+    /// True when the scene is a food in a bowl (see `detectBowl`). Used by the
+    /// LiDAR path so a bowl scan routes through the SAME rounded-cavity
+    /// reconstruction as the non-LiDAR path and both look identical.
+    func isBowlScene(
+        segments: [SegmentationService.SegmentedObject],
+        topFrame: FrameCaptureService.CapturedFrame,
+        maskWidth: Int,
+        maskHeight: Int
+    ) -> Bool {
+        let plate = plateDetector.detect(in: topFrame.pixelBuffer)
+        let scale = estimateScale(
+            topFrame: topFrame, maskWidth: maskWidth, maskHeight: maskHeight)
+        let primaryIndex = segments.indices.max(by: {
+            segments[$0].pixelCount < segments[$1].pixelCount
+        })
+        return detectBowl(
+            segments: segments, primaryIndex: primaryIndex, plate: plate,
+            scale: scale, sideProfiles: [], maskWidth: maskWidth, maskHeight: maskHeight) != nil
+    }
+
+    /// Detect a food served in a bowl OR a deep plate. There is no container
+    /// segmentation class, so this is a conservative heuristic: a bowl-typical
+    /// DOMINANT food, inside a detected circular rim, that is a substantial
+    /// central portion (it need NOT fill the whole container). The side view of
+    /// such a scene is the opaque container, so no side profile is used; the
+    /// hidden lower food is reconstructed as a rounded cavity sized to the FOOD's
+    /// own top-view width/depth — never the container rim — with a common wall
+    /// thickness removed.
+    private func detectBowl(
+        segments: [SegmentationService.SegmentedObject],
+        primaryIndex: Int?,
+        plate: PlateDetector.PlateResult,
+        scale: ScaleEstimate,
+        sideProfiles: [SideProfile],
+        maskWidth: Int,
+        maskHeight: Int
+    ) -> BowlModel? {
+        guard plate.detected, let pIdx = primaryIndex, pIdx < segments.count else { return nil }
+        let primary = segments[pIdx]
+        let label = primary.label.lowercased()
+        guard Self.bowlFoodKeywords.contains(where: { label.contains($0) }) else { return nil }
+        // Bowls hold one dominant dish.
+        let total = segments.reduce(0) { $0 + $1.pixelCount }
+        guard total > 0, Double(primary.pixelCount) / Double(total) >= 0.6 else { return nil }
+        // If the side view shows a clearly LOW, flat silhouette, the food is on a
+        // flat plate, not in a bowl — never fabricate a deep cavity for it.
+        for sp in sideProfiles {
+            if let usable = usableSideProfile(sp, for: primary.label), usable.aspectRatio < 0.40 {
+                return nil
+            }
+        }
+        guard let fp = footprintStats(primary.mask, maskWidth: maskWidth, maskHeight: maskHeight) else { return nil }
+        let bboxW = Double(fp.maxCol - fp.minCol + 1)
+        let bboxH = Double(fp.maxRow - fp.minRow + 1)
+        // The food need NOT fill the whole container (so a partly-filled bowl or
+        // a deep plate still qualifies); it just has to be a substantial central
+        // portion, not a small garnish.
+        guard bboxW / Double(maskWidth) >= 0.30, bboxH / Double(maskHeight) >= 0.30 else { return nil }
+        guard scale.pixelsPerCm > 0.01 else { return nil }
+        // WIDTH & DEPTH are the FOOD's own top-view footprint, never the bowl /
+        // plate rim, so a food smaller than its container is reconstructed at its
+        // true size.
+        let widthCm = bboxW / scale.pixelsPerCm
+        let depthCm = bboxH / scale.pixelsPerCm
+        let radiusCm = 0.25 * (widthCm + depthCm)
+        // Reject implausible sizes so a bad scale can't fabricate a huge cavity.
+        guard radiusCm >= 3.0, radiusCm <= 16.0 else { return nil }
+        let wallCm = 0.4
+        // The side is occluded, so fill depth is inferred, not measured. A
+        // rounded cavity cannot be deeper than its narrower half-extent, and a
+        // deep plate is wide but shallow, so tie the depth to the SMALLER
+        // dimension and cap it. Remove the base wall thickness.
+        let geomMaxDepthCm = 0.5 * min(widthCm, depthCm)
+        let innerDepthCm = min(6.5, max(1.5, min(radiusCm, geomMaxDepthCm) * 0.65 - wallCm))
+        return BowlModel(innerDepthCm: innerDepthCm, wallCm: wallCm)
+    }
+
     /// Build the estimated 3-D mesh for one food from its captured silhouettes.
     /// The returned mesh is also the volume source, so the user sees the exact
     /// geometry that drives weight, calories and diagnostics.
@@ -1060,9 +1203,11 @@ final class MonocularVolumeEstimator {
         depthCm: Double,
         heightCm: Double,
         topFrame: FrameCaptureService.CapturedFrame,
+        colorFrame: CVPixelBuffer?,
         maskWidth: Int,
         maskHeight: Int,
-        sideProfile: SideProfile? = nil
+        sideProfile: SideProfile? = nil,
+        bowl: BowlModel? = nil
     ) -> EstimatedObject {
         let centroid = footprint.centroid
         let rx = Float(max(widthCm, 2.0) / 200.0)   // half-width in metres
@@ -1331,6 +1476,16 @@ final class MonocularVolumeEstimator {
         // captured silhouettes and the final vertices are snapped back to the
         // source top mask after smoothing.
         @inline(__always) func cornerBounds(_ rr: Int, _ cc: Int) -> (bottom: Float, top: Float) {
+            if bowl != nil {
+                // Rounded bowl interior: a flat food surface on top (fraction 1)
+                // with the hidden underside curving DOWN into the bowl — deepest
+                // at the footprint centre (distance-transform maximum) and rising
+                // to meet the surface at the rim. Horizontally this is the exact
+                // top silhouette; vertically it is the bowl's rounded cavity.
+                let nd = min(1.0, edgeDist[corner(rr, cc)] / maxEdgeDist)
+                let bottom = 1.0 - sqrt(nd)
+                return (max(0.0, bottom), 1.0)
+            }
             if let sideProfile, !sideProfile.normalizedHeights.isEmpty {
                 let axisU = sideProfile.topAxis == .columns
                     ? Double(cc) / Double(max(gc, 1))
@@ -1553,7 +1708,10 @@ final class MonocularVolumeEstimator {
         // produce — the labels with a transverse-roundness value (tomato, apple,
         // orange, egg, onion, potato…) — is allowed the organic smoothing that
         // makes a dome look round.
-        let sharpSilhouette = transverseRoundnessStrength(for: label) <= 0
+        // Bowls always get the organic smoothing so the rounded cavity reads
+        // smooth; otherwise only genuinely round produce is smoothed and a
+        // flat/angular food keeps its exact hard silhouette.
+        let sharpSilhouette = bowl == nil && transverseRoundnessStrength(for: label) <= 0
         let subdivisionLevels = sharpSilhouette ? 0 : (faces.count > 45_000 ? 0 : 1)
         let taubinIterations = sharpSilhouette ? 0 : 3
         let smoothed = MeshSmoothing.smooth(
@@ -1747,17 +1905,24 @@ final class MonocularVolumeEstimator {
             return SIMD2<Float>(clamp01(sourceU), 1.0 - clamp01(sourceV))
         }
 
-        // Decode the captured top photo to BGRA ONCE per food and reuse it for
-        // the dominant tint AND every per-vertex sample below. Each of
-        // dominantColor / sampledVertexColors / sampleColor used to re-decode the
-        // full frame on the GPU, so a plate of several foods fired dozens of
-        // large CVPixelBuffer allocations during the memory-tight 3-D phase — and
-        // a single failed allocation silently collapsed that whole food to flat
-        // beige (the "no colours" bug). One shared decode removes that failure
-        // mode and cuts GPU pressure ~3×.
-        let sharedBGRA = Food3DTextureBaker.bgraCopy(of: topFrame.pixelBuffer)
+        // Sample colour from the MASK-ALIGNED preprocessed plate crop (BGRA,
+        // 512², the exact image the segmenter saw and the SAME space the masks
+        // live in), decoded to BGRA ONCE per food and reused for the dominant
+        // tint AND every per-vertex sample below.
+        //
+        // ROOT CAUSE of "food stays white": the masks span ONLY the plate crop,
+        // but the colour sampler used the FULL camera frame (topFrame) and mapped
+        // each mask coordinate across the whole frame (mc/maskWidth × frameW). A
+        // food-mask pixel near the crop edge therefore read the plate rim / table
+        // (near-white) instead of the food, washing every sampled colour toward
+        // white. The preprocessed crop is the same dimensions as the mask, so
+        // sampling it maps 1:1 to the real food pixel. It is also far smaller
+        // than the full frame, so the shared decode is cheaper too. Falls back to
+        // the full frame only if the preprocessed crop is somehow unavailable.
+        let colorBuffer = colorFrame ?? topFrame.pixelBuffer
+        let sharedBGRA = Food3DTextureBaker.bgraCopy(of: colorBuffer)
         if sharedBGRA == nil {
-            print("[MonocularEstimator] ⚠️ top-frame BGRA decode failed for \(label); per-vertex colours fall back to the dominant tint")
+            print("[MonocularEstimator] ⚠️ colour-frame BGRA decode failed for \(label); per-vertex colours fall back to the dominant tint")
         }
         let color = dominantColor(bgra: sharedBGRA, mask: mask, footprint: footprint, maskWidth: maskWidth, maskHeight: maskHeight)
         // Per-vertex colour sampled directly from the captured photos. Instead

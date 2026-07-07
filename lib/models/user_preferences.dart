@@ -103,6 +103,10 @@ class UserPreferences {
   /// variant. Free themes are always light and ignore this flag.
   final bool premiumThemeLight;
 
+  /// When true, pull weight + active energy from Apple Health and auto-adjust
+  /// the daily calorie target (adaptive coaching instead of a fixed number).
+  final bool healthSyncEnabled;
+
   const UserPreferences({
     this.id,
     this.name = '',
@@ -135,6 +139,7 @@ class UserPreferences {
     this.lastWeeklyBadgeRecapWeek = '',
     this.premiumUnlocked = false,
     this.premiumThemeLight = false,
+    this.healthSyncEnabled = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -171,6 +176,7 @@ class UserPreferences {
       'last_weekly_badge_recap_week': lastWeeklyBadgeRecapWeek,
       'premium_unlocked': premiumUnlocked ? 1 : 0,
       'premium_theme_light': premiumThemeLight ? 1 : 0,
+      'health_sync_enabled': healthSyncEnabled ? 1 : 0,
     };
   }
 
@@ -215,6 +221,7 @@ class UserPreferences {
           map['last_weekly_badge_recap_week'] as String? ?? '',
       premiumUnlocked: (map['premium_unlocked'] as int?) == 1,
       premiumThemeLight: (map['premium_theme_light'] as int?) == 1,
+      healthSyncEnabled: (map['health_sync_enabled'] as int?) == 1,
     );
   }
 
@@ -249,6 +256,7 @@ class UserPreferences {
     String? lastWeeklyBadgeRecapWeek,
     bool? premiumUnlocked,
     bool? premiumThemeLight,
+    bool? healthSyncEnabled,
   }) {
     return UserPreferences(
       id: id,
@@ -287,6 +295,7 @@ class UserPreferences {
           lastWeeklyBadgeRecapWeek ?? this.lastWeeklyBadgeRecapWeek,
       premiumUnlocked: premiumUnlocked ?? this.premiumUnlocked,
       premiumThemeLight: premiumThemeLight ?? this.premiumThemeLight,
+      healthSyncEnabled: healthSyncEnabled ?? this.healthSyncEnabled,
     );
   }
 }

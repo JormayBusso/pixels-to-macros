@@ -432,7 +432,15 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
     /// never white.
     private static let vertexColorSurfaceModifier = """
     #pragma body
-    _surface.diffuse.rgb = in.p2mVertexColor;
+    float3 p2mVC = in.p2mVertexColor;
+    // If the per-vertex colour source failed to bind on this device it reads as
+    // pure white (1,1,1); in that degenerate case keep the real average-colour
+    // diffuse (set in buildScene from the sampled food colour) so the food can
+    // never render flat white. Any real food vertex colour — even a light one —
+    // sums below this threshold, so per-vertex colour still applies normally.
+    if (p2mVC.r + p2mVC.g + p2mVC.b < 2.97) {
+        _surface.diffuse.rgb = p2mVC;
+    }
     """
 
     /// Build a scene whose geometry keeps a real `SCNGeometrySource(.color)` so

@@ -595,6 +595,115 @@ class AppLocalizations {
             'Trage dein Gewicht einmal pro Monat ein. Die App passt Kalorien vorsichtig nach Trend an, statt dauerhaft nur zu schätzen.',
       });
 
+  String get appleHealthSync => _t({
+        'en': 'Apple Health sync',
+        'pl': 'Synchronizacja z Apple Health',
+        'nl': 'Apple Health-synchronisatie',
+        'es': 'Sincronización con Apple Salud',
+        'de': 'Apple Health-Synchronisierung',
+      });
+
+  String get appleHealthSyncDesc => _t({
+        'en':
+            'Read your weight and active energy from Apple Health and adapt your daily calorie target to your body and how much you move — instead of a fixed number.',
+        'pl':
+            'Odczytuje masę i energię aktywności z Apple Health i dopasowuje dzienny cel kalorii do Twojego ciała i aktywności — zamiast stałej liczby.',
+        'nl':
+            'Leest je gewicht en actieve energie uit Apple Health en past je dagelijkse caloriedoel aan je lichaam en beweging aan — in plaats van een vast getal.',
+        'es':
+            'Lee tu peso y energía activa de Apple Salud y adapta tu objetivo diario de calorías a tu cuerpo y a cuánto te mueves, en vez de un número fijo.',
+        'de':
+            'Liest Gewicht und Aktivenergie aus Apple Health und passt dein tägliches Kalorienziel an Körper und Bewegung an — statt einer festen Zahl.',
+      });
+
+  String get healthSyncToggle => _t({
+        'en': 'Sync with Apple Health',
+        'pl': 'Synchronizuj z Apple Health',
+        'nl': 'Synchroniseren met Apple Health',
+        'es': 'Sincronizar con Apple Salud',
+        'de': 'Mit Apple Health synchronisieren',
+      });
+
+  String get healthSyncNow => _t({
+        'en': 'Sync now',
+        'pl': 'Synchronizuj teraz',
+        'nl': 'Nu synchroniseren',
+        'es': 'Sincronizar ahora',
+        'de': 'Jetzt synchronisieren',
+      });
+
+  String get healthSyncLatestWeight => _t({
+        'en': 'Latest weight',
+        'pl': 'Ostatnia masa',
+        'nl': 'Laatste gewicht',
+        'es': 'Último peso',
+        'de': 'Letztes Gewicht',
+      });
+
+  String get healthSyncTodayActive => _t({
+        'en': 'Active energy today',
+        'pl': 'Energia aktywności dziś',
+        'nl': 'Actieve energie vandaag',
+        'es': 'Energía activa hoy',
+        'de': 'Aktivenergie heute',
+      });
+
+  String get healthSyncActivityBonus => _t({
+        'en': 'Activity bonus',
+        'pl': 'Bonus za aktywność',
+        'nl': 'Activiteitsbonus',
+        'es': 'Bono por actividad',
+        'de': 'Aktivitätsbonus',
+      });
+
+  String get healthSyncAdaptiveTarget => _t({
+        'en': 'Adaptive target',
+        'pl': 'Cel adaptacyjny',
+        'nl': 'Adaptief doel',
+        'es': 'Objetivo adaptativo',
+        'de': 'Adaptives Ziel',
+      });
+
+  String get healthSyncLastSynced => _t({
+        'en': 'Last synced',
+        'pl': 'Ostatnia synchronizacja',
+        'nl': 'Laatst gesynchroniseerd',
+        'es': 'Última sincronización',
+        'de': 'Zuletzt synchronisiert',
+      });
+
+  String get healthSyncNever => _t({
+        'en': 'Not synced yet',
+        'pl': 'Jeszcze nie zsynchronizowano',
+        'nl': 'Nog niet gesynchroniseerd',
+        'es': 'Aún no sincronizado',
+        'de': 'Noch nicht synchronisiert',
+      });
+
+  String get healthSyncPermissionDenied => _t({
+        'en': 'Health access denied. Turn it on in Settings › Privacy & Security › Health.',
+        'pl': 'Odmówiono dostępu do Health. Włącz go w Ustawienia › Prywatność › Zdrowie.',
+        'nl': 'Health-toegang geweigerd. Zet het aan in Instellingen › Privacy › Gezondheid.',
+        'es': 'Acceso a Salud denegado. Actívalo en Ajustes › Privacidad › Salud.',
+        'de': 'Health-Zugriff verweigert. Aktiviere ihn in Einstellungen › Datenschutz › Health.',
+      });
+
+  String get healthSyncUnavailable => _t({
+        'en': 'Apple Health is only available on iPhone.',
+        'pl': 'Apple Health jest dostępne tylko na iPhone.',
+        'nl': 'Apple Health is alleen beschikbaar op iPhone.',
+        'es': 'Apple Salud solo está disponible en iPhone.',
+        'de': 'Apple Health ist nur auf dem iPhone verfügbar.',
+      });
+
+  String get healthSyncFailed => _t({
+        'en': 'Couldn\'t read Apple Health. Please try again.',
+        'pl': 'Nie udało się odczytać Apple Health. Spróbuj ponownie.',
+        'nl': 'Kon Apple Health niet lezen. Probeer het opnieuw.',
+        'es': 'No se pudo leer Apple Salud. Inténtalo de nuevo.',
+        'de': 'Apple Health konnte nicht gelesen werden. Bitte erneut versuchen.',
+      });
+
   String get logMonthlyWeight => _t({
         'en': 'Log monthly weight',
         'pl': 'Zapisz miesięczną masę',

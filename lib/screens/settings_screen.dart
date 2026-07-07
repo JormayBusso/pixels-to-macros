@@ -15,6 +15,7 @@ import '../models/user_preferences.dart';
 import '../providers/scroll_trigger_provider.dart';
 import '../providers/locale_provider.dart';
 import '../providers/user_prefs_provider.dart';
+import '../providers/health_sync_provider.dart';
 import '../providers/diabetes_provider.dart';
 import '../providers/pantry_provider.dart';
 import '../providers/weight_tracking_provider.dart';
@@ -373,6 +374,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       });
                     },
                   ),
+                ),
+                const SizedBox(height: 16),
+                _HealthSyncCard(
+                  onTargetChanged: (calories) {
+                    setState(() => _goalCtrl.text = calories.toString());
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -2981,6 +2988,156 @@ class _RemindersCardState extends State<_RemindersCard> {
         ),
       ),
     );
+  }
+}
+
+class _HealthSyncCard extends ConsumerWidget {
+  const _HealthSyncCard({required this.onTargetChanged});
+
+  final void Function(int calories) onTargetChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final state = ref.watch(healthSyncProvider);
+    final notifier = ref.read(healthSyncProvider.notifier);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.favorite_outline, color: context.primary600),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.appleHealthSync,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                if (state.syncing)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  Switch(
+                    value: state.enabled,
+                    onChanged: (value) async {
+                      await notifier.setEnabled(value);
+                      onTargetChanged(
+                          ref.read(userPrefsProvider).dailyCalorieGoal);
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.appleHealthSyncDesc,
+              style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
+            ),
+            if (state.error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _errorText(l10n, state.error!),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+            ],
+            if (state.enabled && state.hasSynced) ...[
+              const SizedBox(height: 12),
+              _statRow(context, l10n.healthSyncAdaptiveTarget,
+                  '${state.adaptiveTargetKcal} kcal',
+                  bold: true),
+              if (state.activityBonusKcal > 0)
+                _statRow(context, l10n.healthSyncActivityBonus,
+                    '+${state.activityBonusKcal} kcal'),
+              _statRow(context, l10n.healthSyncTodayActive,
+                  '${state.todayActiveKcal.round()} kcal'),
+              if (state.latestWeightKg != null)
+                _statRow(context, l10n.healthSyncLatestWeight,
+                    '${GoalDefaults.formatWeightKg(state.latestWeightKg!)} kg'),
+            ],
+            if (state.enabled) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      state.hasSynced
+                          ? '${l10n.healthSyncLastSynced}: ${_formatTime(state.lastSyncAt!)}'
+                          : l10n.healthSyncNever,
+                      style: TextStyle(
+                          fontSize: 11, color: context.appMutedTextColor),
+                    ),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: state.syncing
+                        ? null
+                        : () async {
+                            await notifier.syncNow();
+                            onTargetChanged(
+                                ref.read(userPrefsProvider).dailyCalorieGoal);
+                          },
+                    icon: const Icon(Icons.sync, size: 17),
+                    label: Text(l10n.healthSyncNow),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _errorText(AppLocalizations l10n, String key) {
+    switch (key) {
+      case 'healthSyncPermissionDenied':
+        return l10n.healthSyncPermissionDenied;
+      case 'healthSyncUnavailable':
+        return l10n.healthSyncUnavailable;
+      default:
+        return l10n.healthSyncFailed;
+    }
+  }
+
+  Widget _statRow(BuildContext context, String label, String value,
+      {bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style:
+                  TextStyle(fontSize: 12.5, color: context.appMutedTextColor)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+              color: bold ? context.primary600 : context.appTextColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTime(DateTime t) {
+    final h = t.hour.toString().padLeft(2, '0');
+    final m = t.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 }
 

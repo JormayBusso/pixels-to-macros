@@ -94,6 +94,19 @@ extension DietaryRestrictionX on DietaryRestriction {
     return false;
   }
 
+  /// True when [text] explicitly advertises this restriction as satisfied
+  /// (e.g. a "gluten-free" / "dairy-free" label). Used to *rank* clearly-safe
+  /// recipes higher for users with the restriction — never a substitute for the
+  /// exclusion done by [matchesText].
+  bool isExplicitlyFree(String text) {
+    final lower = text.toLowerCase();
+    final rules = _allergenRules[this]!;
+    for (final label in rules.safeLabels) {
+      if (lower.contains(label)) return true;
+    }
+    return false;
+  }
+
   String alertFor(String itemName) =>
       '$itemName may not fit your $shortLabel setting. Check ingredients and labels before logging it.';
 

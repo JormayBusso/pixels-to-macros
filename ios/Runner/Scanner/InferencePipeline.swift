@@ -292,6 +292,39 @@ final class InferencePipeline {
             return estimate.json
         }
 
+        // ── 3c. Bowl on a LiDAR device ──────────────────────────────────
+        // A food in a bowl is occluded: neither the side camera NOR LiDAR depth
+        // can see the food's hidden underside (the food surface blocks the view
+        // straight down into the bowl). So a detected bowl is reconstructed with
+        // the SAME rounded-cavity model as the non-LiDAR path — this keeps the
+        // 3-D model identical on both sensor paths and avoids meshing the
+        // container walls as food. Only fires when the conservative bowl
+        // heuristic matches; every other LiDAR scan is unchanged and still runs
+        // DepthFusion below.
+        if monocularEstimator.isBowlScene(
+            segments: segments,
+            topFrame: topFrame,
+            maskWidth: preprocessor.modelInputWidth,
+            maskHeight: preprocessor.modelInputHeight
+        ) {
+            print("[PIPELINE] LiDAR bowl detected — routing to rounded-cavity reconstruction")
+            let estimate = try monocularEstimator.estimate(
+                segments: segments,
+                topFrame: topFrame,
+                sideFrame: nil,
+                sideProfiles: [],
+                maskWidth: preprocessor.modelInputWidth,
+                maskHeight: preprocessor.modelInputHeight,
+                measuredHeightCm: nil,
+                preprocessedRGB: preprocessedRGB,
+                tableDistanceCm: recorder.tableDistanceCm
+            )
+            lastModel3DPath = estimate.modelPath
+            lastModel3DObjects = estimate.objects
+            print("[PIPELINE] LiDAR bowl estimate success: true, path=\(estimate.modelPath)")
+            return estimate.json
+        }
+
         // ── 4. Multi-frame depth fusion ─────────────────────────────────
         let fusion = DepthFusion()
 

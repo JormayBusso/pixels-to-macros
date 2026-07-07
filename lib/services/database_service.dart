@@ -50,7 +50,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 43,
+      version: 44,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -160,7 +160,8 @@ class DatabaseService {
         weekly_badge_recap_enabled INTEGER NOT NULL DEFAULT 1,
         last_weekly_badge_recap_week TEXT NOT NULL DEFAULT '',
         premium_unlocked         INTEGER NOT NULL DEFAULT 0,
-        premium_theme_light      INTEGER NOT NULL DEFAULT 0
+        premium_theme_light      INTEGER NOT NULL DEFAULT 0,
+        health_sync_enabled      INTEGER NOT NULL DEFAULT 0
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
@@ -731,6 +732,12 @@ class DatabaseService {
       try {
         await db.execute(
             'ALTER TABLE user_preferences ADD COLUMN premium_theme_light INTEGER NOT NULL DEFAULT 0');
+      } catch (_) {}
+    }
+    if (oldVersion < 44) {
+      try {
+        await db.execute(
+            'ALTER TABLE user_preferences ADD COLUMN health_sync_enabled INTEGER NOT NULL DEFAULT 0');
       } catch (_) {}
     }
   }
