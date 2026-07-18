@@ -28,7 +28,7 @@ class PantryNotifier extends StateNotifier<PantryState> {
     state = PantryState(items: items);
   }
 
-  Future<void> addItem(String name, {String? category}) async {
+  Future<void> addItem(String name, {String? category, String? location}) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;
     final now = DateTime.now();
@@ -36,6 +36,7 @@ class PantryNotifier extends StateNotifier<PantryState> {
       PantryItem(
         name: trimmed,
         category: category,
+        location: location,
         createdAt: now,
         updatedAt: now,
       ),
@@ -46,6 +47,14 @@ class PantryNotifier extends StateNotifier<PantryState> {
   Future<void> toggleAvailable(PantryItem item) async {
     await DatabaseService.instance.updatePantryItem(
       item.copyWith(available: !item.available, updatedAt: DateTime.now()),
+    );
+    await load();
+  }
+
+  /// Move an item to a storage location (fridge / freezer / fruit bowl / …).
+  Future<void> setLocation(PantryItem item, String? location) async {
+    await DatabaseService.instance.updatePantryItem(
+      item.copyWith(location: location, updatedAt: DateTime.now()),
     );
     await load();
   }
@@ -61,6 +70,7 @@ class PantryNotifier extends StateNotifier<PantryState> {
   Future<void> addOrIncrement(
     String name, {
     String? category,
+    String? location,
     double quantity = 1,
     String? unit,
   }) async {
@@ -81,6 +91,7 @@ class PantryNotifier extends StateNotifier<PantryState> {
           quantity: (existing.available ? existing.quantity : 0) + quantity,
           available: true,
           category: existing.category ?? category,
+          location: existing.location ?? location,
           unit: existing.unit ?? unit,
           updatedAt: now,
         ),
@@ -90,6 +101,7 @@ class PantryNotifier extends StateNotifier<PantryState> {
         PantryItem(
           name: trimmed,
           category: category,
+          location: location,
           quantity: quantity,
           unit: unit,
           createdAt: now,
@@ -100,11 +112,14 @@ class PantryNotifier extends StateNotifier<PantryState> {
     await load();
   }
 
-  /// Consume one matching available item (by normalized name) when the user
-  /// logs/scans food. Reduces quantity; marks the item unavailable when it
-  /// runs out (kept as a row so it can be re-stocked). Returns true if a
-  /// matching item was found and decremented.
-  Future<bool> consume(String label, {double amount = 1}) async {
+  /// Consume a matching available item (by normalized name) when the user
+  /// logs/scans food. When [grams] is given and the stocked item is measured by
+  /// weight/volume, the exact grams eaten are subtracted (200 g − 50 g = 150 g;
+  /// likewise for yoghurt in ml). Piece-counted items, or the [amount] path used
+  /// when reverting a "bought" action, decrement by whole units. Marks the item
+  /// unavailable when it runs out (kept as a row so it can be re-stocked).
+  /// Returns true if a matching item was found and decremented.
+  Future<bool> consume(String label, {double amount = 1, double? grams}) async {
     final key = PantryItem.normalizeKey(label);
     PantryItem? match;
     for (final it in state.items) {
@@ -114,7 +129,21 @@ class PantryNotifier extends StateNotifier<PantryState> {
       }
     }
     if (match == null) return false;
-    final remaining = match.quantity - amount;
+    final unit = (match.unit ?? '').toLowerCase().trim();
+    const gramLike = {'g', 'gram', 'grams', 'ml', 'milliliter', 'millilitre'};
+    const kiloLike = {'kg', 'kilogram', 'kilograms', 'l', 'liter', 'litre'};
+    double decrement = amount;
+    if (grams != null && grams > 0) {
+      if (gramLike.contains(unit)) {
+        decrement = grams;
+      } else if (kiloLike.contains(unit)) {
+        decrement = grams / 1000.0;
+      } else {
+        // Piece-counted (unitless / 'pcs' / 'pack'…): one logged food uses one.
+        decrement = 1;
+      }
+    }
+    final remaining = match.quantity - decrement;
     await DatabaseService.instance.updatePantryItem(
       match.copyWith(
         quantity: remaining > 0 ? remaining : 0,

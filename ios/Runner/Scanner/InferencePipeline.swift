@@ -106,6 +106,7 @@ final class InferencePipeline {
         lastModel3DObjects = []
 
         print("[SCAN] ═══════════ VIDEO SCAN START ═══════════")
+        print("[SCAN] build=2026-07-18e (reverted MobileSAM refiner + depth-relief → exact dual-silhouette; colour from photos)")
         print("[SCAN] recorder: topFrame=\(recorder.topFrame != nil), topViewFrames=\(recorder.topViewFrames.count), lightFrames=\(recorder.lightFrames.count), frameCount=\(recorder.frameCount)")
 
         // If no top frame was captured (e.g. recording stopped immediately),
@@ -185,7 +186,7 @@ final class InferencePipeline {
         // genuinely needs the veto) OR when YOLO itself produced no confident
         // food instance.
         let yoloConfident = useYolo &&
-            (segments.map { $0.confidence }.max() ?? 0) >= 0.35
+            (segments.map { $0.confidence }.max() ?? 0) >= 0.25
         if !mlKitResult.hasFood && !yoloConfident {
             print("[SCAN] food-presence: REJECT (mlKit veto, no confident YOLO segment)")
             print("[PIPELINE] export success: false")
@@ -200,6 +201,17 @@ final class InferencePipeline {
         // Override the largest segment's label with ML Kit's best specific
         // food when available. See `applyMlKitLabelOverride` for the policy.
         segments = applyMlKitLabelOverride(segments: segments, mlKit: mlKitResult)
+
+        // Box-prompted MobileSAM mask refinement: when the encoder+decoder are
+        // bundled, tighten each coarse food mask into a pixel-exact silhouette so
+        // the top/side reconstruction has cleaner outlines. Fully fail-safe — any
+        // per-segment failure keeps the original mask. Inert until bundled.
+        if MobileSamRefiner.shared.isAvailable {
+            segments = MobileSamRefiner.shared.refine(
+                segments: segments,
+                pixelBuffer: preprocessedRGB
+            )
+        }
 
         // Crop-and-classify refinement: when a dedicated fine-grained food
         // classifier is bundled, run it ONCE on the top frame over the largest
@@ -216,6 +228,18 @@ final class InferencePipeline {
         // lists miss still get a usable label. Runs after the classifier and
         // unloads its encoder before the 3-D phase.
         segments = refineLabelsWithOpenVocab(
+            segments: segments,
+            frame: preprocessedRGB,
+            maskWidth: preprocessor.modelInputWidth,
+            maskHeight: preprocessor.modelInputHeight
+        )
+
+        // Colour sanity: the ML models ignore colour, so a green cucumber can be
+        // named "ice cream" / "chocolate cake". Read each segment's real mean
+        // colour from the mask-aligned frame, log it, and correct labels that
+        // grossly contradict it. The [COLOR] log also reveals a wrong mask (one
+        // sitting on a white plate reads family=white/grey).
+        segments = applyColorSanity(
             segments: segments,
             frame: preprocessedRGB,
             maskWidth: preprocessor.modelInputWidth,
@@ -574,8 +598,8 @@ final class InferencePipeline {
               "avgConf=\(String(format: "%.3f", avgConfidence)), " +
               "segments=\(segments.count)")
 
-        if foodFraction < 0.015 {
-            print("[SCAN] foodPresenceGate: REJECT foodFraction < 0.015")
+        if foodFraction < 0.008 {
+            print("[SCAN] foodPresenceGate: REJECT foodFraction < 0.008")
             return false
         }
         // A CONFIDENT, food-filled frame is a real (possibly multi-item) plate —
@@ -586,9 +610,9 @@ final class InferencePipeline {
         // hallucination on a non-food scene). This is what lets multi-item
         // plates scan instead of being thrown away.
         let confidentScene = avgConfidence >= 0.50
-        let strongTopSilhouette = (segments.first?.pixelCount ?? 0) >= 650 &&
-            largestFraction >= 0.006 && foodFraction >= 0.015
-        if avgConfidence < 0.32 {
+        let strongTopSilhouette = (segments.first?.pixelCount ?? 0) >= 400 &&
+            largestFraction >= 0.004 && foodFraction >= 0.008
+        if avgConfidence < 0.25 {
             if strongTopSilhouette {
                 print("[SCAN] foodPresenceGate: ALLOW low-confidence but clear top silhouette")
             } else {
@@ -1071,6 +1095,13 @@ final class InferencePipeline {
                     print("[Classifier] blocked composite \(label) from overriding produce \(segment.label)")
                     continue
                 }
+                // The Food-101 classifier has NO raw produce classes, so any
+                // attempt to rename a whole-produce segment to a (non-matching)
+                // Food-101 dish is wrong by construction — block it outright.
+                if Self.isWholeProduce(segment.label), !sameFood {
+                    print("[Classifier] blocked \(label) from renaming whole produce \(segment.label)")
+                    continue
+                }
                 let usableCorrection = classifierStrong ||
                     (segmentationUnsure && confidence >= 0.50) ||
                     (sameFood && confidence >= 0.45)
@@ -1188,6 +1219,107 @@ final class InferencePipeline {
             }
         }
         return updated
+    }
+
+    /// Colour-consistency guard. The base models have no notion of colour, so a
+    /// green cucumber can be mislabelled "ice cream" / "chocolate cake". Read
+    /// each segment's mean colour from the (mask-aligned) preprocessed frame,
+    /// log it, and when a label grossly contradicts the colour, replace it with
+    /// a colour-consistent produce label. The [COLOR] log also exposes a wrong
+    /// mask — one that sits on the white plate reads family=white/grey.
+    private func applyColorSanity(
+        segments: [SegmentationService.SegmentedObject],
+        frame: CVPixelBuffer,
+        maskWidth: Int,
+        maskHeight: Int
+    ) -> [SegmentationService.SegmentedObject] {
+        guard !segments.isEmpty,
+              let bgra = Food3DTextureBaker.bgraCopy(of: frame) else { return segments }
+        CVPixelBufferLockBaseAddress(bgra, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(bgra, .readOnly) }
+        guard let base = CVPixelBufferGetBaseAddress(bgra) else { return segments }
+        let w = CVPixelBufferGetWidth(bgra)
+        let h = CVPixelBufferGetHeight(bgra)
+        let rowBytes = CVPixelBufferGetBytesPerRow(bgra)
+        let ptr = base.assumingMemoryBound(to: UInt8.self)
+
+        var updated = segments
+        for i in segments.indices {
+            let seg = segments[i]
+            let mh = seg.mask.count
+            let mw = seg.mask.first?.count ?? 0
+            guard mh > 0, mw > 0 else { continue }
+            let step = max(1, max(mw, mh) / 48)
+            var rSum = 0.0, gSum = 0.0, bSum = 0.0, n = 0.0
+            var r = 0
+            while r < mh {
+                var c = 0
+                while c < mw {
+                    if seg.mask[r][c] == 1 {
+                        let x = min(w - 1, c * w / max(mw, 1))
+                        let y = min(h - 1, r * h / max(mh, 1))
+                        let off = y * rowBytes + x * 4
+                        rSum += Double(ptr[off + 2])
+                        gSum += Double(ptr[off + 1])
+                        bSum += Double(ptr[off])
+                        n += 1
+                    }
+                    c += step
+                }
+                r += step
+            }
+            guard n > 0 else { continue }
+            let rr = rSum / n, gg = gSum / n, bb = bSum / n
+            let family = Self.colorFamily(r: rr, g: gg, b: bb)
+            print("[COLOR] seg#\(i) \(seg.label): rgb=(\(Int(rr)),\(Int(gg)),\(Int(bb))) family=\(family)")
+            if let corrected = Self.colorCorrectedLabel(currentLabel: seg.label, family: family),
+               corrected != seg.label.lowercased() {
+                print("[COLOR] corrected \(seg.label) -> \(corrected) (colour=\(family))")
+                updated[i] = SegmentationService.SegmentedObject(
+                    label: corrected,
+                    classIndex: seg.classIndex,
+                    mask: seg.mask,
+                    pixelCount: seg.pixelCount,
+                    centroid: seg.centroid,
+                    confidence: seg.confidence
+                )
+            }
+        }
+        return updated
+    }
+
+    private static func colorFamily(r: Double, g: Double, b: Double) -> String {
+        let maxC = max(r, max(g, b))
+        let minC = min(r, min(g, b))
+        // Near-grey (plate/background, cream/white foods): no hue to judge.
+        if maxC - minC < 26 { return maxC > 165 ? "white" : (maxC < 70 ? "dark" : "grey") }
+        if g > r * 1.12 && g >= b * 1.02 && g > 55 { return "green" }
+        if r > g * 1.25 && r > b * 1.2 && r > 70 { return "red" }
+        if r > 150 && g > 85 && g < 195 && b < 95 { return "orange" }
+        return "other"
+    }
+
+    private static func colorCorrectedLabel(currentLabel: String, family: String) -> String? {
+        let l = currentLabel.lowercased()
+        switch family {
+        case "green":
+            let ok = ["cucumber", "lettuce", "broccoli", "salad", "spinach",
+                      "pea", "bean", "zucchini", "avocado", "kale", "celery",
+                      "lime", "kiwi", "asparagus", "cabbage", "herb", "pepper",
+                      "pickle", "edamame", "sprout", "green"]
+            return ok.contains(where: { l.contains($0) }) ? nil : "cucumber"
+        case "red":
+            let ok = ["tomato", "strawberr", "apple", "pepper", "cherry",
+                      "radish", "beet", "raspberr", "watermelon", "pomegranate",
+                      "chili", "red"]
+            return ok.contains(where: { l.contains($0) }) ? nil : "tomato"
+        case "orange":
+            let ok = ["carrot", "orange", "pumpkin", "sweet potato", "mango",
+                      "apricot", "peach", "squash", "cantaloupe", "papaya"]
+            return ok.contains(where: { l.contains($0) }) ? nil : "carrot"
+        default:
+            return nil
+        }
     }
 
     private static let recognitionDescriptorWords: Set<String> = [

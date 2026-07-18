@@ -182,6 +182,18 @@ final class MonocularVolumeEstimator {
     /// tracked camera-to-table distance (see `tableDistanceCm`).
     static var useMetricDepthVolume = false
 
+    /// Depth Anything V2 is unreliable for ABSOLUTE scale (above), but its
+    /// RELATIVE per-pixel relief (which parts of the food are higher) is
+    /// informative. When enabled we use that relief only to SHAPE the top
+    /// surface of the reconstructed mesh; the absolute height/scale still comes
+    /// from the reliable plate-diameter + side-silhouette path, so a bad depth
+    /// scale can no longer inflate the volume. Fail-safe: with no depth, low
+    /// coverage, or a near-flat food the mesh is built exactly as before.
+    /// **OFF** for now: the user requires the mesh to use the EXACT top/side
+    /// silhouettes, so depth-based top-surface shaping is disabled until it is
+    /// validated on-device to not distort the outline.
+    static var useDepthRelief = false
+
     func estimate(
         segments: [SegmentationService.SegmentedObject],
         topFrame: FrameCaptureService.CapturedFrame,
@@ -219,7 +231,8 @@ final class MonocularVolumeEstimator {
         // grid aligned to the mask so each food's height above the table can be
         // MEASURED instead of taken from a fixed class prior.
         let depthGrid: MonoDepthService.DepthGrid? = {
-            guard MonocularVolumeEstimator.useMetricDepthVolume,
+            guard MonocularVolumeEstimator.useMetricDepthVolume
+                    || MonocularVolumeEstimator.useDepthRelief,
                   let rgb = preprocessedRGB, monoDepth.isAvailable else { return nil }
             return autoreleasepool {
                 monoDepth.depthGrid(pixelBuffer: rgb, targetW: maskWidth, targetH: maskHeight)
@@ -416,6 +429,23 @@ final class MonocularVolumeEstimator {
                 )
             }
             let id = "\(sanitised(seg.label))_\(idx)"
+            // Depth-relief shaping (gated + fail-safe): a normalized per-pixel
+            // top-surface relief from the metric depth, used ONLY to shape the
+            // mesh top surface — the absolute height/scale stays from the
+            // plate/side path. Skipped for bowls, low coverage, or flat foods.
+            var reliefValues: [[Float]]? = nil
+            var reliefWeight: Float = 0
+            if MonocularVolumeEstimator.useDepthRelief, bowl == nil, let grid = depthGrid,
+               let relief = monoDepth.reliefGrid(
+                   depth: grid, mask: seg.mask,
+                   maskWidth: maskWidth, maskHeight: maskHeight),
+               relief.coverage >= 0.35 {
+                reliefValues = relief.values
+                // Weight rises with coverage, capped at 0.5 so the smooth base
+                // shape is preserved and depth noise cannot dominate the surface.
+                reliefWeight = Float(min(0.5, max(0.0, relief.coverage - 0.35)))
+                print("[MonocularEstimator] depth-relief food#\(idx) \(seg.label): cov=\(String(format: "%.2f", relief.coverage)) peakH=\(String(format: "%.2f", relief.peakHeightCm))cm weight=\(String(format: "%.2f", reliefWeight))")
+            }
             let estimatedObject = makeEstimatedObject(
                 id: id,
                 label: seg.label,
@@ -430,7 +460,9 @@ final class MonocularVolumeEstimator {
                 maskWidth: maskWidth,
                 maskHeight: maskHeight,
                 sideProfile: profile,
-                bowl: bowl
+                bowl: bowl,
+                reliefGrid: reliefValues,
+                reliefWeight: reliefWeight
             )
             let object = estimatedObject.object
             objects.append(object)
@@ -1207,7 +1239,9 @@ final class MonocularVolumeEstimator {
         maskWidth: Int,
         maskHeight: Int,
         sideProfile: SideProfile? = nil,
-        bowl: BowlModel? = nil
+        bowl: BowlModel? = nil,
+        reliefGrid: [[Float]]? = nil,
+        reliefWeight: Float = 0
     ) -> EstimatedObject {
         let centroid = footprint.centroid
         let rx = Float(max(widthCm, 2.0) / 200.0)   // half-width in metres
@@ -1486,6 +1520,25 @@ final class MonocularVolumeEstimator {
                 let bottom = 1.0 - sqrt(nd)
                 return (max(0.0, bottom), 1.0)
             }
+            // Blend the measured depth relief into the TOP-surface fraction only
+            // (bottom rests on the plate). Weighted, clamped, and skipped where
+            // depth has no data, so it refines the reliable base shape without
+            // ever breaking it. `rr`/`cc` are captured from `cornerBounds`.
+            func finish(_ bottom: Float, _ top: Float) -> (bottom: Float, top: Float) {
+                var t = top
+                if let relief = reliefGrid, reliefWeight > 0 {
+                    let mc = min(maskWidth - 1, max(0,
+                        footprint.minCol + Int((Double(cc) / Double(max(1, gc))) * Double(bboxW - 1))))
+                    let mr = min(maskHeight - 1, max(0,
+                        footprint.minRow + Int((Double(rr) / Double(max(1, gr))) * Double(bboxH - 1))))
+                    let rf = relief[mr][mc]
+                    if rf >= 0 {
+                        t = t * (1 - reliefWeight) + max(bottom + 0.02, rf) * reliefWeight
+                    }
+                }
+                let lo = max(0, bottom)
+                return (lo, min(1, max(lo + 0.001, t)))
+            }
             if let sideProfile, !sideProfile.normalizedHeights.isEmpty {
                 let axisU = sideProfile.topAxis == .columns
                     ? Double(cc) / Double(max(gc, 1))
@@ -1536,14 +1589,13 @@ final class MonocularVolumeEstimator {
                     let roundBlend: Float = 0.55
                     top = min(domeTop, top * (1.0 - roundBlend) + domeTop * roundBlend)
                 }
-                let lo = max(0, bottom)
-                return (lo, min(1, max(lo + 0.001, top)))
+                return finish(bottom, top)
             }
             // No side silhouette: dome the top silhouette via its distance
             // transform (round) or a near-flat cap (box); base rests on plate.
             let nd = min(1.0, edgeDist[corner(rr, cc)] / maxEdgeDist)
             let topShape: Float = transverseStrength > 0 ? sqrt(nd) : smoothstep01(nd * 3.0)
-            return (0, max(0.02, topShape))
+            return finish(0, max(0.02, topShape))
         }
 
         @inline(__always) func cornerX(_ cc: Int) -> Float {
@@ -1711,9 +1763,14 @@ final class MonocularVolumeEstimator {
         // Bowls always get the organic smoothing so the rounded cavity reads
         // smooth; otherwise only genuinely round produce is smoothed and a
         // flat/angular food keeps its exact hard silhouette.
-        let sharpSilhouette = bowl == nil && transverseRoundnessStrength(for: label) <= 0
-        let subdivisionLevels = sharpSilhouette ? 0 : (faces.count > 45_000 ? 0 : 1)
-        let taubinIterations = sharpSilhouette ? 0 : 3
+        // Smooth EVERY food (subdivide + Taubin) so a coarse silhouette cage can
+        // never render as a faceted spike/point — a repeated user complaint. The
+        // outline is re-snapped to the exact mask below, so smoothing keeps the
+        // captured silhouette exact while removing facets. Round produce gets an
+        // extra Taubin pass for a fuller organic surface.
+        let roundProduce = bowl != nil || transverseRoundnessStrength(for: label) > 0
+        let subdivisionLevels = faces.count > 45_000 ? 0 : 1
+        let taubinIterations = roundProduce ? 4 : 3
         let smoothed = MeshSmoothing.smooth(
             vertices: vertices,
             faces: faces,
@@ -1919,12 +1976,20 @@ final class MonocularVolumeEstimator {
         // sampling it maps 1:1 to the real food pixel. It is also far smaller
         // than the full frame, so the shared decode is cheaper too. Falls back to
         // the full frame only if the preprocessed crop is somehow unavailable.
-        let colorBuffer = colorFrame ?? topFrame.pixelBuffer
-        let sharedBGRA = Food3DTextureBaker.bgraCopy(of: colorBuffer)
+        // ALWAYS colour the food from the captured photos — never a synthetic
+        // per-label colour. Decode the mask-aligned preprocessed crop first; if
+        // that allocation fails under 3-D-phase memory pressure, retry the full
+        // top frame (still a real photo) so the tint is always sampled from
+        // pixels the camera actually saw. dominantColor prefers the eroded mask
+        // interior, so a loose outline that grazes the plate rim no longer
+        // bleeds white into the food colour.
+        let sharedBGRA = Food3DTextureBaker.bgraCopy(of: colorFrame ?? topFrame.pixelBuffer)
+            ?? Food3DTextureBaker.bgraCopy(of: topFrame.pixelBuffer)
         if sharedBGRA == nil {
-            print("[MonocularEstimator] ⚠️ colour-frame BGRA decode failed for \(label); per-vertex colours fall back to the dominant tint")
+            print("[MonocularEstimator] ⚠️ colour-frame BGRA decode failed for \(label) — both crop and full-frame decode returned nil")
         }
         let color = dominantColor(bgra: sharedBGRA, mask: mask, footprint: footprint, maskWidth: maskWidth, maskHeight: maskHeight)
+        print("[MonocularEstimator] colour \(label) = (\(color[0]),\(color[1]),\(color[2])) src=photo")
         // Per-vertex colour sampled directly from the captured photos. Instead
         // of a single flat tint, every vertex takes the real colour at its own
         // position on the food, so natural variation (ripening blush,
@@ -2099,6 +2164,11 @@ final class MonocularVolumeEstimator {
                     }
                 }
                 if n > 0 { sr = rSum / n; sg = gSum / n; sb = bSum / n }
+                // Plate guard: a bright, colourless sample is the white plate
+                // showing through a loose mask — use the food base colour so the
+                // surface never turns white.
+                let mxS = max(sr, max(sg, sb)), mnS = min(sr, min(sg, sb))
+                if mnS > 175, mxS - mnS < 40 { sr = baseR; sg = baseG; sb = baseB }
             }
             // Shadow neutralisation. A shadow cast across the food darkens the
             // sampled pixels WITHOUT changing the underlying hue, so without this
@@ -2181,6 +2251,12 @@ final class MonocularVolumeEstimator {
         let stride = max(1, Int((Double(max(rows, cols)) / 50.0).rounded(.up)))
 
         var samples: [(r: Double, g: Double, b: Double, lum: Double)] = []
+        var interiorSamples: [(r: Double, g: Double, b: Double, lum: Double)] = []
+        // Erode the mask by ~2 sampling steps: a pixel only counts as "interior"
+        // if the mask is solid this far up/down/left/right of it. Sampling the
+        // interior first keeps the tint on the real food and off the plate rim
+        // that a loose outline can graze.
+        let erode = 2 * stride
         var mr = minR
         while mr <= maxRow {
             var mc = minC
@@ -2192,19 +2268,27 @@ final class MonocularVolumeEstimator {
                     let r = Double(ptr[off + 2]), g = Double(ptr[off + 1]), b = Double(ptr[off + 0])
                     let lum = 0.299 * r + 0.587 * g + 0.114 * b
                     samples.append((r, g, b, lum))
+                    if mr - erode >= 0, mr + erode < maskHeight, mc - erode >= 0, mc + erode < maskWidth,
+                       mask[mr - erode][mc] == 1, mask[mr + erode][mc] == 1,
+                       mask[mr][mc - erode] == 1, mask[mr][mc + erode] == 1 {
+                        interiorSamples.append((r, g, b, lum))
+                    }
                 }
                 mc += stride
             }
             mr += stride
         }
+        // Prefer the eroded interior when it has enough pixels; otherwise use the
+        // full in-mask set (tiny foods may have no interior after erosion).
+        var chosen = interiorSamples.count >= 8 ? interiorSamples : samples
         // Keep only the central 5-95% luminance band so specular highlights and
         // cast shadows cannot wash out or darken the dominant hue, then take the
         // trimmed mean of that band as the representative food colour.
-        if samples.count >= 8 {
-            samples.sort { $0.lum < $1.lum }
-            let lo = Int(Double(samples.count) * 0.05)
-            let hi = max(lo + 1, Int(Double(samples.count) * 0.95))
-            let band = samples[lo..<min(hi, samples.count)]
+        if chosen.count >= 8 {
+            chosen.sort { $0.lum < $1.lum }
+            let lo = Int(Double(chosen.count) * 0.05)
+            let hi = max(lo + 1, Int(Double(chosen.count) * 0.95))
+            let band = chosen[lo..<min(hi, chosen.count)]
             var rSum = 0.0, gSum = 0.0, bSum = 0.0
             for s in band { rSum += s.r; gSum += s.g; bSum += s.b }
             let n = Double(band.count)

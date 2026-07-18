@@ -270,6 +270,9 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
         // food colours render at full brightness — the top crown, the silhouette
         // sides and the reasoned underside all in their captured colour.
         let sidecarURL = url.deletingPathExtension().appendingPathExtension("p2mesh")
+        let sidecarExists = FileManager.default.fileExists(atPath: sidecarURL.path)
+        let sidecarSize: Int = (try? FileManager.default.attributesOfItem(atPath: sidecarURL.path)[.size] as? Int) ?? 0
+        print("[SCAN] SceneKit: sidecar=\(sidecarURL.lastPathComponent) exists=\(sidecarExists) size=\(sidecarSize) bytes")
         if let objects = loadMeshSidecar(at: sidecarURL), !objects.isEmpty {
             let scene = buildScene(fromSidecar: objects)
             configure(scene: scene, modelURL: url)
@@ -563,6 +566,14 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
                 material.isDoubleSided = true
                 material.roughness.contents = 0.68
                 material.metalness.contents = 0.0
+                // USD/ModelIO import drops the baked colour for our monocular
+                // meshes, so the USD fallback path renders flat white. When a
+                // node has no per-vertex colour source, force a warm food tint so
+                // a food is never a white blob even if the sidecar failed to load.
+                if !hasVertexColors {
+                    material.diffuse.contents = UIColor(
+                        red: 0.78, green: 0.60, blue: 0.44, alpha: 1.0)
+                }
             }
         }
 

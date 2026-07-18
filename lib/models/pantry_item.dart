@@ -3,6 +3,7 @@ class PantryItem {
     this.id,
     required this.name,
     this.category,
+    this.location,
     this.quantity = 1,
     this.unit,
     this.available = true,
@@ -14,6 +15,7 @@ class PantryItem {
         id: map['id'] as int?,
         name: (map['name'] as String?) ?? '',
         category: map['category'] as String?,
+        location: map['location'] as String?,
         quantity: (map['quantity'] as num?)?.toDouble() ?? 1,
         unit: map['unit'] as String?,
         available: (map['available'] as int?) != 0,
@@ -26,6 +28,7 @@ class PantryItem {
   final int? id;
   final String name;
   final String? category;
+  final String? location;
   final double quantity;
   final String? unit;
   final bool available;
@@ -36,6 +39,7 @@ class PantryItem {
         if (id != null) 'id': id,
         'name': name,
         'category': category,
+        'location': location,
         'quantity': quantity,
         'unit': unit,
         'available': available ? 1 : 0,
@@ -47,6 +51,7 @@ class PantryItem {
     int? id,
     String? name,
     String? category,
+    String? location,
     double? quantity,
     String? unit,
     bool? available,
@@ -57,6 +62,7 @@ class PantryItem {
       id: id ?? this.id,
       name: name ?? this.name,
       category: category ?? this.category,
+      location: location ?? this.location,
       quantity: quantity ?? this.quantity,
       unit: unit ?? this.unit,
       available: available ?? this.available,

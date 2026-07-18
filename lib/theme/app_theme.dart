@@ -406,7 +406,11 @@ class AppVisualTheme {
         premium: false,
         background: seed.surfaceColor,
         surface: Colors.white,
-        cardColor: card,
+        // Free themes use PURE-WHITE cards on the seed's pale tinted scaffold
+        // (seed.surfaceColor) so container edges stay clearly visible — a
+        // near-white tinted card blended into the near-white background and the
+        // edges disappeared.
+        cardColor: Colors.white,
         appBarColor: seed.surfaceColor,
         navBarColor: card,
         inputFillColor: input,

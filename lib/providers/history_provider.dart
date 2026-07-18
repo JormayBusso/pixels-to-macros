@@ -49,7 +49,13 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
       await notifier.load();
     }
     for (final food in result.foods) {
-      await notifier.consume(food.label);
+      // Subtract the grams actually eaten so a partly-used stock stays correct
+      // (e.g. 200 g tomatoes − a 50 g portion = 150 g left). Weight ≈ scanned
+      // volume × a typical food density (0.9 g/cm³ fallback, matching the rest
+      // of the app); the pantry decrement is unit-aware so piece-counted items
+      // still drop by one.
+      final grams = food.volumeCm3 > 0 ? food.volumeCm3 * 0.9 : null;
+      await notifier.consume(food.label, grams: grams);
     }
   }
 

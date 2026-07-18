@@ -283,6 +283,76 @@ final class MonoDepthService {
         )
     }
 
+    /// Per-cell **relative** top-surface relief (0 = table height, 1 = the food's
+    /// own peak), aligned to the mask grid. This is used to SHAPE the
+    /// reconstructed top surface — the absolute scale still comes from the plate/
+    /// side path, because the metric depth's absolute scale is unreliable at the
+    /// ~30 cm hold distance, but its *relative* relief (which pixels are higher)
+    /// is informative. Cells outside the food carry -1.
+    struct ReliefGrid {
+        let values: [[Float]]
+        let coverage: Double
+        let peakHeightCm: Double
+    }
+
+    func reliefGrid(
+        depth: DepthGrid,
+        mask: [[UInt8]],
+        maskWidth: Int,
+        maskHeight: Int
+    ) -> ReliefGrid? {
+        guard maskWidth == depth.width, maskHeight == depth.height else { return nil }
+
+        // Table reference = median depth of a 2-px ring just outside the mask.
+        var ring: [Float] = []
+        ring.reserveCapacity(2048)
+        for r in 0..<maskHeight {
+            for c in 0..<maskWidth where mask[r][c] == 0 {
+                if isBorderNeighbour(mask, r: r, c: c, w: maskWidth, h: maskHeight) {
+                    let d = depth.at(r, c)
+                    if d.isFinite && d > 0 { ring.append(d) }
+                }
+            }
+        }
+        guard ring.count >= 12 else { return nil }
+        ring.sort()
+        let tableDepth = Double(ring[ring.count / 2])
+        guard tableDepth > 0.05, tableDepth < 5.0 else { return nil }
+
+        var heights = [[Float]](
+            repeating: [Float](repeating: -1, count: maskWidth), count: maskHeight)
+        var minFoodDepth = tableDepth
+        var foodPixels = 0
+        var validPixels = 0
+        for r in 0..<maskHeight {
+            for c in 0..<maskWidth where mask[r][c] == 1 {
+                foodPixels += 1
+                let d = Double(depth.at(r, c))
+                guard d.isFinite, d > 0 else { continue }
+                validPixels += 1
+                let h = tableDepth - d // metres above the table
+                heights[r][c] = Float(max(0.0, h))
+                if h > 0, d < minFoodDepth { minFoodDepth = d }
+            }
+        }
+        guard foodPixels > 0 else { return nil }
+        let coverage = Double(validPixels) / Double(foodPixels)
+        let peakM = tableDepth - minFoodDepth
+        // A peak under 3 mm is essentially flat / depth noise — no useful relief.
+        guard peakM > 0.003 else { return nil }
+
+        let inv = Float(1.0 / peakM)
+        var values = [[Float]](
+            repeating: [Float](repeating: -1, count: maskWidth), count: maskHeight)
+        for r in 0..<maskHeight {
+            for c in 0..<maskWidth where mask[r][c] == 1 {
+                let h = heights[r][c]
+                values[r][c] = h < 0 ? -1 : min(1.0, max(0.0, h * inv))
+            }
+        }
+        return ReliefGrid(values: values, coverage: coverage, peakHeightCm: peakM * 100.0)
+    }
+
     /// True when `(r,c)` (a background pixel) is orthogonally adjacent to a food
     /// pixel — i.e. it sits on the thin ring hugging the mask boundary.
     @inline(__always)

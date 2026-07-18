@@ -40,7 +40,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  bool _initialLoading = true;
   final _scrollController = ScrollController();
   // Private keys removed — TourKeys.hydrationCard / TourKeys.recommendationsCard
   // are used directly so AppTutorialOverlay can measure them.
@@ -155,7 +154,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(userPrefsProvider.notifier).markHistorySeen(newestId);
     }
     await ref.read(streakProvider.notifier).load();
-    if (mounted) setState(() => _initialLoading = false);
   }
 
   void _showEditFoodSheet(BuildContext context, DetectedFood food) {
@@ -254,6 +252,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final prefs = ref.watch(userPrefsProvider);
     final intake = ref.watch(dailyIntakeProvider);
     final history = ref.watch(historyProvider);
+    // The Home history is a TODAY log: scans roll off once their day is over.
+    // The nutrition rows stay in the DB (Analytics keeps the full history); the
+    // Home list simply hides anything not from today so yesterday's scans don't
+    // linger here.
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final todaysScans = history.scans
+        .where((s) => !s.timestamp.isBefore(startOfToday))
+        .toList();
     final streak = ref.watch(streakProvider);
     final hydrationTrigger = ref.watch(scrollToHydrationProvider);
     final recommendationsTrigger = ref.watch(scrollToRecommendationsProvider);
@@ -369,21 +376,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-      body: _initialLoading
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(color: context.primary500),
-                  SizedBox(height: 16),
-                  Text(
-                    AppLocalizations.of(context).loadingYourData,
-                    style: TextStyle(color: context.appMutedTextColor),
-                  ),
-                ],
-              ),
-            )
-          : SafeArea(
+      body: SafeArea(
               child: RefreshIndicator(
                 onRefresh: _loadData,
                 child: ListView(
@@ -781,7 +774,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       onCancel: _exitScanSelection,
                     ),
                     const SizedBox(height: 8),
-                    if (history.scans.isEmpty)
+                    if (todaysScans.isEmpty)
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(24),
@@ -804,7 +797,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       )
                     else
-                      ...history.scans.map((scan) {
+                      ...todaysScans.map((scan) {
                         final avg =
                             (scan.totalCaloriesMin + scan.totalCaloriesMax) / 2;
                         final selecting = _scanSelecting;
@@ -1721,8 +1714,11 @@ class _HydrationCard extends ConsumerWidget {
     final percent = (progress * 100).round();
     final visualTheme = context.visualTheme;
     final premium = visualTheme.premium;
+    // Follow the active app colour theme: premium uses its accent, free themes
+    // use the selected seed colour (not a hardcoded blue) so the hydration card
+    // matches every theme.
     final waterAccent =
-        premium ? visualTheme.primaryAccent : const Color(0xFF1976D2);
+        premium ? visualTheme.primaryAccent : context.primary600;
 
     return PremiumSurface(
       padding: const EdgeInsets.all(16),
@@ -1773,7 +1769,7 @@ class _HydrationCard extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: premium
                       ? context.appSubtleFillColor
-                      : const Color(0xFFE3F2FD),
+                      : context.primary100,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 padding: const EdgeInsets.all(6),
@@ -1799,7 +1795,7 @@ class _HydrationCard extends ConsumerWidget {
                         value: progress,
                         backgroundColor: premium
                             ? waterAccent.withValues(alpha: 0.16)
-                            : const Color(0xFFBBDEFB),
+                            : context.primary100,
                         valueColor: AlwaysStoppedAnimation(waterAccent),
                         minHeight: 8,
                       ),
@@ -1852,10 +1848,10 @@ class _HydrationCard extends ConsumerWidget {
             children: [
               Text(
                 '${(tempGoal / 1000).toStringAsFixed(1)} L',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1976D2),
+                  color: context.primary600,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1993,7 +1989,7 @@ class _WaterButton extends ConsumerWidget {
           side: BorderSide(color: context.appBorderColor),
           foregroundColor: context.isPremiumTheme
               ? context.visualTheme.primaryAccent
-              : const Color(0xFF1976D2),
+              : context.primary600,
           textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         onPressed: () {

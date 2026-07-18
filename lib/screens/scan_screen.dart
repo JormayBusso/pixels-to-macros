@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -840,21 +841,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             ),
           ),
 
-          // ── Flashlight toggle (top-right) ───────────────────────────
+          // ── Flash toggle (top-right) — iOS-camera-style bolt button ──
+          // Off = translucent dark pill with a slashed bolt (bolt.slash.fill);
+          // On = solid highlight with the amber bolt (bolt.fill), exactly like
+          // the flash control in Apple's Camera app. Larger circular tap target
+          // so it is easy to reach with a thumb during a landscape scan.
           Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            right: 8,
-            child: Material(
-              color: Colors.transparent,
-              child: IconButton(
-                icon: Icon(
-                  _torchOn ? Icons.flashlight_on : Icons.flashlight_off,
-                  color: _torchOn ? AppTheme.amber500 : Colors.white70,
-                  size: 28,
-                ),
-                tooltip:
-                    _torchOn ? l10n.turnOffFlashlight : l10n.turnOnFlashlight,
-                onPressed: () async {
+            top: MediaQuery.of(context).padding.top + 10,
+            right: 14,
+            child: Semantics(
+              button: true,
+              label: _torchOn ? l10n.turnOffFlashlight : l10n.turnOnFlashlight,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () async {
                   final next = !_torchOn;
                   final ok = await _bridge.setTorch(next);
                   if (!context.mounted) return;
@@ -870,6 +870,28 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                     );
                   }
                 },
+                child: Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _torchOn
+                        ? Colors.white
+                        : Colors.black.withValues(alpha: 0.38),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(
+                    _torchOn
+                        ? CupertinoIcons.bolt_fill
+                        : CupertinoIcons.bolt_slash_fill,
+                    color: _torchOn ? AppTheme.amber500 : Colors.white,
+                    size: 24,
+                  ),
+                ),
               ),
             ),
           ),

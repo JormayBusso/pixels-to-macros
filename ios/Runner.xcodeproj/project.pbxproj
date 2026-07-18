@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		00F929A0E1900BAC819B1489 /* CoreML.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 106E69CAAEAFA6A5B66AD4AC /* CoreML.framework */; };
+		0CE2EB2DDB7EC90AD57FFC21 /* MobileSamDecoder.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = E33CEEBDAC617D6881ADDA72 /* MobileSamDecoder.mlmodelc */; };
 		13D0DA49CB82FB919FBE2CEF /* FoodLabelEmbeddings.json in Resources */ = {isa = PBXBuildFile; fileRef = 4FB0E776E8798D8FBA77E5F8 /* FoodLabelEmbeddings.json */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		1B6DD6317DD3145FB6028C45 /* MonoDepth.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 514F71439B0203B75E0C0B36 /* MonoDepth.mlmodelc */; };
@@ -32,6 +33,7 @@
 		7A791A37CDFED49A71146C82 /* FoodClassifierService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D64D28332E08F7760383C9EB /* FoodClassifierService.swift */; };
 		85261BCEEAF8890AB5AD6966 /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EB40F0EA6B69F7366A4C0A6D /* Vision.framework */; };
 		8799FEB7EE3524C3187E1815 /* ModelIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 45253471A282FCFFF61F56CE /* ModelIO.framework */; };
+		8F56B74FEB516263169B0426 /* MobileSamEncoder.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 5D06435D5201B59BD7A04F5A /* MobileSamEncoder.mlmodelc */; };
 		9067585C0B3681D95E7B0E7B /* MLKitFoodValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140240A56278DC831D8F29B5 /* MLKitFoodValidator.swift */; };
 		92E1BE887986365546D2F19B /* Food3DRealityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6713F1DA74192839CE32B65 /* Food3DRealityView.swift */; };
 		95DB82C4E0F591668815CCC5 /* Scan3DViewerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97D9CB2E74FBD4A952254CFF /* Scan3DViewerPlugin.swift */; };
@@ -55,6 +57,7 @@
 		DEB562316E9CEBA6EB8F2BF3 /* ARSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E243E09ACB6B5BAB44E8B6 /* ARSessionManager.swift */; };
 		DF0456C669A0C8CB1CA92275 /* PlateDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BB9B00B7CD4C732A187E257 /* PlateDetector.swift */; };
 		E6F3CDF1DB17086AB61A91B6 /* FrameCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE729DB996BF7648B1074CAC /* FrameCaptureService.swift */; };
+		EDAF8639309D86D2F8803B25 /* MobileSamRefiner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B574D1B20CEB86A923DBF076 /* MobileSamRefiner.swift */; };
 		EDEA7B6B4CA0FA7ED8779BD0 /* FoodClassifierLabels.json in Resources */ = {isa = PBXBuildFile; fileRef = 5755CE01041B33B4B6A7010F /* FoodClassifierLabels.json */; };
 		EE30AF551432D7698D48F2B4 /* FoodSegYolo.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = B50E4E3D0C9A5B0F8F413A1D /* FoodSegYolo.mlmodelc */; };
 		EE592D71C88D7676C21623A9 /* MobileCLIPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F70FD3D45DA8AD693BA58B20 /* MobileCLIPService.swift */; };
@@ -108,6 +111,7 @@
 		5662700E76C7838BA72BC7D1 /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
 		5755CE01041B33B4B6A7010F /* FoodClassifierLabels.json */ = {isa = PBXFileReference; includeInIndex = 1; path = FoodClassifierLabels.json; sourceTree = "<group>"; };
 		5D01C0FF0017F00000000000 /* MonocularVolumeEstimator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonocularVolumeEstimator.swift; sourceTree = "<group>"; };
+		5D06435D5201B59BD7A04F5A /* MobileSamEncoder.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = MobileSamEncoder.mlmodelc; sourceTree = "<group>"; };
 		5E044877C9BA5C5BD6249387 /* DepthFusion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DepthFusion.swift; sourceTree = "<group>"; };
 		6A247DD49A22C552B3A3F825 /* MonoDepthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonoDepthService.swift; sourceTree = "<group>"; };
 		6CAAE6E0DFEB32AB337D33B7 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
@@ -134,6 +138,7 @@
 		A6713F1DA74192839CE32B65 /* Food3DRealityView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Food3DRealityView.swift; sourceTree = "<group>"; };
 		AA000001000000000000001A /* ObjCExceptionCatcher.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ObjCExceptionCatcher.m; sourceTree = "<group>"; };
 		B50E4E3D0C9A5B0F8F413A1D /* FoodSegYolo.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = FoodSegYolo.mlmodelc; sourceTree = "<group>"; };
+		B574D1B20CEB86A923DBF076 /* MobileSamRefiner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MobileSamRefiner.swift; sourceTree = "<group>"; };
 		BC46B42D77B588FF7A5F69A7 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		BCCC3C44B46334EE1A23C7B2 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		BDB83C97BEECE046CF9B14D3 /* MultiFrameRecorder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MultiFrameRecorder.swift; sourceTree = "<group>"; };
@@ -147,6 +152,7 @@
 		D64D28332E08F7760383C9EB /* FoodClassifierService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FoodClassifierService.swift; sourceTree = "<group>"; };
 		D713E30A5540B7F350AC47C2 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		DD21DFEC0A22BBFCB8544CBC /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		E33CEEBDAC617D6881ADDA72 /* MobileSamDecoder.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = MobileSamDecoder.mlmodelc; sourceTree = "<group>"; };
 		E94BBFB04F45F07C2C97BB54 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB40F0EA6B69F7366A4C0A6D /* Vision.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Vision.framework; path = System/Library/Frameworks/Vision.framework; sourceTree = SDKROOT; };
 		ECDA3130CA35D9F91C47196F /* FramePreprocessor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FramePreprocessor.swift; sourceTree = "<group>"; };
@@ -220,6 +226,7 @@
 				1216872B75939DD9FC20D1E3 /* MotionStabilityMonitor.swift */,
 				F70FD3D45DA8AD693BA58B20 /* MobileCLIPService.swift */,
 				7EF951929ADAB6434D66D18D /* MeshSmoothing.swift */,
+				B574D1B20CEB86A923DBF076 /* MobileSamRefiner.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -294,6 +301,8 @@
 				4FB0E776E8798D8FBA77E5F8 /* FoodLabelEmbeddings.json */,
 				0CE3957ACA294D7390C05E88 /* FoodClassifier.mlmodelc */,
 				5755CE01041B33B4B6A7010F /* FoodClassifierLabels.json */,
+				5D06435D5201B59BD7A04F5A /* MobileSamEncoder.mlmodelc */,
+				E33CEEBDAC617D6881ADDA72 /* MobileSamDecoder.mlmodelc */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -419,6 +428,8 @@
 				13D0DA49CB82FB919FBE2CEF /* FoodLabelEmbeddings.json in Resources */,
 				C3A95B2DB506702563B1AB3C /* FoodClassifier.mlmodelc in Resources */,
 				EDEA7B6B4CA0FA7ED8779BD0 /* FoodClassifierLabels.json in Resources */,
+				8F56B74FEB516263169B0426 /* MobileSamEncoder.mlmodelc in Resources */,
+				0CE2EB2DDB7EC90AD57FFC21 /* MobileSamDecoder.mlmodelc in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -580,6 +591,7 @@
 				C17EE1400334A1F1CBAEED47 /* MotionStabilityMonitor.swift in Sources */,
 				EE592D71C88D7676C21623A9 /* MobileCLIPService.swift in Sources */,
 				BFBBF023731E53233CA98AD1 /* MeshSmoothing.swift in Sources */,
+				EDAF8639309D86D2F8803B25 /* MobileSamRefiner.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

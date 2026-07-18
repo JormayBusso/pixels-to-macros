@@ -13,9 +13,9 @@ import '../models/pantry_item.dart';
 import '../providers/grocery_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/pantry_provider.dart';
+import '../services/barcode_lookup_service.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/premium_theme_effects.dart';
 
 /// Screen for managing a personal grocery shopping list.
 ///
@@ -37,6 +37,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
   String? _selectedCategory;
   bool _loaded = false;
+
+  /// Selected food-group filter for the grocery list (null = show all groups).
+  String? _selectedFoodGroup;
 
   /// Three reference-photo slots for the smart-suggestion sheet.
   final List<XFile?> _photos = [null, null, null];
@@ -303,7 +306,47 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
   // ── Smart suggestions ─────────────────────────────────────────────────────
 
-  /// Scan a photo of the user's fridge/pantry and check off matching grocery items.
+  /// Scan a packaged product's barcode and add the exact product (by name from
+  /// Open Food Facts) to the grocery list — the accurate path for packaged
+  /// foods. When the smart pantry is on, the product is also stocked at home.
+  Future<void> _scanBarcode() async {
+    final l10n = AppLocalizations.of(context);
+    BarcodeFood? food;
+    try {
+      food = await BarcodeLookupService.instance.scanAndLookup(
+        themeColor: context.isPremiumTheme
+            ? context.visualTheme.primaryAccent
+            : context.primary500,
+        l10n: l10n,
+      );
+    } catch (e) {
+      debugPrint('GroceryList: barcode scan failed: $e');
+    }
+    if (!mounted) return;
+    if (food == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.barcodeProductNotFound)),
+      );
+      return;
+    }
+    final name = food.name.trim();
+    if (name.isEmpty) return;
+    await ref.read(groceryProvider.notifier).addItem(name);
+    if (ref.read(smartGroceryEnabledProvider)) {
+      unawaited(ref.read(pantryProvider.notifier).addOrIncrement(name));
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.groceryBarcodeAddedSnack(name)),
+        backgroundColor: AppTheme.green600,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  /// Take a photo of the fridge / fruit bowl / products, recognise the items,
+  /// then show an EDITABLE list the user confirms before anything is added.
   Future<void> _scanWhatIHave() async {
     final file = await _picker.pickImage(
       source: ImageSource.camera,
@@ -313,7 +356,6 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     );
     if (file == null || !mounted) return;
     final l10n = AppLocalizations.of(context);
-    final smartEnabled = ref.read(smartGroceryEnabledProvider);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -322,158 +364,263 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       ),
     );
 
+    final recognized = <String>{};
     try {
       final inputImage = InputImage.fromFilePath(file.path);
 
-      // Visual labels
+      // Visual labels.
       final labeler = ImageLabeler(
-        options: ImageLabelerOptions(confidenceThreshold: 0.4),
+        options: ImageLabelerOptions(confidenceThreshold: 0.5),
       );
       final labels = await labeler.processImage(inputImage);
       await labeler.close();
 
-      // OCR text
+      // OCR of any package text.
       final textRecognizer =
           TextRecognizer(script: TextRecognitionScript.latin);
       final recognizedText = await textRecognizer.processImage(inputImage);
       await textRecognizer.close();
 
-      // Collect all detected food terms
-      final detectedTerms = <String>{};
+      // Only keep terms that map to a real food product; generic labels
+      // ("Food", "Produce") and brand text are ignored.
       for (final label in labels) {
-        detectedTerms.add(label.label.toLowerCase().trim());
+        final p = _matchKnownProduct(label.label);
+        if (p != null) recognized.add(p);
       }
+      final words = <String>[];
       for (final line in recognizedText.text.split(RegExp(r'\n+'))) {
-        for (final word in line.toLowerCase().split(RegExp(r'[\s,;]+'))) {
-          if (word.length >= 3) detectedTerms.add(word.trim());
+        for (final w in line.toLowerCase().split(RegExp(r'[\s,;]+'))) {
+          final t = w.trim();
+          if (t.length >= 3) words.add(t);
         }
       }
-
-      // Cross-check against grocery list items
-      final groceryItems = ref.read(groceryProvider).items;
-      int checkedOff = 0;
-      for (final item in groceryItems) {
-        if (item.checked) continue;
-        final itemWords = item.name.toLowerCase().split(' ');
-        // Check if any word of the grocery item name appears in detected terms
-        final found = itemWords.any((word) =>
-            word.length >= 3 &&
-            detectedTerms
-                .any((term) => term.contains(word) || word.contains(term)));
-        if (found) {
-          ref.read(groceryProvider.notifier).toggleChecked(item);
-          if (smartEnabled) {
-            // Fridge/basket scan stocks what you have into the pantry.
-            unawaited(ref.read(pantryProvider.notifier).addOrIncrement(
-                  item.name,
-                  category: item.category,
-                  quantity: item.quantity <= 0 ? 1.0 : item.quantity.toDouble(),
-                  unit: item.unit,
-                ));
-          }
-          checkedOff++;
+      for (var i = 0; i < words.length; i++) {
+        final p1 = _matchKnownProduct(words[i]);
+        if (p1 != null) recognized.add(p1);
+        if (i + 1 < words.length) {
+          final p2 = _matchKnownProduct('${words[i]} ${words[i + 1]}');
+          if (p2 != null) recognized.add(p2);
         }
-      }
-
-      if (!mounted) return;
-      if (checkedOff > 0) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.foundIngredients(checkedOff)),
-            backgroundColor: AppTheme.green600,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.noMatchingGroceryItems),
-            duration: const Duration(seconds: 3),
-          ),
-        );
       }
     } catch (e) {
-      debugPrint('GroceryList: "scan what I have" failed: $e');
+      debugPrint('GroceryList: fridge scan failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.couldNotAnalyzePhoto)),
         );
       }
+      return;
     }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    await _showRecognizedItemsSheet(recognized.toList());
   }
+
+  /// Show the recognised products in an editable sheet: the user can remove
+  /// wrong items, type extra ones, then tap Add to put them on the grocery
+  /// list. Nothing is added until the user confirms.
+  Future<void> _showRecognizedItemsSheet(List<String> recognized) async {
+    final l10n = AppLocalizations.of(context);
+    final items = <String>[...recognized];
+    final addCtrl = TextEditingController();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.appSurfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          void addTyped() {
+            final t = addCtrl.text.trim();
+            if (t.isEmpty) return;
+            setSheet(() {
+              items.add(t);
+              addCtrl.clear();
+            });
+          }
+
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+                20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.groceryRecognizedTitle,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text(l10n.groceryRecognizedSubtitle,
+                    style: TextStyle(
+                        fontSize: 12.5, color: context.appMutedTextColor)),
+                const SizedBox(height: 12),
+                if (items.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Text(l10n.groceryNothingRecognized,
+                        style: TextStyle(color: context.appMutedTextColor)),
+                  )
+                else
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: items.length,
+                      itemBuilder: (_, i) => ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.check_circle_outline,
+                            color: context.primary600),
+                        title: Text(items[i]),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close, size: 20),
+                          onPressed: () => setSheet(() => items.removeAt(i)),
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: addCtrl,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: l10n.itemName,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onSubmitted: (_) => addTyped(),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: addTyped,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.playlist_add),
+                    label: Text(l10n.groceryAddNItems(items.length)),
+                    onPressed: items.isEmpty
+                        ? null
+                        : () async {
+                            for (final name in items) {
+                              await ref.read(groceryProvider.notifier).addItem(
+                                    name,
+                                    category: _guessCategory(name.toLowerCase()),
+                                  );
+                            }
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content:
+                                      Text(l10n.foundIngredients(items.length)),
+                                  backgroundColor: AppTheme.green600,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Known scan-label → nice product-name map, shared by the smart suggestions
+  /// and the fridge-photo recogniser.
+  static const Map<String, String> _productMap = {
+    'greek yogurt': 'Greek yogurt',
+    'plain yogurt': 'Plain yogurt',
+    'yogurt': 'Yogurt',
+    'yoghurt': 'Yogurt',
+    'banana': 'Bananas',
+    'apple': 'Apples',
+    'orange': 'Oranges',
+    'tomato': 'Tomatoes',
+    'onion': 'Onions',
+    'pepper': 'Bell peppers',
+    'bell pepper': 'Bell peppers',
+    'carrot': 'Carrots',
+    'potato': 'Potatoes',
+    'sweet potato': 'Sweet potatoes',
+    'broccoli': 'Broccoli',
+    'spinach': 'Spinach',
+    'lettuce': 'Lettuce',
+    'cucumber': 'Cucumbers',
+    'avocado': 'Avocados',
+    'egg': 'Eggs (dozen)',
+    'eggs': 'Eggs (dozen)',
+    'chicken breast': 'Chicken breast',
+    'chicken': 'Chicken',
+    'ground beef': 'Ground beef',
+    'beef': 'Beef',
+    'salmon': 'Salmon fillet',
+    'tuna': 'Canned tuna',
+    'shrimp': 'Shrimp',
+    'rice': 'Rice',
+    'brown rice': 'Brown rice',
+    'white rice': 'White rice',
+    'pasta': 'Pasta',
+    'bread': 'Bread',
+    'whole wheat bread': 'Whole wheat bread',
+    'oats': 'Oats',
+    'oatmeal': 'Oats',
+    'milk': 'Milk (1L)',
+    'whole milk': 'Whole milk (1L)',
+    'almond milk': 'Almond milk (1L)',
+    'cheese': 'Cheese',
+    'butter': 'Butter',
+    'olive oil': 'Olive oil',
+    'peanut butter': 'Peanut butter',
+    'almond': 'Almonds',
+    'almonds': 'Almonds',
+    'mixed nuts': 'Mixed nuts',
+    'blueberry': 'Blueberries',
+    'blueberries': 'Blueberries',
+    'strawberry': 'Strawberries',
+    'strawberries': 'Strawberries',
+    'tofu': 'Tofu',
+    'lemon': 'Lemons',
+    'garlic': 'Garlic',
+    'ginger': 'Ginger',
+  };
 
   /// Normalise a detected food label to a specific grocery product.
   /// E.g. "plain yogurt" → "Yogurt (plain)", "banana" stays "Banana".
   static String _normalizeProduct(String raw) {
     final l = raw.toLowerCase().trim();
-    // Specific product mapping for common scan labels
-    const _productMap = {
-      'greek yogurt': 'Greek yogurt',
-      'plain yogurt': 'Plain yogurt',
-      'yogurt': 'Yogurt',
-      'yoghurt': 'Yogurt',
-      'banana': 'Bananas',
-      'apple': 'Apples',
-      'orange': 'Oranges',
-      'tomato': 'Tomatoes',
-      'onion': 'Onions',
-      'pepper': 'Bell peppers',
-      'bell pepper': 'Bell peppers',
-      'carrot': 'Carrots',
-      'potato': 'Potatoes',
-      'sweet potato': 'Sweet potatoes',
-      'broccoli': 'Broccoli',
-      'spinach': 'Spinach',
-      'lettuce': 'Lettuce',
-      'cucumber': 'Cucumbers',
-      'avocado': 'Avocados',
-      'egg': 'Eggs (dozen)',
-      'eggs': 'Eggs (dozen)',
-      'chicken breast': 'Chicken breast',
-      'chicken': 'Chicken',
-      'ground beef': 'Ground beef',
-      'beef': 'Beef',
-      'salmon': 'Salmon fillet',
-      'tuna': 'Canned tuna',
-      'shrimp': 'Shrimp',
-      'rice': 'Rice',
-      'brown rice': 'Brown rice',
-      'white rice': 'White rice',
-      'pasta': 'Pasta',
-      'bread': 'Bread',
-      'whole wheat bread': 'Whole wheat bread',
-      'oats': 'Oats',
-      'oatmeal': 'Oats',
-      'milk': 'Milk (1L)',
-      'whole milk': 'Whole milk (1L)',
-      'almond milk': 'Almond milk (1L)',
-      'cheese': 'Cheese',
-      'butter': 'Butter',
-      'olive oil': 'Olive oil',
-      'peanut butter': 'Peanut butter',
-      'almond': 'Almonds',
-      'almonds': 'Almonds',
-      'mixed nuts': 'Mixed nuts',
-      'blueberry': 'Blueberries',
-      'blueberries': 'Blueberries',
-      'strawberry': 'Strawberries',
-      'strawberries': 'Strawberries',
-      'tofu': 'Tofu',
-      'lemon': 'Lemons',
-      'garlic': 'Garlic',
-      'ginger': 'Ginger',
-    };
-    // Check exact match first
     if (_productMap.containsKey(l)) return _productMap[l]!;
-    // Check partial match
     for (final entry in _productMap.entries) {
       if (l.contains(entry.key)) return entry.value;
     }
-    // Capitalise as-is
     return raw.isEmpty ? raw : raw[0].toUpperCase() + raw.substring(1);
+  }
+
+  /// Like [_normalizeProduct] but returns null when the term is NOT a
+  /// recognised food, so generic labels ("Food", brand text) are ignored by
+  /// the fridge-photo recogniser.
+  static String? _matchKnownProduct(String raw) {
+    final l = raw.toLowerCase().trim();
+    if (l.length < 3) return null;
+    if (_productMap.containsKey(l)) return _productMap[l];
+    for (final entry in _productMap.entries) {
+      if (l == entry.key || l.contains(entry.key)) return entry.value;
+    }
+    return null;
   }
 
   /// Compute suggestion items from scan history.
@@ -1204,6 +1351,112 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
   // ── Build ─────────────────────────────────────────────────────────────────
 
+  /// Best food group for a grocery item: its explicit category when set,
+  /// otherwise inferred from the product name so the list groups sensibly even
+  /// for items added without a category.
+  static const _foodGroupKeywords = <String, List<String>>{
+    'Fruits': [
+      'apple', 'banana', 'orange', 'berr', 'grape', 'melon', 'mango', 'pear',
+      'peach', 'plum', 'kiwi', 'pineapple', 'lemon', 'lime', 'cherry',
+      'apricot', 'fig', 'date', 'fruit', 'avocado'
+    ],
+    'Vegetables': [
+      'tomato', 'cucumber', 'lettuce', 'spinach', 'carrot', 'potato', 'onion',
+      'pepper', 'broccoli', 'pea', 'bean', 'zucchini', 'courgette', 'kale',
+      'cabbage', 'garlic', 'mushroom', 'corn', 'salad', 'celery', 'leek',
+      'beet', 'radish', 'pumpkin', 'squash', 'asparagus', 'cauliflower',
+      'eggplant', 'aubergine', 'veg'
+    ],
+    'Protein': [
+      'chicken', 'beef', 'pork', 'meat', 'fish', 'salmon', 'tuna', 'egg',
+      'tofu', 'shrimp', 'prawn', 'turkey', 'ham', 'bacon', 'sausage', 'steak',
+      'lentil', 'chickpea', 'mince'
+    ],
+    'Dairy': [
+      'milk', 'cheese', 'yogurt', 'yoghurt', 'butter', 'cream', 'kefir', 'quark'
+    ],
+    'Grains': [
+      'bread', 'rice', 'pasta', 'oat', 'cereal', 'flour', 'quinoa', 'tortilla',
+      'bagel', 'cracker', 'noodle', 'couscous', 'barley', 'wrap'
+    ],
+    'Drinks': [
+      'water', 'juice', 'coffee', 'tea', 'soda', 'cola', 'beer', 'wine',
+      'drink', 'smoothie', 'lemonade'
+    ],
+    'Snacks': [
+      'chocolate', 'chip', 'candy', 'cookie', 'biscuit', 'nut', 'snack',
+      'popcorn', 'crisp', 'pretzel', 'bar'
+    ],
+  };
+
+  String _foodGroupFor(GroceryItem item) {
+    const known = [
+      'Fruits',
+      'Vegetables',
+      'Protein',
+      'Dairy',
+      'Grains',
+      'Snacks',
+      'Drinks',
+    ];
+    if (item.category != null && known.contains(item.category)) {
+      return item.category!;
+    }
+    final n = item.name.toLowerCase();
+    for (final entry in _foodGroupKeywords.entries) {
+      for (final kw in entry.value) {
+        if (n.contains(kw)) return entry.key;
+      }
+    }
+    return 'Other';
+  }
+
+  /// Order the to-buy list by food group (fruit, vegetables, protein/meat,
+  /// dairy, grains, …) with a header per group so the groceries are always
+  /// tidily organised.
+  List<Widget> _buildGroupedGroceries(
+    AppLocalizations l10n,
+    List<GroceryItem> items,
+    bool smartEnabled,
+  ) {
+    if (items.isEmpty) return const [];
+    const order = [
+      'Fruits',
+      'Vegetables',
+      'Protein',
+      'Dairy',
+      'Grains',
+      'Snacks',
+      'Drinks',
+      'Other',
+    ];
+    final groups = <String, List<GroceryItem>>{};
+    for (final item in items) {
+      groups.putIfAbsent(_foodGroupFor(item), () => []).add(item);
+    }
+    final widgets = <Widget>[];
+    for (final cat in order) {
+      final list = groups[cat];
+      if (list == null || list.isEmpty) continue;
+      widgets.add(_SectionLabel(
+        '${l10n.groceryCategoryLabel(cat)} (${list.length})',
+        color: context.primary700,
+      ));
+      widgets.addAll(list.map((item) => _GroceryTile(
+            item: item,
+            smartEnabled: smartEnabled,
+            onBought: () => _markBought(item),
+            onToggle: () =>
+                ref.read(groceryProvider.notifier).toggleChecked(item),
+            onDelete: () => smartEnabled
+                ? _dontBuy(item)
+                : ref.read(groceryProvider.notifier).deleteItem(item),
+            onEdit: () => _editItem(item),
+          )));
+    }
+    return widgets;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -1219,6 +1472,12 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       appBar: AppBar(
         title: Text(l10n.groceryList),
         actions: [
+          // Scan a packaged product's barcode → Open Food Facts (accurate)
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            tooltip: l10n.groceryScanBarcodeTooltip,
+            onPressed: _scanBarcode,
+          ),
           // Scan what you have — check off ingredients from photos
           IconButton(
             icon: const Icon(Icons.camera_alt_outlined),
@@ -1280,161 +1539,182 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       ),
       body: !_loaded
           ? const Center(child: CircularProgressIndicator())
-          : (grocery.items.isEmpty && pantryItems.isEmpty)
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+          : Column(
+              children: [
+                // Two primary actions, always at the top of the tab.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                  child: Row(
                     children: [
-                      Icon(Icons.shopping_cart_outlined,
-                          size: 64, color: AppTheme.gray300),
-                      const SizedBox(height: 16),
-                      Text(l10n.groceryListEmpty,
-                          style: TextStyle(
-                              fontSize: 16, color: context.appMutedTextColor)),
-                      const SizedBox(height: 16),
-                      // Keep both buttons a normal width (not full-screen) and
-                      // equal to each other: IntrinsicWidth sizes the column to
-                      // the widest button's label, so it auto-fits every
-                      // language while both buttons stay the same width.
-                      IntrinsicWidth(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            FilledButton.icon(
-                              icon: const Icon(Icons.add, size: 18),
-                              label: Text(l10n.addToGroceryList),
-                              onPressed: _showAddDialog,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: context.isPremiumTheme
-                                    ? context.visualTheme.primaryAccent
-                                    : context.primary500,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size.fromHeight(44),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            PremiumMotionSurface(
-                              borderRadius: BorderRadius.circular(12),
-                              glow: true,
-                              animate: true,
-                              borderWidth: 3.4,
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.auto_awesome, size: 18),
-                                label: Text(l10n.scanReceipt),
-                                onPressed: _showSmartSuggestSheet,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: context.isPremiumTheme
-                                      ? context.visualTheme.cardColor
-                                      : context.primary500,
-                                  foregroundColor: context.isPremiumTheme
-                                      ? context.visualTheme.primaryAccent
-                                      : Colors.white,
-                                  minimumSize: const Size.fromHeight(44),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                      Expanded(
+                        child: FilledButton.icon(
+                          icon: const Icon(Icons.add, size: 18),
+                          label: Text(l10n.addToGroceryList),
+                          onPressed: _showAddDialog,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: context.isPremiumTheme
+                                ? context.visualTheme.primaryAccent
+                                : context.primary500,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(46),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.icon(
+                          icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                          label: Text(l10n.groceryScanWhatYouHave),
+                          onPressed: _scanWhatIHave,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: context.isPremiumTheme
+                                ? context.visualTheme.cardColor
+                                : context.primary600,
+                            foregroundColor: context.isPremiumTheme
+                                ? context.visualTheme.primaryAccent
+                                : Colors.white,
+                            minimumSize: const Size.fromHeight(46),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  children: [
-                    if (smartEnabled) ...[
-                      _SectionLabel(
-                        '${l10n.pantrySectionTitle} (${pantryItems.length})',
-                        color: context.primary700,
-                      ),
-                      if (pantryItems.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
-                          child: Text(
-                            l10n.pantryEmptyHint,
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              height: 1.3,
-                              color: context.appMutedTextColor,
-                            ),
+                ),
+                // Food-group selectable variables (like the Recipes tab).
+                SizedBox(
+                  height: 46,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      children: [
+                        _GroceryGroupChip(
+                          label: l10n.pantryLocationLabel('all'),
+                          selected: _selectedFoodGroup == null,
+                          onTap: () =>
+                              setState(() => _selectedFoodGroup = null),
+                        ),
+                        for (final g in _categories)
+                          _GroceryGroupChip(
+                            label: l10n.groceryCategoryLabel(g),
+                            selected: _selectedFoodGroup == g,
+                            onTap: () =>
+                                setState(() => _selectedFoodGroup = g),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: (grocery.items.isEmpty && pantryItems.isEmpty)
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.shopping_cart_outlined,
+                                  size: 64, color: AppTheme.gray300),
+                              const SizedBox(height: 16),
+                              Text(l10n.groceryListEmpty,
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      color: context.appMutedTextColor)),
+                            ],
                           ),
                         )
-                      else
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: pantryItems.map((p) {
-                              final q = p.quantity;
-                              final qStr = q == q.roundToDouble()
-                                  ? q.toInt().toString()
-                                  : q.toStringAsFixed(1);
-                              final qtyLabel = p.unit != null
-                                  ? ' $qStr ${p.unit}'
-                                  : (q > 1 ? ' ×$qStr' : '');
-                              return InputChip(
-                                label: Text('${p.name}$qtyLabel'),
-                                backgroundColor: context.appSubtleFillColor,
-                                labelStyle: TextStyle(
-                                  fontSize: 12.5,
-                                  color: context.appTextColor,
+                      : ListView(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          children: [
+                            if (smartEnabled && _selectedFoodGroup == null) ...[
+                              _SectionLabel(
+                                '${l10n.pantrySectionTitle} (${pantryItems.length})',
+                                color: context.primary700,
+                              ),
+                              if (pantryItems.isEmpty)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                                  child: Text(
+                                    l10n.pantryEmptyHint,
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      height: 1.3,
+                                      color: context.appMutedTextColor,
+                                    ),
+                                  ),
+                                )
+                              else
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(12, 2, 12, 8),
+                                  child: Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: pantryItems.map((p) {
+                                      final q = p.quantity;
+                                      final qStr = q == q.roundToDouble()
+                                          ? q.toInt().toString()
+                                          : q.toStringAsFixed(1);
+                                      final qtyLabel = p.unit != null
+                                          ? ' $qStr ${p.unit}'
+                                          : (q > 1 ? ' ×$qStr' : '');
+                                      return InputChip(
+                                        label: Text('${p.name}$qtyLabel'),
+                                        backgroundColor:
+                                            context.appSubtleFillColor,
+                                        labelStyle: TextStyle(
+                                          fontSize: 12.5,
+                                          color: context.appTextColor,
+                                        ),
+                                        deleteIconColor:
+                                            context.appMutedTextColor,
+                                        onDeleted: () => ref
+                                            .read(pantryProvider.notifier)
+                                            .deleteItem(p),
+                                      );
+                                    }).toList(),
+                                  ),
                                 ),
-                                deleteIconColor: context.appMutedTextColor,
-                                onDeleted: () => ref
-                                    .read(pantryProvider.notifier)
-                                    .deleteItem(p),
-                              );
-                            }).toList(),
-                          ),
+                              const Divider(height: 1),
+                            ],
+                            ..._buildGroupedGroceries(
+                              l10n,
+                              _selectedFoodGroup == null
+                                  ? unchecked
+                                  : unchecked
+                                      .where((i) =>
+                                          _foodGroupFor(i) == _selectedFoodGroup)
+                                      .toList(),
+                              smartEnabled,
+                            ),
+                            if (checked.isNotEmpty &&
+                                _selectedFoodGroup == null) ...[
+                              _SectionLabel(
+                                  l10n.groceryPurchased(checked.length),
+                                  color: context.appMutedTextColor),
+                              ...checked.map((item) => _GroceryTile(
+                                    item: item,
+                                    smartEnabled: smartEnabled,
+                                    onBought: () => _markBought(item),
+                                    onToggle: () => ref
+                                        .read(groceryProvider.notifier)
+                                        .toggleChecked(item),
+                                    onDelete: () => smartEnabled
+                                        ? _dontBuy(item)
+                                        : ref
+                                            .read(groceryProvider.notifier)
+                                            .deleteItem(item),
+                                    onEdit: () => _editItem(item),
+                                  )),
+                            ],
+                          ],
                         ),
-                      const Divider(height: 1),
-                    ],
-                    if (unchecked.isNotEmpty) ...[
-                      _SectionLabel(l10n.groceryToBuy(unchecked.length),
-                          color: context.primary700),
-                      ...unchecked.map((item) => _GroceryTile(
-                            item: item,
-                            smartEnabled: smartEnabled,
-                            onBought: () => _markBought(item),
-                            onToggle: () => ref
-                                .read(groceryProvider.notifier)
-                                .toggleChecked(item),
-                            onDelete: () => smartEnabled
-                                ? _dontBuy(item)
-                                : ref
-                                    .read(groceryProvider.notifier)
-                                    .deleteItem(item),
-                            onEdit: () => _editItem(item),
-                          )),
-                    ],
-                    if (checked.isNotEmpty) ...[
-                      _SectionLabel(l10n.groceryPurchased(checked.length),
-                          color: context.appMutedTextColor),
-                      ...checked.map((item) => _GroceryTile(
-                            item: item,
-                            smartEnabled: smartEnabled,
-                            onBought: () => _markBought(item),
-                            onToggle: () => ref
-                                .read(groceryProvider.notifier)
-                                .toggleChecked(item),
-                            onDelete: () => smartEnabled
-                                ? _dontBuy(item)
-                                : ref
-                                    .read(groceryProvider.notifier)
-                                    .deleteItem(item),
-                            onEdit: () => _editItem(item),
-                          )),
-                    ],
-                  ],
                 ),
+              ],
+            ),
     );
   }
 }
@@ -1460,6 +1740,54 @@ class _PhotoCandidate {
     this.quantity = 1,
     this.unit,
   });
+}
+
+// ── Food-group filter chip (Recipes-tab style pill) ─────────────────────────
+
+class _GroceryGroupChip extends StatelessWidget {
+  const _GroceryGroupChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final visual = context.visualTheme;
+    final selectedFill = visual.premium
+        ? visual.primaryAccent.withValues(alpha: 0.22)
+        : context.primary500;
+    final selectedText = visual.premium ? visual.primaryAccent : Colors.white;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? selectedFill : context.appSurfaceColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? context.primary500 : context.appBorderColor,
+              width: selected ? 1.6 : 1,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              color: selected ? selectedText : context.appTextColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ── Section label ──────────────────────────────────────────────────────────────

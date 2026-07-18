@@ -248,6 +248,18 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
   scan.
 - Volume→calories: `scan_result_provider` maps label → `FoodData` (fuzzy label match) →
   `calorieRange(volume)`. The **displayed mesh is the volume source** (`volume_source=display_mesh`).
+- **Scale is the monocular accuracy core.** Metric-scale hierarchy: `plate_diameter`
+  (SOTA-aligned — the winning MetaFood 2026 methods use plate diameter as the metric scale)
+  > `arkit_plane` > learned scale > `fallback_22cm` (worst case; if it fires often, fix plate
+  framing/contrast, don't just re-tune the volume envelope). **Sanctioned, research-backed
+  accuracy levers — prefer these over blind envelope tuning:** (1) fuse the Depth Anything V2
+  relief into the hull's TOP surface (measure per-pixel height instead of extruding a per-class
+  prior — the single biggest non-LiDAR lever); (2) a per-scan scale-shift fit of the metric
+  depth to the detected plate plane so it is globally consistent; (3) the ground-truth
+  density-calibration feedback loop (`GroundTruth`/`eval_provider` exist but do not feed back yet).
+  Target <15% energy MAPE; benchmark on MetaFood3D / SimpleFood45; ground food densities in
+  EFSA/FNDDS (§13). References: PerBite (arXiv:2606.02021), Size Matters (2601.20051),
+  OmniFood8K (2604.12356), PortionNet (2512.22304), MetaFood3D (2409.01966).
 - In-app 3D color = per-vertex colors from the `.p2mesh` sidecar (the SceneKit viewer forces
   `material.diffuse = white` and ignores the USD `_texture.png` for monocular scans).
 - **You cannot see the render here.** After any recognition/geometry/color change, deploy and

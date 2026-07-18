@@ -14,9 +14,9 @@ with uncertainty ranges. 100% offline, iOS only.
 |-------|------|----------------|
 | **UI** | Flutter (Dart) + Riverpod | Screens, state machine, history, analytics |
 | **Bridge** | MethodChannel | JSON messages between Dart and Swift |
-| **Native** | Swift / ARKit / CoreML | AR session, depth, segmentation, recognition, volume |
-| **Storage** | SQLite v7 (sqflite) | Food DB (42+ items), scan history, preferences, ground truth, benchmarks |
-| **Training** | PyTorch → CoreML | FoodSeg YOLO, MobileCLIP embeddings, Food-101 classifier exports |
+| **Native** | Swift / ARKit / CoreML | AR session, monocular depth (Depth Anything V2), segmentation (+ MobileSAM refiner), recognition, dual-silhouette volume |
+| **Storage** | SQLite v45 (sqflite) | Food DB, scan history, preferences, pantry/grocery, ground truth, benchmarks |
+| **Training** | PyTorch → CoreML | FoodSeg YOLO, MobileCLIP embeddings, Food-101 classifier, Depth Anything V2, MobileSAM exports |
 
 ---
 
@@ -26,9 +26,11 @@ with uncertainty ranges. 100% offline, iOS only.
 - **Camera guidance overlay** — reticle, distance hints, step progress bar
 - **First-scan tutorial** — 3-page walkthrough (shown once)
 - **Haptic feedback** — light/medium/heavy on capture, success, and error
-- **ML food segmentation** — CoreML FoodSeg YOLO with SegFormer fallback
+- **ML food segmentation** — CoreML FoodSeg YOLO with SegFormer fallback, refined by an optional box-prompted MobileSAM mask refiner
 - **Free food recognition models** — MobileCLIP-S2 open vocabulary plus optional Food-101 ViT crop classifier
-- **Volume → calorie estimation** — density-based model with min/max uncertainty
+- **Monocular depth** — Depth Anything V2 (metric-indoor Small) estimates food height above the table on non-LiDAR devices
+- **Dual-silhouette 3D reconstruction** — top + side masks lofted into an exact-outline mesh, scaled by the detected plate diameter
+- **Volume → calorie estimation** — density-based model (mesh volume × food density) with min/max uncertainty
 - **Confidence scoring** — aggregate uncertainty metric (colour-coded badge + ring)
 - **Dashboard** — calorie ring, streak tracker, today's foods, recent scans
 - **Analytics** — 7/14/30-day bar charts, daily averages, peak-day stats
@@ -88,7 +90,7 @@ lib/
 │   └── settings_screen.dart          Profile, goal, DB info, exports
 ├── services/
 │   ├── data_export_service.dart      CSV export (detailed + daily + eval)
-│   ├── database_service.dart         SQLite v6 singleton + migrations
+│   ├── database_service.dart         SQLite v45 singleton + migrations
 │   ├── debug_log.dart                500-entry ring buffer
 │   ├── native_bridge.dart            MethodChannel to Swift
 │   └── perf_monitor.dart             Pipeline timing
@@ -108,13 +110,18 @@ ios/Runner/
     ├── FrameCaptureService.swift     Frame capture (top + side)
     ├── FramePreprocessor.swift       640×480 resize + normalisation
     ├── PointCloudExporter.swift     PLY 3D point cloud generation
-    ├── PlateDetector.swift           Ellipse fitting for plate boundary
+    ├── PlateDetector.swift           Ellipse fitting for plate boundary (metric scale)
     ├── SegmentationService.swift     SegFormer/FoodSeg fallback inference
     ├── YOLOSegmentationService.swift FoodSeg YOLO instance segmentation
-    ├── MobileCLIPService.swift       Free open-vocabulary crop recognition
-    ├── FoodClassifierService.swift   Optional Food-101 ViT crop classifier
-    ├── VolumeCalculator.swift        Depth → volume (cm³)
-    └── InferencePipeline.swift       Orchestrates full pipeline
+    ├── MobileSamRefiner.swift         Optional box-prompted MobileSAM mask refiner
+    ├── MobileCLIPService.swift        Free open-vocabulary crop recognition
+    ├── FoodClassifierService.swift    Optional Food-101 ViT crop classifier
+    ├── MonoDepthService.swift         Depth Anything V2 metric depth (non-LiDAR)
+    ├── MonocularVolumeEstimator.swift Dual-silhouette contour-loft mesh + volume
+    ├── DepthFusion.swift              LiDAR depth → voxels → SurfaceNets mesh
+    ├── Food3DExporter.swift           USDZ/OBJ + .p2mesh colour sidecar export
+    ├── VolumeCalculator.swift         Depth → volume (cm³)
+    └── InferencePipeline.swift        Orchestrates the full pipeline
 
 training/
 ├── requirements.txt                  PyTorch, coremltools, etc.
@@ -122,7 +129,9 @@ training/
 ├── train.py                          DeepLabV3-MobileNetV3 training
 ├── export_coreml.py                  SegFormer/CoreML FP16 conversion
 ├── export_mobileclip.py              MobileCLIP-S2 image encoder + label embeddings
-└── export_food_classifier.py         Food-101 ViT CoreML classifier export
+├── export_food_classifier.py         Food-101 ViT CoreML classifier export
+├── export_depth_coreml.py            Depth Anything V2 metric depth → CoreML
+└── export_mobilesam.py               MobileSAM encoder + box decoder → CoreML
 ```
 
 ---

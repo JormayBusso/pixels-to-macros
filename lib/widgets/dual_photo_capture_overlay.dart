@@ -136,24 +136,16 @@ class _DualPhotoCaptureOverlayState extends State<DualPhotoCaptureOverlay>
           child: IgnorePointer(child: _StepHeader(topActive: top)),
         ),
 
-        // Alignment frame + ghost guide.
+        // A SINGLE circular framing guide — no rounded-square surround. The
+        // food only needs to sit inside this one circle.
         Center(
           child: IgnorePointer(
-            child: PremiumMotionSurface(
-              enabled: visualTheme.premium,
-              // Both steps share the same rounded (circular) framing so the
-              // top and side captures feel like one consistent flow.
-              borderRadius: BorderRadius.circular(130),
-              padding: const EdgeInsets.all(5),
-              borderWidth: widget.aligned ? 3.4 : 2.4,
-              animate: true,
-              child: _AlignmentFrame(
-                pulse: _pulse,
-                color: frameColor,
-                isTop: top,
-                aligned: widget.aligned,
-                confirming: confirming,
-              ),
+            child: _AlignmentFrame(
+              pulse: _pulse,
+              color: frameColor,
+              isTop: top,
+              aligned: widget.aligned,
+              confirming: confirming,
             ),
           ),
         ),
@@ -299,9 +291,22 @@ class _AlignmentFrame extends StatelessWidget {
                   size: const Size(300, 300),
                   painter: _FramePainter(color: color, isTop: isTop),
                 ),
-                // Only a brief success tick when the shot is captured — no
-                // arrows or brackets, so the camera feed stays uncluttered.
-                if (confirming) Icon(Icons.check_circle, size: 64, color: color),
+                if (confirming)
+                  Icon(Icons.check_circle, size: 64, color: color)
+                else if (!aligned)
+                  // Directional tilt cue: which way to move the phone to reach
+                  // this step's angle — flat/down for the top view, up for the
+                  // side view. It bobs with the pulse so it reads as motion.
+                  Transform.translate(
+                    offset: Offset(0, (isTop ? 1 : -1) * (6 + pulse.value * 8)),
+                    child: Icon(
+                      isTop
+                          ? Icons.keyboard_double_arrow_down_rounded
+                          : Icons.keyboard_double_arrow_up_rounded,
+                      size: 60,
+                      color: color.withValues(alpha: 0.92),
+                    ),
+                  ),
               ],
             ),
           ),

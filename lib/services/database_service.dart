@@ -50,7 +50,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 44,
+      version: 45,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -740,6 +740,13 @@ class DatabaseService {
             'ALTER TABLE user_preferences ADD COLUMN health_sync_enabled INTEGER NOT NULL DEFAULT 0');
       } catch (_) {}
     }
+    if (oldVersion < 45) {
+      // Storage location for pantry items (fridge / freezer / fruit bowl / …)
+      // so the Grocery tab can filter what you have at home by where it lives.
+      try {
+        await db.execute('ALTER TABLE pantry_items ADD COLUMN location TEXT');
+      } catch (_) {}
+    }
   }
 
   /// Stores badges the user has earned so they accumulate over time and can be
@@ -791,6 +798,7 @@ class DatabaseService {
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         name        TEXT    NOT NULL,
         category    TEXT,
+        location    TEXT,
         quantity    REAL    NOT NULL DEFAULT 1,
         unit        TEXT,
         available   INTEGER NOT NULL DEFAULT 1,

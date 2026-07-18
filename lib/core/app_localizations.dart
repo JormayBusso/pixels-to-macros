@@ -6531,6 +6531,32 @@ class AppLocalizations {
         'de': 'Die Spracherkennung ist auf diesem Gerät nicht verfügbar.',
       });
 
+  String get voiceEnableInSettings => _t({
+        'en':
+            'Microphone or Speech Recognition permission is off. Enable both for Pixels to Macros in Settings → Privacy.',
+        'pl':
+            'Uprawnienia do mikrofonu lub rozpoznawania mowy są wyłączone. Włącz oba dla aplikacji w Ustawienia → Prywatność.',
+        'nl':
+            'Toestemming voor microfoon of spraakherkenning staat uit. Zet beide aan voor deze app in Instellingen → Privacy.',
+        'es':
+            'El permiso de micrófono o reconocimiento de voz está desactivado. Actívalos para la app en Ajustes → Privacidad.',
+        'de':
+            'Die Berechtigung für Mikrofon oder Spracherkennung ist aus. Aktiviere beide für die App unter Einstellungen → Datenschutz.',
+      });
+
+  String get voiceEnableDictation => _t({
+        'en':
+            'Speech recognition is unavailable. Turn on Dictation in Settings → General → Keyboard, then try again.',
+        'pl':
+            'Rozpoznawanie mowy jest niedostępne. Włącz Dyktowanie w Ustawienia → Ogólne → Klawiatura i spróbuj ponownie.',
+        'nl':
+            'Spraakherkenning is niet beschikbaar. Zet Dicteren aan bij Instellingen → Algemeen → Toetsenbord en probeer opnieuw.',
+        'es':
+            'El reconocimiento de voz no está disponible. Activa el Dictado en Ajustes → General → Teclado e inténtalo de nuevo.',
+        'de':
+            'Spracherkennung nicht verfügbar. Aktiviere das Diktat unter Einstellungen → Allgemein → Tastatur und versuche es erneut.',
+      });
+
   String get barcodeProductNotFound => _t({
         'en': 'Product not found in the OpenFoodFacts database. Try adding it manually.',
         'pl': 'Nie znaleziono produktu w bazie OpenFoodFacts. Spróbuj dodać go ręcznie.',
@@ -6775,6 +6801,118 @@ class AppLocalizations {
         'nl': 'Item toevoegen',
         'es': 'Añadir artículo',
         'de': 'Artikel hinzufügen',
+      });
+
+  String get groceryScanBarcodeTooltip => _t({
+        'en': 'Scan a product barcode',
+        'pl': 'Zeskanuj kod kreskowy produktu',
+        'nl': 'Scan een productbarcode',
+        'es': 'Escanear el código de barras de un producto',
+        'de': 'Produkt-Barcode scannen',
+      });
+
+  String groceryBarcodeAddedSnack(String name) => _t({
+        'en': 'Added $name to your grocery list',
+        'pl': 'Dodano $name do listy zakupów',
+        'nl': '$name toegevoegd aan je boodschappenlijst',
+        'es': 'Se añadió $name a tu lista de compras',
+        'de': '$name zur Einkaufsliste hinzugefügt',
+      });
+
+  String get groceryRecognizedTitle => _t({
+        'en': 'Recognized items',
+        'pl': 'Rozpoznane produkty',
+        'nl': 'Herkende items',
+        'es': 'Artículos reconocidos',
+        'de': 'Erkannte Artikel',
+      });
+
+  String get groceryRecognizedSubtitle => _t({
+        'en': 'Review and edit, then add them to your list.',
+        'pl': 'Sprawdź i edytuj, a następnie dodaj do listy.',
+        'nl': 'Controleer en bewerk, voeg ze dan toe aan je lijst.',
+        'es': 'Revisa y edita, luego añádelos a tu lista.',
+        'de': 'Prüfen und bearbeiten, dann zur Liste hinzufügen.',
+      });
+
+  String get groceryNothingRecognized => _t({
+        'en': "No products recognized — add them manually below.",
+        'pl': 'Nie rozpoznano produktów — dodaj je ręcznie poniżej.',
+        'nl': 'Geen producten herkend — voeg ze hieronder handmatig toe.',
+        'es': 'No se reconocieron productos: añádelos manualmente abajo.',
+        'de': 'Keine Produkte erkannt – füge sie unten manuell hinzu.',
+      });
+
+  String groceryAddNItems(int n) => _t({
+        'en': 'Add $n to grocery list',
+        'pl': 'Dodaj $n do listy zakupów',
+        'nl': 'Voeg $n toe aan lijst',
+        'es': 'Añadir $n a la lista',
+        'de': '$n zur Liste hinzufügen',
+      });
+
+  /// Localised label for a pantry storage location key
+  /// ('all' | 'fridge' | 'freezer' | 'fruitBowl' | 'pantry' | 'other').
+  String pantryLocationLabel(String key) {
+    switch (key) {
+      case 'all':
+        return _t({
+          'en': 'All',
+          'pl': 'Wszystko',
+          'nl': 'Alles',
+          'es': 'Todo',
+          'de': 'Alle',
+        });
+      case 'fridge':
+        return _t({
+          'en': 'Fridge',
+          'pl': 'Lodówka',
+          'nl': 'Koelkast',
+          'es': 'Nevera',
+          'de': 'Kühlschrank',
+        });
+      case 'freezer':
+        return _t({
+          'en': 'Freezer',
+          'pl': 'Zamrażarka',
+          'nl': 'Vriezer',
+          'es': 'Congelador',
+          'de': 'Gefrierschrank',
+        });
+      case 'fruitBowl':
+        return _t({
+          'en': 'Fruit bowl',
+          'pl': 'Miska na owoce',
+          'nl': 'Fruitschaal',
+          'es': 'Frutero',
+          'de': 'Obstschale',
+        });
+      case 'pantry':
+        return _t({
+          'en': 'Pantry',
+          'pl': 'Spiżarnia',
+          'nl': 'Voorraadkast',
+          'es': 'Despensa',
+          'de': 'Vorratskammer',
+        });
+      case 'other':
+      default:
+        return _t({
+          'en': 'Other',
+          'pl': 'Inne',
+          'nl': 'Overig',
+          'es': 'Otro',
+          'de': 'Sonstige',
+        });
+    }
+  }
+
+  String get pantryChooseLocation => _t({
+        'en': 'Where is it stored?',
+        'pl': 'Gdzie jest przechowywane?',
+        'nl': 'Waar wordt het bewaard?',
+        'es': '¿Dónde se guarda?',
+        'de': 'Wo wird es aufbewahrt?',
       });
 
   String get groceryClearPurchased => _t({

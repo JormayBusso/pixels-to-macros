@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -320,6 +321,20 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
 
   Future<void> _initSpeech() async {
     try {
+      // Request microphone + speech-recognition permissions up-front. Without an
+      // explicit prompt, speech_to_text.initialize() can silently return false
+      // and the screen looked "not available" for no clear reason.
+      final mic = await Permission.microphone.request();
+      final speech = await Permission.speech.request();
+      if (!mic.isGranted || !speech.isGranted) {
+        _available = false;
+        if (mounted) {
+          setState(() =>
+              _error = AppLocalizations.of(context).voiceEnableInSettings);
+        }
+        if (mounted) setState(() {});
+        return;
+      }
       _available = await _speech.initialize(
         onError: (e) {
           if (!mounted) return;
@@ -335,12 +350,18 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
           }
         },
       );
+      if (!_available && mounted) {
+        // Permissions granted but the OS reported no recogniser — on iOS this is
+        // almost always Dictation being turned off in Settings.
+        setState(() =>
+            _error = AppLocalizations.of(context).voiceEnableDictation);
+      }
     } catch (e) {
       _available = false;
       if (mounted) {
         debugPrint('Speech recognition unavailable: $e');
         setState(() =>
-            _error = AppLocalizations.of(context).voiceRecognitionUnavailable);
+            _error = AppLocalizations.of(context).voiceEnableDictation);
       }
     }
     if (mounted) setState(() {});
