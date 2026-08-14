@@ -415,13 +415,110 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
-    await _showRecognizedItemsSheet(recognized.toList());
+    await _showRecognizedItemsSheet(
+      recognized.toList(),
+      toPantry: ref.read(smartGroceryEnabledProvider),
+    );
+  }
+
+  /// Take a photo of a shopping receipt, OCR its line items, and stock the
+  /// recognised foods into the home-ingredients database (pantry). Prices,
+  /// totals and store lines are ignored; the user reviews/edits before adding.
+  Future<void> _scanReceipt() async {
+    final file = await _picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 85,
+    );
+    if (file == null || !mounted) return;
+    final l10n = AppLocalizations.of(context);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.readingReceipt),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    final recognized = <String>{};
+    try {
+      final inputImage = InputImage.fromFilePath(file.path);
+      final textRecognizer =
+          TextRecognizer(script: TextRecognitionScript.latin);
+      final recognizedText = await textRecognizer.processImage(inputImage);
+      await textRecognizer.close();
+
+      for (final product in _parseReceiptProducts(recognizedText.text)) {
+        recognized.add(product);
+      }
+    } catch (e) {
+      debugPrint('GroceryList: receipt scan failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.couldNotReadReceipt)),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    await _showRecognizedItemsSheet(recognized.toList(), toPantry: true);
+  }
+
+  /// Parse receipt OCR text into clean food product names. Receipt lines mix
+  /// product names with prices, quantities and store metadata; this keeps only
+  /// the alphabetic product portion of a line and drops totals/tax/payment
+  /// lines that never name a food.
+  List<String> _parseReceiptProducts(String rawText) {
+    final products = <String>[];
+    final seen = <String>{};
+    // Non-food receipt keywords (multilingual) to skip whole lines.
+    const skipWords = {
+      'total', 'totaal', 'gesamt', 'suma', 'subtotal', 'tax', 'btw', 'vat',
+      'iva', 'mwst', 'change', 'cash', 'card', 'visa', 'debit', 'credit',
+      'balance', 'receipt', 'invoice', 'bon', 'ticket', 'store', 'tel',
+      'phone', 'www', 'http', 'discount', 'coupon', 'loyalty', 'points',
+      'thank', 'welcome', 'cashier', 'terminal', 'auth', 'ref', 'date',
+      'time', 'qty', 'amount', 'price', 'ust', 'summe', 'zahlung', 'rabat',
+    };
+    for (final line in rawText.split(RegExp(r'\n+'))) {
+      final lower = line.toLowerCase();
+      if (skipWords.any(lower.contains)) continue;
+      // Strip a trailing price / weight (e.g. "  2.99", "1,49 €", "0.350 kg").
+      var cleaned = line
+          .replaceAll(RegExp(r'[€$£]'), ' ')
+          .replaceAll(
+              RegExp(r'\b\d+[.,]\d{2,3}\b'), ' ') // prices / kg weights
+          .replaceAll(RegExp(r'\bx?\s*\d+\s*(pcs?|stk|szt|x)\b',
+              caseSensitive: false), ' ')
+          .replaceAll(RegExp(r'[^A-Za-zÀ-ÿ ]'), ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      if (cleaned.length < 3) continue;
+      // Prefer a known-product mapping; otherwise keep a plausible food line.
+      final mapped = _matchKnownProduct(cleaned) ??
+          (cleaned.split(' ').length <= 4 ? _normalizeFoodName(cleaned) : null);
+      if (mapped == null || mapped.isEmpty) continue;
+      final key = mapped.toLowerCase();
+      if (seen.add(key)) products.add(mapped);
+    }
+    return products;
   }
 
   /// Show the recognised products in an editable sheet: the user can remove
   /// wrong items, type extra ones, then tap Add to put them on the grocery
   /// list. Nothing is added until the user confirms.
-  Future<void> _showRecognizedItemsSheet(List<String> recognized) async {
+  ///
+  /// When [toPantry] is true (fridge / basket / receipt scans) the confirmed
+  /// items stock the home-ingredients database (pantry) instead of the buy
+  /// list — scanning what you already have should fill your home stock.
+  Future<void> _showRecognizedItemsSheet(
+    List<String> recognized, {
+    bool toPantry = false,
+  }) async {
     final l10n = AppLocalizations.of(context);
     final items = <String>[...recognized];
     final addCtrl = TextEditingController();
@@ -454,7 +551,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
-                Text(l10n.groceryRecognizedSubtitle,
+                Text(
+                    toPantry
+                        ? l10n.groceryRecognizedHomeSubtitle
+                        : l10n.groceryRecognizedSubtitle,
                     style: TextStyle(
                         fontSize: 12.5, color: context.appMutedTextColor)),
                 const SizedBox(height: 12),
@@ -507,23 +607,40 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.playlist_add),
-                    label: Text(l10n.groceryAddNItems(items.length)),
+                    icon: Icon(
+                        toPantry ? Icons.kitchen_outlined : Icons.playlist_add),
+                    label: Text(toPantry
+                        ? l10n.groceryAddNToHome(items.length)
+                        : l10n.groceryAddNItems(items.length)),
                     onPressed: items.isEmpty
                         ? null
                         : () async {
-                            for (final name in items) {
-                              await ref.read(groceryProvider.notifier).addItem(
-                                    name,
-                                    category: _guessCategory(name.toLowerCase()),
-                                  );
+                            if (toPantry) {
+                              for (final name in items) {
+                                await ref
+                                    .read(pantryProvider.notifier)
+                                    .addOrIncrement(
+                                      name,
+                                      category: _guessCategory(
+                                          name.toLowerCase()),
+                                    );
+                              }
+                            } else {
+                              for (final name in items) {
+                                await ref.read(groceryProvider.notifier).addItem(
+                                      name,
+                                      category:
+                                          _guessCategory(name.toLowerCase()),
+                                    );
+                              }
                             }
                             if (ctx.mounted) Navigator.pop(ctx);
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content:
-                                      Text(l10n.foundIngredients(items.length)),
+                                  content: Text(toPantry
+                                      ? l10n.addedNToHomeStock(items.length)
+                                      : l10n.foundIngredients(items.length)),
                                   backgroundColor: AppTheme.green600,
                                   duration: const Duration(seconds: 2),
                                 ),
@@ -1483,6 +1600,12 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
             icon: const Icon(Icons.camera_alt_outlined),
             tooltip: l10n.groceryScanWhatYouHave,
             onPressed: _scanWhatIHave,
+          ),
+          // Scan a shopping receipt → stock the home-ingredients database
+          IconButton(
+            icon: const Icon(Icons.receipt_long_outlined),
+            tooltip: l10n.scanReceiptTooltip,
+            onPressed: _scanReceipt,
           ),
           // Smart suggestion — always visible
           IconButton(

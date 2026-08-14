@@ -70,21 +70,43 @@ from ultralytics import YOLO
 # or yolo11m-seg if you have time and want higher mAP.
 model = YOLO('yolo11s-seg.pt')
 
+# Accuracy-focused config. Key edge-accuracy levers: mask_ratio=1 trains masks
+# at full resolution (default 4 downsamples 4x), overlap_mask keeps touching
+# instances (peanuts, berries) separable, and copy_paste/mixup/cutmix add
+# clustered + occluded food arrangements.
 results = model.train(
     data='/kaggle/working/foodseg_yolo/data.yaml',
-    epochs=100,
-    imgsz=640,
-    batch=16,          # drop to 8 if you hit CUDA OutOfMemory
-    device=0,          # one T4 is enough; multi-GPU DDP is flaky in notebooks
-    patience=25,       # early stop if val mAP plateaus
+    epochs=140,
+    imgsz=640,          # match on-device Swift input size (raise both to 768
+                        # together for even finer edges).
+    batch=12,           # 640 + mask_ratio=1 uses more VRAM; drop to 8 on OOM
+    device=0,           # one T4 is enough; multi-GPU DDP is flaky in notebooks
+    patience=35,        # early stop if val mask mAP plateaus
+    optimizer='auto',
     cos_lr=True,
-    close_mosaic=10,
+    mask_ratio=1,       # full-res mask targets -> sharpest boundaries
+    overlap_mask=True,  # keep overlapping instances separable
+    copy_paste=0.3, copy_paste_mode='flip',
+    mixup=0.15, cutmix=0.10,
+    mosaic=1.0, close_mosaic=15,
+    hsv_h=0.015, hsv_s=0.7, hsv_v=0.4,
+    degrees=10.0, translate=0.1, scale=0.5, shear=2.0,
+    fliplr=0.5, flipud=0.5,
     project='/kaggle/working/runs',
     name='foodseg_yolo11s',
+    plots=True,
 )
 
 BEST = Path(results.save_dir) / 'weights' / 'best.pt'
 print('best weights ->', BEST)
+
+# Validate at full mask resolution (retina_masks) — reports the crisp-edge mAP
+# you will actually get on-device.
+metrics = YOLO(str(BEST)).val(
+    data='/kaggle/working/foodseg_yolo/data.yaml',
+    imgsz=640, retina_masks=True, plots=True,
+)
+print('mask mAP50-95 :', round(metrics.seg.map, 4))
 ```
 
 ## Cell 4 - Export to Core ML (.mlpackage) + labels JSON

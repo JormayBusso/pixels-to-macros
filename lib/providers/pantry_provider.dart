@@ -155,6 +155,22 @@ class PantryNotifier extends StateNotifier<PantryState> {
     return true;
   }
 
+  /// Consume several ingredients at once (e.g. when a meal is made at home).
+  /// Each entry decrements the matching available pantry item by its grams when
+  /// the stock is weight/volume measured, otherwise by one whole unit. Reloads
+  /// once at the end and returns how many distinct ingredients matched.
+  Future<int> consumeMany(
+      List<({String label, double? grams})> ingredients) async {
+    if (ingredients.isEmpty) return 0;
+    if (state.items.isEmpty) await load();
+    var consumed = 0;
+    for (final ing in ingredients) {
+      final ok = await consume(ing.label, grams: ing.grams);
+      if (ok) consumed++;
+    }
+    return consumed;
+  }
+
   /// Set an exact quantity; quantity <= 0 marks the item unavailable.
   Future<void> setQuantity(PantryItem item, double quantity) async {
     final q = quantity < 0 ? 0.0 : quantity;

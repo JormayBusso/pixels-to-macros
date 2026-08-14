@@ -14,6 +14,7 @@ import '../models/recipe.dart';
 import '../models/scan_result.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
+import '../providers/pantry_provider.dart';
 import '../providers/user_prefs_provider.dart';
 import '../providers/diabetes_provider.dart';
 import '../services/barcode_lookup_service.dart';
@@ -720,6 +721,32 @@ class _CustomMealDetailSheetState
     setState(() => _saving = false);
   }
 
+  /// Deduct this meal's ingredients from the home-ingredients database (pantry)
+  /// when it is cooked at home. Explicit, user-controlled action.
+  Future<void> _removeFromHomeIngredients() async {
+    final l10n = AppLocalizations.of(context);
+    final ingredients = <({String label, double? grams})>[];
+    for (var i = 0; i < _ingredients.length; i++) {
+      final g = double.tryParse(_gramsControllers[i].text) ??
+          _ingredients[i].grams;
+      final label = _ingredients[i].foodLabel;
+      if (label.isEmpty) continue;
+      ingredients.add((label: label, grams: g > 0 ? g : null));
+    }
+    final removed =
+        await ref.read(pantryProvider.notifier).consumeMany(ingredients);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(removed > 0
+            ? l10n.homeIngredientsRemoved(removed)
+            : l10n.noHomeIngredientsToRemove),
+        backgroundColor: removed > 0 ? AppTheme.green600 : null,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final h = MediaQuery.of(context).size.height * 0.85;
@@ -845,24 +872,44 @@ class _CustomMealDetailSheetState
             // Bottom bar
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: Text(
-                      AppLocalizations.of(context).totalKcalLabel(_totalKcal.round()),
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w700),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          AppLocalizations.of(context)
+                              .totalKcalLabel(_totalKcal.round()),
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      FilledButton(
+                        onPressed: _saving ? null : _logMeal,
+                        child: _saving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
+                            : Text(AppLocalizations.of(context).logMeal),
+                      ),
+                    ],
+                  ),
+                  if (ref.watch(smartGroceryEnabledProvider)) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _saving ? null : _removeFromHomeIngredients,
+                        icon: const Icon(Icons.remove_shopping_cart_outlined,
+                            size: 18),
+                        label: Text(AppLocalizations.of(context)
+                            .removeFromHomeIngredients),
+                      ),
                     ),
-                  ),
-                  FilledButton(
-                    onPressed: _saving ? null : _logMeal,
-                    child: _saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : Text(AppLocalizations.of(context).logMeal),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -2120,6 +2167,38 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
     }
   }
 
+  /// Deduct this meal's ingredients from the home-ingredients database (pantry)
+  /// when it is cooked at home. Weight-measured stock drops by the grams used;
+  /// piece-counted stock drops by one. Explicit, user-controlled action.
+  Future<void> _removeFromHomeIngredients() async {
+    final l10n = AppLocalizations.of(context);
+    if (_allFoods.isEmpty) {
+      _allFoods = await DatabaseService.instance.getAllFoods();
+    }
+    final ingredients = <({String label, double? grams})>[];
+    for (var i = 0; i < _ingredients.length; i++) {
+      final grams = _parseControllerValue(i);
+      final name = _nameControllers[i].text.trim().isEmpty
+          ? _ingredients[i].name
+          : _nameControllers[i].text.trim();
+      if (name.isEmpty) continue;
+      ingredients.add((label: name, grams: grams > 0 ? grams : null));
+    }
+    final removed = await ref
+        .read(pantryProvider.notifier)
+        .consumeMany(ingredients);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(removed > 0
+            ? l10n.homeIngredientsRemoved(removed)
+            : l10n.noHomeIngredientsToRemove),
+        backgroundColor: removed > 0 ? AppTheme.green600 : null,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final h = MediaQuery.of(context).size.height * 0.85;
@@ -2322,6 +2401,19 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                     ),
                   ],
                 ),
+                if (ref.watch(smartGroceryEnabledProvider)) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _saving ? null : _removeFromHomeIngredients,
+                      icon: const Icon(Icons.remove_shopping_cart_outlined,
+                          size: 18),
+                      label:
+                          Text(AppLocalizations.of(context).removeFromHomeIngredients),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

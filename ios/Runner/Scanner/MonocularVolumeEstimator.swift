@@ -188,10 +188,13 @@ final class MonocularVolumeEstimator {
     /// surface of the reconstructed mesh; the absolute height/scale still comes
     /// from the reliable plate-diameter + side-silhouette path, so a bad depth
     /// scale can no longer inflate the volume. Fail-safe: with no depth, low
-    /// coverage, or a near-flat food the mesh is built exactly as before.
-    /// **OFF** for now: the user requires the mesh to use the EXACT top/side
-    /// silhouettes, so depth-based top-surface shaping is disabled until it is
-    /// validated on-device to not distort the outline.
+    /// coverage, or a near-flat food (peak < 3 mm → nil relief) the mesh is
+    /// built exactly as before, so a flat food stays flat.
+    /// Sequenced OFF for now: the texture-projection fix is being validated
+    /// first so a shape change can't confound it. Flip to `true` (AGENTS.md §9
+    /// sanctioned lever #1) once the texture pass is confirmed on-device; the
+    /// relief only refines the top surface within the measured envelope
+    /// (weight ≤ 0.5) and never moves the footprint outline.
     static var useDepthRelief = false
 
     func estimate(
@@ -203,6 +206,7 @@ final class MonocularVolumeEstimator {
         maskHeight: Int,
         measuredHeightCm: Double? = nil,
         preprocessedRGB: CVPixelBuffer? = nil,
+        sidePreprocessedRGB: CVPixelBuffer? = nil,
         tableDistanceCm: Double? = nil
     ) throws -> Result {
         let scale = estimateScale(
@@ -388,9 +392,9 @@ final class MonocularVolumeEstimator {
                 guardrailUpperCm3 = bounded.upperCm3
                 guardrailApplied = bounded.softened
                 scanMode = "monocular_visual_hull"
-                let meshMode = "smooth_contour_loft"
+                let meshMode = "exact_silhouette"
                 debugInfo = String(
-                    format: "visual_hull: side=smooth mesh=%@ scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm fill=%.2f ar=%.2f vol=%.0fcm³",
+                    format: "visual_hull: side=exact mesh=%@ scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm fill=%.2f ar=%.2f vol=%.0fcm³",
                     meshMode,
                     scale.source,
                     scale.pixelsPerCm,
@@ -403,7 +407,14 @@ final class MonocularVolumeEstimator {
                 )
                 print("[MonocularEstimator] visual-hull food#\(idx) \(seg.label): sideLabel=\(profile.label), axis=\(profile.topAxis.rawValue), reversed=\(profile.reversed), mesh=\(meshMode), ar=\(String(format: "%.2f", profile.aspectRatio)), height=\(String(format: "%.2f", heightCm))cm, fill=\(String(format: "%.2f", profile.meanNormalizedHeight)), vol=\(String(format: "%.1f", volumeCm3))cm3")
             } else {
-                let rawHeightCm = (idx == 0 ? measuredHeightCm : nil) ?? priorBoundCm
+                // No side silhouette was captured, so the height was NOT
+                // measured. Do NOT inflate it with a tall class prior — a flat
+                // pile of nuts must never become a 5 cm tomato. Reconstruct from
+                // the exact TOP silhouette as a thin, flat body: a small fraction
+                // of the smaller footprint dimension, capped low, so an
+                // unmeasured food stays flat instead of being puffed up.
+                let flatUnknownHeightCm = min(2.2, max(0.4, min(widthCm, depthCm) * 0.32))
+                let rawHeightCm = (idx == 0 ? measuredHeightCm : nil) ?? flatUnknownHeightCm
                 heightCm = boundedHeightCm(
                     rawHeightCm: rawHeightCm,
                     label: seg.label,
@@ -457,6 +468,7 @@ final class MonocularVolumeEstimator {
                 heightCm: heightCm,
                 topFrame: topFrame,
                 colorFrame: preprocessedRGB,
+                sideColorFrame: sidePreprocessedRGB,
                 maskWidth: maskWidth,
                 maskHeight: maskHeight,
                 sideProfile: profile,
@@ -588,13 +600,17 @@ final class MonocularVolumeEstimator {
         }
 
         let baseName = "scan3d_camera_\(Int(Date().timeIntervalSince1970 * 1000))"
-        // No baked photo texture: a top-down projection stretched the top image
-        // into vertical streaks down the sides and pasted it onto the underside.
-        // The mesh instead carries real per-vertex colours the viewer renders
-        // directly (see sampledVertexColors + Scan3DViewerPlugin).
+        // Paste the real photos onto the mesh. With a side capture the exporter
+        // bakes a TOP+SIDE atlas; the per-object mesh is seam-split (unwelded per
+        // triangle, each triangle assigned wholly to the top or side tile — see
+        // makeEstimatedObject) so no triangle straddles the two photos and there
+        // is no doubled/flickering texture. Without a side capture the top photo
+        // is baked alone and every vertex maps into it.
         guard let url = exporter.export(
             objects: objects,
-            baseName: baseName
+            baseName: baseName,
+            textureSource: preprocessedRGB,
+            sideTextureSource: sidePreprocessedRGB
         ),
               FileManager.default.fileExists(atPath: url.path) else {
             print("[MonocularEstimator] export failed: objects=\(objects.count), baseName=\(baseName)")
@@ -626,18 +642,25 @@ final class MonocularVolumeEstimator {
         tableDistanceCm: Double? = nil
     ) -> ScaleEstimate {
         let imageWidth = CVPixelBufferGetWidth(topFrame.pixelBuffer)
-        // Plate detection is used ONLY to recover the preprocessing crop
-        // fraction (the mask is a scaleFill crop of the frame) and, below, for
-        // a debug-only validation log. Plate diameter is NEVER a scale source:
-        // its ±20% circle-fit swing cubed into the ~2x volume variance, so it
-        // was removed from scaling entirely.
+        // The segmentation mask is a square resize of this crop. A credible
+        // detected plate provides an in-frame metric reference, whereas the
+        // guided camera-distance fallback is only an estimate.
         let plate = plateDetector.detect(in: topFrame.pixelBuffer)
         let cropWidthPx = max(1.0, Double(plate.rect.width) * Double(imageWidth))
         let fx = Double(topFrame.cameraIntrinsics.columns.0.x)
 
+        let plateDiameterPxPerCm: Double? = {
+            guard plate.detected, plate.diameterPx > 0 else { return nil }
+            let diameterInMask = Double(plate.diameterPx) * Double(maskWidth) / cropWidthPx
+            let pxPerCm = diameterInMask / Double(PlateDetector.defaultDiameterCm)
+            guard pxPerCm.isFinite, pxPerCm >= 4.0, pxPerCm <= 80.0 else { return nil }
+            return pxPerCm
+        }()
+
         // Deterministic single-source hierarchy — no blending, no weighted
         // fusion. Exactly one source is selected per scan:
-        //   PRIMARY  : ARKit tracked plane distance (metrically stable)
+        //   PRIMARY  : detected plate diameter in the captured image
+        //   SECONDARY: ARKit tracked plane distance
         //   FALLBACK : camera-intrinsic estimate at the guided hold distance
         //   LAST     : default-plate geometry only when intrinsics are missing
         //
@@ -649,6 +672,32 @@ final class MonocularVolumeEstimator {
             let cmPerMaskPx = cmPerImagePx * cropWidthPx / Double(maskWidth)
             return max(1.0 / max(cmPerMaskPx, 0.0001), 1.0)
         }()
+
+        if let platePxPerCm = plateDiameterPxPerCm {
+            if let reference = intrinsicGuidedPxPerCm {
+                let ratio = platePxPerCm / reference
+                if ratio >= 0.55, ratio <= 1.9 {
+                    logScaleValidation(chosenPxPerCm: platePxPerCm, plateDetected: true,
+                                       maskWidth: maskWidth, maskHeight: maskHeight,
+                                       source: "plate_diameter")
+                    return ScaleEstimate(
+                        pixelsPerCm: platePxPerCm,
+                        source: "plate_diameter",
+                        confidence: 0.86,
+                        fallbackReason: nil)
+                }
+                print("[MonocularEstimator] rejected plate_diameter scale \(String(format: "%.1f", platePxPerCm))px/cm vs intrinsic \(String(format: "%.1f", reference))px/cm (ratio \(String(format: "%.2f", ratio)))")
+            } else {
+                logScaleValidation(chosenPxPerCm: platePxPerCm, plateDetected: true,
+                                   maskWidth: maskWidth, maskHeight: maskHeight,
+                                   source: "plate_diameter")
+                return ScaleEstimate(
+                    pixelsPerCm: platePxPerCm,
+                    source: "plate_diameter",
+                    confidence: 0.80,
+                    fallbackReason: nil)
+            }
+        }
 
         if let tableDistanceCm, fx > 1, tableDistanceCm > 1.0 {
             let cmPerImagePx = tableDistanceCm / fx
@@ -733,6 +782,12 @@ final class MonocularVolumeEstimator {
         // `estimate(...)` still trims a single banana lying flat, but the bunch
         // keeps a realistic height instead of collapsing to the 3 cm default.
         if l.contains("banana") { return (6.5, 0.88) }
+        // Nuts / seeds are scanned as a low, loose pile — a thin flat layer, not
+        // a whole-fruit height. Keep them flat so a handful of almonds is never
+        // reconstructed with a tall round-produce prior.
+        if l.contains("almond") || l.contains("cashew") || l.contains("walnut") ||
+           l.contains("peanut") || l.contains("pecan") || l.contains("pistachio") ||
+           l.contains("hazelnut") || l.contains("nuts") { return (1.5, 0.62) }
         if l.contains("apple") || l.contains("orange") || l.contains("egg") ||
            l.contains("tomato") || l.contains("onion") || l.contains("potato") ||
            l.contains("peach") || l.contains("plum") { return (5.0, 0.58) }
@@ -1236,6 +1291,7 @@ final class MonocularVolumeEstimator {
         heightCm: Double,
         topFrame: FrameCaptureService.CapturedFrame,
         colorFrame: CVPixelBuffer?,
+        sideColorFrame: CVPixelBuffer?,
         maskWidth: Int,
         maskHeight: Int,
         sideProfile: SideProfile? = nil,
@@ -1325,7 +1381,7 @@ final class MonocularVolumeEstimator {
         // subdivision scales with face count. 104 cells preserves the captured
         // outline for produce without turning a tomato into a timeout-sized
         // 300k+ triangle export.
-        let maxCells = 104
+        let maxCells = 100
         let step = max(1, Int((Double(max(bboxW, bboxH)) / Double(maxCells)).rounded(.up)))
         let gc = max(1, Int((Double(bboxW) / Double(step)).rounded(.up)))
         let gr = max(1, Int((Double(bboxH) / Double(step)).rounded(.up)))
@@ -1417,89 +1473,11 @@ final class MonocularVolumeEstimator {
         }
         var maxEdgeDist: Float = 0.0001
         for v in edgeDist where v > maxEdgeDist { maxEdgeDist = v }
-        @inline(__always) func smoothstep01(_ x: Float) -> Float {
-            let t = max(0.0, min(1.0, x))
-            return t * t * (3.0 - 2.0 * t)
-        }
-        let transverseStrength = transverseRoundnessStrength(for: label)
-        let sideTaperStrength = transverseSideTaperStrength(for: label)
-        let sideFillTarget = roundSideFillTarget(for: label)
 
-        let smoothedSideBounds: [(bottom: Float, top: Float)]? = {
-            guard let sideProfile, !sideProfile.normalizedHeights.isEmpty else { return nil }
-            let sampleCount = min(192, max(48, sideProfile.normalizedHeights.count))
-            var rawBounds: [(bottom: Float, top: Float)] = []
-            rawBounds.reserveCapacity(sampleCount)
-            for sampleIndex in 0..<sampleCount {
-                let axisU = Double(sampleIndex) / Double(max(1, sampleCount - 1))
-                let sampled = sideProfile.sampleBounds(axisU)
-                rawBounds.append((Float(sampled.bottom), Float(sampled.top)))
-            }
-            let radius = max(2, min(6, sampleCount / 28))
-            // Median pre-pass (spike-robust). A stray tall side-mask column — a
-            // leaf, a specular glint, a segmentation fringe — would survive the
-            // weighted MEAN below and reappear as a "shark fin" on the
-            // reconstructed top. Replacing each bound with the median of a small
-            // window first removes those outliers before the mean smooths the
-            // contour, so isolated spikes can no longer form fins.
-            let medianRadius = max(1, min(4, sampleCount / 40))
-            var deSpiked = rawBounds
-            if sampleCount > 2 * medianRadius + 1 {
-                for sampleIndex in 0..<sampleCount {
-                    let lower = max(0, sampleIndex - medianRadius)
-                    let upper = min(sampleCount - 1, sampleIndex + medianRadius)
-                    var tops: [Float] = []
-                    var bottoms: [Float] = []
-                    for neighborIndex in lower...upper {
-                        tops.append(rawBounds[neighborIndex].top)
-                        bottoms.append(rawBounds[neighborIndex].bottom)
-                    }
-                    tops.sort(); bottoms.sort()
-                    let medTop = tops[tops.count / 2]
-                    let medBottom = bottoms[bottoms.count / 2]
-                    let orderedBottom = max(0, min(0.999, min(medBottom, medTop)))
-                    let orderedTop = min(1, max(orderedBottom + 0.001, max(medBottom, medTop)))
-                    deSpiked[sampleIndex] = (orderedBottom, orderedTop)
-                }
-            }
-            var smoothed = deSpiked
-            for sampleIndex in 0..<sampleCount {
-                if sampleIndex < 2 || sampleIndex >= sampleCount - 2 { continue }
-                let lower = max(0, sampleIndex - radius)
-                let upper = min(sampleCount - 1, sampleIndex + radius)
-                var bottomSum: Float = 0
-                var topSum: Float = 0
-                var weightSum: Float = 0
-                for neighborIndex in lower...upper {
-                    let distance = abs(neighborIndex - sampleIndex)
-                    let weight = Float(radius + 1 - distance)
-                    bottomSum += deSpiked[neighborIndex].bottom * weight
-                    topSum += deSpiked[neighborIndex].top * weight
-                    weightSum += weight
-                }
-                guard weightSum > 0 else { continue }
-                let blendedBottom = deSpiked[sampleIndex].bottom * 0.35 + (bottomSum / weightSum) * 0.65
-                let blendedTop = deSpiked[sampleIndex].top * 0.35 + (topSum / weightSum) * 0.65
-                let orderedBottom = max(0, min(0.999, min(blendedBottom, blendedTop)))
-                let orderedTop = min(1, max(orderedBottom + 0.001, max(blendedBottom, blendedTop)))
-                smoothed[sampleIndex] = (orderedBottom, orderedTop)
-            }
-            return smoothed
-        }()
-
-        @inline(__always) func sampledSmoothedSideBounds(axisU: Double) -> (bottom: Float, top: Float)? {
-            guard let smoothedSideBounds, !smoothedSideBounds.isEmpty else { return nil }
-            let clamped = min(1.0, max(0.0, axisU))
-            let x = clamped * Double(smoothedSideBounds.count - 1)
-            let lowerIndex = Int(floor(x))
-            let upperIndex = min(smoothedSideBounds.count - 1, lowerIndex + 1)
-            let t = Float(x - Double(lowerIndex))
-            let lower = smoothedSideBounds[lowerIndex]
-            let upper = smoothedSideBounds[upperIndex]
-            let bottom = lower.bottom * (1 - t) + upper.bottom * t
-            let top = lower.top * (1 - t) + upper.top * t
-            return (bottom, max(bottom + 0.001, top))
-        }
+        // Side-profile low-pass smoothing, fill inflation, taper and analytic
+        // dome were REMOVED per the user requirement to use the REAL captured
+        // silhouette. `cornerBounds` below reads the raw measured side bounds
+        // directly, so the displayed mesh is the exact two-silhouette hull.
 
         // ── Exact-silhouette continuous bounds ────────────────────────────
         // `cornerBounds` evaluates bottom/top height fractions from the SIDE
@@ -1540,62 +1518,34 @@ final class MonocularVolumeEstimator {
                 return (lo, min(1, max(lo + 0.001, t)))
             }
             if let sideProfile, !sideProfile.normalizedHeights.isEmpty {
-                let axisU = sideProfile.topAxis == .columns
+                // TWO-SILHOUETTE VISUAL HULL (space carving from the top + side
+                // views). The side view gives the EXACT height profile along its
+                // matched top axis; the perpendicular (unobserved) axis is that
+                // SAME measured profile MIRRORED onto it — the camera never sees
+                // that side, so it is taken to be symmetric. The surface is the
+                // INTERSECTION of the two extruded silhouettes: the top fraction
+                // is the MIN of the two profile tops, the base the MAX of the two
+                // bottoms. Nothing is invented — only the measured side silhouette
+                // (mirrored) + the measured top footprint bound it, so it rounds
+                // to the true body instead of extruding a box/wall.
+                let uMatched = sideProfile.topAxis == .columns
                     ? Double(cc) / Double(max(gc, 1))
                     : Double(rr) / Double(max(gr, 1))
-                let sampled = sampledSmoothedSideBounds(axisU: axisU) ?? {
-                    let raw = sideProfile.sampleBounds(axisU)
-                    return (Float(raw.bottom), Float(raw.top))
-                }()
-                var bottom = sampled.bottom
-                var top = sampled.top
+                let uTransverse = sideProfile.topAxis == .columns
+                    ? Double(rr) / Double(max(gr, 1))
+                    : Double(cc) / Double(max(gc, 1))
+                let a = sideProfile.sampleBounds(uMatched)
+                let b = sideProfile.sampleBounds(uTransverse)
+                let bottom = Float(max(a.bottom, b.bottom))
+                let top = Float(min(a.top, b.top))
                 if top <= bottom { return (0, max(0.02, top)) }
-                if sideFillTarget > 0, sideProfile.meanNormalizedHeight > 0 {
-                    let fillScale = min(1.22, max(1.0, sideFillTarget / Float(sideProfile.meanNormalizedHeight)))
-                    let mid = (bottom + top) * 0.5
-                    let halfH = (top - bottom) * 0.5 * fillScale
-                    bottom = mid - halfH
-                    top = mid + halfH
-                }
-                if sideTaperStrength > 0 {
-                    let tCoord = sideProfile.topAxis == .columns ? Float(rr) : Float(cc)
-                    let tCenter = sideProfile.topAxis == .columns ? cgR : cgC
-                    let tExtent = sideProfile.topAxis == .columns ? Float(gr) : Float(gc)
-                    let radius = tCoord >= tCenter ? max(0.5, tExtent - tCenter) : max(0.5, tCenter)
-                    let tRho = min(1.0, abs(tCoord - tCenter) / radius)
-                    let falloff = sqrt(max(0.0, 1.0 - tRho * tRho))
-                    let mid = (bottom + top) * 0.5
-                    let halfH = (top - bottom) * 0.5 * (1.0 - sideTaperStrength * (1.0 - falloff))
-                    bottom = mid - halfH
-                    top = mid + halfH
-                }
-                if transverseStrength > 0 {
-                    let nd = min(1.0, edgeDist[corner(rr, cc)] / maxEdgeDist)
-                    let cap = sqrt(max(0.0, nd))
-                    // Clean hemispherical dome from the RELIABLE top silhouette
-                    // distance transform: tall at the footprint centre, tapering
-                    // to the rim. This is the shape a round produce item SHOULD
-                    // have, derived from the trustworthy top view rather than the
-                    // noisy side silhouette.
-                    let domeTop = bottom + (1.0 - bottom) * cap
-                    // Blend the MEASURED side top toward the dome, then cap it AT
-                    // the dome. The cap removes stem/leaf "shark fins" — a fin
-                    // pokes the side profile far above the sphere, so the top can
-                    // only come DOWN to the dome. The gentle blend lifts a
-                    // foreshortened, too-low top part-way so round produce never
-                    // looks pressed flat, WITHOUT discarding the real measurement
-                    // or synthetically inflating the silhouette (the earlier hard
-                    // [0.85·dome, dome] band + span inflation distorted the shape).
-                    let roundBlend: Float = 0.55
-                    top = min(domeTop, top * (1.0 - roundBlend) + domeTop * roundBlend)
-                }
                 return finish(bottom, top)
             }
-            // No side silhouette: dome the top silhouette via its distance
-            // transform (round) or a near-flat cap (box); base rests on plate.
-            let nd = min(1.0, edgeDist[corner(rr, cc)] / maxEdgeDist)
-            let topShape: Float = transverseStrength > 0 ? sqrt(nd) : smoothstep01(nd * 3.0)
-            return finish(0, max(0.02, topShape))
+            // No side silhouette: the height PROFILE was never observed, so per
+            // AGENTS.md §9 we invent no dome/analytic shape. Extrude the EXACT
+            // top silhouette at constant full height (flat top, vertical walls on
+            // the true outline); the scalar height still comes from heightCm.
+            return finish(0, 1.0)
         }
 
         @inline(__always) func cornerX(_ cc: Int) -> Float {
@@ -1670,7 +1620,7 @@ final class MonocularVolumeEstimator {
         var vertices: [SIMD3<Float>] = []
         var faces: [Int] = []
         var weldedVertex: [String: Int] = [:]
-        let surfaceExtractionMode = "smooth_contour_loft"
+        let surfaceExtractionMode = "exact_silhouette_loft"
         let occupiedCellCount = on.reduce(0) { $0 + ($1 ? 1 : 0) }
         let cellAreaCm2 = max(widthCm, 2.0) * max(depthCm, 2.0) /
             Double(max(1, gc * gr))
@@ -1768,16 +1718,13 @@ final class MonocularVolumeEstimator {
         // outline is re-snapped to the exact mask below, so smoothing keeps the
         // captured silhouette exact while removing facets. Round produce gets an
         // extra Taubin pass for a fuller organic surface.
-        let roundProduce = bowl != nil || transverseRoundnessStrength(for: label) > 0
-        let subdivisionLevels = faces.count > 45_000 ? 0 : 1
-        let taubinIterations = roundProduce ? 4 : 3
-        let smoothed = MeshSmoothing.smooth(
-            vertices: vertices,
-            faces: faces,
-            subdivisionLevels: subdivisionLevels,
-            taubinIterations: taubinIterations)
-        vertices = smoothed.vertices
-        faces = smoothed.faces
+        // HARD-FORCED EXACT SILHOUETTE (user requirement): NO geometry
+        // smoothing. Loop subdivision + Taubin were rounding the captured
+        // outline into a softer pillow; the user wants the displayed mesh to be
+        // EXACTLY the top + side silhouette. We keep the raw silhouette-cage
+        // vertices and only re-snap them to the exact source mask below. Soft
+        // per-vertex NORMALS (the exporter's addNormals) still shade it
+        // pleasantly without ever altering the geometry.
 
         @inline(__always) func hullBoundsAt(rowGrid: Float, colGrid: Float) -> (bottom: Float, top: Float) {
             let rr = min(gr - 1, max(0, Int(floor(rowGrid))))
@@ -1945,15 +1892,13 @@ final class MonocularVolumeEstimator {
         let resolvedVolumeCm3 = surfaceVolumeCm3.isFinite && surfaceVolumeCm3 > 1.0
             ? surfaceVolumeCm3
             : max(0.5, hullVoxelVolumeCm3)
-        // Seamless top-down photo projection. Every vertex — top, side, and the
-        // unobserved back/underside — samples the real captured top photo at the
-        // pixel directly above its footprint (x,z) position. Because the vertices
-        // are snapped to the exact top-mask silhouette, the photo lines up with
-        // the food outline and wraps continuously down the sides and around the
-        // body as one continuous image. There is no atlas split and no side-strip
-        // tile, so the stripes/seam-lines that earlier textured scans showed are
-        // gone. The matching texture is the mask-aligned preprocessed top RGB
-        // baked by Food3DExporter, so these UVs index it exactly.
+        // Seamless top-down photo projection: every vertex samples the real
+        // captured TOP photo at the pixel directly above its footprint (x,z).
+        // Because the vertices are snapped to the exact top-mask silhouette the
+        // photo lines up with the outline and wraps continuously down the sides
+        // as ONE image — no atlas split, so no straddling triangles and no
+        // doubled/flickering texture. The matching texture is the mask-aligned
+        // preprocessed top RGB baked by Food3DExporter, so these UVs index it.
         let uvs: [SIMD2<Float>] = vertices.map { p in
             let colNorm = clamp01(((p.x - offsetX) / max(0.0001, 2.0 * rx)) + 0.5)
             let rowNorm = clamp01(((p.z - offsetZ) / max(0.0001, 2.0 * rz)) + 0.5)
@@ -1985,6 +1930,7 @@ final class MonocularVolumeEstimator {
         // bleeds white into the food colour.
         let sharedBGRA = Food3DTextureBaker.bgraCopy(of: colorFrame ?? topFrame.pixelBuffer)
             ?? Food3DTextureBaker.bgraCopy(of: topFrame.pixelBuffer)
+        let sharedSideBGRA = sideColorFrame.flatMap { Food3DTextureBaker.bgraCopy(of: $0) }
         if sharedBGRA == nil {
             print("[MonocularEstimator] ⚠️ colour-frame BGRA decode failed for \(label) — both crop and full-frame decode returned nil")
         }
@@ -2004,23 +1950,93 @@ final class MonocularVolumeEstimator {
         for p in vertices { vertexMaskPositions.append(maskPosition(for: p)) }
         let colors = sampledVertexColors(
             bgra: sharedBGRA,
+            sideBGRA: sharedSideBGRA,
             solidMask: solidMask,
             positions: vertexMaskPositions,
+            heightFractions: vertices.map { Double(max(0, min(1, $0.y / max(h, 0.0001)))) },
             normals: normals,
             baseColor: color,
             label: label,
+            footprint: footprint,
+            sideProfile: sideProfile,
             maskWidth: maskWidth,
             maskHeight: maskHeight
         )
+
+        // Seam-split for the TOP+SIDE photo atlas. A shared-vertex mesh cannot
+        // be atlased directly: triangles on the top/side boundary would straddle
+        // the two photo tiles and the GPU would smear both pictures together
+        // (doubled image + flicker on rotation). So when a side capture exists we
+        // UNWELD per triangle and assign each whole triangle to ONE tile by its
+        // average normal — top-facing and underside → top photo, the vertical
+        // side band → side photo — cutting the picture cleanly at the seam with
+        // no straddle. The viewer welds normals by position, so shading stays
+        // smooth despite the duplicated seam vertices. Volume is unchanged (the
+        // positions are identical; only vertices shared at the seam are copied).
+        var outVertices = vertices
+        var outFaces = faces
+        var outColors = colors
+        var outUVs = uvs
+        if sideColorFrame != nil {
+            let topU0 = Food3DTextureBaker.atlasTopU0, topU1 = Food3DTextureBaker.atlasTopU1
+            let sideU0 = Food3DTextureBaker.atlasSideU0, sideU1 = Food3DTextureBaker.atlasSideU1
+            let colorStride = vertices.isEmpty ? 3 : max(1, colors.count / vertices.count)
+            @inline(__always) func topUV(_ p: SIMD3<Float>) -> SIMD2<Float> {
+                let colNorm = clamp01(((p.x - offsetX) / max(0.0001, 2.0 * rx)) + 0.5)
+                let rowNorm = clamp01(((p.z - offsetZ) / max(0.0001, 2.0 * rz)) + 0.5)
+                let su = (Float(footprint.minCol) + colNorm * Float(bboxW)) / Float(max(maskWidth, 1))
+                let sv = (Float(footprint.minRow) + rowNorm * Float(bboxH)) / Float(max(maskHeight, 1))
+                return SIMD2<Float>(clamp01(topU0 + su * (topU1 - topU0)), 1.0 - clamp01(sv))
+            }
+            @inline(__always) func sideUV(_ p: SIMD3<Float>) -> SIMD2<Float> {
+                guard let sp = sideProfile else { return topUV(p) }
+                let colNorm = clamp01(((p.x - offsetX) / max(0.0001, 2.0 * rx)) + 0.5)
+                let rowNorm = clamp01(((p.z - offsetZ) / max(0.0001, 2.0 * rz)) + 0.5)
+                let axisU = sp.topAxis == .columns ? Double(colNorm) : Double(rowNorm)
+                let hf = Double(clamp01(p.y / Float(max(h, 0.0001))))
+                let uv = sp.sourceUV(axisU: axisU, heightFraction: hf)
+                return SIMD2<Float>(clamp01(sideU0 + Float(uv.y) * (sideU1 - sideU0)),
+                                    1.0 - clamp01(Float(uv.x)))
+            }
+            var nv = [SIMD3<Float>](); nv.reserveCapacity(faces.count)
+            var nc = [UInt8](); nc.reserveCapacity(faces.count * colorStride)
+            var nu = [SIMD2<Float>](); nu.reserveCapacity(faces.count)
+            var nf = [Int](); nf.reserveCapacity(faces.count)
+            var t = 0
+            while t + 2 < faces.count {
+                let i0 = faces[t], i1 = faces[t + 1], i2 = faces[t + 2]
+                t += 3
+                guard i0 >= 0, i0 < vertices.count, i1 >= 0, i1 < vertices.count,
+                      i2 >= 0, i2 < vertices.count else { continue }
+                let avgNy = (normals[i0].y + normals[i1].y + normals[i2].y) / 3.0
+                let isSide = sideProfile != nil && avgNy < 0.45 && avgNy > -0.35
+                for v in [i0, i1, i2] {
+                    nf.append(nv.count)
+                    nv.append(vertices[v])
+                    let cBase = v * colorStride
+                    for k in 0..<colorStride {
+                        nc.append(cBase + k < colors.count ? colors[cBase + k] : 200)
+                    }
+                    nu.append(isSide ? sideUV(vertices[v]) : topUV(vertices[v]))
+                }
+            }
+            if nf.count >= 3 {
+                outVertices = nv
+                outFaces = nf
+                outColors = nc
+                outUVs = nu
+                print("[MonocularEstimator] atlas seam-split \(label): welded=\(vertices.count)v/\(faces.count / 3)f -> unwelded=\(nv.count)v")
+            }
+        }
 
         let object = DepthFusion.Food3DObject(
             id: id,
             label: label,
             instanceIndex: instanceIndex,
-            vertices: vertices,
-            faces: faces,
-            colors: colors,
-            uvs: uvs,
+            vertices: outVertices,
+            faces: outFaces,
+            colors: outColors,
+            uvs: outUVs,
             voxelCount: occupiedCellCount,
             volumeCm3: resolvedVolumeCm3,
             // The hull is now Taubin-smoothed into a curved organic surface, so
@@ -2085,11 +2101,15 @@ final class MonocularVolumeEstimator {
     /// dominant tint could not, without reintroducing stretched-texture stripes.
     private func sampledVertexColors(
         bgra: CVPixelBuffer?,
+        sideBGRA: CVPixelBuffer?,
         solidMask: [[UInt8]],
         positions: [(row: Double, col: Double)],
+        heightFractions: [Double],
         normals: [SIMD3<Float>],
         baseColor: [UInt8],
         label: String,
+        footprint: Footprint,
+        sideProfile: SideProfile?,
         maskWidth: Int,
         maskHeight: Int
     ) -> [UInt8] {
@@ -2097,9 +2117,6 @@ final class MonocularVolumeEstimator {
         out.reserveCapacity(positions.count * 3)
         let base = baseColor.count >= 3 ? baseColor : [210, 170, 120]
         let baseR = Double(base[0]), baseG = Double(base[1]), baseB = Double(base[2])
-        // Reference brightness of the food's own colour, used to neutralise
-        // cast shadows per vertex below.
-        let baseLum = 0.299 * baseR + 0.587 * baseG + 0.114 * baseB
 
         guard let buffer = bgra else {
             for _ in positions { out += base }
@@ -2116,12 +2133,21 @@ final class MonocularVolumeEstimator {
         }
         let ptr = baseAddr.assumingMemoryBound(to: UInt8.self)
 
-        let mirrorsUnderside = undersideResemblesTop(for: label)
-        // Browned / plate-contact underside tone for layered & baked foods,
-        // derived from the food's own base colour so it stays believable.
-        let underR = min(255.0, baseR * 0.70 + 20)
-        let underG = min(255.0, baseG * 0.62 + 12)
-        let underB = min(255.0, baseB * 0.52)
+        var sidePtr: UnsafeMutablePointer<UInt8>?
+        var sideWidth = 0
+        var sideHeight = 0
+        var sideRowBytes = 0
+        if let sideBGRA {
+            CVPixelBufferLockBaseAddress(sideBGRA, .readOnly)
+            sidePtr = CVPixelBufferGetBaseAddress(sideBGRA)?
+                .assumingMemoryBound(to: UInt8.self)
+            sideWidth = CVPixelBufferGetWidth(sideBGRA)
+            sideHeight = CVPixelBufferGetHeight(sideBGRA)
+            sideRowBytes = CVPixelBufferGetBytesPerRow(sideBGRA)
+        }
+        defer {
+            if let sideBGRA { CVPixelBufferUnlockBaseAddress(sideBGRA, .readOnly) }
+        }
 
         @inline(__always) func nearestInMask(_ r0: Int, _ c0: Int) -> (Int, Int)? {
             if r0 >= 0, r0 < maskHeight, c0 >= 0, c0 < maskWidth, solidMask[r0][c0] == 1 {
@@ -2140,78 +2166,76 @@ final class MonocularVolumeEstimator {
             return nil
         }
 
+        // Exact per-vertex colour from the TOP photo (3×3 denoise). Returns nil
+        // when the sample is the white plate showing through a loose mask, so the
+        // caller can fall back to another source instead of bleeding white.
+        @inline(__always) func topPixel(_ mr: Int, _ mc: Int) -> (Double, Double, Double)? {
+            guard let (r, c) = nearestInMask(mr, mc) else { return nil }
+            var rSum = 0.0, gSum = 0.0, bSum = 0.0, n = 0.0
+            for dr in -1...1 {
+                for dc in -1...1 {
+                    let mrr = min(max(r + dr, 0), maskHeight - 1)
+                    let mcc = min(max(c + dc, 0), maskWidth - 1)
+                    guard solidMask[mrr][mcc] == 1 else { continue }
+                    let x = min(max(Int((Double(mcc) / Double(maskWidth)) * Double(w)), 0), w - 1)
+                    let y = min(max(Int((Double(mrr) / Double(maskHeight)) * Double(h)), 0), h - 1)
+                    let off = y * rowBytes + x * 4
+                    rSum += Double(ptr[off + 2]); gSum += Double(ptr[off + 1]); bSum += Double(ptr[off + 0]); n += 1
+                }
+            }
+            guard n > 0 else { return nil }
+            let rr = rSum / n, gg = gSum / n, bb = bSum / n
+            let mx = max(rr, max(gg, bb)), mn = min(rr, min(gg, bb))
+            if mn > 175, mx - mn < 40 { return nil }
+            return (rr, gg, bb)
+        }
+
         for i in 0..<positions.count {
             let pos = positions[i]
             let mr = Int(pos.row.rounded())
             let mc = Int(pos.col.rounded())
             var sr = baseR, sg = baseG, sb = baseB
-            if let (r, c) = nearestInMask(mr, mc) {
-                // 3×3 neighbourhood average at the mapped image pixel so a
-                // single noisy pixel doesn't speckle the surface.
-                var rSum = 0.0, gSum = 0.0, bSum = 0.0, n = 0.0
-                for dr in -1...1 {
-                    for dc in -1...1 {
-                        let mrr = min(max(r + dr, 0), maskHeight - 1)
-                        let mcc = min(max(c + dc, 0), maskWidth - 1)
-                        guard solidMask[mrr][mcc] == 1 else { continue }
-                        let x = min(max(Int((Double(mcc) / Double(maskWidth)) * Double(w)), 0), w - 1)
-                        let y = min(max(Int((Double(mrr) / Double(maskHeight)) * Double(h)), 0), h - 1)
-                        let off = y * rowBytes + x * 4
-                        rSum += Double(ptr[off + 2])
-                        gSum += Double(ptr[off + 1])
-                        bSum += Double(ptr[off + 0])
-                        n += 1
-                    }
-                }
-                if n > 0 { sr = rSum / n; sg = gSum / n; sb = bSum / n }
-                // Plate guard: a bright, colourless sample is the white plate
-                // showing through a loose mask — use the food base colour so the
-                // surface never turns white.
-                let mxS = max(sr, max(sg, sb)), mnS = min(sr, min(sg, sb))
-                if mnS > 175, mxS - mnS < 40 { sr = baseR; sg = baseG; sb = baseB }
-            }
-            // Shadow neutralisation. A shadow cast across the food darkens the
-            // sampled pixels WITHOUT changing the underlying hue, so without this
-            // a shadow paints a dark blotch onto the reconstructed surface. Lift
-            // any sample that is markedly darker than the food's base brightness
-            // back toward it MULTIPLICATIVELY, which preserves the hue (a shadowed
-            // red stays red, just brighter). The lift is partial and capped so
-            // genuine dark features aren't erased and near-black can't blow out.
-            // Highlights are handled by the base pull below and the dominant
-            // colour's luminance trim, so only darkening is corrected here.
-            let sampleLum = 0.299 * sr + 0.587 * sg + 0.114 * sb
-            if sampleLum > 1.0, baseLum > 1.0, sampleLum < baseLum * 0.95 {
-                let ratio = min(baseLum / sampleLum, 1.8)
-                let lift = 1.0 + (ratio - 1.0) * 0.70
-                sr = min(255.0, sr * lift)
-                sg = min(255.0, sg * lift)
-                sb = min(255.0, sb * lift)
-            }
-            // Pull extreme samples gently toward the base colour so a stray
-            // specular/shadow pixel can't create a white or black speckle, while
-            // keeping most of the natural per-vertex variation.
-            sr = sr * 0.80 + baseR * 0.20
-            sg = sg * 0.80 + baseG * 0.20
-            sb = sb * 0.80 + baseB * 0.20
-
             let ny = i < normals.count ? normals[i].y : 1.0
-            if ny < -0.35 {
-                // Underside — unobserved by either photo. Do NOT reuse the
-                // per-vertex TOP sample here: mapping the top image onto the
-                // bottom makes the underside look like the top photo pasted
-                // underneath (exactly the artefact to avoid). Use a uniform,
-                // slightly darker shade of the food's own base colour so the
-                // bottom reads as a plausible continuation of the food (a
-                // tomato's underside is simply a darker red), never a mirror of
-                // the top pattern.
-                if mirrorsUnderside {
-                    sr = baseR * 0.80; sg = baseG * 0.80; sb = baseB * 0.80
+            if ny < 0.45,
+               ny > -0.35,
+               let sideProfile,
+               let sidePtr,
+               sideWidth > 0,
+               sideHeight > 0 {
+                let axisU: Double
+                if sideProfile.topAxis == .columns {
+                    axisU = (pos.col - Double(footprint.minCol)) /
+                        Double(max(1, footprint.maxCol - footprint.minCol))
                 } else {
-                    sr = underR; sg = underG; sb = underB
+                    axisU = (pos.row - Double(footprint.minRow)) /
+                        Double(max(1, footprint.maxRow - footprint.minRow))
                 }
-            } else if ny < 0.35 {
-                // Near-vertical sides catch less top light.
-                sr *= 0.92; sg *= 0.92; sb *= 0.92
+                let uv = sideProfile.sourceUV(
+                    axisU: axisU,
+                    heightFraction: i < heightFractions.count ? heightFractions[i] : 0.5
+                )
+                let x = min(max(Int((Double(uv.y) * Double(sideWidth)).rounded()), 0), sideWidth - 1)
+                let y = min(max(Int((Double(uv.x) * Double(sideHeight)).rounded()), 0), sideHeight - 1)
+                let offset = y * sideRowBytes + x * 4
+                sr = Double(sidePtr[offset + 2])
+                sg = Double(sidePtr[offset + 1])
+                sb = Double(sidePtr[offset])
+                // If the side photo pixel is the white plate / background behind
+                // the food, fall back to the exact top-photo colour so a side
+                // face never picks up the table instead of the food.
+                let mxS = max(sr, max(sg, sb)), mnS = min(sr, min(sg, sb))
+                if mnS > 175, mxS - mnS < 40, let t = topPixel(mr, mc) {
+                    sr = t.0; sg = t.1; sb = t.2
+                }
+            } else if let t = topPixel(mr, mc) {
+                sr = t.0; sg = t.1; sb = t.2
+            }
+            if ny < -0.35 {
+                // Underside is unobserved by both photos; colour it from the TOP
+                // photo pixel directly above its footprint — the exact captured
+                // colour, not a synthetic tint — so the whole object is coloured
+                // straight from the pictures.
+                if let t = topPixel(mr, mc) { sr = t.0; sg = t.1; sb = t.2 }
             }
             out.append(UInt8(min(255.0, max(0.0, sr.rounded()))))
             out.append(UInt8(min(255.0, max(0.0, sg.rounded()))))

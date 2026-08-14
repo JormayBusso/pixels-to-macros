@@ -26,6 +26,7 @@ import '../widgets/confidence_badge.dart';
 import '../widgets/ai_scan_processing_view.dart';
 import '../widgets/dual_photo_capture_overlay.dart';
 import '../widgets/ai_scan_edge_glow.dart';
+import '../widgets/ai_scan_sweep_overlay.dart';
 import '../models/scan_diagnostics.dart';
 import '../providers/scan_diagnostics_provider.dart';
 import '../widgets/premium_theme_effects.dart';
@@ -756,6 +757,17 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             )
           else
             const Positioned.fill(child: ColoredBox(color: Colors.black)),
+
+          // ── Themed "AI is scanning" sweep over the live camera ───────
+          // Scan-line + reconstruction grid + corner reticles, tinted to the
+          // active premium theme so the scan reads as on-device intelligence.
+          if (_orientationReady && _sessionStarted && !isProcessing)
+            Positioned.fill(
+              child: AiScanSweepOverlay(
+                active: _isCaptureState(scanState),
+                intensity: _capturing ? 1.0 : 0.82,
+              ),
+            ),
 
           // ── Guided dual-photo capture overlay ────────────────────────
           if (_orientationReady &&

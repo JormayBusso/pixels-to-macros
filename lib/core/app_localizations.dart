@@ -1621,6 +1621,14 @@ class AppLocalizations {
         'de': 'Scan abgeschlossen!',
       });
 
+  String get scanCircleInstruction => _t({
+        'en': 'Only food inside the circle is recognised and used for the 3D model.',
+        'pl': 'Rozpoznawane i używane do modelu 3D jest tylko jedzenie wewnątrz koła.',
+        'nl': 'Alleen eten binnen de cirkel wordt herkend en gebruikt voor het 3D-model.',
+        'es': 'Solo se reconoce y usa para el modelo 3D la comida dentro del círculo.',
+        'de': 'Nur Essen innerhalb des Kreises wird erkannt und für das 3D-Modell verwendet.',
+      });
+
   // ── Voice / AI Speech ──
 
   String get voiceEntry => _t({
@@ -6849,6 +6857,78 @@ class AppLocalizations {
         'nl': 'Voeg $n toe aan lijst',
         'es': 'Añadir $n a la lista',
         'de': '$n zur Liste hinzufügen',
+      });
+
+  String groceryAddNToHome(int n) => _t({
+        'en': 'Add $n to home stock',
+        'pl': 'Dodaj $n do zapasów w domu',
+        'nl': 'Voeg $n toe aan je voorraad',
+        'es': 'Añadir $n a tu despensa',
+        'de': '$n zum Vorrat hinzufügen',
+      });
+
+  String get groceryRecognizedHomeSubtitle => _t({
+        'en': 'Review and edit, then add them to what you have at home.',
+        'pl': 'Sprawdź i edytuj, a następnie dodaj do tego, co masz w domu.',
+        'nl': 'Controleer en bewerk, voeg ze dan toe aan wat je in huis hebt.',
+        'es': 'Revisa y edita, luego añádelos a lo que tienes en casa.',
+        'de': 'Prüfen und bearbeiten, dann zu deinem Vorrat hinzufügen.',
+      });
+
+  String get scanReceiptTooltip => _t({
+        'en': 'Scan a receipt',
+        'pl': 'Zeskanuj paragon',
+        'nl': 'Scan een bon',
+        'es': 'Escanear un recibo',
+        'de': 'Kassenbon scannen',
+      });
+
+  String get readingReceipt => _t({
+        'en': 'Reading your receipt…',
+        'pl': 'Odczytywanie paragonu…',
+        'nl': 'Bon wordt gelezen…',
+        'es': 'Leyendo tu recibo…',
+        'de': 'Kassenbon wird gelesen…',
+      });
+
+  String get couldNotReadReceipt => _t({
+        'en': 'Could not read the receipt. Try a clearer, well-lit photo.',
+        'pl': 'Nie udało się odczytać paragonu. Spróbuj wyraźniejszego, dobrze oświetlonego zdjęcia.',
+        'nl': 'Kon de bon niet lezen. Probeer een scherpere, goed verlichte foto.',
+        'es': 'No se pudo leer el recibo. Prueba una foto más nítida y bien iluminada.',
+        'de': 'Kassenbon konnte nicht gelesen werden. Versuche ein schärferes, gut beleuchtetes Foto.',
+      });
+
+  String addedNToHomeStock(int n) => _t({
+        'en': n == 1 ? '$n item added to your home stock' : '$n items added to your home stock',
+        'pl': '$n dodano do zapasów w domu',
+        'nl': n == 1 ? '$n item toegevoegd aan je voorraad' : '$n items toegevoegd aan je voorraad',
+        'es': n == 1 ? '$n artículo añadido a tu despensa' : '$n artículos añadidos a tu despensa',
+        'de': n == 1 ? '$n Artikel zum Vorrat hinzugefügt' : '$n Artikel zum Vorrat hinzugefügt',
+      });
+
+  String get removeFromHomeIngredients => _t({
+        'en': 'Remove from home ingredients',
+        'pl': 'Usuń z zapasów w domu',
+        'nl': 'Verwijder uit voorraad thuis',
+        'es': 'Quitar de los ingredientes en casa',
+        'de': 'Aus dem Vorrat entfernen',
+      });
+
+  String homeIngredientsRemoved(int n) => _t({
+        'en': n == 1 ? '$n ingredient used from your home stock' : '$n ingredients used from your home stock',
+        'pl': '$n składników zużyto z zapasów w domu',
+        'nl': n == 1 ? '$n ingrediënt gebruikt uit je voorraad' : '$n ingrediënten gebruikt uit je voorraad',
+        'es': n == 1 ? '$n ingrediente usado de tu despensa' : '$n ingredientes usados de tu despensa',
+        'de': n == 1 ? '$n Zutat aus dem Vorrat verbraucht' : '$n Zutaten aus dem Vorrat verbraucht',
+      });
+
+  String get noHomeIngredientsToRemove => _t({
+        'en': 'None of these are in your home stock.',
+        'pl': 'Żadnego z nich nie ma w Twoich zapasach.',
+        'nl': 'Geen van deze zit in je voorraad.',
+        'es': 'Ninguno de estos está en tu despensa.',
+        'de': 'Keines davon ist in deinem Vorrat.',
       });
 
   /// Localised label for a pantry storage location key

@@ -106,7 +106,7 @@ final class InferencePipeline {
         lastModel3DObjects = []
 
         print("[SCAN] ═══════════ VIDEO SCAN START ═══════════")
-        print("[SCAN] build=2026-07-18e (reverted MobileSAM refiner + depth-relief → exact dual-silhouette; colour from photos)")
+        print("[SCAN] build=2026-07-21g (no-side height not inflated; nut priors flat; CLIP can correct wrong produce label)")
         print("[SCAN] recorder: topFrame=\(recorder.topFrame != nil), topViewFrames=\(recorder.topViewFrames.count), lightFrames=\(recorder.lightFrames.count), frameCount=\(recorder.frameCount)")
 
         // If no top frame was captured (e.g. recording stopped immediately),
@@ -132,7 +132,7 @@ final class InferencePipeline {
         print("[SCAN] topFrame: pixelBuffer=\(CVPixelBufferGetWidth(topFrame.pixelBuffer))x\(CVPixelBufferGetHeight(topFrame.pixelBuffer)), depthBuffer=\(topFrame.depthBuffer != nil)")
 
         // ── 2. Preprocess top frame for CoreML ─────────────────────────
-        guard let preprocessedRGB = autoreleasepool(invoking: {
+        guard let preprocessed = autoreleasepool(invoking: {
             preprocessor.preprocess(
                 pixelBuffer: topFrame.pixelBuffer,
                 plateRect: cropRect
@@ -143,6 +143,13 @@ final class InferencePipeline {
             print("[PIPELINE] file exists: false")
             throw PipelineError.model3DExportFailed("preprocessing_failed")
         }
+        guard let preprocessedRGB = captureCircleFrame(from: preprocessed) else {
+            print("[PIPELINE] export success: false")
+            print("[PIPELINE] model3dPath: nil")
+            print("[PIPELINE] file exists: false")
+            throw PipelineError.model3DExportFailed("capture_circle_mask_failed")
+        }
+        print("[SCAN] capture circle: centre=0.50,0.50 radius=0.45; outside pixels ignored")
 
         // ── 2b. ML Kit food labels (hint, not a hard gate) ──────────────
         // ML Kit's generic ~400-label model is weak on isolated produce: a
@@ -170,6 +177,7 @@ final class InferencePipeline {
             print("[SCAN] segmentation THREW: \(error)")
             throw PipelineError.segmentationFailed(error)
         }
+        segments = constrainToCaptureCircle(segments)
         print("[SCAN] segmentation: \(segments.count) objects — \(segments.map { "\($0.label)(\($0.pixelCount)px, conf \(String(format: "%.2f", $0.confidence)))" }.joined(separator: ", "))")
 
         guard !segments.isEmpty else {
@@ -178,6 +186,16 @@ final class InferencePipeline {
             print("[PIPELINE] file exists: false")
             throw PipelineError.noFoodDetected("segmentation_empty")
         }
+
+        // Split any segment whose mask is several DISCONNECTED blobs (a handful
+        // of separate peanuts the segmenter grouped into one instance) into one
+        // segment per blob, so each item gets its own silhouette, border and 3-D
+        // object. A single connected food stays one segment.
+        segments = splitDisconnectedInstances(
+            segments,
+            maskWidth: preprocessor.modelInputWidth,
+            maskHeight: preprocessor.modelInputHeight
+        )
 
         // ── 3a. Food-presence decision ──────────────────────────────────
         // Trust a confident, food-trained YOLO-seg detection over ML Kit's
@@ -217,6 +235,17 @@ final class InferencePipeline {
         // classifier is bundled, run it ONCE on the top frame over the largest
         // instance crops for higher-accuracy names than whole-frame ML Kit.
         segments = refineLabelsWithClassifier(
+            segments: segments,
+            frame: preprocessedRGB,
+            maskWidth: preprocessor.modelInputWidth,
+            maskHeight: preprocessor.modelInputHeight
+        )
+
+        // Colour-contradiction pre-pass: a produce label that must be a
+        // saturated colour (tomato, cucumber, carrot…) but reads beige/brown/
+        // dark is demoted so the open-vocab pass below re-names it from the real
+        // crop — this is what stops a beige pile of peanuts keeping "tomato".
+        segments = demoteColorContradictingProduce(
             segments: segments,
             frame: preprocessedRGB,
             maskWidth: preprocessor.modelInputWidth,
@@ -272,10 +301,20 @@ final class InferencePipeline {
         // silhouette validates as a profile for those top-view objects.
         if !recorder.hasDepthData {
             var sideProfiles: [MonocularVolumeEstimator.SideProfile] = []
+            var sidePreprocessedRGB: CVPixelBuffer?
             if let sideFrame = recorder.sideFrame {
-                let extractedProfiles = autoreleasepool {
-                    extractSideProfiles(from: sideFrame, topFrame: topFrame)
+                let sideCapture = autoreleasepool {
+                    preprocessor.preprocess(pixelBuffer: sideFrame.pixelBuffer, plateRect: nil)
+                        .flatMap { captureCircleFrame(from: $0) }
                 }
+                sidePreprocessedRGB = sideCapture
+                let extractedProfiles = sideCapture.map {
+                    extractSideProfiles(
+                        from: sideFrame,
+                        topFrame: topFrame,
+                        preprocessedRGB: $0
+                    )
+                } ?? []
                 let check = monocularEstimator.validateDualSilhouette(
                     segments: segments, sideProfiles: extractedProfiles)
                 let debug = dualSilhouetteDebugJSON(
@@ -306,6 +345,7 @@ final class InferencePipeline {
                 maskHeight: preprocessor.modelInputHeight,
                 measuredHeightCm: nil,
                 preprocessedRGB: preprocessedRGB,
+                sidePreprocessedRGB: sidePreprocessedRGB,
                 tableDistanceCm: recorder.tableDistanceCm
             )
             lastModel3DPath = estimate.modelPath
@@ -680,21 +720,19 @@ final class InferencePipeline {
     /// contour across the matching top-footprint axis.
     private func extractSideProfiles(
         from sideFrame: FrameCaptureService.CapturedFrame,
-        topFrame: FrameCaptureService.CapturedFrame
+        topFrame: FrameCaptureService.CapturedFrame,
+        preprocessedRGB: CVPixelBuffer
     ) -> [MonocularVolumeEstimator.SideProfile] {
-        guard let pre = preprocessor.preprocess(
-            pixelBuffer: sideFrame.pixelBuffer, plateRect: nil
-        ) else { return [] }
-
-        let sideSegments: [SegmentationService.SegmentedObject]
+        var sideSegments: [SegmentationService.SegmentedObject]
         do {
             sideSegments = yoloSegmentationService.isAvailable
-                ? try yoloSegmentationService.segment(pixelBuffer: pre)
-                : try segmentationService.segment(pixelBuffer: pre)
+                ? try yoloSegmentationService.segment(pixelBuffer: preprocessedRGB)
+                : try segmentationService.segment(pixelBuffer: preprocessedRGB)
         } catch {
             print("[PIPELINE] side-profile: segmentation failed: \(error)")
             return []
         }
+        sideSegments = constrainToCaptureCircle(sideSegments)
         guard !sideSegments.isEmpty else {
             print("[PIPELINE] side-profile: no side segments")
             return []
@@ -714,6 +752,108 @@ final class InferencePipeline {
         print("[PIPELINE] side-profile: profiles=\(profiles.count), " +
               profiles.map { "\($0.label)(axis=\($0.topAxis.rawValue)\($0.reversed ? "R" : ""), ar=\(String(format: "%.2f", $0.aspectRatio)), fill=\(String(format: "%.2f", $0.meanNormalizedHeight)))" }.joined(separator: ", "))
         return profiles
+    }
+
+    /// The visual circle is also an inference boundary. Blackening the outside
+    /// of the same centred 90%-diameter circle prevents global classifiers from
+    /// naming food outside the guide; clipping masks afterwards is a second
+    /// guard against a model prediction crossing that boundary.
+    private func captureCircleFrame(from input: CVPixelBuffer) -> CVPixelBuffer? {
+        let width = CVPixelBufferGetWidth(input)
+        let height = CVPixelBufferGetHeight(input)
+        guard width > 0, height > 0 else { return nil }
+
+        var output: CVPixelBuffer?
+        let attrs: [CFString: Any] = [
+            kCVPixelBufferCGImageCompatibilityKey: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: true,
+        ]
+        guard CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width,
+            height,
+            kCVPixelFormatType_32BGRA,
+            attrs as CFDictionary,
+            &output
+        ) == kCVReturnSuccess, let output else { return nil }
+
+        CVPixelBufferLockBaseAddress(input, .readOnly)
+        CVPixelBufferLockBaseAddress(output, [])
+        defer {
+            CVPixelBufferUnlockBaseAddress(output, [])
+            CVPixelBufferUnlockBaseAddress(input, .readOnly)
+        }
+        guard let source = CVPixelBufferGetBaseAddress(input),
+              let destination = CVPixelBufferGetBaseAddress(output) else { return nil }
+        let sourceStride = CVPixelBufferGetBytesPerRow(input)
+        let destinationStride = CVPixelBufferGetBytesPerRow(output)
+        let copyBytes = min(sourceStride, destinationStride)
+        for row in 0..<height {
+            memcpy(destination.advanced(by: row * destinationStride),
+                   source.advanced(by: row * sourceStride), copyBytes)
+        }
+
+        let pixels = destination.assumingMemoryBound(to: UInt8.self)
+        let centreX = Double(width - 1) * 0.5
+        let centreY = Double(height - 1) * 0.5
+        let radius = Double(min(width, height)) * 0.485
+        let radiusSquared = radius * radius
+        for row in 0..<height {
+            let dy = Double(row) - centreY
+            for column in 0..<width {
+                let dx = Double(column) - centreX
+                guard dx * dx + dy * dy > radiusSquared else { continue }
+                let offset = row * destinationStride + column * 4
+                pixels[offset] = 0
+                pixels[offset + 1] = 0
+                pixels[offset + 2] = 0
+                pixels[offset + 3] = 255
+            }
+        }
+        return output
+    }
+
+    private func constrainToCaptureCircle(
+        _ segments: [SegmentationService.SegmentedObject]
+    ) -> [SegmentationService.SegmentedObject] {
+        segments.compactMap { segment in
+            let height = segment.mask.count
+            let width = segment.mask.first?.count ?? 0
+            guard height > 0, width > 0 else { return nil }
+            let centreX = Double(width - 1) * 0.5
+            let centreY = Double(height - 1) * 0.5
+            let radius = Double(min(width, height)) * 0.485
+            let radiusSquared = radius * radius
+            var mask = segment.mask
+            var count = 0
+            var rowTotal = 0
+            var columnTotal = 0
+            for row in 0..<height {
+                let dy = Double(row) - centreY
+                for column in 0..<width where mask[row][column] == 1 {
+                    let dx = Double(column) - centreX
+                    if dx * dx + dy * dy > radiusSquared {
+                        mask[row][column] = 0
+                    } else {
+                        count += 1
+                        rowTotal += row
+                        columnTotal += column
+                    }
+                }
+            }
+            guard count > 0 else {
+                print("[SCAN] capture circle rejected outside segment \(segment.label)")
+                return nil
+            }
+            return SegmentationService.SegmentedObject(
+                label: segment.label,
+                classIndex: segment.classIndex,
+                mask: mask,
+                pixelCount: count,
+                centroid: (rowTotal / count, columnTotal / count),
+                confidence: segment.confidence
+            )
+        }
     }
 
     private typealias SideProfileAxes = (
@@ -1129,6 +1269,130 @@ final class InferencePipeline {
         return updated
     }
 
+    /// Split a segment whose mask is several DISCONNECTED blobs into one segment
+    /// per blob (8-connectivity). Only fires when ≥2 components clear a minimum
+    /// area, so a single connected food (one tomato) is returned unchanged and a
+    /// real food is never merged, rounded, or dropped — it only ever separates
+    /// genuinely separate items so each gets its own silhouette and 3-D object.
+    private func splitDisconnectedInstances(
+        _ segments: [SegmentationService.SegmentedObject],
+        maskWidth: Int,
+        maskHeight: Int
+    ) -> [SegmentationService.SegmentedObject] {
+        var out: [SegmentationService.SegmentedObject] = []
+        out.reserveCapacity(segments.count)
+        for seg in segments {
+            let h = seg.mask.count
+            let w = seg.mask.first?.count ?? 0
+            guard h > 0, w > 0 else { out.append(seg); continue }
+            var comp = [Int](repeating: -1, count: w * h)
+            var components: [[(Int, Int)]] = []
+            for sr in 0..<h {
+                for sc in 0..<w where seg.mask[sr][sc] == 1 && comp[sr * w + sc] == -1 {
+                    let id = components.count
+                    var pixels: [(Int, Int)] = []
+                    var stack: [(Int, Int)] = [(sr, sc)]
+                    comp[sr * w + sc] = id
+                    while let (r, c) = stack.popLast() {
+                        pixels.append((r, c))
+                        for dr in -1...1 {
+                            for dc in -1...1 where !(dr == 0 && dc == 0) {
+                                let nr = r + dr, nc = c + dc
+                                if nr >= 0, nr < h, nc >= 0, nc < w,
+                                   seg.mask[nr][nc] == 1, comp[nr * w + nc] == -1 {
+                                    comp[nr * w + nc] = id
+                                    stack.append((nr, nc))
+                                }
+                            }
+                        }
+                    }
+                    components.append(pixels)
+                }
+            }
+            let total = components.reduce(0) { $0 + $1.count }
+            // A real item is ≥3% of the parent blob and ≥16 px; smaller specks are
+            // segmentation noise and are left with the largest piece.
+            let minArea = max(16, Int(Double(total) * 0.03))
+            let real = components.filter { $0.count >= minArea }
+            guard real.count >= 2, real.count <= 16 else { out.append(seg); continue }
+            for pixels in real.sorted(by: { $0.count > $1.count }) {
+                var mask = [[UInt8]](repeating: [UInt8](repeating: 0, count: w), count: h)
+                var sumR = 0, sumC = 0
+                for (r, c) in pixels { mask[r][c] = 1; sumR += r; sumC += c }
+                out.append(SegmentationService.SegmentedObject(
+                    label: seg.label,
+                    classIndex: seg.classIndex,
+                    mask: mask,
+                    pixelCount: pixels.count,
+                    centroid: (row: sumR / pixels.count, col: sumC / pixels.count),
+                    confidence: seg.confidence
+                ))
+            }
+            print("[SPLIT] \(seg.label): 1 mask -> \(real.count) instances (px=\(real.map { $0.count }.sorted(by: >).prefix(8)))")
+        }
+        return out
+    }
+
+    /// Demote (never rename) the confidence of a segment whose label is a produce
+    /// that must be a saturated colour (red tomato, green cucumber, orange
+    /// carrot…) but whose sampled mean colour is beige/brown/dark/neutral. The
+    /// lowered confidence lets MobileCLIP re-name it from the real crop rather
+    /// than a colour heuristic guessing the food.
+    private func demoteColorContradictingProduce(
+        segments: [SegmentationService.SegmentedObject],
+        frame: CVPixelBuffer,
+        maskWidth: Int,
+        maskHeight: Int
+    ) -> [SegmentationService.SegmentedObject] {
+        guard !segments.isEmpty,
+              let bgra = Food3DTextureBaker.bgraCopy(of: frame) else { return segments }
+        CVPixelBufferLockBaseAddress(bgra, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(bgra, .readOnly) }
+        guard let base = CVPixelBufferGetBaseAddress(bgra) else { return segments }
+        let w = CVPixelBufferGetWidth(bgra)
+        let h = CVPixelBufferGetHeight(bgra)
+        let rowBytes = CVPixelBufferGetBytesPerRow(bgra)
+        let ptr = base.assumingMemoryBound(to: UInt8.self)
+        var out = segments
+        for i in segments.indices {
+            let seg = segments[i]
+            guard Self.needsSaturatedColor(seg.label) else { continue }
+            let mh = seg.mask.count
+            let mw = seg.mask.first?.count ?? 0
+            guard mh > 0, mw > 0 else { continue }
+            let stride = max(1, max(mw, mh) / 48)
+            var rSum = 0.0, gSum = 0.0, bSum = 0.0, n = 0.0
+            var r = 0
+            while r < mh {
+                var c = 0
+                while c < mw {
+                    if seg.mask[r][c] == 1 {
+                        let x = min(w - 1, c * w / max(mw, 1))
+                        let y = min(h - 1, r * h / max(mh, 1))
+                        let off = y * rowBytes + x * 4
+                        rSum += Double(ptr[off + 2]); gSum += Double(ptr[off + 1]); bSum += Double(ptr[off]); n += 1
+                    }
+                    c += stride
+                }
+                r += stride
+            }
+            guard n > 0 else { continue }
+            let family = Self.colorFamily(r: rSum / n, g: gSum / n, b: bSum / n)
+            if family == "other" || family == "dark" || family == "grey" || family == "white" {
+                out[i] = SegmentationService.SegmentedObject(
+                    label: seg.label,
+                    classIndex: seg.classIndex,
+                    mask: seg.mask,
+                    pixelCount: seg.pixelCount,
+                    centroid: seg.centroid,
+                    confidence: min(seg.confidence, 0.22)
+                )
+                print("[COLOR-DEMOTE] \(seg.label) family=\(family) -> conf 0.22 (lets CLIP re-name)")
+            }
+        }
+        return out
+    }
+
     /// Open-vocabulary refinement via MobileCLIP. For the few largest instances,
     /// crop the food region and name it by nearest food in the app vocabulary.
     /// MobileCLIP's labels are already app-vocabulary words, so the result maps
@@ -1147,12 +1411,20 @@ final class InferencePipeline {
         defer { mobileClip.unload() }
 
         let topK = min(8, max(4, segments.count))
+        // Decision is driven by COSINE similarity + a synonym-aware margin, not
+        // softmax-over-N: with ~380 labels the softmax mass splits across near-
+        // synonyms (salmon / grilled salmon / smoked salmon), so a correct top-1
+        // scores a tiny confidence and the old 0.64/0.78 gate kept the wrong base
+        // label ("fish"). Cosine stays stable as the vocabulary grows.
         let confidenceFloor: Float = 0.25
+        let cosineFloor: Float = 0.20
         let unsureSegmentation: Float = 0.32
         let strongConfidence: Float = 0.64
-        let strongMargin: Float = 0.025
+        let strongCosine: Float = 0.24
+        let strongMargin: Float = 0.02
         let veryStrongConfidence: Float = 0.78
-        let veryStrongMargin: Float = 0.045
+        let veryStrongCosine: Float = 0.30
+        let veryStrongMargin: Float = 0.035
         let order = segments.indices.sorted {
             segments[$0].pixelCount > segments[$1].pixelCount
         }
@@ -1166,11 +1438,16 @@ final class InferencePipeline {
                 let candidates = try mobileClip.classifyTopK(
                     pixelBuffer: frame,
                     regionOfInterest: roi,
-                    limit: 5
+                    limit: 8
                 )
                 guard let best = candidates.first,
-                      best.confidence >= confidenceFloor else { continue }
-                let runnerUpCosine = candidates.dropFirst().first?.cosine ?? best.cosine
+                      best.cosine >= cosineFloor || best.confidence >= confidenceFloor
+                else { continue }
+                // Margin against the best candidate that is a genuinely DIFFERENT
+                // food — synonyms of the winner (grilled salmon vs salmon) must
+                // not sink the margin.
+                let runnerUpCosine = candidates.dropFirst()
+                    .first { !Self.labelsCompatible($0.label, best.label) }?.cosine ?? 0
                 let margin = max(0, best.cosine - runnerUpCosine)
                 let segmentationUnsure = segment.confidence < unsureSegmentation
                 let sameFood = Self.labelsCompatible(segment.label, best.label)
@@ -1181,8 +1458,8 @@ final class InferencePipeline {
                     print("[MobileCLIP] blocked composite \(best.label) from overriding produce \(segment.label)")
                     continue
                 }
-                let clipStrong = best.confidence >= strongConfidence && margin >= strongMargin
-                let clipVeryStrong = best.confidence >= veryStrongConfidence && margin >= veryStrongMargin
+                let clipStrong = (best.cosine >= strongCosine || best.confidence >= strongConfidence) && margin >= strongMargin
+                let clipVeryStrong = (best.cosine >= veryStrongCosine || best.confidence >= veryStrongConfidence) && margin >= veryStrongMargin
                 let topSummary = candidates.prefix(3)
                     .map { candidate in
                         "\(candidate.label)(p=\(String(format: "%.2f", candidate.confidence)),cos=\(String(format: "%.3f", candidate.cosine)))"
@@ -1196,12 +1473,31 @@ final class InferencePipeline {
                 // here — it still needs a very-strong match to be renamed, so a
                 // red blob can never become "caprese salad".
                 let correctsNonProduce = !Self.isWholeProduce(segment.label) && clipStrong
-                let usableCorrection = sameFood || clipVeryStrong || correctsNonProduce || (segmentationUnsure && clipStrong)
+                // A whole-produce base label can ALSO be wrong: the segmenter
+                // often blobs a pile of nuts/other food into a round "tomato".
+                // Allow a STRONG CLIP match for a DIFFERENT specific, non-produce,
+                // non-composite food (e.g. "almond") to correct it. The
+                // composite-dish block above still stops a red blob becoming
+                // "caprese salad", and whole-produce→whole-produce still needs a
+                // very-strong match (a tomato can't flip to "apple" cheaply).
+                let correctsProduceMislabel = Self.isWholeProduce(segment.label)
+                    && !Self.isWholeProduce(best.label)
+                    && !Self.isCompositeDish(best.label)
+                    && !sameFood && clipStrong
+                // A generic base label ("fish", "seafood", "meat", "others", …)
+                // carries little nutrition specificity: a strong CLIP match for a
+                // specific, non-composite food should replace it. This is what
+                // fixes salmon (base "fish" → "salmon") and nut piles the
+                // segmenter dumps into a generic "others" bucket.
+                let correctsGeneric = Self.isGenericBase(segment.label)
+                    && !Self.isCompositeDish(best.label)
+                    && !sameFood && clipStrong
+                let usableCorrection = sameFood || clipVeryStrong || correctsNonProduce || correctsProduceMislabel || correctsGeneric || (segmentationUnsure && clipStrong)
                 guard usableCorrection else {
                     print("[MobileCLIP] kept \(segment.label) (seg \(String(format: "%.2f", segment.confidence))) over \(best.label) margin=\(String(format: "%.3f", margin)) top=[\(topSummary)]")
                     continue
                 }
-                let chosenLabel = sameFood && !clipVeryStrong && !segmentationUnsure && !correctsNonProduce
+                let chosenLabel = sameFood && !clipVeryStrong && !segmentationUnsure && !correctsNonProduce && !correctsProduceMislabel && !correctsGeneric
                     ? segment.label
                     : best.label
                 updated[index] = SegmentationService.SegmentedObject(
@@ -1243,12 +1539,12 @@ final class InferencePipeline {
         let rowBytes = CVPixelBufferGetBytesPerRow(bgra)
         let ptr = base.assumingMemoryBound(to: UInt8.self)
 
-        var updated = segments
+        var kept: [SegmentationService.SegmentedObject] = []
         for i in segments.indices {
             let seg = segments[i]
             let mh = seg.mask.count
             let mw = seg.mask.first?.count ?? 0
-            guard mh > 0, mw > 0 else { continue }
+            guard mh > 0, mw > 0 else { kept.append(seg); continue }
             let step = max(1, max(mw, mh) / 48)
             var rSum = 0.0, gSum = 0.0, bSum = 0.0, n = 0.0
             var r = 0
@@ -1268,14 +1564,29 @@ final class InferencePipeline {
                 }
                 r += step
             }
-            guard n > 0 else { continue }
+            guard n > 0 else { kept.append(seg); continue }
             let rr = rSum / n, gg = gSum / n, bb = bSum / n
             let family = Self.colorFamily(r: rr, g: gg, b: bb)
-            print("[COLOR] seg#\(i) \(seg.label): rgb=(\(Int(rr)),\(Int(gg)),\(Int(bb))) family=\(family)")
+            let fraction = Double(seg.pixelCount) / Double(max(1, mw * mh))
+            print("[COLOR] seg#\(i) \(seg.label): rgb=(\(Int(rr)),\(Int(gg)),\(Int(bb))) family=\(family) fraction=\(String(format: "%.2f", fraction))")
+
+            // Plate / background rejection (chroma-key idea): a white or grey
+            // region is the plate or table, not food — real food is saturated.
+            // Drop a pale segment when it is a composite-dish mislabel (a bare
+            // white plate called "caprese salad") OR it fills most of the frame
+            // (the plate), UNLESS its label is a genuinely pale food.
+            let plateLike = (family == "white" || family == "grey")
+            if plateLike && !Self.isPaleFood(seg.label) &&
+                (Self.isCompositeDish(seg.label) || fraction > 0.42) {
+                print("[COLOR] rejected plate/background seg#\(i) \(seg.label) family=\(family) fraction=\(String(format: "%.2f", fraction))")
+                continue
+            }
+
+            var outSeg = seg
             if let corrected = Self.colorCorrectedLabel(currentLabel: seg.label, family: family),
                corrected != seg.label.lowercased() {
                 print("[COLOR] corrected \(seg.label) -> \(corrected) (colour=\(family))")
-                updated[i] = SegmentationService.SegmentedObject(
+                outSeg = SegmentationService.SegmentedObject(
                     label: corrected,
                     classIndex: seg.classIndex,
                     mask: seg.mask,
@@ -1284,8 +1595,11 @@ final class InferencePipeline {
                     confidence: seg.confidence
                 )
             }
+            kept.append(outSeg)
         }
-        return updated
+        // Never brick the scan: if every segment looked plate-like, keep the
+        // original set so downstream still has something to reconstruct.
+        return kept.isEmpty ? segments : kept
     }
 
     private static func colorFamily(r: Double, g: Double, b: Double) -> String {
@@ -1297,6 +1611,18 @@ final class InferencePipeline {
         if r > g * 1.25 && r > b * 1.2 && r > 70 { return "red" }
         if r > 150 && g > 85 && g < 195 && b < 95 { return "orange" }
         return "other"
+    }
+
+    /// Whether a label is a genuinely pale food (rice, egg, cheese…), so a
+    /// white/grey mean colour is NOT proof it is the plate/background.
+    private static func isPaleFood(_ label: String) -> Bool {
+        let l = label.lowercased()
+        let pale = ["rice", "egg", "bread", "pasta", "noodle", "potato", "cheese",
+                    "mozzarella", "feta", "yogurt", "yoghurt", "cauliflower", "milk",
+                    "tofu", "dough", "cream", "garlic", "onion", "coconut", "sugar",
+                    "flour", "mushroom", "dumpling", "bun", "tortilla", "mayonnaise",
+                    "mayo", "ricotta", "quark", "oat"]
+        return pale.contains { l.contains($0) }
     }
 
     private static func colorCorrectedLabel(currentLabel: String, family: String) -> String? {
@@ -1349,12 +1675,40 @@ final class InferencePipeline {
         "cauliflower", "radish", "beet", "corn", "zucchini", "eggplant",
     ]
 
+    /// Low-specificity base labels the segmenter falls back to when it cannot
+    /// name a food precisely. A confident open-vocabulary match should be
+    /// allowed to replace these (e.g. "fish" → "salmon", "others" → "almond").
+    /// Tokens are singularised by `recognitionTokens`, so plural forms match too.
+    private static let genericBaseLabels: Set<String> = [
+        "fish", "seafood", "meat", "poultry", "food", "other",
+        "vegetable", "fruit", "nut", "seed", "dish", "snack", "produce",
+    ]
+
+    /// Produce that must read as a saturated colour (red tomato, green cucumber,
+    /// orange carrot…). A beige/brown/dark sample under one of these labels is a
+    /// contradiction handled by `demoteColorContradictingProduce`.
+    private static let saturatedProduceLabels: Set<String> = [
+        "tomato", "strawberry", "cherry", "raspberry", "watermelon",
+        "pomegranate", "chili", "radish", "beet", "carrot", "pumpkin",
+        "apricot", "mango", "tangerine", "clementine", "cucumber",
+        "lettuce", "broccoli", "spinach", "kale", "zucchini", "lime",
+        "kiwi", "celery", "edamame",
+    ]
+
+    private static func needsSaturatedColor(_ label: String) -> Bool {
+        !recognitionTokens(label).isDisjoint(with: saturatedProduceLabels)
+    }
+
     private static func isCompositeDish(_ label: String) -> Bool {
         !recognitionTokens(label).isDisjoint(with: compositeDishLabels)
     }
 
     private static func isWholeProduce(_ label: String) -> Bool {
         !recognitionTokens(label).isDisjoint(with: wholeProduceLabels)
+    }
+
+    private static func isGenericBase(_ label: String) -> Bool {
+        !recognitionTokens(label).isDisjoint(with: genericBaseLabels)
     }
 
     private static func labelsCompatible(_ first: String, _ second: String) -> Bool {

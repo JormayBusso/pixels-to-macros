@@ -49,19 +49,25 @@ final class Food3DExporter {
             to: docs.appendingPathComponent("\(baseName).p2mesh")
         )
 
-        // Paste the real captured photo onto the mesh. Earlier builds disabled
-        // this because the top+side ATLAS stretched side-image rows into visible
-        // stripes; the monocular estimator now emits a single seamless top-down
-        // projection UV instead (no atlas, no side strip), so writing the top
-        // photo as one continuous baseColor texture renders the food in its true
-        // colour with no seams. `textureSource` is the mask-aligned preprocessed
-        // top RGB, so its pixels line up exactly with the projected UVs.
+        // Paste the real captured photo(s) onto the mesh. With a side capture we
+        // bake a TOP+SIDE atlas so the top surface shows the top photo and the
+        // vertical sides show the side photo; with only a top capture we bake the
+        // top photo alone. `textureSource`/`sideTextureSource` are the
+        // mask-aligned preprocessed RGB, so their pixels line up with the UVs.
         var textureURL: URL? = nil
         if let textureSource {
             let candidate = docs.appendingPathComponent("\(baseName)_texture.png")
-            if Food3DTextureBaker.writeTexture(from: textureSource, to: candidate) {
+            let baked: Bool
+            if let sideTextureSource {
+                baked = Food3DTextureBaker.writeTextureAtlas(
+                    top: textureSource, side: sideTextureSource, to: candidate)
+            } else {
+                baked = Food3DTextureBaker.writeTexture(from: textureSource, to: candidate)
+            }
+            if baked {
                 textureURL = candidate
-                print("[Food3DExporter] baked photo texture -> \(candidate.lastPathComponent)")
+                print("[Food3DExporter] baked photo texture -> \(candidate.lastPathComponent) " +
+                      "(\(sideTextureSource != nil ? "top+side atlas" : "top only"))")
             } else {
                 print("[Food3DExporter] texture bake failed; using sampled colour")
             }
@@ -114,7 +120,10 @@ final class Food3DExporter {
             withUnsafeBytes(of: &v) { data.append(contentsOf: $0) }
         }
 
-        data.append(contentsOf: [0x50, 0x32, 0x4D, 0x31]) // 'P','2','M','1'
+        // 'P','2','M','2' — v2 adds a per-vertex UV block after the colours so
+        // the viewer can paste the captured photo onto the mesh as a real
+        // texture (per-vertex colour alone rendered white on some devices).
+        data.append(contentsOf: [0x50, 0x32, 0x4D, 0x32])
         append(UInt32(objects.count))
 
         for object in objects {
@@ -136,6 +145,16 @@ final class Food3DExporter {
                 data.append(c + 1 < object.colors.count ? object.colors[c + 1] : 200)
                 data.append(c + 2 < object.colors.count ? object.colors[c + 2] : 200)
                 data.append(255)
+            }
+            // Per-vertex UVs (v2). `uvCount` is the vertex count when UVs exist,
+            // else 0. These index the baked `<baseName>_texture.png` (the
+            // mask-aligned captured photo) so the viewer maps the real picture
+            // onto the food surface.
+            let uvCount = object.uvs.count == vertexCount ? vertexCount : 0
+            append(UInt32(uvCount))
+            for i in 0..<uvCount {
+                append(object.uvs[i].x)
+                append(object.uvs[i].y)
             }
 
             append(UInt32(object.faces.count))

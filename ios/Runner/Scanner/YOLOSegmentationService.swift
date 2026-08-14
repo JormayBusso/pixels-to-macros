@@ -392,8 +392,6 @@ final class YOLOSegmentationService {
                     count: targetH
                 )
                 var pixelCount = 0
-                var sumRow = 0
-                var sumCol = 0
                 for r in ty0..<ty1 {
                     for c in tx0..<tx1 {
                         let protoY = (Float(r) + 0.5) * targetToProtoY
@@ -401,14 +399,21 @@ final class YOLOSegmentationService {
                         if Self.sigmoid(sampledLogit(protoY: protoY, protoX: protoX)) > maskThreshold {
                             mask[r][c] = 1
                             pixelCount += 1
-                            sumRow += r
-                            sumCol += c
                         }
                     }
                 }
 
                 guard pixelCount > 0 else { return }
-                let centroid = (row: sumRow / pixelCount, col: sumCol / pixelCount)
+                // Drop disconnected speckle: keep only mask components that are a
+                // meaningful fraction of the dominant blob. This removes stray
+                // proto-bleed pixels that YOLO's low-res prototypes scatter along
+                // an edge WITHOUT low-pass smoothing the true silhouette (the
+                // exact outline the 3-D hull is built from is preserved).
+                guard let cleaned = Self.keepDominantComponents(
+                    &mask, y0: ty0, y1: ty1, x0: tx0, x1: tx1
+                ) else { return }
+                pixelCount = cleaned.pixelCount
+                let centroid = cleaned.centroid
                 let label = labels[detection.classIndex] ?? "others"
                 objects.append(SegmentedObject(
                     label: label,
@@ -456,6 +461,75 @@ final class YOLOSegmentationService {
 
     private static func sigmoid(_ x: Float) -> Float {
         1 / (1 + expf(-x))
+    }
+
+    /// Remove disconnected speckle from an instance mask, keeping the dominant
+    /// blob plus any component at least `minFraction` of its area (so a peanut
+    /// pile keeps all its real lobes but stray edge pixels are dropped). Runs a
+    /// 4-connected flood fill inside the detection bbox only. Returns the new
+    /// pixel count and centroid, or nil if nothing survives. This is noise
+    /// removal — it never low-passes or reshapes the true silhouette.
+    private static func keepDominantComponents(
+        _ mask: inout [[UInt8]],
+        y0: Int, y1: Int, x0: Int, x1: Int,
+        minFraction: Float = 0.06
+    ) -> (pixelCount: Int, centroid: (row: Int, col: Int))? {
+        let h = y1 - y0
+        let w = x1 - x0
+        guard h > 0, w > 0 else { return nil }
+        var labelOf = [Int](repeating: 0, count: h * w) // 0 = unvisited/empty
+        var componentSizes: [Int] = [0] // index 0 unused
+        var stack: [(Int, Int)] = []
+        var nextLabel = 0
+        for r in y0..<y1 {
+            for c in x0..<x1 {
+                if mask[r][c] == 0 { continue }
+                let li = (r - y0) * w + (c - x0)
+                if labelOf[li] != 0 { continue }
+                nextLabel += 1
+                var size = 0
+                stack.removeAll(keepingCapacity: true)
+                stack.append((r, c))
+                labelOf[li] = nextLabel
+                while let (cr, cc) = stack.popLast() {
+                    size += 1
+                    for (dr, dc) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+                        let nr = cr + dr, nc = cc + dc
+                        if nr < y0 || nr >= y1 || nc < x0 || nc >= x1 { continue }
+                        if mask[nr][nc] == 0 { continue }
+                        let ni = (nr - y0) * w + (nc - x0)
+                        if labelOf[ni] != 0 { continue }
+                        labelOf[ni] = nextLabel
+                        stack.append((nr, nc))
+                    }
+                }
+                componentSizes.append(size)
+            }
+        }
+        guard nextLabel > 0 else { return nil }
+        let largest = componentSizes.max() ?? 0
+        guard largest > 0 else { return nil }
+        let minSize = Int(Float(largest) * minFraction)
+        var keep = [Bool](repeating: false, count: nextLabel + 1)
+        for lbl in 1...nextLabel {
+            keep[lbl] = componentSizes[lbl] >= minSize
+        }
+        var pixelCount = 0, sumRow = 0, sumCol = 0
+        for r in y0..<y1 {
+            for c in x0..<x1 {
+                if mask[r][c] == 0 { continue }
+                let lbl = labelOf[(r - y0) * w + (c - x0)]
+                if keep[lbl] {
+                    pixelCount += 1
+                    sumRow += r
+                    sumCol += c
+                } else {
+                    mask[r][c] = 0
+                }
+            }
+        }
+        guard pixelCount > 0 else { return nil }
+        return (pixelCount, (row: sumRow / pixelCount, col: sumCol / pixelCount))
     }
 
     private func clamp(_ value: Int, _ low: Int, _ high: Int) -> Int {

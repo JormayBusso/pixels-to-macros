@@ -241,6 +241,11 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
   analytic primitive (sphere, ellipsoid, dome, box), a minimum height/thickness floor, or an
   inflated envelope. This is a hard **accuracy + consistency** requirement: a flat food stays
   flat, an irregular food keeps its true outline, and repeat scans stay stable.
+  **NOTHING may be ADDED in 3-D generation** — no smoothing/subdivision/Taubin, no low-pass of
+  the silhouette, no fill/taper/dome/analytic primitive, no thickness floor. The unobserved
+  (transverse) axis is filled ONLY by **MIRRORING** the measured side silhouette (symmetry
+  assumption) — the two-silhouette **visual hull / space carving** (top ∩ side ∩ mirrored-side)
+  — and nothing else.
 - iPhone 16 Plus has no LiDAR → **monocular dual-photo path**: TOP view is the authority and
   the SIDE silhouette is hard-forced into height/profile. If a clean side silhouette genuinely
   cannot be read on-device, reconstruct from the exact TOP silhouette (never a generic shape

@@ -52,8 +52,27 @@ enum Food3DTextureBaker {
             let scale = maxWidth / extent.width
             ciImage = ciImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         }
+        let workingExtent = ciImage.extent
 
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+        // De-glare: the phone's light makes shiny food (a tomato, an apple) blow
+        // out to a white specular highlight that the raw photo would paste onto
+        // the mesh as a white blob. Pull the highlights down and lift saturation
+        // so the food's TRUE colour (its diffuse component, still from THIS
+        // photo) survives instead of the light's reflection.
+        if let highlight = CIFilter(name: "CIHighlightShadowAdjust") {
+            highlight.setValue(ciImage, forKey: kCIInputImageKey)
+            highlight.setValue(0.35, forKey: "inputHighlightAmount")
+            highlight.setValue(0.0, forKey: "inputShadowAmount")
+            if let out = highlight.outputImage { ciImage = out }
+        }
+        if let controls = CIFilter(name: "CIColorControls") {
+            controls.setValue(ciImage, forKey: kCIInputImageKey)
+            controls.setValue(1.22, forKey: kCIInputSaturationKey)
+            if let out = controls.outputImage { ciImage = out }
+        }
+        ciImage = ciImage.cropped(to: workingExtent)
+
+        guard let cgImage = context.createCGImage(ciImage, from: workingExtent) else {
             print("[Food3DTextureBaker] createCGImage failed")
             return false
         }
@@ -69,51 +88,46 @@ enum Food3DTextureBaker {
         return ok
     }
 
-    /// Bake top + side captures into one deterministic atlas. Geometry UVs use
-    /// the constants above, so each surface samples from the source view that
-    /// actually saw it instead of from a global average colour.
+    /// Bake the top + side captures into one deterministic atlas, using the
+    /// SAME CoreImage pipeline as `writeTexture` so each tile keeps the exact
+    /// orientation the projected UVs assume. The top photo fills the left tile
+    /// (`atlasTopU*`), the side photo the middle tile (`atlasSideU*`); the mesh
+    /// UVs route top-facing/underside vertices to the top tile and side-facing
+    /// vertices to the side tile, so each surface shows the view that saw it.
     @discardableResult
     static func writeTextureAtlas(
         top topPixelBuffer: CVPixelBuffer,
         side sidePixelBuffer: CVPixelBuffer,
         to url: URL
     ) -> Bool {
-        guard let top = cgImage(from: topPixelBuffer),
-              let side = cgImage(from: sidePixelBuffer) else {
+        let atlasW: CGFloat = 2048
+        let atlasH: CGFloat = 1024
+        guard let topTile = processedTile(
+                topPixelBuffer,
+                targetW: CGFloat(atlasTopU1 - atlasTopU0) * atlasW,
+                targetH: atlasH),
+              let sideTile = processedTile(
+                sidePixelBuffer,
+                targetW: CGFloat(atlasSideU1 - atlasSideU0) * atlasW,
+                targetH: atlasH) else {
             return false
         }
-
-        let atlasWidth = 2048
-        let atlasHeight = 1024
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let cg = CGContext(
-            data: nil,
-            width: atlasWidth,
-            height: atlasHeight,
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
-            print("[Food3DTextureBaker] atlas CGContext failed")
-            return false
-        }
-
-        cg.setFillColor(blendedPhotoColor(top: top, side: side))
-        cg.fill(CGRect(x: 0, y: 0, width: atlasWidth, height: atlasHeight))
-        cg.interpolationQuality = .high
-
-        func draw(_ image: CGImage, u0: Float, u1: Float) {
-            let x = CGFloat(u0) * CGFloat(atlasWidth)
-            let w = CGFloat(u1 - u0) * CGFloat(atlasWidth)
-            cg.draw(image, in: CGRect(x: x, y: 0, width: w, height: CGFloat(atlasHeight)))
-        }
-
-        draw(top, u0: atlasTopU0, u1: atlasTopU1)
-        draw(side, u0: atlasSideU0, u1: atlasSideU1)
-
-        guard let atlas = cg.makeImage() else {
-            print("[Food3DTextureBaker] atlas makeImage failed")
+        // Placement is translation + per-axis scale only, which preserves
+        // orientation, so the top tile matches a standalone `writeTexture` bake
+        // exactly and the projected UVs index both tiles correctly.
+        let topPlaced = topTile.transformed(
+            by: CGAffineTransform(translationX: CGFloat(atlasTopU0) * atlasW, y: 0))
+        let sidePlaced = sideTile.transformed(
+            by: CGAffineTransform(translationX: CGFloat(atlasSideU0) * atlasW, y: 0))
+        let background = CIImage(color: CIColor(red: 0.35, green: 0.32, blue: 0.28))
+            .cropped(to: CGRect(x: 0, y: 0, width: atlasW, height: atlasH))
+        let atlas = sidePlaced
+            .composited(over: topPlaced)
+            .composited(over: background)
+            .cropped(to: CGRect(x: 0, y: 0, width: atlasW, height: atlasH))
+        guard let cgImage = context.createCGImage(
+            atlas, from: CGRect(x: 0, y: 0, width: atlasW, height: atlasH)) else {
+            print("[Food3DTextureBaker] atlas createCGImage failed")
             return false
         }
         guard let destination = CGImageDestinationCreateWithURL(
@@ -122,63 +136,36 @@ enum Food3DTextureBaker {
             print("[Food3DTextureBaker] atlas destination create failed")
             return false
         }
-        CGImageDestinationAddImage(destination, atlas, nil)
+        CGImageDestinationAddImage(destination, cgImage, nil)
         let ok = CGImageDestinationFinalize(destination)
         if !ok { print("[Food3DTextureBaker] atlas finalize failed") }
         return ok
     }
 
-    private typealias RGBA = (r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat)
-
-    private static func blendedPhotoColor(top: CGImage, side: CGImage) -> CGColor {
-        let t = averageRGBA(top)
-        let s = averageRGBA(side)
-        switch (t, s) {
-        case let (top?, side?):
-            return CGColor(
-                red: (top.r + side.r) * 0.5,
-                green: (top.g + side.g) * 0.5,
-                blue: (top.b + side.b) * 0.5,
-                alpha: 1.0
-            )
-        case let (top?, nil):
-            return CGColor(red: top.r, green: top.g, blue: top.b, alpha: 1.0)
-        case let (nil, side?):
-            return CGColor(red: side.r, green: side.g, blue: side.b, alpha: 1.0)
-        default:
-            return CGColor(red: 0.35, green: 0.32, blue: 0.28, alpha: 1.0)
+    /// Decode → de-glare → scale a capture to fill one atlas tile, matching the
+    /// `writeTexture` colour pipeline so both tiles look consistent.
+    private static func processedTile(
+        _ pixelBuffer: CVPixelBuffer, targetW: CGFloat, targetH: CGFloat
+    ) -> CIImage? {
+        var ci = CIImage(cvPixelBuffer: pixelBuffer)
+        guard ci.extent.width > 0, ci.extent.height > 0 else { return nil }
+        if let highlight = CIFilter(name: "CIHighlightShadowAdjust") {
+            highlight.setValue(ci, forKey: kCIInputImageKey)
+            highlight.setValue(0.35, forKey: "inputHighlightAmount")
+            highlight.setValue(0.0, forKey: "inputShadowAmount")
+            if let out = highlight.outputImage { ci = out }
         }
-    }
-
-    private static func averageRGBA(_ image: CGImage) -> RGBA? {
-        let ciImage = CIImage(cgImage: image)
-        guard let filter = CIFilter(
-            name: "CIAreaAverage",
-            parameters: [
-                kCIInputImageKey: ciImage,
-                kCIInputExtentKey: CIVector(cgRect: ciImage.extent),
-            ]
-        ), let output = filter.outputImage else { return nil }
-
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        var pixel = [UInt8](repeating: 0, count: 4)
-        pixel.withUnsafeMutableBytes { raw in
-            guard let base = raw.baseAddress else { return }
-            context.render(
-                output,
-                toBitmap: base,
-                rowBytes: 4,
-                bounds: CGRect(x: 0, y: 0, width: 1, height: 1),
-                format: .RGBA8,
-                colorSpace: colorSpace
-            )
+        if let controls = CIFilter(name: "CIColorControls") {
+            controls.setValue(ci, forKey: kCIInputImageKey)
+            controls.setValue(1.22, forKey: kCIInputSaturationKey)
+            if let out = controls.outputImage { ci = out }
         }
-        return (
-            CGFloat(pixel[0]) / 255.0,
-            CGFloat(pixel[1]) / 255.0,
-            CGFloat(pixel[2]) / 255.0,
-            CGFloat(pixel[3]) / 255.0
-        )
+        ci = ci.transformed(by: CGAffineTransform(
+            translationX: -ci.extent.origin.x, y: -ci.extent.origin.y))
+        guard ci.extent.width > 0, ci.extent.height > 0 else { return nil }
+        ci = ci.transformed(by: CGAffineTransform(
+            scaleX: targetW / ci.extent.width, y: targetH / ci.extent.height))
+        return ci.cropped(to: CGRect(x: 0, y: 0, width: targetW, height: targetH))
     }
 
     /// Decode any pixel buffer (notably ARKit's planar YCbCr `capturedImage`)
