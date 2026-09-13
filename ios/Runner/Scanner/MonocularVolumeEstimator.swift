@@ -9,7 +9,7 @@ import simd
 ///
 /// Accuracy contract:
 ///   • This is an estimate, not a measured LiDAR reconstruction.
-///   • Scale priority: plate diameter → ARKit table distance → 30 cm fallback.
+///   • Scale priority: plate diameter → ARKit table distance → 22 cm fallback.
 ///   • Geometry: top-mask footprint × side-view silhouette profile when
 ///     available, falling back to bounded class priors.
 ///   • Mesh: generated height-field visual hull from real masks, suitable for
@@ -365,9 +365,12 @@ final class MonocularVolumeEstimator {
             } else if let profile {
                 let topAxisCm = profile.topAxis == .columns ? widthCm : depthCm
                 // Thickness comes straight from the measured side silhouette
-                // (aspect ratio × top axis); only a 0.2 cm physical floor so a
-                // flat food is never padded thicker than it truly is.
-                let rawHeightCm = max(0.2, profile.aspectRatio * topAxisCm)
+                // (aspect ratio × top axis) EXACTLY — no thickness floor, so a
+                // genuinely flat food renders as thin as it truly is and is never
+                // padded up to a perceptible minimum (AGENTS.md §9). Downstream
+                // divisors that use this height already guard with
+                // `max(h, 0.0001)`, so an unfloored thin height cannot NaN.
+                let rawHeightCm = profile.aspectRatio * topAxisCm
                 heightCm = boundedHeightCm(
                     rawHeightCm: rawHeightCm,
                     label: seg.label,
@@ -838,17 +841,17 @@ final class MonocularVolumeEstimator {
         priorBoundCm: Double,
         lateralBoundCm: Double
     ) -> Double {
-        // Hard-force the measured silhouette: only a 0.2 cm physical floor, never
-        // a prior-based one, so a genuinely thin/flat food keeps its true
-        // thickness instead of being inflated up toward a class prior. The upper
-        // cap still guards against a foreshortened side view reading too tall.
-        let lower = 0.2
+        // Hard-force the measured silhouette EXACTLY: no lower thickness floor
+        // (not even a physical one), so a genuinely thin/flat food keeps its true
+        // measured thickness instead of being inflated up toward any minimum
+        // (AGENTS.md §9). The upper cap still guards against a foreshortened side
+        // view reading too tall.
         let upper = maxVisualHeightCm(
             label: label,
             priorBoundCm: priorBoundCm,
             lateralBoundCm: lateralBoundCm
         )
-        return min(upper, max(lower, rawHeightCm))
+        return min(upper, rawHeightCm)
     }
 
     private func maxVisualHeightCm(
@@ -1309,9 +1312,8 @@ final class MonocularVolumeEstimator {
         // minimum. Nothing is added in 3-D generation (AGENTS.md §9). No epsilon
         // is needed: every divisor that uses `h` already guards with
         // `max(h, 0.0001)`, so a very thin — even zero — height cannot produce a
-        // NaN or divide-by-zero, and the reachable measured paths are already
-        // positive (the silhouette paths floor at 0.2 cm upstream in
-        // boundedHeightCm; bowl/depth are positive physical measurements).
+        // NaN or divide-by-zero. No silhouette path floors the height any more
+        // (AGENTS.md §9); bowl/depth are positive physical measurements.
         let h  = Float(heightCm / 100.0)  // height in metres (measured, unfloored)
         let offsetX = Float((centroid.col / Double(maskWidth)) - 0.5) * 0.28
         let offsetZ = Float((centroid.row / Double(maskHeight)) - 0.5) * 0.28
@@ -1694,33 +1696,8 @@ final class MonocularVolumeEstimator {
         // the exact-silhouette contract, so none is created here.
         print("[MonocularEstimator] visual-hull mesh label=\(label) mode=\(surfaceExtractionMode) grid=\(gc)x\(gr) cells=\(occupiedCellCount) rawV=\(vertices.count) rawF=\(faces.count / 3) filledHolePixels=\(filledHoleCells)")
 
-        // Smooth the silhouette cage into an organic surface: one Loop
-        // subdivision level removes the triangle facets / straight lines, then a
-        // short Taubin pass polishes it (base pinned + re-grounded inside). This
-        // is the SAME post-process the LiDAR path uses, so both look identical.
-        //
-        // HARD-FORCED EXACT SILHOUETTE (every scan, no fallback): by default a
-        // food keeps its exact captured outline with ZERO subdivision and ZERO
-        // Taubin smoothing, so a flat/angular food (chocolate bar, toast, slice)
-        // can never be rounded into a thicker pillow. ONLY genuinely round
-        // produce — the labels with a transverse-roundness value (tomato, apple,
-        // orange, egg, onion, potato…) — is allowed the organic smoothing that
-        // makes a dome look round.
-        // Bowls always get the organic smoothing so the rounded cavity reads
-        // smooth; otherwise only genuinely round produce is smoothed and a
-        // flat/angular food keeps its exact hard silhouette.
-        // Smooth EVERY food (subdivide + Taubin) so a coarse silhouette cage can
-        // never render as a faceted spike/point — a repeated user complaint. The
-        // outline is re-snapped to the exact mask below, so smoothing keeps the
-        // captured silhouette exact while removing facets. Round produce gets an
-        // extra Taubin pass for a fuller organic surface.
-        // HARD-FORCED EXACT SILHOUETTE (user requirement): NO geometry
-        // smoothing. Loop subdivision + Taubin were rounding the captured
-        // outline into a softer pillow; the user wants the displayed mesh to be
-        // EXACTLY the top + side silhouette. We keep the raw silhouette-cage
-        // vertices and only re-snap them to the exact source mask below. Soft
-        // per-vertex NORMALS (the exporter's addNormals) still shade it
-        // pleasantly without ever altering the geometry.
+        // HARD-FORCED EXACT SILHOUETTE: re-snap vertices to the exact top/side
+        // silhouette masks below; no geometry smoothing or subdivision is applied.
 
         @inline(__always) func hullBoundsAt(rowGrid: Float, colGrid: Float) -> (bottom: Float, top: Float) {
             let rr = min(gr - 1, max(0, Int(floor(rowGrid))))
