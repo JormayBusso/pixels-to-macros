@@ -57136,7 +57136,7 @@
     },
     "calories": 2034,
     "protein_g": 66.0,
-    "carbs_g": 24.0,
+    "carbs_g": 240.0,
     "fat_g": 90.0,
     "fiber_g": 18.0,
     "sugar_g": 12.0,
@@ -58156,7 +58156,7 @@
       "fiber": 37.0,
       "sugar": 63.0
     },
-    "calories": 385,
+    "calories": 777,
     "protein_g": 15.0,
     "carbs_g": 96.0,
     "fat_g": 37.0,
@@ -62220,7 +62220,7 @@
     },
     "calories": 2725,
     "protein_g": 20.0,
-    "carbs_g": 30.0,
+    "carbs_g": 270.0,
     "fat_g": 175.0,
     "fiber_g": 5.0,
     "sugar_g": 270.0,
@@ -133455,7 +133455,7 @@
     "calories": 3980,
     "protein_g": 120.2,
     "carbs_g": 180.1,
-    "fat_g": 118.3,
+    "fat_g": 308.7,
     "fiber_g": 0.0,
     "sugar_g": 0.0,
     "glycemic_index": 0,
@@ -167829,438 +167829,6 @@
     "sodium_mg": 606.8
   },
   {
-    "id": "en_black_bean_sauce_d0ae41dd17_dup_breakfast_0",
-    "language": "EN",
-    "title": "Black bean sauce (Breakfast)",
-    "name": "Black bean sauce (Breakfast)",
-    "image": "assets/images/recipes/en_black_bean_sauce_d0ae41dd17.webp",
-    "meal_type": "breakfast",
-    "goals": [
-      "diabetes",
-      "keto",
-      "maintain",
-      "vegan",
-      "vegetarian"
-    ],
-    "time": 35,
-    "minutes": 35,
-    "servings": 24,
-    "ingredients": [
-      {
-        "name": "vegetable",
-        "amount": "30 g",
-        "grams": 30.0
-      },
-      {
-        "name": "ginger",
-        "amount": "15 g",
-        "grams": 15.0
-      },
-      {
-        "name": "garlic cloves",
-        "amount": "2",
-        "grams": 200.0
-      },
-      {
-        "name": "fermented black beans",
-        "amount": "50 g",
-        "grams": 50.0
-      },
-      {
-        "name": "shaoxing wine",
-        "amount": "",
-        "grams": 0.0
-      },
-      {
-        "name": "soy sauce",
-        "amount": "30 g",
-        "grams": 30.0
-      },
-      {
-        "name": "sugar",
-        "amount": "",
-        "grams": 0.0
-      },
-      {
-        "name": "sesame oil",
-        "amount": "5 g",
-        "grams": 5.0
-      },
-      {
-        "name": "white pepper",
-        "amount": "",
-        "grams": 0.0
-      },
-      {
-        "name": "cornflour",
-        "amount": "15 g",
-        "grams": 15.0
-      }
-    ],
-    "instructions": "Put the dried beans into a heatproof bowl and cover with boiling water. Leave to soak for at least 15 mins. Drain, rinse and set aside.\nHeat the oil in a frying pan over a high heat and cook the ginger and garlic for 2 mins until fragrant, stirring continuously to ensure it doesn’t burn. Stir in the black beans and cook for another minute, then pour in the wine and cook for 1 min.\nDrizzle in the soy sauce, then add the sugar, sesame oil and a pinch of white ground pepper. Adjust the seasoning to your taste.\nPour in 400ml of water and slowly simmer for around 10 mins, until it's reached your preferred texture. The longer you cook it, the softer the beans will become and they will start to disintegrate into the sauce.\nCombine the cornflour with 1 tbsp water, then add 1 tbsp of this mixture into the beans, bring to the boil until the sauce thickens and becomes translucent. Add a little more water if you want it looser, or more cornflour paste to thicken. Will keep chilled in an airtight, sterilised container for up to a week.",
-    "steps": [
-      "Put the dried beans into a heatproof bowl and cover with boiling water. Leave to soak for at least 15 mins. Drain, rinse and set aside.",
-      "Heat the oil in a frying pan over a high heat and cook the ginger and garlic for 2 mins until fragrant, stirring continuously to ensure it doesn’t burn. Stir in the black beans and cook for another minute, then pour in the wine and cook for 1 min.",
-      "Drizzle in the soy sauce, then add the sugar, sesame oil and a pinch of white ground pepper. Adjust the seasoning to your taste.",
-      "Pour in 400ml of water and slowly simmer for around 10 mins, until it's reached your preferred texture. The longer you cook it, the softer the beans will become and they will start to disintegrate into the sauce.",
-      "Combine the cornflour with 1 tbsp water, then add 1 tbsp of this mixture into the beans, bring to the boil until the sauce thickens and becomes translucent. Add a little more water if you want it looser, or more cornflour paste to thicken. Will keep chilled in an airtight, sterilised container for up to a week."
-    ],
-    "macros": {
-      "calories": 336,
-      "protein": 12.0,
-      "carbs": 24.0,
-      "fat": 24.0,
-      "sugar": 4.8
-    },
-    "calories": 336,
-    "protein_g": 12.0,
-    "carbs_g": 24.0,
-    "fat_g": 24.0,
-    "fiber_g": 0.0,
-    "sugar_g": 4.8,
-    "glycemic_index": 0,
-    "glycemic_load": 0,
-    "insulin_units": 2.4,
-    "tags": [
-      "breakfast",
-      "diabetes",
-      "en",
-      "keto",
-      "maintain",
-      "vegan",
-      "vegetarian"
-    ],
-    "health_score": 68,
-    "health_score_reason": "Recipe checked from scraped nutrition data: plant-based.",
-    "source": "www.bbcgoodfood.com",
-    "source_url": "https://www.bbcgoodfood.com/recipes/black-bean-sauce",
-    "vitamin_a_ug": 7.85,
-    "vitamin_c_mg": 69.55,
-    "vitamin_d_ug": 0.0,
-    "vitamin_e_mg": 5.9,
-    "vitamin_k_ug": 28.53,
-    "vitamin_b12_ug": 0.0,
-    "folate_ug": 88.8,
-    "calcium_mg": 385.95,
-    "iron_mg": 5.17,
-    "magnesium_mg": 106.15,
-    "potassium_mg": 1127.1,
-    "zinc_mg": 3.16,
-    "sodium_mg": 1686.55
-  },
-  {
-    "id": "de_tzatziki_wie_ich_es_aus_kreta_mitgebracht_habe_von_jamai_59f3cf751d_dup_breakfast_1",
-    "language": "EN",
-    "title": "Tzatziki, wie ich es aus Kreta mitgebracht habe von Jamaica (Breakfast)",
-    "name": "Tzatziki, wie ich es aus Kreta mitgebracht habe von Jamaica (Breakfast)",
-    "image": "assets/images/recipes/de_tzatziki_wie_ich_es_aus_kreta_mitgebracht_habe_von_jamai_59f3cf751d.webp",
-    "meal_type": "breakfast",
-    "goals": [
-      "maintain",
-      "vegan",
-      "vegetarian",
-      "weight_loss"
-    ],
-    "time": 15,
-    "minutes": 15,
-    "servings": 1,
-    "ingredients": [
-      {
-        "name": "Joghurt",
-        "amount": "500 g",
-        "grams": 500.0
-      },
-      {
-        "name": "Salatgurke",
-        "amount": "1",
-        "grams": 100.0
-      },
-      {
-        "name": "Knoblauchzehe",
-        "amount": "4",
-        "grams": 400.0
-      },
-      {
-        "name": "Salz pfeffer",
-        "amount": "",
-        "grams": 0.0
-      }
-    ],
-    "instructions": "Griechischen Joghurt gut durchrühren, er ist sehr fest (daran bitte nicht stören). Die Salatgurke schälen und grob raspeln oder in feine Julienne schneiden. Die fertige Gurke einsalzen und warten, bis sich Gurkensaft absetzt. In der Zwischenzeit die Knoblauchzehen schälen und in den Joghurt pressen. Die Gurke in ein sauberes Tuch geben und den Saft abpressen. Die trockene Gurke in den Joghurt geben und unterrühren. Etwas durchziehen lassen und dann mit Salz (vorsichtig) und Pfeffer abschmecken.\nSchmeckt lecker zu Gyros aber auch zu frischem selbstgebackenem Brot.",
-    "steps": [
-      "Griechischen Joghurt gut durchrühren, er ist sehr fest (daran bitte nicht stören). Die Salatgurke schälen und grob raspeln oder in feine Julienne schneiden. Die fertige Gurke einsalzen und warten, bis sich Gurkensaft absetzt. In der Zwischenzeit die Knoblauchzehen schälen und in den Joghurt pressen. Die Gurke in ein sauberes Tuch geben und den Saft abpressen. Die trockene Gurke in den Joghurt geben und unterrühren. Etwas durchziehen lassen und dann mit Salz (vorsichtig) und Pfeffer abschmecken.",
-      "Schmeckt lecker zu Gyros aber auch zu frischem selbstgebackenem Brot."
-    ],
-    "macros": {
-      "calories": 399,
-      "protein": 21.9,
-      "carbs": 31.0,
-      "fat": 19.3
-    },
-    "calories": 399,
-    "protein_g": 21.9,
-    "carbs_g": 31.0,
-    "fat_g": 19.3,
-    "fiber_g": 0.0,
-    "sugar_g": 0.0,
-    "glycemic_index": 0,
-    "glycemic_load": 0,
-    "insulin_units": 3.1,
-    "tags": [
-      "breakfast",
-      "en",
-      "maintain",
-      "vegan",
-      "vegetarian",
-      "weight_loss"
-    ],
-    "health_score": 76,
-    "health_score_reason": "Recipe checked from scraped nutrition data: plant-based.",
-    "source": "www.chefkoch.de",
-    "source_url": "https://www.chefkoch.de/rezepte/272251104287099/Tzatziki-wie-ich-es-aus-Kreta-mitgebracht-habe.html",
-    "vitamin_a_ug": 0.0,
-    "vitamin_c_mg": 124.8,
-    "vitamin_d_ug": 0.0,
-    "vitamin_e_mg": 0.0,
-    "vitamin_k_ug": 6.8,
-    "vitamin_b12_ug": 0.0,
-    "folate_ug": 12.0,
-    "calcium_mg": 724.0,
-    "iron_mg": 6.8,
-    "magnesium_mg": 100.0,
-    "potassium_mg": 1604.0,
-    "zinc_mg": 4.8,
-    "sodium_mg": 68.0
-  },
-  {
-    "id": "en_sweetcorn_confetti_salad_4d0a66e75e_dup_breakfast_2",
-    "language": "EN",
-    "title": "Sweetcorn confetti salad (Breakfast)",
-    "name": "Sweetcorn confetti salad (Breakfast)",
-    "image": "assets/images/recipes/en_sweetcorn_confetti_salad_4d0a66e75e.webp",
-    "meal_type": "breakfast",
-    "goals": [
-      "diabetes",
-      "keto",
-      "maintain",
-      "vegan",
-      "vegetarian"
-    ],
-    "time": 15,
-    "minutes": 15,
-    "servings": 4,
-    "ingredients": [
-      {
-        "name": "sweetcorn cobs kernels only",
-        "amount": "300 g",
-        "grams": 300.0
-      },
-      {
-        "name": "red pepper",
-        "amount": "1",
-        "grams": 100.0
-      },
-      {
-        "name": "orange yellow pepper",
-        "amount": "1",
-        "grams": 100.0
-      },
-      {
-        "name": "red onion",
-        "amount": "1",
-        "grams": 100.0
-      },
-      {
-        "name": "cherry tomatoes",
-        "amount": "",
-        "grams": 0.0
-      },
-      {
-        "name": "coriander",
-        "amount": "",
-        "grams": 0.0
-      },
-      {
-        "name": "lime",
-        "amount": "1",
-        "grams": 100.0
-      },
-      {
-        "name": "olive oil",
-        "amount": "15 g",
-        "grams": 15.0
-      },
-      {
-        "name": "red chilli",
-        "amount": "",
-        "grams": 0.0
-      }
-    ],
-    "instructions": "Cut the sweetcorn kernels off the cobs and tip into a large mixing bowl. Add all the peppers, chopped red onion, tomatoes, and coriander.\nIn a small bowl or jug, whisk together the lime juice, olive oil, a pinch of salt, and some black pepper. Stir in the chopped chilli, if using.\nPour the dressing over the salad and toss everything together until well coated. Leave to stand in the fridge for 15–20 mins to let the flavours mingle, or serve immediately at room temperature.",
-    "steps": [
-      "Cut the sweetcorn kernels off the cobs and tip into a large mixing bowl. Add all the peppers, chopped red onion, tomatoes, and coriander.",
-      "In a small bowl or jug, whisk together the lime juice, olive oil, a pinch of salt, and some black pepper. Stir in the chopped chilli, if using.",
-      "Pour the dressing over the salad and toss everything together until well coated. Leave to stand in the fridge for 15–20 mins to let the flavours mingle, or serve immediately at room temperature."
-    ],
-    "macros": {
-      "calories": 456,
-      "protein": 16.0,
-      "carbs": 48.0,
-      "fat": 16.0,
-      "fiber": 24.0,
-      "sugar": 28.0
-    },
-    "calories": 456,
-    "protein_g": 16.0,
-    "carbs_g": 48.0,
-    "fat_g": 16.0,
-    "fiber_g": 24.0,
-    "sugar_g": 28.0,
-    "glycemic_index": 0,
-    "glycemic_load": 0,
-    "insulin_units": 2.4,
-    "tags": [
-      "breakfast",
-      "diabetes",
-      "en",
-      "keto",
-      "maintain",
-      "vegan",
-      "vegetarian"
-    ],
-    "health_score": 78,
-    "health_score_reason": "Recipe checked from scraped nutrition data: high fiber, plant-based.",
-    "source": "www.bbcgoodfood.com",
-    "source_url": "https://www.bbcgoodfood.com/recipes/sweetcorn-confetti-salad",
-    "vitamin_a_ug": 410.75,
-    "vitamin_c_mg": 302.65,
-    "vitamin_d_ug": 0.0,
-    "vitamin_e_mg": 6.31,
-    "vitamin_k_ug": 99.3,
-    "vitamin_b12_ug": 0.0,
-    "folate_ug": 138.25,
-    "calcium_mg": 95.4,
-    "iron_mg": 2.21,
-    "magnesium_mg": 49.25,
-    "potassium_mg": 859.65,
-    "zinc_mg": 1.08,
-    "sodium_mg": 27.05
-  },
-  {
-    "id": "de_gebratene_nudeln_von_niciha_e61dcecada_dup_breakfast_3",
-    "language": "EN",
-    "title": "Gebratene Nudeln von niciha (Breakfast)",
-    "name": "Gebratene Nudeln von niciha (Breakfast)",
-    "image": "assets/images/recipes/de_gebratene_nudeln_von_niciha_e61dcecada.webp",
-    "meal_type": "breakfast",
-    "goals": [
-      "maintain",
-      "muscle",
-      "vegan",
-      "vegetarian"
-    ],
-    "time": 25,
-    "minutes": 25,
-    "servings": 2,
-    "ingredients": [
-      {
-        "name": "chinesische eiernudeln",
-        "amount": "250 g",
-        "grams": 250.0
-      },
-      {
-        "name": "Sojasprossen",
-        "amount": "200 g",
-        "grams": 200.0
-      },
-      {
-        "name": "lauchzwiebel",
-        "amount": "1",
-        "grams": 50.0
-      },
-      {
-        "name": "n b öl",
-        "amount": "",
-        "grams": 0.0
-      },
-      {
-        "name": "n b sojasauce",
-        "amount": "",
-        "grams": 0.0
-      },
-      {
-        "name": "n b sambal oelek",
-        "amount": "",
-        "grams": 0.0
-      },
-      {
-        "name": "n b paprikapulver",
-        "amount": "",
-        "grams": 0.0
-      },
-      {
-        "name": "n b currypulver",
-        "amount": "",
-        "grams": 0.0
-      },
-      {
-        "name": "n b chilipulver",
-        "amount": "",
-        "grams": 0.0
-      },
-      {
-        "name": "Geflügelfleisch",
-        "amount": "200 g",
-        "grams": 200.0
-      }
-    ],
-    "instructions": "Das Fleisch in feine Streifen schneiden und mit Sojasauce und Sambal Oelek vorwürzen.\n5 EL Öl und 1 TL Sojasauce vermischen und in einen Wok oder eine Pfanne geben. Das Fleisch anbraten und dann die Sprossen sowie Lauchzwiebeln dazugeben. Kurz danach die Nudeln zufügen. Ca. 5 Minuten weiter braten lassen und dabei regelmäßig wenden. Zum Schluss mit den angegebenen Gewürzen nach Geschmack würzen. Anmerkung: Man verwendet hier bereits gekochte Nudeln.",
-    "steps": [
-      "Das Fleisch in feine Streifen schneiden und mit Sojasauce und Sambal Oelek vorwürzen.",
-      "5 EL Öl und 1 TL Sojasauce vermischen und in einen Wok oder eine Pfanne geben. Das Fleisch anbraten und dann die Sprossen sowie Lauchzwiebeln dazugeben. Kurz danach die Nudeln zufügen. Ca. 5 Minuten weiter braten lassen und dabei regelmäßig wenden. Zum Schluss mit den angegebenen Gewürzen nach Geschmack würzen. Anmerkung: Man verwendet hier bereits gekochte Nudeln."
-    ],
-    "macros": {
-      "calories": 1582,
-      "protein": 87.8,
-      "carbs": 188.2,
-      "fat": 53.5
-    },
-    "calories": 1582,
-    "protein_g": 87.8,
-    "carbs_g": 188.2,
-    "fat_g": 53.5,
-    "fiber_g": 0.0,
-    "sugar_g": 0.0,
-    "glycemic_index": 0,
-    "glycemic_load": 0,
-    "insulin_units": 18.8,
-    "tags": [
-      "breakfast",
-      "en",
-      "maintain",
-      "muscle",
-      "vegan",
-      "vegetarian"
-    ],
-    "health_score": 63,
-    "health_score_reason": "Recipe checked from scraped nutrition data: high protein, plant-based, muscle-friendly macros.",
-    "source": "www.chefkoch.de",
-    "source_url": "https://www.chefkoch.de/rezepte/63051022929691/Gebratene-Nudeln.html",
-    "vitamin_a_ug": 400.0,
-    "vitamin_c_mg": 0.0,
-    "vitamin_d_ug": 5.0,
-    "vitamin_e_mg": 2.75,
-    "vitamin_k_ug": 0.75,
-    "vitamin_b12_ug": 2.25,
-    "folate_ug": 117.5,
-    "calcium_mg": 140.0,
-    "iron_mg": 4.5,
-    "magnesium_mg": 30.0,
-    "potassium_mg": 345.0,
-    "zinc_mg": 3.25,
-    "sodium_mg": 355.0
-  },
-  {
     "id": "en_lentil_carrot_ham_salad_6d7dfcba7b",
     "language": "EN",
     "title": "Lentil, carrot & ham salad",
@@ -201982,7 +201550,7 @@
       "fiber": 8.0,
       "sugar": 16.0
     },
-    "calories": 176,
+    "calories": 232,
     "protein_g": 16.0,
     "carbs_g": 24.0,
     "fat_g": 8.0,
@@ -233059,7 +232627,7 @@
     },
     "calories": 845,
     "protein_g": 23.0,
-    "carbs_g": 172.0,
+    "carbs_g": 72.0,
     "fat_g": 52.0,
     "fiber_g": 0.0,
     "sugar_g": 0.0,
@@ -248854,9 +248422,9 @@
       "sugar": 8.0
     },
     "calories": 1016,
-    "protein_g": 26.0,
-    "carbs_g": 62.0,
-    "fat_g": 24.0,
+    "protein_g": 52.0,
+    "carbs_g": 124.0,
+    "fat_g": 48.0,
     "fiber_g": 10.0,
     "sugar_g": 8.0,
     "glycemic_index": 0,
@@ -275690,9 +275258,9 @@
       "sugar": 20.4
     },
     "calories": 1339,
-    "protein_g": 70.2,
-    "carbs_g": 262.4,
-    "fat_g": 55.8,
+    "protein_g": 39.0,
+    "carbs_g": 171.0,
+    "fat_g": 38.0,
     "fiber_g": 94.0,
     "sugar_g": 20.4,
     "glycemic_index": 0,
@@ -280836,7 +280404,7 @@
       "fiber": 17.6,
       "sugar": 139.1
     },
-    "calories": 3040,
+    "calories": 1997,
     "protein_g": 83.0,
     "carbs_g": 216.7,
     "fat_g": 88.7,
@@ -364031,7 +363599,7 @@
     },
     "calories": 1180,
     "protein_g": 48.0,
-    "carbs_g": 8.0,
+    "carbs_g": 130.0,
     "fat_g": 52.0,
     "fiber_g": 0.0,
     "sugar_g": 0.0,
@@ -375167,7 +374735,7 @@
     },
     "calories": 930,
     "protein_g": 48.0,
-    "carbs_g": 10.0,
+    "carbs_g": 110.0,
     "fat_g": 28.0,
     "fiber_g": 0.0,
     "sugar_g": 0.0,
@@ -376700,7 +376268,7 @@
     },
     "calories": 4200,
     "protein_g": 156.0,
-    "carbs_g": 108.0,
+    "carbs_g": 543.0,
     "fat_g": 156.0,
     "fiber_g": 0.0,
     "sugar_g": 0.0,
@@ -399146,7 +398714,7 @@
     "calories": 990,
     "protein_g": 98.0,
     "carbs_g": 26.0,
-    "fat_g": 454.0,
+    "fat_g": 54.0,
     "fiber_g": 0.0,
     "sugar_g": 0.0,
     "glycemic_index": 0,
