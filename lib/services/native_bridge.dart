@@ -135,11 +135,23 @@ class NativeBridge {
   /// Returns JSON metadata only after a 3-D model file exists on disk.
   /// Times out after 75 s to avoid false scan failures on cold model load or
   /// USDZ export while still bounding genuine native hangs.
-  Future<List<Map<String, dynamic>>> runVideoInference() async {
-    debugPrint('[SCAN] NativeBridge.runVideoInference() called');
+  ///
+  /// [userExemplars] carries the user's locally-stored label corrections
+  /// (`{'label': String, 'embedding': List<double>}`) so the native pipeline can
+  /// recognise foods the user has already taught it. This data comes from local
+  /// SQLite and is passed only over this in-process channel — it never leaves
+  /// the device.
+  Future<List<Map<String, dynamic>>> runVideoInference({
+    List<Map<String, dynamic>> userExemplars = const [],
+  }) async {
+    debugPrint('[SCAN] NativeBridge.runVideoInference() called '
+        '(exemplars=${userExemplars.length})');
     try {
       final raw = await _channel
-          .invokeMethod<String>('runVideoInference')
+          .invokeMethod<String>(
+            'runVideoInference',
+            {'user_exemplars': userExemplars},
+          )
           .timeout(const Duration(seconds: 75));
       debugPrint('[SCAN] NativeBridge.runVideoInference() raw=${raw?.substring(0, (raw.length > 200 ? 200 : raw.length))}');
       if (raw == null) return [];

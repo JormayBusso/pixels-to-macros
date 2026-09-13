@@ -127,6 +127,16 @@ final class ScannerPlugin {
             result(nil)
 
         case "runVideoInference":
+            // On-device exemplar learning: Dart passes the user's locally-stored
+            // label corrections so the pipeline can recognise foods the user has
+            // already taught it. This data comes from local SQLite and is never
+            // uploaded — it only travels Dart→native over this in-process channel.
+            if let args = call.arguments as? [String: Any],
+               let exemplars = args["user_exemplars"] as? [[String: Any]] {
+                pipeline.setUserExemplars(exemplars)
+            } else {
+                pipeline.setUserExemplars([])
+            }
             DispatchQueue.global(qos: .userInitiated).async {
                 // Capture result callback — must be called exactly once.
                 var resultCalled = false

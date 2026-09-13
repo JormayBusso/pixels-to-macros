@@ -17,6 +17,7 @@ class EditFoodScreen extends ConsumerStatefulWidget {
     required this.food,
     this.needsUserLabel = false,
     this.candidateLabels = const [],
+    this.labelEmbedding = const [],
   });
   final int scanId;
   final DetectedFood food;
@@ -30,6 +31,13 @@ class EditFoodScreen extends ConsumerStatefulWidget {
   /// Best-effort candidate names the scanner rejected on confidence, offered
   /// as a starting point for the prompt.
   final List<String> candidateLabels;
+
+  /// L2-normalised MobileCLIP image embedding of this food's crop, forwarded
+  /// from the native scan. When the user confirms a name for a food the scanner
+  /// was unsure about ([needsUserLabel]), this embedding + the chosen label are
+  /// stored locally as an exemplar so visually similar foods are recognised in
+  /// future scans. 100% on-device — never uploaded. Empty when unavailable.
+  final List<double> labelEmbedding;
 
   @override
   ConsumerState<EditFoodScreen> createState() => _EditFoodScreenState();
@@ -114,6 +122,22 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
 
     await ref.read(historyProvider.notifier).load();
     await ref.read(dailyIntakeProvider.notifier).load();
+
+    // On-device few-shot label learning: when the user confirms a name for a
+    // food the scanner was UNSURE about, store the crop's embedding + label as
+    // a local exemplar so visually similar foods are auto-recognised next time.
+    // We only learn from these actual corrections (not routine edits) to avoid
+    // learning noise, and only when a real embedding + label are present. This
+    // write stays entirely on-device.
+    if (widget.needsUserLabel &&
+        label.isNotEmpty &&
+        widget.labelEmbedding.isNotEmpty) {
+      await DatabaseService.instance.insertFoodExemplar(
+        label: label,
+        embedding: widget.labelEmbedding,
+        sourceScanId: widget.scanId,
+      );
+    }
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -51,7 +51,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 46,
+      version: 47,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -256,6 +256,9 @@ class DatabaseService {
 
     // Bolus Calculator Mode tables (insulin settings, dose logs, audit).
     await _createDiabetesTables(db);
+
+    // On-device learned food-label exemplars (few-shot label learning).
+    await _createFoodExemplarTable(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -752,6 +755,10 @@ class DatabaseService {
       // Composite-dish reference rows added after aliases had incorrectly
       // collapsed them to a constituent food. Ignore preserves user entries.
       await _seed(db);
+    }
+    if (oldVersion < 47) {
+      // On-device learned food-label exemplars. Local-only; never synced.
+      await _createFoodExemplarTable(db);
     }
   }
 
@@ -5129,6 +5136,93 @@ class DatabaseService {
       ...food.toMap(),
       'scan_id': scanId,
     });
+  }
+
+  // ── food_label_exemplars CRUD (on-device few-shot label learning) ─────────
+
+  /// Embedding-version tag for stored exemplars. Bump this whenever the bundled
+  /// MobileCLIP image encoder changes so stale-space vectors can be filtered
+  /// out (cosine similarity is only meaningful within the same embedding space).
+  static const String foodExemplarEmbeddingVersion = 'mobileclip_v1';
+
+  /// Local-only table of user label corrections used to recognise visually
+  /// similar foods in future scans WITHOUT any network call. Each row stores the
+  /// corrected [label], the segment's L2-normalised MobileCLIP image embedding
+  /// (JSON-encoded float array), the [source_scan_id] it was learned from, a
+  /// [created_at] timestamp and the [embedding_version] tag. This data never
+  /// leaves the device.
+  Future<void> _createFoodExemplarTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS food_label_exemplars (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        label             TEXT    NOT NULL,
+        embedding         TEXT    NOT NULL,
+        source_scan_id    INTEGER,
+        created_at        TEXT    NOT NULL,
+        embedding_version TEXT    NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_food_exemplars_label '
+      'ON food_label_exemplars (label)',
+    );
+  }
+
+  /// Persist one learned label correction. [embedding] must be the segment's
+  /// L2-normalised MobileCLIP image embedding; empty embeddings are ignored so
+  /// no useless rows accumulate. Returns the new row id, or -1 when skipped.
+  Future<int> insertFoodExemplar({
+    required String label,
+    required List<double> embedding,
+    int? sourceScanId,
+  }) async {
+    final trimmed = label.trim();
+    if (trimmed.isEmpty || embedding.isEmpty) return -1;
+    final db = await database;
+    return db.insert('food_label_exemplars', {
+      'label': trimmed,
+      'embedding': jsonEncode(embedding),
+      'source_scan_id': sourceScanId,
+      'created_at': DateTime.now().toIso8601String(),
+      'embedding_version': foodExemplarEmbeddingVersion,
+    });
+  }
+
+  /// All learned exemplars for the current embedding version, as maps ready to
+  /// hand to the native pipeline: `{'label': String, 'embedding': List<double>}`.
+  /// Only same-embedding-version rows are returned (cross-version cosine is
+  /// meaningless). 100% local read — the caller only forwards this to the
+  /// in-process native scanner, never to the network.
+  Future<List<Map<String, dynamic>>> getFoodExemplars() async {
+    final db = await database;
+    final rows = await db.query(
+      'food_label_exemplars',
+      where: 'embedding_version = ?',
+      whereArgs: [foodExemplarEmbeddingVersion],
+    );
+    final out = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      final raw = row['embedding'];
+      if (raw is! String || raw.isEmpty) continue;
+      try {
+        final decoded = (jsonDecode(raw) as List)
+            .map((e) => (e as num).toDouble())
+            .toList(growable: false);
+        if (decoded.isEmpty) continue;
+        out.add({'label': row['label'] as String, 'embedding': decoded});
+      } catch (_) {
+        // Skip corrupt rows rather than failing the whole scan.
+      }
+    }
+    return out;
+  }
+
+  /// Count of stored exemplars (for diagnostics / tests).
+  Future<int> countFoodExemplars() async {
+    final db = await database;
+    final result = await db
+        .rawQuery('SELECT COUNT(*) AS c FROM food_label_exemplars');
+    return (result.first['c'] as int?) ?? 0;
   }
 
   // ── user_preferences CRUD ────────────────────────────────────────────────

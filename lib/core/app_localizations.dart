@@ -4267,6 +4267,14 @@ class AppLocalizations {
         'de': 'Das ist nur eine Vermutung – bitte bestätige oder korrigiere sie.',
       });
 
+  String get learnedFromYou => _t({
+        'en': 'Learned',
+        'pl': 'Nauczone',
+        'nl': 'Geleerd',
+        'es': 'Aprendido',
+        'de': 'Gelernt',
+      });
+
   String get editIngredients => _t({
         'en': 'Edit ingredients',
         'pl': 'Edytuj składniki',

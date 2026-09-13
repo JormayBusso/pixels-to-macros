@@ -59,6 +59,39 @@ final class InferencePipeline {
     private var refinementCandidatesByKey: [String: [String]] = [:]
     private var confirmedLabelKeys: Set<String> = []
 
+    /// On-device exemplar learning. `segmentEmbeddingsByKey` caches each
+    /// segment's L2-normalised MobileCLIP image embedding (captured during the
+    /// open-vocab pass, keyed by mask centroid) so it can be serialised into the
+    /// scan JSON — letting a later user label correction be stored locally as an
+    /// exemplar. `labelSourceByKey` records segments whose name was resolved by
+    /// matching such a stored exemplar (`"user_exemplar"`). `userExemplars` are
+    /// the user's locally-stored (label, embedding) corrections, passed in from
+    /// Dart per scan; they never leave the device. All reset per scan.
+    private var segmentEmbeddingsByKey: [String: [Float]] = [:]
+    private var labelSourceByKey: [String: String] = [:]
+    private var userExemplars: [UserExemplar] = []
+
+    /// A single user label correction learned on-device: the corrected food
+    /// name and the L2-normalised MobileCLIP image embedding of the crop it was
+    /// corrected on.
+    struct UserExemplar {
+        let label: String
+        let vector: [Float]
+    }
+
+    /// Cosine floor for accepting a stored user exemplar as the label of a new
+    /// scan's segment. This is an IMAGE-to-IMAGE comparison in MobileCLIP's
+    /// embedding space, which sits far higher than the image-to-TEXT floors the
+    /// open-vocab pass uses (`minimumCosineSimilarity` 0.25, strong 0.24, very
+    /// strong 0.30): those cross-modal numbers do NOT transfer to same-modality
+    /// matching. Empirically, CLIP image-image cosine is ~0.8–1.0 for the same
+    /// object, ~0.4–0.7 for merely related items, and ~0.1–0.4 for different
+    /// objects; near-duplicate detection commonly uses 0.85–0.9. We deliberately
+    /// pick the conservative 0.85 so a learned label is auto-applied ONLY in the
+    /// "same food" regime — anything weaker still asks the user, honouring the
+    /// "prefer asking over guessing wrong" rule.
+    static let userExemplarCosineFloor: Float = 0.85
+
     /// Below this segmentation confidence a still-unconfirmed label is treated
     /// as an uncertain guess worth asking the user about. Mirrors the
     /// classifier's 0.35 rejection floor: below it the base label is essentially
@@ -116,6 +149,40 @@ final class InferencePipeline {
     ///   5. Export the labelled voxel clusters as a real 3-D model file.
     ///
     /// Returns JSON metadata only after the exported model exists on disk.
+    /// Load the user's locally-stored label corrections for this scan so the
+    /// pipeline can recognise foods the user has already taught it. Each entry
+    /// is `["label": String, "embedding": [Double|NSNumber]]` from the local
+    /// SQLite exemplar table. Vectors are defensively L2-normalised so on-device
+    /// cosine == dot product. This data is 100% on-device — it arrives via the
+    /// MethodChannel from local storage and is never sent anywhere.
+    func setUserExemplars(_ raw: [[String: Any]]) {
+        var parsed: [UserExemplar] = []
+        parsed.reserveCapacity(raw.count)
+        for entry in raw {
+            guard let label = (entry["label"] as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                !label.isEmpty,
+                let rawVec = entry["embedding"] as? [Any],
+                !rawVec.isEmpty
+            else { continue }
+            var v = [Float]()
+            v.reserveCapacity(rawVec.count)
+            for value in rawVec {
+                if let n = value as? NSNumber { v.append(n.floatValue) }
+            }
+            guard !v.isEmpty else { continue }
+            var norm: Float = 0
+            for x in v { norm += x * x }
+            norm = norm.squareRoot()
+            guard norm > 0 else { continue }
+            for i in 0..<v.count { v[i] /= norm }
+            parsed.append(UserExemplar(label: label, vector: v))
+        }
+        userExemplars = parsed
+        print("[EXEMPLAR] loaded \(userExemplars.count) user exemplars across " +
+              "\(Set(userExemplars.map { $0.label }).count) labels")
+    }
+
     func runVideoScan(recorder: MultiFrameRecorder) throws -> String {
         lastModel3DPath = nil
         lastModel3DObjects = []
@@ -251,6 +318,8 @@ final class InferencePipeline {
         // instance crops for higher-accuracy names than whole-frame ML Kit.
         refinementCandidatesByKey.removeAll()
         confirmedLabelKeys.removeAll()
+        segmentEmbeddingsByKey.removeAll()
+        labelSourceByKey.removeAll()
         segments = refineLabelsWithClassifier(
             segments: segments,
             frame: preprocessedRGB,
@@ -292,11 +361,26 @@ final class InferencePipeline {
             maskHeight: preprocessor.modelInputHeight
         )
 
+        // On-device exemplar learning (read/match): before we decide a segment
+        // is unnameable, check it against the foods the user has already
+        // corrected on this device. A strong image-to-image match (see
+        // `userExemplarCosineFloor`) uses the learned label instead of asking
+        // again. 100% local — exemplars arrive from local SQLite via the
+        // MethodChannel and are never uploaded. Runs before the flagging pass so
+        // a matched food is not surfaced as "unknown".
+        segments = applyUserExemplarLabels(segments)
+
         // Uncertainty signal: any segment that survived both refinement passes
         // still carrying only a generic / low-confidence guess (nothing
         // confidently confirmed it) is flagged so the UI asks the user what it
         // is instead of silently showing a guess. Additive only.
         segments = annotateSegmentsNeedingUserLabel(segments)
+
+        // Stamp the cached MobileCLIP embedding + label provenance onto each
+        // segment so BOTH the LiDAR and monocular serialisers emit them
+        // identically (embedding → enables learning a future correction;
+        // label_source → drives the "learned" UI marker).
+        segments = stampLabelMetadata(segments)
 
         guard passesFoodPresenceGate(
             segments: segments,
@@ -576,6 +660,8 @@ final class InferencePipeline {
                 "estimated":    false,
                 "needs_user_label": seg?.needsUserLabel ?? false,
                 "candidate_labels": seg?.candidateLabels ?? [],
+                "embedding": (seg?.embedding ?? []).map { Double($0) },
+                "label_source": seg?.labelSource ?? "recognizer",
             ]
         }
 
@@ -607,6 +693,8 @@ final class InferencePipeline {
             d["depth_avg_m"] = 0.0
             d["needs_user_label"] = seg?.needsUserLabel ?? false
             d["candidate_labels"] = seg?.candidateLabels ?? []
+            d["embedding"] = (seg?.embedding ?? []).map { Double($0) }
+            d["label_source"] = seg?.labelSource ?? "recognizer"
             // [EVAL] one line per food for known-weight calibration (#3).
             print("[EVAL] label=\(obj.label) volume_cm3=\(String(format: "%.1f", obj.volumeCm3)) voxels=\(obj.voxelCount) mode=lidar_mesh")
             payload.append(d)
@@ -1464,9 +1552,16 @@ final class InferencePipeline {
                 for: segment.mask, width: maskWidth, height: maskHeight
             ) else { continue }
             do {
-                let candidates = try mobileClip.classifyTopK(
+                guard let embedding = try mobileClip.embedding(
                     pixelBuffer: frame,
-                    regionOfInterest: roi,
+                    regionOfInterest: roi
+                ) else { continue }
+                // Cache the crop's embedding (keyed by stable centroid) so it can
+                // be serialised for on-device exemplar learning and reused by the
+                // exemplar-match pass without re-running the encoder.
+                segmentEmbeddingsByKey[Self.segmentKey(segment)] = embedding
+                let candidates = try mobileClip.nearestLabels(
+                    for: embedding,
                     limit: 8
                 )
                 guard let best = candidates.first,
@@ -1801,6 +1896,104 @@ final class InferencePipeline {
         guard !existing.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) else { return }
         existing.append(trimmed)
         refinementCandidatesByKey[key] = existing
+    }
+
+    /// On-device exemplar matching (few-shot, prototype/centroid style — the
+    /// Prototypical Networks pattern). For every segment the recogniser has NOT
+    /// already confidently confirmed, compare its cached MobileCLIP image
+    /// embedding against the per-label centroids of the user's locally-stored
+    /// corrections. If the best centroid clears the conservative
+    /// `userExemplarCosineFloor`, adopt that learned label and mark the segment
+    /// confirmed (`label_source = "user_exemplar"`) so it is NOT surfaced as
+    /// unknown. Purely local: operates only on `userExemplars` passed in from
+    /// on-device storage. No-op when MobileCLIP is unavailable, no exemplars
+    /// exist, or no embedding was captured for the segment.
+    private func applyUserExemplarLabels(
+        _ segments: [SegmentationService.SegmentedObject]
+    ) -> [SegmentationService.SegmentedObject] {
+        guard !userExemplars.isEmpty, !segments.isEmpty else { return segments }
+
+        // Build per-label centroids (prototypes): mean of the L2-normalised
+        // exemplar vectors for each label, renormalised so cosine == dot.
+        var sums: [String: [Float]] = [:]
+        var counts: [String: Int] = [:]
+        for ex in userExemplars {
+            if var acc = sums[ex.label] {
+                guard acc.count == ex.vector.count else { continue }
+                for i in 0..<acc.count { acc[i] += ex.vector[i] }
+                sums[ex.label] = acc
+            } else {
+                sums[ex.label] = ex.vector
+            }
+            counts[ex.label, default: 0] += 1
+        }
+        var centroids: [(label: String, vector: [Float])] = []
+        for (label, sum) in sums {
+            var v = sum
+            var norm: Float = 0
+            for x in v { norm += x * x }
+            norm = norm.squareRoot()
+            guard norm > 0 else { continue }
+            for i in 0..<v.count { v[i] /= norm }
+            centroids.append((label, v))
+        }
+        guard !centroids.isEmpty else { return segments }
+
+        var out = segments
+        for i in out.indices {
+            let seg = out[i]
+            let key = Self.segmentKey(seg)
+            // Do not fight a recogniser-confirmed label; only fill/rescue
+            // segments the normal passes left unconfirmed.
+            if confirmedLabelKeys.contains(key) { continue }
+            guard let vec = segmentEmbeddingsByKey[key], !vec.isEmpty else { continue }
+
+            var best: (label: String, cosine: Float)?
+            for centroid in centroids where centroid.vector.count == vec.count {
+                var dot: Float = 0
+                for c in 0..<vec.count { dot += vec[c] * centroid.vector[c] }
+                if best == nil || dot > best!.cosine {
+                    best = (centroid.label, dot)
+                }
+            }
+            guard let match = best else { continue }
+            if match.cosine >= Self.userExemplarCosineFloor {
+                out[i] = SegmentationService.SegmentedObject(
+                    label: match.label,
+                    classIndex: seg.classIndex,
+                    mask: seg.mask,
+                    pixelCount: seg.pixelCount,
+                    centroid: seg.centroid,
+                    confidence: max(seg.confidence, match.cosine)
+                )
+                confirmedLabelKeys.insert(key)
+                labelSourceByKey[key] = "user_exemplar"
+                print("[EXEMPLAR] matched seg \(seg.label) → \(match.label) " +
+                      "cos=\(String(format: "%.3f", match.cosine)) " +
+                      "(floor \(String(format: "%.2f", Self.userExemplarCosineFloor)))")
+            } else {
+                print("[EXEMPLAR] no confident match for seg \(seg.label) " +
+                      "best=\(match.label) cos=\(String(format: "%.3f", match.cosine)) " +
+                      "< floor \(String(format: "%.2f", Self.userExemplarCosineFloor)) — will ask user")
+            }
+        }
+        return out
+    }
+
+    /// Copy the per-scan cached embedding + label provenance onto each segment
+    /// struct so both serialisers (LiDAR in this file, monocular in
+    /// `MonocularVolumeEstimator`) emit `embedding` / `label_source`
+    /// identically. Additive: touches no label, mask or volume.
+    private func stampLabelMetadata(
+        _ segments: [SegmentationService.SegmentedObject]
+    ) -> [SegmentationService.SegmentedObject] {
+        var out = segments
+        for i in out.indices {
+            let key = Self.segmentKey(out[i])
+            out[i].embedding = segmentEmbeddingsByKey[key] ?? []
+            out[i].labelSource = labelSourceByKey[key]
+        }
+        return out
     }
 
     /// Flag every segment that reached the end of both refinement passes still

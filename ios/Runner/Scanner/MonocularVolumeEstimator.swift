@@ -587,6 +587,8 @@ final class MonocularVolumeEstimator {
                 "volume_source": "display_mesh",
                 "needs_user_label": seg.needsUserLabel,
                 "candidate_labels": seg.candidateLabels,
+                "embedding": seg.embedding.map { Double($0) },
+                "label_source": seg.labelSource ?? "recognizer",
             ]
             if let guardrailUpperCm3 {
                 row["guardrail_upper_cm3"] = round(guardrailUpperCm3 * 10) / 10

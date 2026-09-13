@@ -198,6 +198,33 @@ final class MobileCLIPService {
         )
     }
 
+    /// Public wrapper that returns the raw L2-normalised image embedding for a
+    /// crop, reusing the exact same encoder + normalisation path as the
+    /// open-vocab classifier. Used by the on-device exemplar-learning system to
+    /// (a) capture a segment's embedding so a user label correction can be
+    /// learned locally, and (b) match a new scan's segment against the user's
+    /// stored exemplars. Returns `nil` when the encoder is unavailable.
+    func embedding(
+        pixelBuffer: CVPixelBuffer,
+        regionOfInterest roi: CGRect
+    ) throws -> [Float]? {
+        try ensureLoaded()
+        return try imageEmbedding(pixelBuffer: pixelBuffer, regionOfInterest: roi)
+    }
+
+    /// Nearest food labels for an already-computed (L2-normalised) image
+    /// embedding — lets a caller embed once and reuse the vector for both the
+    /// label lookup and exemplar capture without re-running the encoder.
+    func nearestLabels(for embedding: [Float], limit: Int = 5) throws -> [Prediction] {
+        try ensureLoaded()
+        guard let table else { throw CLIPError.modelNotFound }
+        return Self.nearestLabels(
+            imageEmbedding: embedding,
+            table: table,
+            limit: max(1, limit)
+        )
+    }
+
     private func imageEmbedding(
         pixelBuffer: CVPixelBuffer,
         regionOfInterest roi: CGRect

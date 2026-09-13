@@ -146,7 +146,12 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     state = const ScanResultState(loading: true);
 
     try {
-      final rawVolumes = await NativeBridge.instance.runVideoInference();
+      // Load the user's on-device label corrections so the native pipeline can
+      // recognise foods they've already taught it. Local SQLite only.
+      final userExemplars =
+          await DatabaseService.instance.getFoodExemplars();
+      final rawVolumes = await NativeBridge.instance
+          .runVideoInference(userExemplars: userExemplars);
       debugPrint('[SCAN] Flutter received ${rawVolumes.length} raw items from native');
       for (final vol in rawVolumes) {
         debugPrint('[SCAN] Flutter item: $vol');

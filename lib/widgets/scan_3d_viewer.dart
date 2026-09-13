@@ -18,6 +18,8 @@ class Scan3DObject {
     this.debug,
     this.needsUserLabel = false,
     this.candidateLabels = const [],
+    this.embedding = const [],
+    this.labelSource,
   });
 
   factory Scan3DObject.fromMap(Map<String, dynamic> m) {
@@ -34,6 +36,11 @@ class Scan3DObject {
               .where((e) => e.trim().isNotEmpty)
               .toList(growable: false) ??
           const [],
+      embedding: (m['embedding'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList(growable: false) ??
+          const [],
+      labelSource: m['label_source'] as String?,
     );
   }
 
@@ -58,6 +65,19 @@ class Scan3DObject {
   /// confidence — offered to the user as picker hints. Empty when none.
   final List<String> candidateLabels;
 
+  /// L2-normalised MobileCLIP image embedding of this object's crop, forwarded
+  /// from native. Used to learn a user label correction as a local on-device
+  /// exemplar. Empty when MobileCLIP is unavailable. Never uploaded.
+  final List<double> embedding;
+
+  /// Provenance of the label: `"user_exemplar"` when it was resolved from a
+  /// previously user-corrected on-device exemplar, else `"recognizer"`/null.
+  final String? labelSource;
+
+  /// True when this object's name came from matching a food the user has
+  /// previously corrected on this device.
+  bool get isLearnedFromUser => labelSource == 'user_exemplar';
+
   Map<String, dynamic> toMap() => <String, dynamic>{
         'id': id,
         'label': label,
@@ -67,6 +87,8 @@ class Scan3DObject {
         if (debug != null) 'debug': debug,
         if (needsUserLabel) 'needs_user_label': needsUserLabel,
         if (candidateLabels.isNotEmpty) 'candidate_labels': candidateLabels,
+        if (embedding.isNotEmpty) 'embedding': embedding,
+        if (labelSource != null) 'label_source': labelSource,
       };
 }
 
