@@ -50,7 +50,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 45,
+      version: 46,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -746,6 +746,11 @@ class DatabaseService {
       try {
         await db.execute('ALTER TABLE pantry_items ADD COLUMN location TEXT');
       } catch (_) {}
+    }
+    if (oldVersion < 46) {
+      // Composite-dish reference rows added after aliases had incorrectly
+      // collapsed them to a constituent food. Ignore preserves user entries.
+      await _seed(db);
     }
   }
 
@@ -4447,6 +4452,259 @@ class DatabaseService {
           proteinPer100g: 9.2,
           carbsPer100g: 13.9,
           fatPer100g: 72.0),
+      // Typical prepared-food profiles from USDA FoodData Central/FNDDS.
+      FoodData(
+          label: 'Mixed Vegetables',
+          densityMin: 0.65,
+          densityMax: 0.85,
+          kcalPer100g: 65,
+          category: 'mixed',
+          proteinPer100g: 3.0,
+          carbsPer100g: 12.0,
+          fatPer100g: 0.5),
+      FoodData(
+          label: 'Vegetable Rice',
+          densityMin: 0.85,
+          densityMax: 1.00,
+          kcalPer100g: 130,
+          category: 'mixed',
+          proteinPer100g: 3.0,
+          carbsPer100g: 25.0,
+          fatPer100g: 1.5),
+      FoodData(
+          label: 'Smoked Salmon',
+          densityMin: 0.98,
+          densityMax: 1.08,
+          kcalPer100g: 117,
+          category: 'fish',
+          proteinPer100g: 18.3,
+          carbsPer100g: 0.0,
+          fatPer100g: 4.3),
+      FoodData(
+          label: 'Garlic Bread',
+          densityMin: 0.45,
+          densityMax: 0.60,
+          kcalPer100g: 350,
+          category: 'mixed',
+          proteinPer100g: 8.0,
+          carbsPer100g: 48.0,
+          fatPer100g: 14.0),
+      FoodData(
+          label: 'Avocado Toast',
+          densityMin: 0.45,
+          densityMax: 0.60,
+          kcalPer100g: 220,
+          category: 'mixed',
+          proteinPer100g: 6.0,
+          carbsPer100g: 23.0,
+          fatPer100g: 12.0),
+      FoodData(
+          label: 'Club Sandwich',
+          densityMin: 0.55,
+          densityMax: 0.75,
+          kcalPer100g: 250,
+          category: 'mixed',
+          proteinPer100g: 13.0,
+          carbsPer100g: 24.0,
+          fatPer100g: 12.0),
+      FoodData(
+          label: 'Open Sandwich',
+          densityMin: 0.50,
+          densityMax: 0.70,
+          kcalPer100g: 200,
+          category: 'mixed',
+          proteinPer100g: 10.0,
+          carbsPer100g: 23.0,
+          fatPer100g: 8.0),
+      FoodData(
+          label: 'Tuna Sandwich',
+          densityMin: 0.55,
+          densityMax: 0.75,
+          kcalPer100g: 215,
+          category: 'mixed',
+          proteinPer100g: 13.0,
+          carbsPer100g: 22.0,
+          fatPer100g: 8.0),
+      FoodData(
+          label: 'Tuna Melt',
+          densityMin: 0.55,
+          densityMax: 0.75,
+          kcalPer100g: 270,
+          category: 'mixed',
+          proteinPer100g: 15.0,
+          carbsPer100g: 22.0,
+          fatPer100g: 14.0),
+      FoodData(
+          label: 'Pulled Pork Sandwich',
+          densityMin: 0.55,
+          densityMax: 0.75,
+          kcalPer100g: 245,
+          category: 'mixed',
+          proteinPer100g: 14.0,
+          carbsPer100g: 24.0,
+          fatPer100g: 10.0),
+      FoodData(
+          label: 'Tuna Salad',
+          densityMin: 0.85,
+          densityMax: 1.00,
+          kcalPer100g: 187,
+          category: 'mixed',
+          proteinPer100g: 16.0,
+          carbsPer100g: 3.0,
+          fatPer100g: 12.0),
+      FoodData(
+          label: 'Tuna Mayo',
+          densityMin: 0.85,
+          densityMax: 1.00,
+          kcalPer100g: 225,
+          category: 'mixed',
+          proteinPer100g: 15.0,
+          carbsPer100g: 2.0,
+          fatPer100g: 17.0),
+      FoodData(
+          label: 'Deviled Eggs',
+          densityMin: 0.85,
+          densityMax: 1.00,
+          kcalPer100g: 201,
+          category: 'mixed',
+          proteinPer100g: 11.0,
+          carbsPer100g: 2.0,
+          fatPer100g: 17.0),
+      FoodData(
+          label: 'Hamburger',
+          densityMin: 0.70,
+          densityMax: 0.85,
+          kcalPer100g: 250,
+          category: 'mixed',
+          proteinPer100g: 13.0,
+          carbsPer100g: 25.0,
+          fatPer100g: 12.0),
+      FoodData(
+          label: 'Cheeseburger',
+          densityMin: 0.70,
+          densityMax: 0.85,
+          kcalPer100g: 303,
+          category: 'mixed',
+          proteinPer100g: 15.0,
+          carbsPer100g: 24.0,
+          fatPer100g: 16.0),
+      FoodData(
+          label: 'Spaghetti Bolognese',
+          densityMin: 0.85,
+          densityMax: 1.00,
+          kcalPer100g: 120,
+          category: 'mixed',
+          proteinPer100g: 6.0,
+          carbsPer100g: 20.0,
+          fatPer100g: 2.0),
+      FoodData(
+          label: 'Spaghetti Carbonara',
+          densityMin: 0.85,
+          densityMax: 1.00,
+          kcalPer100g: 190,
+          category: 'mixed',
+          proteinPer100g: 8.0,
+          carbsPer100g: 23.0,
+          fatPer100g: 7.0),
+      FoodData(
+          label: 'Mashed Potatoes',
+          densityMin: 0.70,
+          densityMax: 0.85,
+          kcalPer100g: 113,
+          category: 'mixed',
+          proteinPer100g: 2.0,
+          carbsPer100g: 17.0,
+          fatPer100g: 4.0),
+      FoodData(
+          label: 'Tomato Sauce',
+          densityMin: 1.00,
+          densityMax: 1.10,
+          kcalPer100g: 29,
+          category: 'condiment',
+          proteinPer100g: 1.4,
+          carbsPer100g: 6.0,
+          fatPer100g: 0.2),
+      FoodData(
+          label: 'Cream Sauce',
+          densityMin: 0.95,
+          densityMax: 1.05,
+          kcalPer100g: 170,
+          category: 'condiment',
+          proteinPer100g: 3.0,
+          carbsPer100g: 5.0,
+          fatPer100g: 15.0),
+      FoodData(
+          label: 'Cheese Sauce',
+          densityMin: 1.00,
+          densityMax: 1.10,
+          kcalPer100g: 180,
+          category: 'condiment',
+          proteinPer100g: 7.0,
+          carbsPer100g: 8.0,
+          fatPer100g: 13.0),
+      FoodData(
+          label: 'Sriracha',
+          densityMin: 1.05,
+          densityMax: 1.15,
+          kcalPer100g: 93,
+          category: 'condiment',
+          proteinPer100g: 1.0,
+          carbsPer100g: 21.0,
+          fatPer100g: 0.9),
+      FoodData(
+          label: 'Gravy',
+          densityMin: 0.95,
+          densityMax: 1.05,
+          kcalPer100g: 50,
+          category: 'condiment',
+          proteinPer100g: 1.5,
+          carbsPer100g: 5.0,
+          fatPer100g: 2.5),
+      FoodData(
+          label: 'Salad Dressing',
+          densityMin: 1.00,
+          densityMax: 1.10,
+          kcalPer100g: 286,
+          category: 'condiment',
+          proteinPer100g: 0.5,
+          carbsPer100g: 7.0,
+          fatPer100g: 28.0),
+      FoodData(
+          label: 'Teriyaki Sauce',
+          densityMin: 1.10,
+          densityMax: 1.20,
+          kcalPer100g: 89,
+          category: 'condiment',
+          proteinPer100g: 3.0,
+          carbsPer100g: 15.0,
+          fatPer100g: 0.0),
+      FoodData(
+          label: 'Sweet Chili Sauce',
+          densityMin: 1.10,
+          densityMax: 1.20,
+          kcalPer100g: 190,
+          category: 'condiment',
+          proteinPer100g: 0.5,
+          carbsPer100g: 47.0,
+          fatPer100g: 0.0),
+      FoodData(
+          label: 'Aioli',
+          densityMin: 0.90,
+          densityMax: 1.00,
+          kcalPer100g: 680,
+          category: 'condiment',
+          proteinPer100g: 1.0,
+          carbsPer100g: 1.0,
+          fatPer100g: 75.0),
+      FoodData(
+          label: 'Tzatziki',
+          densityMin: 0.95,
+          densityMax: 1.05,
+          kcalPer100g: 61,
+          category: 'condiment',
+          proteinPer100g: 3.5,
+          carbsPer100g: 4.0,
+          fatPer100g: 3.0),
     ];
 
     final batch = db.batch();
@@ -4559,6 +4817,11 @@ class DatabaseService {
       final cTokens = contentTokens(c);
       final shared = qTokens.intersection(cTokens);
       if (shared.isEmpty) continue;
+      final union = qTokens.union(cTokens);
+      final jaccardSimilarity = shared.length / union.length;
+      // Jaccard similarity evaluates the overlap relative to both complete
+      // token sets, unlike accepting any one shared word.
+      if (jaccardSimilarity < 0.5) continue;
       var score = shared.fold<int>(0, (sum, t) => sum + t.length);
       // Favour generic single-word base foods ("salmon") that the query just
       // specialises ("smoked salmon"), so we map to the canonical DB entry.
@@ -4570,7 +4833,7 @@ class DatabaseService {
         best = candidate;
       }
     }
-    // Require at least one solid (>=3 char) shared content word.
+    // Require a sufficiently similar token set and a solid shared word.
     return bestScore >= 3 ? best : null;
   }
 
