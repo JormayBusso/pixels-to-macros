@@ -3,14 +3,18 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 
-/// Thin wrapper around the `health` plugin that reads the two signals the
-/// adaptive daily calorie target needs from Apple Health / HealthKit:
+/// Thin wrapper around the `health` plugin.
+///
+/// It READS the two signals the adaptive daily calorie target needs from Apple
+/// Health / HealthKit:
 ///   • body **weight** (keeps the maintenance estimate current), and
 ///   • **active energy burned** (adapts the day's budget to real activity).
 ///
-/// iOS-only: on any other platform every method is a safe no-op. The class is a
-/// pure reader — it never writes to HealthKit — so only read authorization is
-/// requested.
+/// It also WRITES the nutrition of a logged meal back to HealthKit (dietary
+/// energy + protein/carbs/fat) so the user's day of eating shows up in the
+/// Health app, gated behind the same `healthSyncEnabled` toggle as the reads.
+///
+/// iOS-only: on any other platform every method is a safe no-op.
 class HealthService {
   HealthService._();
   static final HealthService instance = HealthService._();
@@ -18,13 +22,33 @@ class HealthService {
   final Health _health = Health();
   bool _configured = false;
 
-  static const List<HealthDataType> _types = <HealthDataType>[
+  /// Read-only signals that drive the adaptive daily calorie target.
+  static const List<HealthDataType> _readTypes = <HealthDataType>[
     HealthDataType.WEIGHT,
     HealthDataType.ACTIVE_ENERGY_BURNED,
   ];
-  static const List<HealthDataAccess> _permissions = <HealthDataAccess>[
+  static const List<HealthDataAccess> _readPermissions = <HealthDataAccess>[
     HealthDataAccess.READ,
     HealthDataAccess.READ,
+  ];
+
+  /// Nutrition types written to HealthKit when a meal/scan is logged.
+  static const List<HealthDataType> _writeTypes = <HealthDataType>[
+    HealthDataType.DIETARY_ENERGY_CONSUMED,
+    HealthDataType.DIETARY_PROTEIN_CONSUMED,
+    HealthDataType.DIETARY_CARBS_CONSUMED,
+    HealthDataType.DIETARY_FATS_CONSUMED,
+  ];
+
+  /// Authorization request covers both the read signals (READ) and the
+  /// nutrition writes (WRITE), in ADDITION to each other.
+  static final List<HealthDataType> _authTypes = <HealthDataType>[
+    ..._readTypes,
+    ..._writeTypes,
+  ];
+  static final List<HealthDataAccess> _authPermissions = <HealthDataAccess>[
+    ...List<HealthDataAccess>.filled(_readTypes.length, HealthDataAccess.READ),
+    ...List<HealthDataAccess>.filled(_writeTypes.length, HealthDataAccess.WRITE),
   ];
 
   /// Apple Health is iPhone-only in this app.
@@ -36,29 +60,72 @@ class HealthService {
     _configured = true;
   }
 
-  /// Prompt for read access. Returns true when the request completes without
-  /// error (HealthKit deliberately does not reveal whether READ was granted, so
-  /// callers must also tolerate empty reads).
+  /// Prompt for access. Requests READ for the weight/active-energy signals and
+  /// WRITE for the nutrition types. Returns true when the request completes
+  /// without error (HealthKit deliberately does not reveal whether READ was
+  /// granted, so callers must also tolerate empty reads).
   Future<bool> requestAuthorization() async {
     if (!isSupported) return false;
     try {
       await _ensureConfigured();
-      return await _health.requestAuthorization(_types, permissions: _permissions);
+      return await _health.requestAuthorization(_authTypes,
+          permissions: _authPermissions);
     } catch (e) {
       debugPrint('[Health] requestAuthorization failed: $e');
       return false;
     }
   }
 
-  /// Best-effort check of whether access has already been granted.
+  /// Best-effort check of whether read access has already been granted.
   Future<bool> hasPermissions() async {
     if (!isSupported) return false;
     try {
       await _ensureConfigured();
-      return (await _health.hasPermissions(_types, permissions: _permissions)) ??
+      return (await _health.hasPermissions(_readTypes,
+              permissions: _readPermissions)) ??
           false;
     } catch (e) {
       debugPrint('[Health] hasPermissions failed: $e');
+      return false;
+    }
+  }
+
+  /// Write a logged meal's nutrition to HealthKit as a dietary sample at
+  /// [loggedAt]. Energy is always written; each macro is written only when a
+  /// positive value is supplied. Best-effort: never throws, returns false on
+  /// any failure (matching the read-path error handling in this file). Returns
+  /// true only when every attempted write succeeded.
+  Future<bool> writeNutrition({
+    required double kcal,
+    double? proteinG,
+    double? carbsG,
+    double? fatG,
+    required DateTime loggedAt,
+  }) async {
+    if (!isSupported) return false;
+    if (!(kcal > 0)) return false;
+    try {
+      await _ensureConfigured();
+      var ok = true;
+
+      Future<void> writeOne(HealthDataType type, double? value) async {
+        if (value == null || !(value > 0)) return;
+        final wrote = await _health.writeHealthData(
+          value: value,
+          type: type,
+          startTime: loggedAt,
+          endTime: loggedAt,
+        );
+        if (!wrote) ok = false;
+      }
+
+      await writeOne(HealthDataType.DIETARY_ENERGY_CONSUMED, kcal);
+      await writeOne(HealthDataType.DIETARY_PROTEIN_CONSUMED, proteinG);
+      await writeOne(HealthDataType.DIETARY_CARBS_CONSUMED, carbsG);
+      await writeOne(HealthDataType.DIETARY_FATS_CONSUMED, fatG);
+      return ok;
+    } catch (e) {
+      debugPrint('[Health] writeNutrition failed: $e');
       return false;
     }
   }

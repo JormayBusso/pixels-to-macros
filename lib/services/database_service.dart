@@ -20,6 +20,7 @@ import '../models/scan_benchmark.dart';
 import '../models/scan_result.dart';
 import '../models/user_preferences.dart';
 import '../models/weight_entry.dart';
+import 'health_service.dart';
 
 /// Singleton service wrapping the local SQLite database.
 ///
@@ -4874,7 +4875,61 @@ class DatabaseService {
       });
     }
     await batch.commit(noResult: true);
+
+    // Mirror the logged meal into Apple Health (best-effort, never blocks or
+    // fails the local save). Gated behind the same `healthSyncEnabled` toggle
+    // as the read path; hydration/empty entries are skipped.
+    await _writeScanToHealth(result);
+
     return scanId;
+  }
+
+  /// Write a just-logged meal's nutrition to HealthKit when the user has Apple
+  /// Health sync enabled. Energy comes from the scan's calorie estimate; macros
+  /// are derived from the food database the same way the daily-intake totals
+  /// are. Every step is guarded so a HealthKit failure never affects the local
+  /// save.
+  Future<void> _writeScanToHealth(ScanResult result) async {
+    try {
+      if (!HealthService.instance.isSupported) return;
+      if (result.depthMode == 'hydration') return;
+      if (result.foods.isEmpty) return;
+
+      final prefs = await getUserPreferences();
+      if (!prefs.healthSyncEnabled) return;
+
+      final kcal = (result.totalCaloriesMin + result.totalCaloriesMax) / 2;
+      if (!(kcal > 0)) return;
+
+      double proteinSum = 0;
+      double carbsSum = 0;
+      double fatSum = 0;
+      for (final food in result.foods) {
+        var lookupLabel = food.label;
+        const aliases = {'chicken duck': 'chicken'};
+        if (aliases.containsKey(lookupLabel.toLowerCase())) {
+          lookupLabel = aliases[lookupLabel.toLowerCase()]!;
+        }
+        final foodData = await getFoodByLabel(lookupLabel);
+        if (foodData != null && foodData.kcalPer100g > 0) {
+          final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
+          final weightG = avgCal / (foodData.kcalPer100g / 100);
+          proteinSum += weightG * foodData.proteinPer100g / 100;
+          carbsSum += weightG * foodData.carbsPer100g / 100;
+          fatSum += weightG * foodData.fatPer100g / 100;
+        }
+      }
+
+      await HealthService.instance.writeNutrition(
+        kcal: kcal,
+        proteinG: proteinSum > 0 ? proteinSum : null,
+        carbsG: carbsSum > 0 ? carbsSum : null,
+        fatG: fatSum > 0 ? fatSum : null,
+        loggedAt: result.timestamp,
+      );
+    } catch (_) {
+      // Best-effort: HealthKit is never allowed to break a local save.
+    }
   }
 
   Future<List<ScanResult>> getAllScanResults() async {
