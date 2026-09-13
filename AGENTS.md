@@ -257,11 +257,18 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
   (SOTA-aligned — the winning MetaFood 2026 methods use plate diameter as the metric scale)
   > `arkit_plane` > learned scale > `fallback_22cm` (worst case; if it fires often, fix plate
   framing/contrast, don't just re-tune the volume envelope). **Sanctioned, research-backed
-  accuracy levers — prefer these over blind envelope tuning:** (1) fuse the Depth Anything V2
-  relief into the hull's TOP surface (measure per-pixel height instead of extruding a per-class
-  prior — the single biggest non-LiDAR lever); (2) a per-scan scale-shift fit of the metric
-  depth to the detected plate plane so it is globally consistent; (3) the ground-truth
-  density-calibration feedback loop (`GroundTruth`/`eval_provider` exist but do not feed back yet).
+  accuracy levers:** (1) Depth Anything V2 relief fusion into the hull's TOP surface (measure
+  per-pixel height instead of extruding a per-class prior — the single biggest non-LiDAR
+  lever) — **already implemented and bundled** (`MonoDepth.mlmodelc`, `MonoDepthService`,
+  wired into `MonocularVolumeEstimator`), but gated behind two flags: `useMetricDepthVolume`
+  is **permanently `false` by design** (device testing proved 4–9x absolute-scale error at
+  the 10–30cm hold distance — the "everything looks like a cucumber" bug — so Depth Anything
+  must never be used as an absolute volume/scale source); `useDepthRelief` is **temporarily
+  `false`**, sequenced to flip to `true` only once the separate texture-projection fix is
+  confirmed correct on-device (so a shape change can't confound that verification) — do not
+  flip it before that confirmation; (2) a per-scan scale-shift fit of the metric depth to the
+  detected plate plane so it is globally consistent; (3) the ground-truth density-calibration
+  feedback loop (`GroundTruth`/`eval_provider` exist but do not feed back yet).
   Target <15% energy MAPE; benchmark on MetaFood3D / SimpleFood45; ground food densities in
   EFSA/FNDDS (§13). References: PerBite (arXiv:2606.02021), Size Matters (2601.20051),
   OmniFood8K (2604.12356), PortionNet (2512.22304), MetaFood3D (2409.01966).
