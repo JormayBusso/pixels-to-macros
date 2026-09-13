@@ -66,7 +66,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import coremltools as ct
 import torch
 from torch import nn
 
@@ -214,6 +213,13 @@ def _text_embeddings(model, tokenizer, labels: list[str]) -> torch.Tensor:
 
 
 def export(args) -> tuple[Path, Path]:
+    # Imported lazily (not at module level) so environments that only need this
+    # module's small shared helpers (e.g. training/eval_mobileclip_lora.py,
+    # which runs on Kaggle where coremltools is not installed and is not
+    # needed for training/eval) can import it without requiring coremltools.
+    # Actually exporting to CoreML still hard-requires it, same as before.
+    import coremltools as ct
+
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 

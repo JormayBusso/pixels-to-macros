@@ -22,6 +22,12 @@ image-normalisation bug) before deciding whether to bundle it on-device.
 !git reset --hard origin/upgraded
 
 !pip install -q --upgrade pip
+# Kaggle preinstalls torchao 0.10.0. peft's LoRA dispatcher unconditionally
+# calls is_torchao_available(), which *raises* ImportError (not False) on a
+# too-old torchao even though this model never touches torchao-quantized
+# layers -> must upgrade torchao or `attach_image_encoder_lora` crashes.
+!pip install -q --upgrade "torchao>0.16.0"
+!pip install -q coremltools
 !pip install -q open_clip_torch huggingface_hub timm peft accelerate torchvision
 
 import torch
