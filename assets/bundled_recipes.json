@@ -402734,5 +402734,1650 @@
     "potassium_mg": 665.25,
     "zinc_mg": 0.77,
     "sodium_mg": 15.95
+  },
+  {
+    "id": "en_lunchbox_hummus_vegetable_sandwich_613483e3ce",
+    "language": "EN",
+    "title": "Lunchbox Hummus Vegetable Sandwich",
+    "name": "Lunchbox Hummus Vegetable Sandwich",
+    "image": "assets/images/recipes/en_lunchbox_hummus_vegetable_sandwich_613483e3ce.webp",
+    "meal_type": "snack",
+    "goals": [
+      "maintain",
+      "vegan",
+      "vegetarian",
+      "weight_loss"
+    ],
+    "time": 15,
+    "minutes": 15,
+    "servings": 1,
+    "ingredients": [
+      {
+        "name": "slices whole wheat bread",
+        "amount": "2",
+        "grams": 60.0
+      },
+      {
+        "name": "store bought hummus",
+        "amount": "1/2 cup",
+        "grams": 120.0
+      },
+      {
+        "name": "store bought tapenade (olive spread)",
+        "amount": "2 tablespoons",
+        "grams": 30.0
+      },
+      {
+        "name": "cucumber, thinly sliced",
+        "amount": "1/4",
+        "grams": 7.5
+      },
+      {
+        "name": "coarsely grated carrot",
+        "amount": "1",
+        "grams": 100.0
+      }
+    ],
+    "instructions": "Spread 1 slice whole wheat bread with half the mixture of hummus and tapenade (optional).\nDo the same on the second piece of bread.\nTop hummus and tapenade with the 1/4 cucumber thinly sliced and the 1 carrot coarsely grated.\nThis recipe makes 1 sandwich.",
+    "steps": [
+      "Spread 1 slice whole wheat bread with half the mixture of hummus and tapenade (optional).",
+      "Do the same on the second piece of bread.",
+      "Top hummus and tapenade with the 1/4 cucumber thinly sliced and the 1 carrot coarsely grated.",
+      "This recipe makes 1 sandwich."
+    ],
+    "macros": {
+      "calories": 379,
+      "protein": 18.0,
+      "carbs": 49.3,
+      "fat": 13.9,
+      "fiber": 13.3,
+      "sugar": 7.3
+    },
+    "calories": 379,
+    "protein_g": 18.0,
+    "carbs_g": 49.3,
+    "fat_g": 13.9,
+    "fiber_g": 13.3,
+    "sugar_g": 7.3,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 3.6,
+    "tags": [
+      "en",
+      "maintain",
+      "snack",
+      "vegan",
+      "vegetarian",
+      "weight_loss"
+    ],
+    "health_score": 86,
+    "health_score_reason": "Recipe checked from scraped nutrition data: high fiber, plant-based.",
+    "meal_locked": false,
+    "source": "www.food.com",
+    "source_url": "https://www.food.com/recipe/lunchbox-hummus-vegetable-sandwich-267593"
+  },
+  {
+    "id": "en_snack_stackers_lunch_box_surprise_9522f2da18",
+    "language": "EN",
+    "title": "Snack Stackers (Lunch Box Surprise)",
+    "name": "Snack Stackers (Lunch Box Surprise)",
+    "image": "assets/images/recipes/en_snack_stackers_lunch_box_surprise_9522f2da18.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegetarian"
+    ],
+    "time": 5,
+    "minutes": 5,
+    "servings": 1,
+    "ingredients": [
+      {
+        "name": "slice lunch meat",
+        "amount": "1",
+        "grams": 30.0
+      },
+      {
+        "name": "slice cheese",
+        "amount": "1",
+        "grams": 30.0
+      },
+      {
+        "name": "Ritz crackers",
+        "amount": "4",
+        "grams": 400.0
+      }
+    ],
+    "instructions": "Cut 4 (1-1/2-inch) circles out of your choice of lunch meat (use small glass if you don't have a cutter that is that small and cut around it), then cut 4 (1-1/4-inch) stars out of your choice of cheese.\nTop each cracker with 1 lunch meat circle and 1 cheese star or place in container and ship off in lunch box.",
+    "steps": [
+      "Cut 4 (1-1/2-inch) circles out of your choice of lunch meat (use small glass if you don't have a cutter that is that small and cut around it), then cut 4 (1-1/4-inch) stars out of your choice of cheese.",
+      "Top each cracker with 1 lunch meat circle and 1 cheese star or place in container and ship off in lunch box."
+    ],
+    "macros": {
+      "calories": 251,
+      "protein": 12.1,
+      "carbs": 12.9,
+      "fat": 16.8,
+      "fiber": 0.2,
+      "sugar": 1.0
+    },
+    "calories": 251,
+    "protein_g": 12.1,
+    "carbs_g": 12.9,
+    "fat_g": 16.8,
+    "fiber_g": 0.2,
+    "sugar_g": 1.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 1.3,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "meal_locked": false,
+    "source": "www.food.com",
+    "source_url": "https://www.food.com/recipe/snack-stackers-lunch-box-surprise-251773"
+  },
+  {
+    "id": "en_cheezy_popcorn_vegan_a9edec1af2",
+    "language": "EN",
+    "title": "Cheezy Popcorn(Vegan)",
+    "name": "Cheezy Popcorn(Vegan)",
+    "image": "assets/images/recipes/en_cheezy_popcorn_vegan_a9edec1af2.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "maintain",
+      "vegan",
+      "vegetarian"
+    ],
+    "time": 10,
+    "minutes": 10,
+    "servings": 8,
+    "ingredients": [
+      {
+        "name": "air popped popcorn",
+        "amount": "4 cups",
+        "grams": 960.0
+      },
+      {
+        "name": "olive oil flavored cooking spray",
+        "amount": "olive oil flavored cooking spray",
+        "grams": 0.0
+      },
+      {
+        "name": "nutritional yeast",
+        "amount": "1/3 cup",
+        "grams": 80.0
+      },
+      {
+        "name": "1 teaspoon chili powder (or curry powder)",
+        "amount": "1/2",
+        "grams": 50.0
+      },
+      {
+        "name": "salt (to taste)",
+        "amount": "1/2 teaspoon",
+        "grams": 2.5
+      },
+      {
+        "name": "garlic powder",
+        "amount": "1/2 teaspoon",
+        "grams": 2.5
+      },
+      {
+        "name": "onion powder",
+        "amount": "1/4 teaspoon",
+        "grams": 1.2
+      }
+    ],
+    "instructions": "Place warm popcorn in a large bowl and mist it with olive oil. Toss gently and mist again. Repeat until all kernels are lightly coated with oil.\nCombine remaining ingredients in a zippered plastic bag. Seal bag and shake until well mixed.\nDrop in popcorn, a little at a time, seal bag, and shake and turn bag to coat.\nContinue to add a little amount of popcorn to the bag until all kernels are well coated.\nStore zippered bag. Shake gently again before serving.",
+    "steps": [
+      "Place warm popcorn in a large bowl and mist it with olive oil. Toss gently and mist again. Repeat until all kernels are lightly coated with oil.",
+      "Combine remaining ingredients in a zippered plastic bag. Seal bag and shake until well mixed.",
+      "Drop in popcorn, a little at a time, seal bag, and shake and turn bag to coat.",
+      "Continue to add a little amount of popcorn to the bag until all kernels are well coated.",
+      "Store zippered bag. Shake gently again before serving."
+    ],
+    "macros": {
+      "calories": 323,
+      "protein": 28.8,
+      "carbs": 51.2,
+      "fat": 4.8,
+      "fiber": 18.4,
+      "sugar": 0.8
+    },
+    "calories": 323,
+    "protein_g": 28.8,
+    "carbs_g": 51.2,
+    "fat_g": 4.8,
+    "fiber_g": 18.4,
+    "sugar_g": 0.8,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 3.3,
+    "tags": [
+      "diabetes",
+      "en",
+      "maintain",
+      "snack",
+      "vegan",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: plant-based.",
+    "meal_locked": false,
+    "source": "www.food.com",
+    "source_url": "https://www.food.com/recipe/cheezy-popcorn-vegan-320344"
+  },
+  {
+    "id": "en_brown_sugar_cinnamon_glazed_popcorn_ef5e6732b8",
+    "language": "EN",
+    "title": "Brown sugar & cinnamon glazed popcorn",
+    "name": "Brown sugar & cinnamon glazed popcorn",
+    "image": "assets/images/recipes/en_brown_sugar_cinnamon_glazed_popcorn_ef5e6732b8.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegetarian"
+    ],
+    "time": 25,
+    "minutes": 25,
+    "servings": 8,
+    "ingredients": [
+      {
+        "name": "light brown sugar",
+        "amount": "50g",
+        "grams": 50.0
+      },
+      {
+        "name": "butter",
+        "amount": "10g",
+        "grams": 10.0
+      },
+      {
+        "name": "double cream",
+        "amount": "3 tbsp",
+        "grams": 45.0
+      },
+      {
+        "name": "a sprinkle of ground cinnamon",
+        "amount": "a sprinkle of ground cinnamon",
+        "grams": 0.0
+      },
+      {
+        "name": "popcorn kernels",
+        "amount": "100g",
+        "grams": 100.0
+      }
+    ],
+    "instructions": "Put the sugar in a small saucepan with 2 tbsp water and dissolve over a gentle heat. Bring to the boil, but don’t stir at all. When the sugar is a dark golden caramel colour, whisk in the butter. Remove from the heat and pour in the double cream (stand back as it may spit), stir vigorously, then add the ground cinnamon.\nPop the popcorn kernels in a saucepan with a tight-fitting lid for 4 mins, then remove from the heat and pour over the sugar glaze, tossing the popcorn until evenly coated.",
+    "steps": [
+      "Put the sugar in a small saucepan with 2 tbsp water and dissolve over a gentle heat. Bring to the boil, but don’t stir at all. When the sugar is a dark golden caramel colour, whisk in the butter. Remove from the heat and pour in the double cream (stand back as it may spit), stir vigorously, then add the ground cinnamon.",
+      "Pop the popcorn kernels in a saucepan with a tight-fitting lid for 4 mins, then remove from the heat and pour over the sugar glaze, tossing the popcorn until evenly coated."
+    ],
+    "macros": {
+      "calories": 1104,
+      "protein": 16.0,
+      "carbs": 112.0,
+      "fat": 64.0,
+      "fiber": 16.0,
+      "sugar": 48.0
+    },
+    "calories": 1104,
+    "protein_g": 16.0,
+    "carbs_g": 112.0,
+    "fat_g": 64.0,
+    "fiber_g": 16.0,
+    "sugar_g": 48.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 9.6,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "meal_locked": false,
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/brown-sugar-cinnamon-glazed-popcorn"
+  },
+  {
+    "id": "en_curried_cashew_dip_c45202efbf",
+    "language": "EN",
+    "title": "Curried cashew dip",
+    "name": "Curried cashew dip",
+    "image": "assets/images/recipes/en_curried_cashew_dip_c45202efbf.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain"
+    ],
+    "time": 5,
+    "minutes": 5,
+    "servings": 4,
+    "ingredients": [
+      {
+        "name": "cashew nuts",
+        "amount": "100g",
+        "grams": 100.0
+      },
+      {
+        "name": "2 limes juiced (apron 50ml)",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "coconut cream",
+        "amount": "3 tbsp",
+        "grams": 45.0
+      },
+      {
+        "name": "korma curry paste",
+        "amount": "2 tbsp",
+        "grams": 30.0
+      },
+      {
+        "name": "Bombay spice mix",
+        "amount": "2 tbsp",
+        "grams": 30.0
+      },
+      {
+        "name": "chicken skewers, carrot sticks and naan bread",
+        "amount": "chicken skewers, carrot sticks and naan bread",
+        "grams": 0.0
+      }
+    ],
+    "instructions": "Tip all the ingredients, except the Bombay mix, into a food processor. Blend until smooth, then season to taste. If the mixture is too thick, add a little more lime juice or a splash of cold water.\nSpoon into a bowl and sprinkle over the Bombay mix before serving with chicken skewers, carrot sticks and naan bread.",
+    "steps": [
+      "Tip all the ingredients, except the Bombay mix, into a food processor. Blend until smooth, then season to taste. If the mixture is too thick, add a little more lime juice or a splash of cold water.",
+      "Spoon into a bowl and sprinkle over the Bombay mix before serving with chicken skewers, carrot sticks and naan bread."
+    ],
+    "macros": {
+      "calories": 1260,
+      "protein": 32.0,
+      "carbs": 36.0,
+      "fat": 104.0,
+      "fiber": 8.0,
+      "sugar": 16.0
+    },
+    "calories": 1260,
+    "protein_g": 32.0,
+    "carbs_g": 36.0,
+    "fat_g": 104.0,
+    "fiber_g": 8.0,
+    "sugar_g": 16.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 2.8,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: balanced everyday macros.",
+    "meal_locked": false,
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/curried-cashew-dip"
+  },
+  {
+    "id": "en_curried_hummus_c5b04d1c17",
+    "language": "EN",
+    "title": "Curried hummus",
+    "name": "Curried hummus",
+    "image": "assets/images/recipes/en_curried_hummus_c5b04d1c17.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegan",
+      "vegetarian"
+    ],
+    "time": 5,
+    "minutes": 5,
+    "servings": 1,
+    "ingredients": [
+      {
+        "name": "curried chickpeas (see recipe below)",
+        "amount": "60g",
+        "grams": 60.0
+      },
+      {
+        "name": "juice of 1/2 lime",
+        "amount": "juice of 1/2 lime",
+        "grams": 0.0
+      },
+      {
+        "name": "½ tbsp tahini",
+        "amount": "½ tbsp tahini",
+        "grams": 0.0
+      },
+      {
+        "name": "handful of coriander",
+        "amount": "handful of coriander",
+        "grams": 0.0
+      }
+    ],
+    "instructions": "Blitz the curried chickpeas (see recipe here) with the lime juice, tahini and coriander, adding enough water until you get to your desired consistency. Season to taste. Eat with cucumber or carrot sticks.",
+    "steps": [
+      "Blitz the curried chickpeas (see recipe here) with the lime juice, tahini and coriander, adding enough water until you get to your desired consistency.",
+      "Season to taste.",
+      "Eat with cucumber or carrot sticks."
+    ],
+    "macros": {
+      "calories": 153,
+      "protein": 8.0,
+      "carbs": 11.0,
+      "fat": 7.0,
+      "fiber": 5.0,
+      "sugar": 2.0
+    },
+    "calories": 153,
+    "protein_g": 8.0,
+    "carbs_g": 11.0,
+    "fat_g": 7.0,
+    "fiber_g": 5.0,
+    "sugar_g": 2.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 0.6,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack",
+      "vegan",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: plant-based.",
+    "meal_locked": false,
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/curried-hummus"
+  },
+  {
+    "id": "en_hummus_e4c3d4db0b",
+    "language": "EN",
+    "title": "Hummus",
+    "name": "Hummus",
+    "image": "assets/images/recipes/en_hummus_e4c3d4db0b.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegan",
+      "vegetarian"
+    ],
+    "time": 10,
+    "minutes": 10,
+    "servings": 4,
+    "ingredients": [
+      {
+        "name": "can chickpeas drained",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "/2fl oz oil plus 30ml/1fl oz for a looser consistency",
+        "amount": "60ml",
+        "grams": 60.0
+      },
+      {
+        "name": "small garlic clove peeled and crushed",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "lemon juiced then ½ zested",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "/45ml tahini",
+        "amount": "3 tbsp",
+        "grams": 45.0
+      },
+      {
+        "name": "olive oil to garnish (optional)",
+        "amount": "1 tbsp",
+        "grams": 15.0
+      },
+      {
+        "name": "mixed crudités and toasted pitta bread, to serve (optional)",
+        "amount": "mixed crudités and toasted pitta bread, to serve (optional)",
+        "grams": 0.0
+      }
+    ],
+    "instructions": "Thoroughly rinse the chickpeas in a colander under cold running water. Tip into the large bowl of a food processor along with 60ml of oil and blitz until almost smooth.\nAdd the garlic, lemon and tahini, and blitz again. If the consistency is too thick, gradually pour in up to 30ml more water. Blitz again for about 5 mins, or until the hummus is smooth and silky.\nSeason with a good pinch of sea salt and transfer to a bowl. Swirl the top of the hummus with the back of a dessert spoon and drizzle over a little olive oil. Serve with crunchy crudités and toasted pitta bread, if you like.",
+    "steps": [
+      "Thoroughly rinse the chickpeas in a colander under cold running water. Tip into the large bowl of a food processor along with 60ml of oil and blitz until almost smooth.",
+      "Add the garlic, lemon and tahini, and blitz again. If the consistency is too thick, gradually pour in up to 30ml more water. Blitz again for about 5 mins, or until the hummus is smooth and silky.",
+      "Season with a good pinch of sea salt and transfer to a bowl. Swirl the top of the hummus with the back of a dessert spoon and drizzle over a little olive oil. Serve with crunchy crudités and toasted pitta bread, if you like."
+    ],
+    "macros": {
+      "calories": 1520,
+      "protein": 28.0,
+      "carbs": 36.0,
+      "fat": 112.0,
+      "fiber": 20.0,
+      "sugar": 1.6
+    },
+    "calories": 1520,
+    "protein_g": 28.0,
+    "carbs_g": 36.0,
+    "fat_g": 112.0,
+    "fiber_g": 20.0,
+    "sugar_g": 1.6,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 1.6,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack",
+      "vegan",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: plant-based.",
+    "meal_locked": false,
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/hummus"
+  },
+  {
+    "id": "en_hummus_pizza_7041b3897a",
+    "language": "EN",
+    "title": "Hummus Pizza",
+    "name": "Hummus Pizza",
+    "image": "assets/images/recipes/en_hummus_pizza_7041b3897a.webp",
+    "meal_type": "snack",
+    "goals": [
+      "maintain",
+      "vegan",
+      "vegetarian",
+      "weight_loss"
+    ],
+    "time": 15,
+    "minutes": 15,
+    "servings": 2,
+    "ingredients": [
+      {
+        "name": "pita breads",
+        "amount": "2",
+        "grams": 200.0
+      },
+      {
+        "name": "tomatoes",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "(8 ounce) container hummus",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "(6 ounce) bag spinach",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "(8 ounce) jar black olives",
+        "amount": "1",
+        "grams": 100.0
+      }
+    ],
+    "instructions": "Heat pita breads in the oven at 350 degrees F.\nSpread hummus on warmed pita breads.\nCut the tomato and add slices on top of the hummus.\nPlace spinach on top of tomatos.\nAdd olives to taste.",
+    "steps": [
+      "Heat pita breads in the oven at 350 degrees F.",
+      "Spread hummus on warmed pita breads.",
+      "Cut the tomato and add slices on top of the hummus.",
+      "Place spinach on top of tomatos.",
+      "Add olives to taste."
+    ],
+    "macros": {
+      "calories": 1056,
+      "protein": 38.0,
+      "carbs": 126.8,
+      "fat": 49.8,
+      "fiber": 29.6,
+      "sugar": 5.6
+    },
+    "calories": 1056,
+    "protein_g": 38.0,
+    "carbs_g": 126.8,
+    "fat_g": 49.8,
+    "fiber_g": 29.6,
+    "sugar_g": 5.6,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 9.7,
+    "tags": [
+      "en",
+      "maintain",
+      "snack",
+      "vegan",
+      "vegetarian",
+      "weight_loss"
+    ],
+    "health_score": 86,
+    "health_score_reason": "Recipe checked from scraped nutrition data: high fiber, plant-based.",
+    "meal_locked": false,
+    "source": "www.food.com",
+    "source_url": "https://www.food.com/recipe/hummus-pizza-436003"
+  },
+  {
+    "id": "en_skyline_chili_dip_84ae142717",
+    "language": "EN",
+    "title": "Skyline Chili Dip",
+    "name": "Skyline Chili Dip",
+    "image": "assets/images/recipes/en_skyline_chili_dip_84ae142717.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegetarian",
+      "weight_loss"
+    ],
+    "time": 20,
+    "minutes": 20,
+    "servings": 5,
+    "ingredients": [
+      {
+        "name": "(8 ounce) package cream cheese",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "(13 ounce) package frozen chili or 1 (15 ounce) can skyline chili",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "(8 ounce) package shredded cheddar cheese",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "onion, diced (optional)",
+        "amount": "1/4 cup",
+        "grams": 60.0
+      }
+    ],
+    "instructions": "Spread cream cheese on bottom of casserole dish.\nSprinkle diced onions (optional).\nPour Skyline chili over onions (opt.) and cream cheese.\nCover with cheddar cheese.\nConventional oven: Heat at 350 degrees until cheese is bubbling but not brown, about 10 minutes.\nMicrowave oven: Heat on high for 2 minutes or until cheese is melted.\nServe warm with Corn chips or Fritos corn chips.",
+    "steps": [
+      "Spread cream cheese on bottom of casserole dish.",
+      "Sprinkle diced onions (optional).",
+      "Pour Skyline chili over onions (opt.) and cream cheese.",
+      "Cover with cheddar cheese.",
+      "Conventional oven: Heat at 350 degrees until cheese is bubbling but not brown, about 10 minutes.",
+      "Microwave oven: Heat on high for 2 minutes or until cheese is melted.",
+      "Serve warm with Corn chips or Fritos corn chips."
+    ],
+    "macros": {
+      "calories": 2108,
+      "protein": 91.0,
+      "carbs": 56.5,
+      "fat": 173.5,
+      "fiber": 16.5,
+      "sugar": 13.0
+    },
+    "calories": 2108,
+    "protein_g": 91.0,
+    "carbs_g": 56.5,
+    "fat_g": 173.5,
+    "fiber_g": 16.5,
+    "sugar_g": 13.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 4.0,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack",
+      "vegetarian",
+      "weight_loss"
+    ],
+    "health_score": 76,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "meal_locked": false,
+    "source": "www.food.com",
+    "source_url": "https://www.food.com/recipe/skyline-chili-dip-87361"
+  },
+  {
+    "id": "en_really_easy_vegan_gravy_or_cheese_sauce_728f4335fb",
+    "language": "EN",
+    "title": "Really Easy Vegan Gravy or Cheese Sauce",
+    "name": "Really Easy Vegan Gravy or Cheese Sauce",
+    "image": "assets/images/recipes/en_really_easy_vegan_gravy_or_cheese_sauce_728f4335fb.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "maintain",
+      "vegetarian"
+    ],
+    "time": 10,
+    "minutes": 10,
+    "servings": 2,
+    "ingredients": [
+      {
+        "name": "vegetable broth",
+        "amount": "2 cups",
+        "grams": 480.0
+      },
+      {
+        "name": "1/2 cup nutritional yeast",
+        "amount": "1/4",
+        "grams": 25.0
+      },
+      {
+        "name": "cornstarch",
+        "amount": "3 tablespoons",
+        "grams": 45.0
+      },
+      {
+        "name": "spices, to taste (such as onion powder, garlic, oregano, paprika, whatever you like)",
+        "amount": "spices, to taste (such as onion powder, garlic, oregano, paprika, whatever you like)",
+        "grams": 0.0
+      },
+      {
+        "name": "salt and pepper",
+        "amount": "salt and pepper",
+        "grams": 0.0
+      }
+    ],
+    "instructions": "Heat up the broth.\nTake a little of the hot liquid and put in bowl.\nWhisk in cornstarch, set aside.\nPour nutritional yeast and spices into hot liquid, stirring until dissolved.\nAdd cornstarch mixture and cook until as thick as you desire. This only takes a few minutes.\nAdd salt and pepper to taste.\nTis is great over baked potatoes, vegetables, rice, noodles. Enjoy!",
+    "steps": [
+      "Heat up the broth.",
+      "Take a little of the hot liquid and put in bowl.",
+      "Whisk in cornstarch, set aside.",
+      "Pour nutritional yeast and spices into hot liquid, stirring until dissolved.",
+      "Add cornstarch mixture and cook until as thick as you desire. This only takes a few minutes.",
+      "Add salt and pepper to taste.",
+      "Tis is great over baked potatoes, vegetables, rice, noodles. Enjoy!"
+    ],
+    "macros": {
+      "calories": 247,
+      "protein": 19.4,
+      "carbs": 41.8,
+      "fat": 3.6,
+      "fiber": 13.2,
+      "sugar": 0.0
+    },
+    "calories": 247,
+    "protein_g": 19.4,
+    "carbs_g": 41.8,
+    "fat_g": 3.6,
+    "fiber_g": 13.2,
+    "sugar_g": 0.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 2.9,
+    "tags": [
+      "diabetes",
+      "en",
+      "maintain",
+      "snack",
+      "vegetarian"
+    ],
+    "health_score": 78,
+    "health_score_reason": "Recipe checked from scraped nutrition data: high fiber, vegetarian.",
+    "meal_locked": false,
+    "source": "www.food.com",
+    "source_url": "https://www.food.com/recipe/really-easy-vegan-gravy-or-cheese-sauce-204581"
+  },
+  {
+    "id": "en_tofu_alfredo_sauce_c2ab4ac105",
+    "language": "EN",
+    "title": "Tofu \"alfredo\" Sauce",
+    "name": "Tofu \"alfredo\" Sauce",
+    "image": "assets/images/recipes/en_tofu_alfredo_sauce_c2ab4ac105.webp",
+    "meal_type": "snack",
+    "goals": [
+      "maintain",
+      "vegetarian",
+      "weight_loss"
+    ],
+    "time": 8,
+    "minutes": 8,
+    "servings": 8,
+    "ingredients": [
+      {
+        "name": "lbs lite silken extra firm tofu",
+        "amount": "1 1/2",
+        "grams": 150.0
+      },
+      {
+        "name": "vegetable broth",
+        "amount": "1/2 cup",
+        "grams": 120.0
+      },
+      {
+        "name": "basil or 2 teaspoons Italian herb seasoning",
+        "amount": "2 teaspoons",
+        "grams": 10.0
+      },
+      {
+        "name": "onion powder",
+        "amount": "1 teaspoon",
+        "grams": 5.0
+      },
+      {
+        "name": "nutritional yeast (can substitute soy parmesan)",
+        "amount": "1/2 cup",
+        "grams": 120.0
+      },
+      {
+        "name": "Butter Buds or 4 tablespoons vegan margarine",
+        "amount": "4 tablespoons",
+        "grams": 60.0
+      },
+      {
+        "name": "fettuccine pasta",
+        "amount": "16 ounces",
+        "grams": 453.6
+      }
+    ],
+    "instructions": "Cook pasta per package directions.\nWhiz the rest of the ingredients in a blender until smooth.\nPour over hot pasta and mix well.",
+    "steps": [
+      "Cook pasta per package directions.",
+      "Whiz the rest of the ingredients in a blender until smooth.",
+      "Pour over hot pasta and mix well."
+    ],
+    "macros": {
+      "calories": 1936,
+      "protein": 140.0,
+      "carbs": 306.4,
+      "fat": 23.2,
+      "fiber": 26.4,
+      "sugar": 3.2
+    },
+    "calories": 1936,
+    "protein_g": 140.0,
+    "carbs_g": 306.4,
+    "fat_g": 23.2,
+    "fiber_g": 26.4,
+    "sugar_g": 3.2,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 28.0,
+    "tags": [
+      "en",
+      "maintain",
+      "snack",
+      "vegetarian",
+      "weight_loss"
+    ],
+    "health_score": 76,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "meal_locked": false,
+    "source": "www.food.com",
+    "source_url": "https://www.food.com/recipe/tofu-alfredo-sauce-50064"
+  },
+  {
+    "id": "en_artichoke_olive_dip_0ea78001a7",
+    "language": "EN",
+    "title": "Artichoke & olive dip",
+    "name": "Artichoke & olive dip",
+    "image": "assets/images/recipes/en_artichoke_olive_dip_0ea78001a7.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegetarian"
+    ],
+    "time": 15,
+    "minutes": 15,
+    "servings": 6,
+    "ingredients": [
+      {
+        "name": "jar chargrilled artichokes in oil, drained, 2 tbsp of the oil reserved",
+        "amount": "280g",
+        "grams": 280.0
+      },
+      {
+        "name": "jar pitted green olives drained, 1 olive reserved, to serve",
+        "amount": "340g",
+        "grams": 340.0
+      },
+      {
+        "name": "pine nuts",
+        "amount": "25g",
+        "grams": 25.0
+      },
+      {
+        "name": "parmesan (or vegetarian alternative), finely grated",
+        "amount": "50g",
+        "grams": 50.0
+      },
+      {
+        "name": "juice ½ lemon",
+        "amount": "juice ½ lemon",
+        "grams": 0.0
+      }
+    ],
+    "instructions": "Put the artichokes, olives, pine nuts, Parmesan and lemon juice into a food processor and whizz to a rough paste. Can be made up to a day ahead and chilled. When ready to serve, put into a bowl, swirl the reserved oil from the artichokes over the top and finish with the remaining olive. If made ahead, bring it to room temperature about an hour before serving to let the flavours develop.",
+    "steps": [
+      "Put the artichokes, olives, pine nuts, Parmesan and lemon juice into a food processor and whizz to a rough paste.",
+      "Can be made up to a day ahead and chilled.",
+      "When ready to serve, put into a bowl, swirl the reserved oil from the artichokes over the top and finish with the remaining olive.",
+      "If made ahead, bring it to room temperature about an hour before serving to let the flavours develop."
+    ],
+    "macros": {
+      "calories": 1074,
+      "protein": 24.0,
+      "carbs": 6.0,
+      "fat": 108.0,
+      "fiber": 12.0,
+      "sugar": 6.0
+    },
+    "calories": 1074,
+    "protein_g": 24.0,
+    "carbs_g": 6.0,
+    "fat_g": 108.0,
+    "fiber_g": 12.0,
+    "sugar_g": 6.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 0.0,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "meal_locked": false,
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/artichoke-olive-dip"
+  },
+  {
+    "id": "en_whipped_feta_with_crudit_s_0f98c4aeb3",
+    "language": "EN",
+    "title": "Whipped feta with crudités",
+    "name": "Whipped feta with crudités",
+    "image": "assets/images/recipes/en_whipped_feta_with_crudit_s_0f98c4aeb3.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegetarian"
+    ],
+    "time": 15,
+    "minutes": 15,
+    "servings": 6,
+    "ingredients": [
+      {
+        "name": "feta cheese drained and cut into chunks",
+        "amount": "400g",
+        "grams": 400.0
+      },
+      {
+        "name": "juice 1 lemon",
+        "amount": "juice 1 lemon",
+        "grams": 0.0
+      },
+      {
+        "name": "extra-virgin olive oil",
+        "amount": "75ml",
+        "grams": 75.0
+      },
+      {
+        "name": "pack dill roughly chopped",
+        "amount": "20g",
+        "grams": 20.0
+      },
+      {
+        "name": "pack mint finely chopped",
+        "amount": "20g",
+        "grams": 20.0
+      },
+      {
+        "name": "selection of radishes spring onions, cucumber batons and cos lettuce leaves",
+        "amount": "selection of radishes spring onions, cucumber batons and cos lettuce leaves",
+        "grams": 0.0
+      }
+    ],
+    "instructions": "Place the feta in a food processor or blender. Add the lemon juice and half of the olive oil. Purée until smooth, then add the remaining olive oil. Stir in the dill and mint. Pour into a small container with a fitted lid and refrigerate until needed. Pack the veg in a low-level container and serve them from it.",
+    "steps": [
+      "Place the feta in a food processor or blender.",
+      "Add the lemon juice and half of the olive oil.",
+      "Purée until smooth, then add the remaining olive oil.",
+      "Stir in the dill and mint.",
+      "Pour into a small container with a fitted lid and refrigerate until needed.",
+      "Pack the veg in a low-level container and serve them from it."
+    ],
+    "macros": {
+      "calories": 1692,
+      "protein": 66.0,
+      "carbs": 18.0,
+      "fat": 150.0,
+      "fiber": 6.0
+    },
+    "calories": 1692,
+    "protein_g": 66.0,
+    "carbs_g": 18.0,
+    "fat_g": 150.0,
+    "fiber_g": 6.0,
+    "sugar_g": 0.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 1.2,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "meal_locked": false,
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/herby-feta-lemon-dip-crudites"
+  },
+  {
+    "id": "en_spiced_chilli_popcorn_583fb52d10",
+    "language": "EN",
+    "title": "Spiced chilli popcorn",
+    "name": "Spiced chilli popcorn",
+    "image": "assets/images/recipes/en_spiced_chilli_popcorn_583fb52d10.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegan",
+      "vegetarian"
+    ],
+    "time": 13,
+    "minutes": 13,
+    "servings": 5,
+    "ingredients": [
+      {
+        "name": "pouch natural microwave popcorn or 100g popcorn kernels",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "chilli flakes",
+        "amount": "1 tsp",
+        "grams": 5.0
+      },
+      {
+        "name": "cracked black pepper",
+        "amount": "1 tsp",
+        "grams": 5.0
+      },
+      {
+        "name": "mixed spice",
+        "amount": "2 tsp",
+        "grams": 10.0
+      }
+    ],
+    "instructions": "Heat oven to 200C/180C fan/gas 6. Pop the natural microwave popcorn pouch (or popcorn kernels) following pack instructions.\nMeanwhile, mix together chilli flakes, cracked black pepper and mixed spice. Toss the popcorn with the spice mix, then tip onto a large baking tray and place in the oven for 5 mins until the corn is crisp and the spices are fragrant.\nSprinkle with a pinch of salt and eat warm or once cooled. Will keep in an airtight container for up to a week.",
+    "steps": [
+      "Heat oven to 200C/180C fan/gas 6. Pop the natural microwave popcorn pouch (or popcorn kernels) following pack instructions.",
+      "Meanwhile, mix together chilli flakes, cracked black pepper and mixed spice. Toss the popcorn with the spice mix, then tip onto a large baking tray and place in the oven for 5 mins until the corn is crisp and the spices are fragrant.",
+      "Sprinkle with a pinch of salt and eat warm or once cooled. Will keep in an airtight container for up to a week."
+    ],
+    "macros": {
+      "calories": 640,
+      "protein": 10.0,
+      "carbs": 55.0,
+      "fat": 45.0
+    },
+    "calories": 640,
+    "protein_g": 10.0,
+    "carbs_g": 55.0,
+    "fat_g": 45.0,
+    "fiber_g": 0.0,
+    "sugar_g": 0.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 5.5,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack",
+      "vegan",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: plant-based.",
+    "meal_locked": false,
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/spiced-chilli-popcorn"
+  },
+  {
+    "id": "en_vegetable_tempura_with_soy_dipping_sauce_d69df2f609",
+    "language": "EN",
+    "title": "Vegetable tempura with soy & dipping sauce",
+    "name": "Vegetable tempura with soy & dipping sauce",
+    "image": "assets/images/recipes/en_vegetable_tempura_with_soy_dipping_sauce_d69df2f609.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "maintain",
+      "vegan",
+      "vegetarian"
+    ],
+    "time": 25,
+    "minutes": 25,
+    "servings": 4,
+    "ingredients": [
+      {
+        "name": "(approx) each of a mix of firm vegetables cut into bite-size pieces, such as aubergine, broccoli, courgette, mushrooms, red pepper and sweet potatoes",
+        "amount": "100g",
+        "grams": 100.0
+      },
+      {
+        "name": "tempura batter (see below)",
+        "amount": "tempura batter (see below)",
+        "grams": 0.0
+      },
+      {
+        "name": "groundnut or sunflower oil for deep frying",
+        "amount": "groundnut or sunflower oil for deep frying",
+        "grams": 0.0
+      },
+      {
+        "name": "soy sauce",
+        "amount": "3 tbsp",
+        "grams": 45.0
+      },
+      {
+        "name": "dry sherry",
+        "amount": "3 tbsp",
+        "grams": 45.0
+      },
+      {
+        "name": "sugar",
+        "amount": "1 tbsp",
+        "grams": 15.0
+      },
+      {
+        "name": "lemon zest only",
+        "amount": "1",
+        "grams": 100.0
+      }
+    ],
+    "instructions": "Heat oven to 150C/fan 130C/gas 2. Mix together the sauce ingredients in a small bowl. Make the batter (see right). Cover a baking tray with sheets of kitchen paper. Start to heat a deep-fat frying pan or large wok a third full of oil and have the frying basket, or slotted spoon to hand\nWhen the oil reaches 190C dip some of the prepared veg briefly into the batter, shake off any excess, then lower straight into the hot oil. Don’t crowd the frying basket. Fry for about 2 mins until light golden and crisp, then drain on kitchen paper.\nRepeat with the remaining vegetables in batches, dipping into the batter just before you fry them and remember to let the oil heat back up to temperature between each batch. Keep the tempura warm in the oven, leaving the door slightly ajar so that they stay crisp. They are best served immediately on a warm plate with the sauce alongside for dipping.",
+    "steps": [
+      "Heat oven to 150C/fan 130C/gas 2. Mix together the sauce ingredients in a small bowl. Make the batter (see right). Cover a baking tray with sheets of kitchen paper. Start to heat a deep-fat frying pan or large wok a third full of oil and have the frying basket, or slotted spoon to hand",
+      "When the oil reaches 190C dip some of the prepared veg briefly into the batter, shake off any excess, then lower straight into the hot oil. Don’t crowd the frying basket. Fry for about 2 mins until light golden and crisp, then drain on kitchen paper.",
+      "Repeat with the remaining vegetables in batches, dipping into the batter just before you fry them and remember to let the oil heat back up to temperature between each batch. Keep the tempura warm in the oven, leaving the door slightly ajar so that they stay crisp. They are best served immediately on a warm plate with the sauce alongside for dipping."
+    ],
+    "macros": {
+      "calories": 1884,
+      "protein": 20.0,
+      "carbs": 132.0,
+      "fat": 140.0,
+      "fiber": 16.0,
+      "sugar": 16.0
+    },
+    "calories": 1884,
+    "protein_g": 20.0,
+    "carbs_g": 132.0,
+    "fat_g": 140.0,
+    "fiber_g": 16.0,
+    "sugar_g": 16.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 11.6,
+    "tags": [
+      "diabetes",
+      "en",
+      "maintain",
+      "snack",
+      "vegan",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: plant-based.",
+    "meal_locked": false,
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/vegetable-tempura-soy-dipping-sauce"
+  },
+  {
+    "id": "en_apple_doughnuts_04e80f3f09",
+    "language": "EN",
+    "title": "Apple ‘doughnuts’",
+    "name": "Apple ‘doughnuts’",
+    "image": "assets/images/recipes/en_apple_doughnuts_04e80f3f09.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegetarian"
+    ],
+    "time": 20,
+    "minutes": 20,
+    "servings": 15,
+    "ingredients": [
+      {
+        "name": "soft cheese",
+        "amount": "150g",
+        "grams": 150.0
+      },
+      {
+        "name": "honey",
+        "amount": "2 tsp",
+        "grams": 10.0
+      },
+      {
+        "name": "apples (use a crunchy eating variety)",
+        "amount": "3",
+        "grams": 300.0
+      },
+      {
+        "name": "4 tbsp almond or peanut butter (optional)",
+        "amount": "3",
+        "grams": 300.0
+      },
+      {
+        "name": "coloured sprinkles to decorate",
+        "amount": "coloured sprinkles to decorate",
+        "grams": 0.0
+      }
+    ],
+    "instructions": "Mix the soft cheese with the honey and set aside. Peel the apples, then slice each through the core into five or six rings, about 1cm thick. Use an apple corer or small round biscuit cutter to stamp out a circle from the middle of each slice, removing the core and creating ‘doughnut’ shapes. Pat the slices dry using kitchen paper – they should be as dry as possible to help the toppings stick.\nSpread some nut butter over the slices, if using, then top with the sweetened soft cheese. Decorate with the sprinkles and serve.",
+    "steps": [
+      "Mix the soft cheese with the honey and set aside. Peel the apples, then slice each through the core into five or six rings, about 1cm thick. Use an apple corer or small round biscuit cutter to stamp out a circle from the middle of each slice, removing the core and creating ‘doughnut’ shapes. Pat the slices dry using kitchen paper – they should be as dry as possible to help the toppings stick.",
+      "Spread some nut butter over the slices, if using, then top with the sweetened soft cheese. Decorate with the sprinkles and serve."
+    ],
+    "macros": {
+      "calories": 960,
+      "protein": 30.0,
+      "carbs": 75.0,
+      "fat": 60.0,
+      "fiber": 15.0,
+      "sugar": 60.0
+    },
+    "calories": 960,
+    "protein_g": 30.0,
+    "carbs_g": 75.0,
+    "fat_g": 60.0,
+    "fiber_g": 15.0,
+    "sugar_g": 60.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 6.0,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "meal_locked": false,
+    "source": "www.bbcgoodfood.com",
+    "source_url": "https://www.bbcgoodfood.com/recipes/apple-doughnuts"
+  },
+  {
+    "id": "en_dainty_egg_and_chive_tea_sandwiches_for_tea_time_e57e1eb41b",
+    "language": "EN",
+    "title": "Dainty Egg and Chive Tea Sandwiches for Tea-Time",
+    "name": "Dainty Egg and Chive Tea Sandwiches for Tea-Time",
+    "image": "assets/images/recipes/en_dainty_egg_and_chive_tea_sandwiches_for_tea_time_e57e1eb41b.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "maintain",
+      "vegetarian"
+    ],
+    "time": 11,
+    "minutes": 11,
+    "servings": 4,
+    "ingredients": [
+      {
+        "name": "medium free range eggs",
+        "amount": "4",
+        "grams": 200.0
+      },
+      {
+        "name": "salad cream",
+        "amount": "1 tablespoon",
+        "grams": 15.0
+      },
+      {
+        "name": "mayonnaise",
+        "amount": "2 tablespoons",
+        "grams": 30.0
+      },
+      {
+        "name": "finely chopped fresh chives",
+        "amount": "1 tablespoon",
+        "grams": 15.0
+      },
+      {
+        "name": "slices thin sliced brown bread",
+        "amount": "8",
+        "grams": 240.0
+      },
+      {
+        "name": "butter, softened, for spreading",
+        "amount": "butter, softened, for spreading",
+        "grams": 0.0
+      },
+      {
+        "name": "salt and pepper",
+        "amount": "salt and pepper",
+        "grams": 0.0
+      }
+    ],
+    "instructions": "Place the eggs in a small pan and cover with water. Bring to the boil and cook for 6 minutes. Drain and run the eggs under cold water until cool.\nPeel and then coarsely grate or crumble the eggs into a bowl. Mix with the salad cream, mayonnaise and chives and season with salt and pepper to taste.\nCut off the bread crusts with a serrated knife - put them to one side for home-made breadcrumbs.\nButter the bread and divide the egg mixture between 4 bread slices. Top with the remaining bread. Stack 2 sandwiches together and cut into 3 fingers, then serve.\nCook's tips: Pierce the rounded end of each egg with a pin before cooking to help stop the shell from cracking.\nCooling the eggs under cold water stops them from cooking further and prevents a dark ring forming around the yolk.\nFor easy peeling, peel the eggs under cold running water over a colander to collect all the bits of shell. The water stops the shell from sticking to your fingers and the egg.",
+    "steps": [
+      "Place the eggs in a small pan and cover with water. Bring to the boil and cook for 6 minutes. Drain and run the eggs under cold water until cool.",
+      "Peel and then coarsely grate or crumble the eggs into a bowl. Mix with the salad cream, mayonnaise and chives and season with salt and pepper to taste.",
+      "Cut off the bread crusts with a serrated knife - put them to one side for home-made breadcrumbs.",
+      "Butter the bread and divide the egg mixture between 4 bread slices. Top with the remaining bread. Stack 2 sandwiches together and cut into 3 fingers, then serve.",
+      "Cook's tips: Pierce the rounded end of each egg with a pin before cooking to help stop the shell from cracking.",
+      "Cooling the eggs under cold water stops them from cooking further and prevents a dark ring forming around the yolk.",
+      "For easy peeling, peel the eggs under cold running water over a colander to collect all the bits of shell. The water stops the shell from sticking to your fingers and the egg."
+    ],
+    "macros": {
+      "calories": 1011,
+      "protein": 48.0,
+      "carbs": 139.6,
+      "fat": 31.2,
+      "fiber": 11.6,
+      "sugar": 28.8
+    },
+    "calories": 1011,
+    "protein_g": 48.0,
+    "carbs_g": 139.6,
+    "fat_g": 31.2,
+    "fiber_g": 11.6,
+    "sugar_g": 28.8,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 12.8,
+    "tags": [
+      "diabetes",
+      "en",
+      "maintain",
+      "snack",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "meal_locked": false,
+    "source": "www.food.com",
+    "source_url": "https://www.food.com/recipe/dainty-egg-and-chive-tea-sandwiches-for-tea-time-355687"
+  },
+  {
+    "id": "en_hormel_chili_dip_b5bb225f9f",
+    "language": "EN",
+    "title": "Hormel Chili Dip",
+    "name": "Hormel Chili Dip",
+    "image": "assets/images/recipes/en_hormel_chili_dip_b5bb225f9f.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegetarian"
+    ],
+    "time": 5,
+    "minutes": 5,
+    "servings": 12,
+    "ingredients": [
+      {
+        "name": "(16 ounce) can hormel chili without beans",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "(8 ounce) package cream cheese",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "(16 ounce) package shredded mild cheddar cheese or 1 (16 ounce) package sharp cheddar cheese",
+        "amount": "1",
+        "grams": 100.0
+      },
+      {
+        "name": "nacho chips or Frito Scoops, to serve",
+        "amount": "nacho chips or Frito Scoops, to serve",
+        "grams": 0.0
+      }
+    ],
+    "instructions": "Microwave cream cheese for 1 minute in 12\" x 12\" pyrex dish or glass pie dish.\nRemove and spread cream cheese to cover bottom of dish.\nNext pour the hormel chili on top of the cream cheese.\nLastly, layer with the shredded cheddar cheese.\nMicrowave for 3 minutes or until cheese has melted.\nServe with nacho chips or scoop frito's.",
+    "steps": [
+      "Microwave cream cheese for 1 minute in 12\" x 12\" pyrex dish or glass pie dish.",
+      "Remove and spread cream cheese to cover bottom of dish.",
+      "Next pour the hormel chili on top of the cream cheese.",
+      "Lastly, layer with the shredded cheddar cheese.",
+      "Microwave for 3 minutes or until cheese has melted.",
+      "Serve with nacho chips or scoop frito's."
+    ],
+    "macros": {
+      "calories": 3144,
+      "protein": 160.8,
+      "carbs": 43.2,
+      "fat": 260.4,
+      "fiber": 0.0,
+      "sugar": 9.6
+    },
+    "calories": 3144,
+    "protein_g": 160.8,
+    "carbs_g": 43.2,
+    "fat_g": 260.4,
+    "fiber_g": 0.0,
+    "sugar_g": 9.6,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 4.3,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "meal_locked": false,
+    "source": "www.food.com",
+    "source_url": "https://www.food.com/recipe/hormel-chili-dip-104766"
+  },
+  {
+    "id": "en_cheese_and_herb_bites_d06c3a00a1",
+    "language": "EN",
+    "title": "Cheese and Herb Bites",
+    "name": "Cheese and Herb Bites",
+    "image": "assets/images/recipes/en_cheese_and_herb_bites_d06c3a00a1.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegetarian"
+    ],
+    "time": 10,
+    "minutes": 10,
+    "servings": 4,
+    "ingredients": [
+      {
+        "name": "Garlic Parmesan Pretzel Crisps®",
+        "amount": "16",
+        "grams": 1600.0
+      },
+      {
+        "name": "mascarpone cheese",
+        "amount": "1/4 cup",
+        "grams": 60.0
+      },
+      {
+        "name": "mixed fresh herbs, plus more (to garnish)",
+        "amount": "1 1/2 tablespoons",
+        "grams": 22.5
+      },
+      {
+        "name": "ground black pepper",
+        "amount": "1/4 teaspoon",
+        "grams": 1.2
+      },
+      {
+        "name": "shredded cheddar cheese",
+        "amount": "2 tablespoons",
+        "grams": 30.0
+      },
+      {
+        "name": "shredded havarti cheese",
+        "amount": "2 tablespoons",
+        "grams": 30.0
+      },
+      {
+        "name": "grated parmesan cheese",
+        "amount": "2 tablespoons",
+        "grams": 30.0
+      }
+    ],
+    "instructions": "In a small bowl mix together mascarpone, one tablespoon herbs and pepper till well blended.\nCombine the cheddar, Havarti and Parmesan in a separate bowl. Top Pretzel Crisps® with a dollop of mascarpone mixture and then sprinkle with cheese blend and remaining herbs.",
+    "steps": [
+      "In a small bowl mix together mascarpone, one tablespoon herbs and pepper till well blended.",
+      "Combine the cheddar, Havarti and Parmesan in a separate bowl. Top Pretzel Crisps® with a dollop of mascarpone mixture and then sprinkle with cheese blend and remaining herbs."
+    ],
+    "macros": {
+      "calories": 102,
+      "protein": 7.6,
+      "carbs": 0.8,
+      "fat": 7.6,
+      "fiber": 0.0,
+      "sugar": 0.0
+    },
+    "calories": 102,
+    "protein_g": 7.6,
+    "carbs_g": 0.8,
+    "fat_g": 7.6,
+    "fiber_g": 0.0,
+    "sugar_g": 0.0,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 0.1,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "meal_locked": false,
+    "source": "www.food.com",
+    "source_url": "https://www.food.com/recipe/cheese-and-herb-bites-519043"
+  },
+  {
+    "id": "en_easy_apricot_bites_51fba78395",
+    "language": "EN",
+    "title": "Easy Apricot Bites",
+    "name": "Easy Apricot Bites",
+    "image": "assets/images/recipes/en_easy_apricot_bites_51fba78395.webp",
+    "meal_type": "snack",
+    "goals": [
+      "diabetes",
+      "keto",
+      "maintain",
+      "vegetarian"
+    ],
+    "time": 15,
+    "minutes": 15,
+    "servings": 12,
+    "ingredients": [
+      {
+        "name": "cream cheese, softened",
+        "amount": "4 ounces",
+        "grams": 113.4
+      },
+      {
+        "name": "fresh apricots, halved",
+        "amount": "12",
+        "grams": 1200.0
+      },
+      {
+        "name": "pistachios, finely chopped",
+        "amount": "1/2 cup",
+        "grams": 120.0
+      }
+    ],
+    "instructions": "Stir cream cheese until smooth; pipe or spoon into apricot halves. Sprinkle tops with pistachios.",
+    "steps": [
+      "Stir cream cheese until smooth; pipe or spoon into apricot halves.",
+      "Sprinkle tops with pistachios."
+    ],
+    "macros": {
+      "calories": 936,
+      "protein": 25.2,
+      "carbs": 68.4,
+      "fat": 68.4,
+      "fiber": 14.4,
+      "sugar": 46.8
+    },
+    "calories": 936,
+    "protein_g": 25.2,
+    "carbs_g": 68.4,
+    "fat_g": 68.4,
+    "fiber_g": 14.4,
+    "sugar_g": 46.8,
+    "glycemic_index": 0,
+    "glycemic_load": 0,
+    "insulin_units": 5.4,
+    "tags": [
+      "diabetes",
+      "en",
+      "keto",
+      "maintain",
+      "snack",
+      "vegetarian"
+    ],
+    "health_score": 68,
+    "health_score_reason": "Recipe checked from scraped nutrition data: vegetarian.",
+    "meal_locked": false,
+    "source": "www.food.com",
+    "source_url": "https://www.food.com/recipe/easy-apricot-bites-395280"
   }
 ]
