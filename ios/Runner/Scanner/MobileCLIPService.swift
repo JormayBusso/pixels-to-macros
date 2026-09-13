@@ -44,6 +44,13 @@ final class MobileCLIPService {
         "FoodLabelEmbeddings",
     ]
 
+    /// Reject an image whose nearest food prompt has no meaningful alignment.
+    /// CLIP compares L2-normalised image/text embeddings by cosine similarity
+    /// (Radford et al., 2021); 0.25 is a conservative practical zero-shot
+    /// rejection floor for a food vocabulary, above the ~0.20 weak-match range.
+    /// It must be recalibrated if the encoder, prompts, or vocabulary changes.
+    static let minimumCosineSimilarity: Float = 0.25
+
     private struct LabelEmbeddings {
         let labels: [String]
         let vectors: [[Float]] // each L2-normalised, length == dim
@@ -250,6 +257,13 @@ final class MobileCLIPService {
         }
         scored.sort { $0.cosine > $1.cosine }
         guard let best = scored.first else { return [] }
+        guard best.cosine >= Self.minimumCosineSimilarity else {
+            print("[MobileCLIP] rejected low-similarity best match " +
+                  "\(table.labels[best.index]) " +
+                  "(\(String(format: "%.3f", best.cosine)) < " +
+                  "\(String(format: "%.3f", Self.minimumCosineSimilarity)))")
+            return []
+        }
 
         // Softmax over (cosine * logit_scale) for a calibrated confidence.
         let scale = table.logitScale

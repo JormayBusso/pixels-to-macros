@@ -34,6 +34,14 @@ final class FoodClassifierService {
         "FoodClassifier", "FoodViT", "nateraw_food", "food_vit",
     ]
 
+    /// Reject weak top-1 predictions instead of forcing a Food-101 label.
+    /// Maximum-softmax probability is a standard rejection baseline
+    /// (Hendrycks & Gimpel, ICLR 2017); 0.55 is the midpoint of the commonly
+    /// used 0.50–0.60 low-confidence range for fine-grained food recognition.
+    /// It should be recalibrated against held-out on-device food captures when
+    /// a production classifier is bundled.
+    private static let minimumConfidence: Float = 0.55
+
     private let modelLock = NSLock()
     private var model: VNCoreMLModel?
     private var labels: [Int: String] = [:]
@@ -155,6 +163,13 @@ final class FoodClassifierService {
         }
 
         if let requestError { throw requestError }
+        guard let result else { return nil }
+        guard result.1 >= Self.minimumConfidence else {
+            print("[FoodClassifier] rejected low-confidence \(result.0) " +
+                  "(\(String(format: "%.2f", result.1)) < " +
+                  "\(String(format: "%.2f", Self.minimumConfidence)))")
+            return nil
+        }
         return result
     }
 

@@ -216,8 +216,8 @@ final class InferencePipeline {
             print("[SCAN] food-presence: ML Kit veto OVERRULED by confident YOLO segment (\(segments.first?.label ?? "?"), conf \(String(format: "%.2f", segments.first?.confidence ?? 0)))")
         }
 
-        // Override the largest segment's label with ML Kit's best specific
-        // food when available. See `applyMlKitLabelOverride` for the policy.
+        // Map ML Kit's distinct, confident specific-food hints across all
+        // largest-first segments. See `applyMlKitLabelOverride` for the policy.
         segments = applyMlKitLabelOverride(segments: segments, mlKit: mlKitResult)
 
         // Box-prompted MobileSAM mask refinement: when the encoder+decoder are
@@ -1416,8 +1416,7 @@ final class InferencePipeline {
         // synonyms (salmon / grilled salmon / smoked salmon), so a correct top-1
         // scores a tiny confidence and the old 0.64/0.78 gate kept the wrong base
         // label ("fish"). Cosine stays stable as the vocabulary grows.
-        let confidenceFloor: Float = 0.25
-        let cosineFloor: Float = 0.20
+        let cosineFloor = MobileCLIPService.minimumCosineSimilarity
         let unsureSegmentation: Float = 0.32
         let strongConfidence: Float = 0.64
         let strongCosine: Float = 0.24
@@ -1441,7 +1440,7 @@ final class InferencePipeline {
                     limit: 8
                 )
                 guard let best = candidates.first,
-                      best.cosine >= cosineFloor || best.confidence >= confidenceFloor
+                      best.cosine >= cosineFloor
                 else { continue }
                 // Margin against the best candidate that is a genuinely DIFFERENT
                 // food — synonyms of the winner (grilled salmon vs salmon) must
