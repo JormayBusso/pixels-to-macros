@@ -1302,10 +1302,17 @@ final class MonocularVolumeEstimator {
         let centroid = footprint.centroid
         let rx = Float(max(widthCm, 2.0) / 200.0)   // half-width in metres
         let rz = Float(max(depthCm, 2.0) / 200.0)   // half-depth in metres
-        // Honour the measured thickness exactly; only a 1.5 mm physical floor so
-        // a flat food (chocolate, cracker, slice) renders as thin as it truly is
-        // instead of being forced up to a 0.8 cm minimum.
-        let h  = Float(max(heightCm, 0.15) / 100.0)  // height in metres
+        // Use the measured thickness EXACTLY — no thickness floor. The 3-D mesh
+        // is built from the exact silhouettes of the two captured photos, so a
+        // genuinely flat food (chocolate square, cracker, deli slice) must render
+        // as thin as it truly is and never be padded up to any perceptible
+        // minimum. Nothing is added in 3-D generation (AGENTS.md §9). No epsilon
+        // is needed: every divisor that uses `h` already guards with
+        // `max(h, 0.0001)`, so a very thin — even zero — height cannot produce a
+        // NaN or divide-by-zero, and the reachable measured paths are already
+        // positive (the silhouette paths floor at 0.2 cm upstream in
+        // boundedHeightCm; bowl/depth are positive physical measurements).
+        let h  = Float(heightCm / 100.0)  // height in metres (measured, unfloored)
         let offsetX = Float((centroid.col / Double(maskWidth)) - 0.5) * 0.28
         let offsetZ = Float((centroid.row / Double(maskHeight)) - 0.5) * 0.28
 
@@ -1679,23 +1686,12 @@ final class MonocularVolumeEstimator {
             }
         }
 
-        if vertices.isEmpty || faces.count < 3 {
-            let x0 = cornerX(max(0, gc / 2 - 1))
-            let x1 = cornerX(min(gc, gc / 2 + 1))
-            let z0 = cornerZ(max(0, gr / 2 - 1))
-            let z1 = cornerZ(min(gr, gr / 2 + 1))
-            let y1 = max(0.005, h * 0.4)
-            vertices = [
-                SIMD3<Float>(x0, 0, z0), SIMD3<Float>(x1, 0, z0),
-                SIMD3<Float>(x1, 0, z1), SIMD3<Float>(x0, 0, z1),
-                SIMD3<Float>(x0, y1, z0), SIMD3<Float>(x1, y1, z0),
-                SIMD3<Float>(x1, y1, z1), SIMD3<Float>(x0, y1, z1)
-            ]
-            faces = [0, 1, 2, 0, 2, 3, 4, 7, 6, 4, 6, 5,
-                     0, 4, 5, 0, 5, 1, 1, 5, 6, 1, 6, 2,
-                     2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0]
-            hullVoxelVolumeCm3 = max(0.5, Double(y1 * 1_000_000))
-        }
+        // No generic/primitive fallback (AGENTS.md §9): the top-mask occupancy is
+        // guaranteed non-empty upstream ("Guarantee at least one cell so the
+        // viewer always has geometry") and every occupied cell above emits its
+        // top+bottom quads unconditionally, so the exact-silhouette loft always
+        // produces geometry. A box/dome/thickness-floor substitute would violate
+        // the exact-silhouette contract, so none is created here.
         print("[MonocularEstimator] visual-hull mesh label=\(label) mode=\(surfaceExtractionMode) grid=\(gc)x\(gr) cells=\(occupiedCellCount) rawV=\(vertices.count) rawF=\(faces.count / 3) filledHolePixels=\(filledHoleCells)")
 
         // Smooth the silhouette cage into an organic surface: one Loop
