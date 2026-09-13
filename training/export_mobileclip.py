@@ -147,7 +147,7 @@ def _download_mobileclip2(repo_id: str) -> str:
     return path
 
 
-def _load(model_name: str, pretrained: str):
+def _load(model_name: str, pretrained: str, *, raw_pixel_input: bool = False):
     try:
         import open_clip
     except ImportError as exc:  # pragma: no cover - dependency hint
@@ -166,8 +166,18 @@ def _load(model_name: str, pretrained: str):
     size = getattr(visual, "image_size", 224)
     if isinstance(size, (tuple, list)):
         size = int(size[0])
-    mean = getattr(visual, "image_mean", None) or OPENAI_MEAN
-    std = getattr(visual, "image_std", None) or OPENAI_STD
+    if raw_pixel_input:
+        # Apple's official ml-mobileclip preprocessing (mobileclip/__init__.py)
+        # is Resize -> CenterCrop -> ToTensor() only, with NO Normalize step —
+        # i.e. raw [0, 1] RGB. MobileCLIP2 checkpoints are trained/exported to
+        # match that exact pipeline, so OpenAI CLIP normalisation must not be
+        # applied here (verified against Apple's reference source + an
+        # empirical Food-101 eval: raw pixels scored ~90% top-1, OpenAI CLIP
+        # normalisation scored ~2.5% on the same checkpoint).
+        mean, std = (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)
+    else:
+        mean = getattr(visual, "image_mean", None) or OPENAI_MEAN
+        std = getattr(visual, "image_std", None) or OPENAI_STD
     logit_scale = float(model.logit_scale.exp().item())
     return model, tokenizer, int(size), tuple(mean), tuple(std), logit_scale
 
@@ -213,7 +223,9 @@ def export(args) -> tuple[Path, Path]:
         pretrained = _download_mobileclip2(args.mobileclip2_repo)
         variant = f"{args.model} / MobileCLIP2 ({args.mobileclip2_repo})"
 
-    model, tokenizer, size, mean, std, logit_scale = _load(args.model, pretrained)
+    model, tokenizer, size, mean, std, logit_scale = _load(
+        args.model, pretrained, raw_pixel_input=not args.legacy_v1
+    )
     print(f"Loaded {variant}: input {size}px, scale {logit_scale:.1f}")
 
     # ── Text embedding table ───────────────────────────────────────────────
