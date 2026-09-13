@@ -585,14 +585,11 @@ final class DepthFusion {
             // Build the cage from the cluster's REAL measured voxel surface —
             // round or irregular, every food is reconstructed from the depth
             // sensor's captured geometry (its true hull), never from a fitted
-            // primitive. Exactly ONE Surface Nets pass per cluster per scan,
-            // then the shared Loop+Taubin smoothing removes the voxel facets.
-            let raw = SurfaceNets.build(voxels: cluster.voxelKeys, voxelSizeM: voxelSizeM)
-            guard !raw.vertices.isEmpty, raw.faces.count >= 3 else { continue }
-            let smoothed = MeshSmoothing.smooth(
-                vertices: raw.vertices, faces: raw.faces,
-                subdivisionLevels: 1, taubinIterations: 3)
-            let mesh = SurfaceNets.Mesh(vertices: smoothed.vertices, faces: smoothed.faces)
+            // primitive. Exactly ONE Surface Nets pass per cluster per scan.
+            // The mesh is emitted from the exact voxel-derived silhouette with
+            // NO smoothing/subdivision/Taubin, matching the monocular path's
+            // exact-silhouette contract.
+            let mesh = SurfaceNets.build(voxels: cluster.voxelKeys, voxelSizeM: voxelSizeM)
             guard !mesh.vertices.isEmpty, mesh.faces.count >= 3 else { continue }
             let meshVolumeCm3 = Self.meshVolumeCm3(vertices: mesh.vertices, faces: mesh.faces)
             let displayedVolumeCm3 = meshVolumeCm3.isFinite && meshVolumeCm3 > 1.0
