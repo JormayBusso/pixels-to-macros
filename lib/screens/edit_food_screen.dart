@@ -15,9 +15,21 @@ class EditFoodScreen extends ConsumerStatefulWidget {
     super.key,
     required this.scanId,
     required this.food,
+    this.needsUserLabel = false,
+    this.candidateLabels = const [],
   });
   final int scanId;
   final DetectedFood food;
+
+  /// When true the detected label is an unconfirmed guess: the screen opens
+  /// with a prominent prompt asking the user to enter/confirm the real food,
+  /// and the label field is pre-filled with the first candidate (if any),
+  /// clearly marked as a guess, instead of silently showing the guess.
+  final bool needsUserLabel;
+
+  /// Best-effort candidate names the scanner rejected on confidence, offered
+  /// as a starting point for the prompt.
+  final List<String> candidateLabels;
 
   @override
   ConsumerState<EditFoodScreen> createState() => _EditFoodScreenState();
@@ -35,7 +47,12 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
   @override
   void initState() {
     super.initState();
-    _labelCtrl = TextEditingController(text: widget.food.label);
+    final initialLabel = widget.needsUserLabel
+        ? (widget.candidateLabels.isNotEmpty
+            ? widget.candidateLabels.first
+            : '')
+        : widget.food.label;
+    _labelCtrl = TextEditingController(text: initialLabel);
     _weightCtrl = TextEditingController(
       text: widget.food.volumeCm3.round().toString(),
     );
@@ -128,6 +145,13 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // ── "We're not sure what this is" prompt ────────────────────
+          if (widget.needsUserLabel) ...[
+            _UnsureLabelBanner(
+              hasGuess: _labelCtrl.text.trim().isNotEmpty,
+            ),
+            const SizedBox(height: 16),
+          ],
           // ── Preview ─────────────────────────────────────────────────
           Card(
             child: Padding(
@@ -320,5 +344,65 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
     final value = double.tryParse(raw.replaceAll(',', '.'));
     if (value == null || value <= 0) return null;
     return value;
+  }
+}
+
+/// Prompt shown at the top of [EditFoodScreen] when the scanner could not
+/// confidently name the food, asking the user to enter or confirm it.
+class _UnsureLabelBanner extends StatelessWidget {
+  const _UnsureLabelBanner({required this.hasGuess});
+
+  final bool hasGuess;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.primary100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.primary200),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.help_outline, color: context.primary700),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.unsureFoodTitle,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: context.primary700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  l10n.unsureFoodPrompt,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: context.appTextColor,
+                  ),
+                ),
+                if (hasGuess) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.unsureFoodGuessHint,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.appMutedTextColor,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -585,6 +585,8 @@ final class MonocularVolumeEstimator {
                 "top_silhouette_edge_snap_vertices": estimatedObject.topSilhouetteEdgeSnapVertices,
                 "side_profile_samples": profile?.normalizedHeights.count ?? 0,
                 "volume_source": "display_mesh",
+                "needs_user_label": seg.needsUserLabel,
+                "candidate_labels": seg.candidateLabels,
             ]
             if let guardrailUpperCm3 {
                 row["guardrail_upper_cm3"] = round(guardrailUpperCm3 * 10) / 10

@@ -16,6 +16,8 @@ class Scan3DObject {
     required this.voxelCount,
     required this.confidence,
     this.debug,
+    this.needsUserLabel = false,
+    this.candidateLabels = const [],
   });
 
   factory Scan3DObject.fromMap(Map<String, dynamic> m) {
@@ -26,6 +28,12 @@ class Scan3DObject {
       voxelCount: (m['voxel_count'] as num?)?.toInt() ?? 0,
       confidence: (m['confidence'] as num?)?.toDouble() ?? 1.0,
       debug: m['debug'] as String?,
+      needsUserLabel: m['needs_user_label'] as bool? ?? false,
+      candidateLabels: (m['candidate_labels'] as List?)
+              ?.map((e) => e.toString())
+              .where((e) => e.trim().isNotEmpty)
+              .toList(growable: false) ??
+          const [],
     );
   }
 
@@ -40,6 +48,16 @@ class Scan3DObject {
   /// numbers). Shown as an on-screen debug readout when present.
   final String? debug;
 
+  /// True when neither the classifier nor the open-vocab refinement could
+  /// confirm a specific food name for this object — it still carries only a
+  /// generic / low-confidence segmentation guess. The UI asks the user what it
+  /// is instead of silently showing the guess. Defaults to false.
+  final bool needsUserLabel;
+
+  /// Best-effort plausible names the refinement passes produced but rejected on
+  /// confidence — offered to the user as picker hints. Empty when none.
+  final List<String> candidateLabels;
+
   Map<String, dynamic> toMap() => <String, dynamic>{
         'id': id,
         'label': label,
@@ -47,6 +65,8 @@ class Scan3DObject {
         'voxel_count': voxelCount,
         'confidence': confidence,
         if (debug != null) 'debug': debug,
+        if (needsUserLabel) 'needs_user_label': needsUserLabel,
+        if (candidateLabels.isNotEmpty) 'candidate_labels': candidateLabels,
       };
 }
 

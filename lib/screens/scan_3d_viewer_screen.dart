@@ -429,6 +429,7 @@ class _FoodRow {
 class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
   List<_FoodRow> _rows = const [];
   bool _loading = true;
+  bool _didPromptUncertain = false;
 
   @override
   void initState() {
@@ -453,10 +454,39 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
       _rows = rows;
       _loading = false;
     });
+    await _maybePromptUncertainFoods();
   }
 
-  Future<void> _edit(DetectedFood food) async {
-    if (food.label.trim().isNotEmpty) {
+  /// On the first load after a scan, proactively ask the user to name any food
+  /// the scanner could not confidently identify (`needsUserLabel`), instead of
+  /// silently showing the guess. Reuses [EditFoodScreen], pre-filled with the
+  /// first candidate label but clearly marked as unconfirmed.
+  Future<void> _maybePromptUncertainFoods() async {
+    if (_didPromptUncertain) return;
+    _didPromptUncertain = true;
+    final pending = <MapEntry<DetectedFood, List<String>>>[];
+    for (final row in _rows) {
+      final object = _objectForFood(row.food);
+      if (object != null && object.needsUserLabel) {
+        pending.add(MapEntry(row.food, object.candidateLabels));
+      }
+    }
+    for (final entry in pending) {
+      if (!mounted) return;
+      await _edit(
+        entry.key,
+        needsUserLabel: true,
+        candidateLabels: entry.value,
+      );
+    }
+  }
+
+  Future<void> _edit(
+    DetectedFood food, {
+    bool needsUserLabel = false,
+    List<String> candidateLabels = const [],
+  }) async {
+    if (!needsUserLabel && food.label.trim().isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Editing ${food.label}'),
@@ -466,7 +496,12 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
     }
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => EditFoodScreen(scanId: widget.scanId, food: food),
+        builder: (_) => EditFoodScreen(
+          scanId: widget.scanId,
+          food: food,
+          needsUserLabel: needsUserLabel,
+          candidateLabels: candidateLabels,
+        ),
       ),
     );
     await ref.read(dailyIntakeProvider.notifier).load();

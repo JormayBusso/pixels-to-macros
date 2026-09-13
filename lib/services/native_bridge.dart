@@ -216,9 +216,11 @@ class NativeBridge {
 
   /// Per-object metadata for the most recently exported 3-D model. Each entry
   /// carries `id` (stable cluster id like `rice_0`), `label`, `volume_cm3`,
-  /// `voxel_count`, and `confidence`. Mirrors the `MDLMesh` order in the
-  /// USDZ scene graph 1:1 so the Flutter UI and the SceneKit viewer can
-  /// address the same objects by `id`.
+  /// `voxel_count`, and `confidence`, plus the optional `needs_user_label`
+  /// (bool, absent → false) and `candidate_labels` (list, absent → empty) that
+  /// flag foods the pipeline could not confidently name. Mirrors the `MDLMesh`
+  /// order in the USDZ scene graph 1:1 so the Flutter UI and the SceneKit
+  /// viewer can address the same objects by `id`.
   Future<List<Map<String, dynamic>>> getModel3DObjects() async {
     try {
       final raw = await _channel.invokeMethod<List<dynamic>>('getModel3DObjects');

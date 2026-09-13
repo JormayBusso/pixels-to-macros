@@ -28,6 +28,15 @@ final class SegmentationService {
         let centroid: (row: Int, col: Int)
         /// Average confidence for this class across its pixels.
         let confidence: Float
+        /// True when the refinement passes could not confirm a specific food
+        /// name for this segment (it still carries only a generic / low-
+        /// confidence segmentation guess), so the user should be asked what it
+        /// is. Defaults to false; set late in `InferencePipeline`.
+        var needsUserLabel: Bool = false
+        /// Best-effort plausible label guesses that the classifier / open-vocab
+        /// passes produced but the confidence gate rejected. Empty when nothing
+        /// plausible was seen. Surfaced only to help the user pick a name.
+        var candidateLabels: [String] = []
     }
 
     // MARK: – Model

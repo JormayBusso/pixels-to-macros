@@ -50,6 +50,21 @@ final class InferencePipeline {
     /// Non-LiDAR fallback: camera-only scale estimation + generated 3-D mesh.
     private let monocularEstimator = MonocularVolumeEstimator()
 
+    /// Per-scan bookkeeping for the "we're not sure what this is" signal. Keyed
+    /// by a segment's mask centroid (stable across every refinement pass, which
+    /// all copy `centroid`). `refinementCandidatesByKey` collects the plausible
+    /// classifier / open-vocab guesses that the confidence gate rejected;
+    /// `confirmedLabelKeys` records segments whose label a refinement pass DID
+    /// confidently correct/confirm. Reset at the start of every scan.
+    private var refinementCandidatesByKey: [String: [String]] = [:]
+    private var confirmedLabelKeys: Set<String> = []
+
+    /// Below this segmentation confidence a still-unconfirmed label is treated
+    /// as an uncertain guess worth asking the user about. Mirrors the
+    /// classifier's 0.35 rejection floor: below it the base label is essentially
+    /// a coin-flip.
+    private static let needsUserLabelConfidenceFloor: Float = 0.35
+
     /// File path of the most recently exported 3-D model (USDZ / USDC / OBJ).
     /// `nil` when the last scan produced no exportable food clusters.
     private(set) var lastModel3DPath: String?
@@ -234,6 +249,8 @@ final class InferencePipeline {
         // Crop-and-classify refinement: when a dedicated fine-grained food
         // classifier is bundled, run it ONCE on the top frame over the largest
         // instance crops for higher-accuracy names than whole-frame ML Kit.
+        refinementCandidatesByKey.removeAll()
+        confirmedLabelKeys.removeAll()
         segments = refineLabelsWithClassifier(
             segments: segments,
             frame: preprocessedRGB,
@@ -274,6 +291,12 @@ final class InferencePipeline {
             maskWidth: preprocessor.modelInputWidth,
             maskHeight: preprocessor.modelInputHeight
         )
+
+        // Uncertainty signal: any segment that survived both refinement passes
+        // still carrying only a generic / low-confidence guess (nothing
+        // confidently confirmed it) is flagged so the UI asks the user what it
+        // is instead of silently showing a guess. Additive only.
+        segments = annotateSegmentsNeedingUserLabel(segments)
 
         guard passesFoodPresenceGate(
             segments: segments,
@@ -533,7 +556,8 @@ final class InferencePipeline {
             segByLabel[seg.label] = seg
         }
         lastModel3DObjects = foodObjects.map { obj -> [String: Any] in
-            let confidence = Double(segByLabel[obj.label]?.confidence ?? 1.0)
+            let seg = segByLabel[obj.label]
+            let confidence = Double(seg?.confidence ?? 1.0)
             let dims = Self.meshDimensionsCm(obj.vertices)
             return [
                 "id":           obj.id,
@@ -550,6 +574,8 @@ final class InferencePipeline {
                 "depth_cm": round(dims.depth * 10) / 10,
                 "height_cm": round(dims.height * 10) / 10,
                 "estimated":    false,
+                "needs_user_label": seg?.needsUserLabel ?? false,
+                "candidate_labels": seg?.candidateLabels ?? [],
             ]
         }
 
@@ -579,6 +605,8 @@ final class InferencePipeline {
             d["depth_min_m"] = 0.0
             d["depth_max_m"] = 0.0
             d["depth_avg_m"] = 0.0
+            d["needs_user_label"] = seg?.needsUserLabel ?? false
+            d["candidate_labels"] = seg?.candidateLabels ?? []
             // [EVAL] one line per food for known-weight calibration (#3).
             print("[EVAL] label=\(obj.label) volume_cm3=\(String(format: "%.1f", obj.volumeCm3)) voxels=\(obj.voxelCount) mode=lidar_mesh")
             payload.append(d)
@@ -1246,9 +1274,11 @@ final class InferencePipeline {
                     (segmentationUnsure && confidence >= 0.50) ||
                     (sameFood && confidence >= 0.45)
                 guard usableCorrection else {
+                    recordRejectedCandidate(label, for: segment)
                     print("[Classifier] kept \(segment.label) (seg \(String(format: "%.2f", segment.confidence))) over \(label) (\(String(format: "%.2f", confidence)); strong=\(classifierStrong); same=\(sameFood))")
                     continue
                 }
+                confirmedLabelKeys.insert(Self.segmentKey(segment))
                 let chosenLabel = sameFood && !classifierStrong && !segmentationUnsure
                     ? segment.label
                     : label
@@ -1493,9 +1523,13 @@ final class InferencePipeline {
                     && !sameFood && clipStrong
                 let usableCorrection = sameFood || clipVeryStrong || correctsNonProduce || correctsProduceMislabel || correctsGeneric || (segmentationUnsure && clipStrong)
                 guard usableCorrection else {
+                    for candidate in candidates.prefix(3) where candidate.cosine >= cosineFloor {
+                        recordRejectedCandidate(candidate.label, for: segment)
+                    }
                     print("[MobileCLIP] kept \(segment.label) (seg \(String(format: "%.2f", segment.confidence))) over \(best.label) margin=\(String(format: "%.3f", margin)) top=[\(topSummary)]")
                     continue
                 }
+                confirmedLabelKeys.insert(Self.segmentKey(segment))
                 let chosenLabel = sameFood && !clipVeryStrong && !segmentationUnsure && !correctsNonProduce && !correctsProduceMislabel && !correctsGeneric
                     ? segment.label
                     : best.label
@@ -1748,6 +1782,55 @@ final class InferencePipeline {
 
     private static func isGenericBase(_ label: String) -> Bool {
         !recognitionTokens(label).isDisjoint(with: genericBaseLabels)
+    }
+
+    /// Stable per-segment key used to correlate the classifier / open-vocab
+    /// candidate bookkeeping with the final segment list. The mask centroid is
+    /// preserved verbatim by every refinement pass, so it survives relabelling.
+    private static func segmentKey(_ segment: SegmentationService.SegmentedObject) -> String {
+        "\(segment.centroid.row),\(segment.centroid.col)"
+    }
+
+    /// Record a plausible-but-rejected refinement guess for a segment so the UI
+    /// can offer it as a candidate when it later asks the user for the real name.
+    private func recordRejectedCandidate(_ label: String, for segment: SegmentationService.SegmentedObject) {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let key = Self.segmentKey(segment)
+        var existing = refinementCandidatesByKey[key] ?? []
+        guard !existing.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) else { return }
+        existing.append(trimmed)
+        refinementCandidatesByKey[key] = existing
+    }
+
+    /// Flag every segment that reached the end of both refinement passes still
+    /// carrying only a generic / low-confidence segmentation guess that no pass
+    /// confidently confirmed, and attach the best-effort candidate labels those
+    /// passes rejected. Purely additive: it never changes a label, mask or
+    /// volume — it only sets `needsUserLabel` / `candidateLabels` so the JSON can
+    /// tell Dart to ask the user instead of silently showing a guess.
+    private func annotateSegmentsNeedingUserLabel(
+        _ segments: [SegmentationService.SegmentedObject]
+    ) -> [SegmentationService.SegmentedObject] {
+        var out = segments
+        for i in out.indices {
+            let seg = out[i]
+            let key = Self.segmentKey(seg)
+            let confirmed = confirmedLabelKeys.contains(key)
+            let uncertain = Self.isGenericBase(seg.label)
+                || seg.confidence < Self.needsUserLabelConfidenceFloor
+            let needs = !confirmed && uncertain
+            out[i].needsUserLabel = needs
+            // Only surface candidates for the segments we will actually ask
+            // about — a confident food does not need a picker.
+            out[i].candidateLabels = needs
+                ? (refinementCandidatesByKey[key] ?? [])
+                : []
+            if needs {
+                print("[NEEDS-LABEL] seg \(seg.label) conf=\(String(format: "%.2f", seg.confidence)) generic=\(Self.isGenericBase(seg.label)) candidates=[\(out[i].candidateLabels.joined(separator: ", "))]")
+            }
+        }
+        return out
     }
 
     private static func labelsCompatible(_ first: String, _ second: String) -> Bool {

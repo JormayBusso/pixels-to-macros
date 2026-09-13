@@ -4243,6 +4243,30 @@ class AppLocalizations {
         'de': 'Lebensmittel bearbeiten',
       });
 
+  String get unsureFoodTitle => _t({
+        'en': 'Not sure what this is',
+        'pl': 'Nie wiemy, co to jest',
+        'nl': 'Niet zeker wat dit is',
+        'es': 'No sabemos qué es esto',
+        'de': 'Nicht sicher, was das ist',
+      });
+
+  String get unsureFoodPrompt => _t({
+        'en': "We're not sure what this is — what did you scan?",
+        'pl': 'Nie jesteśmy pewni, co to jest — co zeskanowałeś?',
+        'nl': 'We weten niet zeker wat dit is — wat heb je gescand?',
+        'es': 'No estamos seguros de qué es esto: ¿qué escaneaste?',
+        'de': 'Wir sind nicht sicher, was das ist – was hast du gescannt?',
+      });
+
+  String get unsureFoodGuessHint => _t({
+        'en': 'This is only a guess — please confirm or correct it.',
+        'pl': 'To tylko przypuszczenie — potwierdź je lub popraw.',
+        'nl': 'Dit is maar een gok — bevestig of corrigeer het.',
+        'es': 'Esto es solo una suposición: confírmala o corrígela.',
+        'de': 'Das ist nur eine Vermutung – bitte bestätige oder korrigiere sie.',
+      });
+
   String get editIngredients => _t({
         'en': 'Edit ingredients',
         'pl': 'Edytuj składniki',
