@@ -609,11 +609,24 @@ final class MonocularVolumeEstimator {
         // makeEstimatedObject) so no triangle straddles the two photos and there
         // is no doubled/flickering texture. Without a side capture the top photo
         // is baked alone and every vertex maps into it.
+        //
+        // Silhouette coverage for the atlas: the exporter masks each tile to the
+        // food outline over a dominant-colour underlay so UVs that graze the
+        // plate/table paste food colour, not grey/white background (the reported
+        // bug). The top tile uses the union of the top segmentation masks; the
+        // side tile uses a coverage grid reconstructed from the side profiles.
+        let topCoverage = unionTopCoverage(
+            segments: segments, maskWidth: maskWidth, maskHeight: maskHeight)
+        let sideCoverage = sidePreprocessedRGB != nil
+            ? sideCoverageGrid(profiles: sideProfiles)
+            : nil
         guard let url = exporter.export(
             objects: objects,
             baseName: baseName,
             textureSource: preprocessedRGB,
-            sideTextureSource: sidePreprocessedRGB
+            sideTextureSource: sidePreprocessedRGB,
+            topCoverage: topCoverage,
+            sideCoverage: sideCoverage
         ),
               FileManager.default.fileExists(atPath: url.path) else {
             print("[MonocularEstimator] export failed: objects=\(objects.count), baseName=\(baseName)")
@@ -627,6 +640,110 @@ final class MonocularVolumeEstimator {
 
         print("[MonocularEstimator] scale=\(scale.source), px/cm=\(String(format: "%.2f", scale.pixelsPerCm)), objects=\(objects.count), path=\(url.path)")
         return Result(json: json, modelPath: url.path, objects: metadata)
+    }
+
+    // MARK: - Atlas silhouette coverage
+
+    /// Union of every top segmentation mask, in mask (row-major, top-down)
+    /// coordinates. The atlas top tile is masked to this so the baked top photo
+    /// only shows through where the camera actually saw food; anywhere else the
+    /// exporter's dominant-colour underlay shows instead of the plate/table.
+    private func unionTopCoverage(
+        segments: [SegmentationService.SegmentedObject],
+        maskWidth: Int,
+        maskHeight: Int
+    ) -> [[UInt8]]? {
+        guard maskWidth > 0, maskHeight > 0, !segments.isEmpty else { return nil }
+        var union = [[UInt8]](
+            repeating: [UInt8](repeating: 0, count: maskWidth), count: maskHeight)
+        var any = false
+        for seg in segments {
+            let m = seg.mask
+            for r in 0..<min(maskHeight, m.count) {
+                let row = m[r]
+                let cols = min(maskWidth, row.count)
+                for c in 0..<cols where row[c] != 0 {
+                    union[r][c] = 1
+                    any = true
+                }
+            }
+        }
+        return any ? union : nil
+    }
+
+    /// Reconstruct a food-vs-background coverage grid for the atlas SIDE tile, in
+    /// side-image (row-major, top-down) normalized space, from the side profiles.
+    ///
+    /// LIMITATION: `SideProfile` does NOT carry a full 2-D side mask — it stores
+    /// per-sample silhouette bounds (`normalizedBottoms`/`normalizedTops`) plus
+    /// the food's texture bounding box in the side frame. So this rebuilds the
+    /// silhouette as the exact INVERSE of `InferencePipeline.makeSideProfile`:
+    /// for each grid pixel we map its normalized (col,row) into the profile's
+    /// horizontal/vertical axes, and mark it food when it lies inside that
+    /// column's [bottom,top] band. Gaps between per-sample columns are the only
+    /// approximation; the food outline itself is the captured one. Multiple
+    /// profiles (multi-food side view) are unioned since they share one photo.
+    private func sideCoverageGrid(
+        profiles: [SideProfile],
+        gridW: Int = 384,
+        gridH: Int = 384
+    ) -> [[UInt8]]? {
+        let usable = profiles.filter {
+            $0.normalizedBottoms.count >= 2 &&
+            $0.normalizedBottoms.count == $0.normalizedTops.count &&
+            $0.textureHorizontalMax > $0.textureHorizontalMin &&
+            $0.textureVerticalMax > $0.textureVerticalMin
+        }
+        guard !usable.isEmpty, gridW > 0, gridH > 0 else { return nil }
+
+        var grid = [[UInt8]](
+            repeating: [UInt8](repeating: 0, count: gridW), count: gridH)
+        var any = false
+        for r in 0..<gridH {
+            // Row 0 = top of the side image, matching `CIImage(cvPixelBuffer:)`.
+            let vImg = (Double(r) + 0.5) / Double(gridH)
+            for c in 0..<gridW {
+                let uImg = (Double(c) + 0.5) / Double(gridW)
+                for p in usable {
+                    // Map the image (col,row) to this profile's horizontal /
+                    // vertical axes. `textureHorizontalUsesRows` mirrors
+                    // makeSideProfile's `verticalUsesColumns`: when the height
+                    // axis is image columns, the profile's horizontal axis is
+                    // image rows (and vice versa).
+                    let horizontalNorm = p.textureHorizontalUsesRows ? vImg : uImg
+                    let verticalNorm = p.textureHorizontalUsesRows ? uImg : vImg
+                    let hSpan = p.textureHorizontalMax - p.textureHorizontalMin
+                    guard horizontalNorm >= p.textureHorizontalMin,
+                          horizontalNorm <= p.textureHorizontalMax else { continue }
+                    let hFrac = min(1.0, max(0.0, (horizontalNorm - p.textureHorizontalMin) / hSpan))
+                    // Index the silhouette bounds directly in image order (NOT
+                    // via `sampleBounds`, which applies `reversed` to align with
+                    // the TOP axis — here we want raw image orientation).
+                    let bounds = p.normalizedBottoms
+                    let x = hFrac * Double(bounds.count - 1)
+                    let i0 = Int(x.rounded(.down))
+                    let i1 = min(bounds.count - 1, i0 + 1)
+                    let t = x - Double(i0)
+                    let bottom = p.normalizedBottoms[i0] * (1.0 - t) + p.normalizedBottoms[i1] * t
+                    let top = p.normalizedTops[i0] * (1.0 - t) + p.normalizedTops[i1] * t
+                    guard top > bottom else { continue }
+                    // Bounds are fractions of the food's vertical extent measured
+                    // from its bottom (0) to top (1). The extent spans
+                    // [textureVerticalMin, textureVerticalMax] with the larger
+                    // normalized coordinate at the silhouette bottom, so map both
+                    // edges back into image vertical space.
+                    let vSpan = p.textureVerticalMax - p.textureVerticalMin
+                    let bottomEdge = p.textureVerticalMax - bottom * vSpan
+                    let topEdge = p.textureVerticalMax - top * vSpan
+                    if verticalNorm >= topEdge, verticalNorm <= bottomEdge {
+                        grid[r][c] = 1
+                        any = true
+                        break
+                    }
+                }
+            }
+        }
+        return any ? grid : nil
     }
 
     // MARK: - Scale
@@ -1988,7 +2105,13 @@ final class MonocularVolumeEstimator {
                     nv.append(vertices[v])
                     let cBase = v * colorStride
                     for k in 0..<colorStride {
-                        nc.append(cBase + k < colors.count ? colors[cBase + k] : 200)
+                        // Fall back to the segment's own dominant food colour
+                        // (never a fixed grey `200`) when a per-vertex colour
+                        // index runs past the sampled array, so an out-of-bounds
+                        // vertex still reads as food, not institutional grey.
+                        nc.append(cBase + k < colors.count
+                            ? colors[cBase + k]
+                            : (k < color.count ? color[k] : 200))
                     }
                     nu.append(isSide ? sideUV(vertices[v]) : topUV(vertices[v]))
                 }

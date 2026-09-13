@@ -1582,7 +1582,20 @@ final class InferencePipeline {
             }
 
             var outSeg = seg
-            if let corrected = Self.colorCorrectedLabel(currentLabel: seg.label, family: family),
+            // Only correct a label the pipeline is NOT already sure about. The
+            // colour guard exists to catch a genuine miscue (a green cucumber
+            // called "ice cream"), NOT to overrule an already-specific,
+            // reasonably-confident classification. A seared entrecote reads
+            // reddish-brown, so without this gate every confident "beef"/
+            // "steak"/"entrecote" segment was force-relabelled "tomato". Fire
+            // the override only when the current label is a vague generic base
+            // (fish/meat/vegetable/…) OR its confidence is below the classifier
+            // rejection floor — i.e. exactly the labels worth second-guessing.
+            let labelIsGeneric = Self.isGenericBase(seg.label)
+            let labelIsLowConfidence = seg.confidence < Self.colorOverrideConfidenceFloor
+            let eligibleForColorOverride = labelIsGeneric || labelIsLowConfidence
+            if eligibleForColorOverride,
+               let corrected = Self.colorCorrectedLabel(currentLabel: seg.label, family: family),
                corrected != seg.label.lowercased() {
                 print("[COLOR] corrected \(seg.label) -> \(corrected) (colour=\(family))")
                 outSeg = SegmentationService.SegmentedObject(
@@ -1593,6 +1606,9 @@ final class InferencePipeline {
                     centroid: seg.centroid,
                     confidence: seg.confidence
                 )
+            } else if !eligibleForColorOverride,
+                      Self.colorCorrectedLabel(currentLabel: seg.label, family: family) != nil {
+                print("[COLOR] kept confident specific label \(seg.label) despite colour=\(family) (conf=\(String(format: "%.2f", seg.confidence)))")
             }
             kept.append(outSeg)
         }
@@ -1601,14 +1617,28 @@ final class InferencePipeline {
         return kept.isEmpty ? segments : kept
     }
 
+    /// A specific label at or above this confidence is trusted over the colour
+    /// guard. Mirrors FoodClassifierService's 0.55 max-softmax rejection floor
+    /// (Hendrycks & Gimpel, ICLR 2017): below it a fine-grained food prediction
+    /// is an unreliable guess worth colour-correcting; at or above it the label
+    /// is trusted even when its sampled colour doesn't fit a produce whitelist.
+    private static let colorOverrideConfidenceFloor: Float = 0.55
+
     private static func colorFamily(r: Double, g: Double, b: Double) -> String {
         let maxC = max(r, max(g, b))
         let minC = min(r, min(g, b))
         // Near-grey (plate/background, cream/white foods): no hue to judge.
         if maxC - minC < 26 { return maxC > 165 ? "white" : (maxC < 70 ? "dark" : "grey") }
         if g > r * 1.12 && g >= b * 1.02 && g > 55 { return "green" }
-        if r > g * 1.25 && r > b * 1.2 && r > 70 { return "red" }
+        // Orange MUST be tested before red. Roasted/browned orange foods (a
+        // seared sweet potato reads ~ r180 g110 b60) carry enough red to satisfy
+        // the greedy `r > g*1.25` red test, so with red first they were
+        // mis-bucketed "red" — and since "sweet potato" is only in the orange
+        // whitelist it then got force-relabelled "tomato". Requiring a
+        // meaningful green channel (g > 85) here keeps true reds (a tomato is
+        // r200 g60 b50, g < 85) falling through to the red test below.
         if r > 150 && g > 85 && g < 195 && b < 95 { return "orange" }
+        if r > g * 1.25 && r > b * 1.2 && r > 70 { return "red" }
         return "other"
     }
 
@@ -1626,21 +1656,31 @@ final class InferencePipeline {
 
     private static func colorCorrectedLabel(currentLabel: String, family: String) -> String? {
         let l = currentLabel.lowercased()
+        // Cooked proteins read as warm reds/oranges/browns: a seared steak is
+        // reddish, roasted chicken/sausage/bacon is orange-brown, salmon/tuna
+        // are pink-red. They are NOT produce, so the colour guard must never
+        // rewrite them into a vegetable — a low-confidence "meat"/"beef" on a
+        // red-brown entrecote used to become "tomato". Whitelisted in every warm
+        // family so even the low-confidence fallback keeps the protein rather
+        // than inventing produce.
+        let proteins = ["steak", "beef", "entrecote", "pork", "chicken",
+                        "sausage", "bacon", "salmon", "tuna", "ham", "meat",
+                        "lamb", "turkey", "fish", "shrimp"]
         switch family {
         case "green":
             let ok = ["cucumber", "lettuce", "broccoli", "salad", "spinach",
                       "pea", "bean", "zucchini", "avocado", "kale", "celery",
                       "lime", "kiwi", "asparagus", "cabbage", "herb", "pepper",
-                      "pickle", "edamame", "sprout", "green"]
+                      "pickle", "edamame", "sprout", "green"] + proteins
             return ok.contains(where: { l.contains($0) }) ? nil : "cucumber"
         case "red":
             let ok = ["tomato", "strawberr", "apple", "pepper", "cherry",
                       "radish", "beet", "raspberr", "watermelon", "pomegranate",
-                      "chili", "red"]
+                      "chili", "red"] + proteins
             return ok.contains(where: { l.contains($0) }) ? nil : "tomato"
         case "orange":
             let ok = ["carrot", "orange", "pumpkin", "sweet potato", "mango",
-                      "apricot", "peach", "squash", "cantaloupe", "papaya"]
+                      "apricot", "peach", "squash", "cantaloupe", "papaya"] + proteins
             return ok.contains(where: { l.contains($0) }) ? nil : "carrot"
         default:
             return nil

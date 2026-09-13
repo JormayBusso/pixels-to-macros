@@ -27,7 +27,9 @@ final class Food3DExporter {
         objects: [DepthFusion.Food3DObject],
         baseName: String,
         textureSource: CVPixelBuffer? = nil,
-        sideTextureSource: CVPixelBuffer? = nil
+        sideTextureSource: CVPixelBuffer? = nil,
+        topCoverage: [[UInt8]]? = nil,
+        sideCoverage: [[UInt8]]? = nil
     ) -> URL? {
         guard !objects.isEmpty else { return nil }
 
@@ -59,8 +61,20 @@ final class Food3DExporter {
             let candidate = docs.appendingPathComponent("\(baseName)_texture.png")
             let baked: Bool
             if let sideTextureSource {
+                // Dominant food colour for the tile underlay: the mean of the
+                // per-vertex colours the pipeline already sampled from the
+                // photos (never a synthetic tint), so any pixel the silhouette
+                // mask rejects falls back to real food colour, not grey/white.
+                let sceneColors = objects.flatMap { $0.colors }
+                let base = Self.averageColor(of: sceneColors) ?? SIMD3<Float>(0.82, 0.67, 0.47)
                 baked = Food3DTextureBaker.writeTextureAtlas(
-                    top: textureSource, side: sideTextureSource, to: candidate)
+                    top: textureSource, side: sideTextureSource,
+                    topCoverage: topCoverage, sideCoverage: sideCoverage,
+                    baseColor: (
+                        r: CGFloat(base.x),
+                        g: CGFloat(base.y),
+                        b: CGFloat(base.z)),
+                    to: candidate)
             } else {
                 baked = Food3DTextureBaker.writeTexture(from: textureSource, to: candidate)
             }
