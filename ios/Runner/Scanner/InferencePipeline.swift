@@ -1722,7 +1722,23 @@ final class InferencePipeline {
             // rejection floor — i.e. exactly the labels worth second-guessing.
             let labelIsGeneric = Self.isGenericBase(seg.label)
             let labelIsLowConfidence = seg.confidence < Self.colorOverrideConfidenceFloor
-            let eligibleForColorOverride = labelIsGeneric || labelIsLowConfidence
+            // `seg.confidence` after MobileCLIP refinement is
+            // max(segmentationConfidence, best.confidence), and
+            // `refineLabelsWithOpenVocab`'s own comment documents that its
+            // softmax `confidence` is near-tiny even for a CORRECT top-1 once
+            // the vocabulary has ~380 near-synonym labels (mass splits across
+            // them) — that pass deliberately decides on cosine similarity +
+            // margin instead, never on that softmax number. So a stamped
+            // confidence under 0.55 does NOT mean MobileCLIP was unsure; it is
+            // an artefact of a metric this pass doesn't otherwise trust. Any
+            // segment MobileCLIP already confirmed/refined via a usable
+            // cosine match (see `confirmedLabelKeys`) must therefore be exempt
+            // from the low-confidence branch, or a correctly-identified warm-
+            // toned food (e.g. a lentil dahl, a beef ragù, roasted chickpeas)
+            // gets silently overwritten back to "tomato"/"carrot"/"cucumber"
+            // right after MobileCLIP got it right.
+            let mobileClipConfirmed = confirmedLabelKeys.contains(Self.segmentKey(seg))
+            let eligibleForColorOverride = !mobileClipConfirmed && (labelIsGeneric || labelIsLowConfidence)
             if eligibleForColorOverride,
                let corrected = Self.colorCorrectedLabel(currentLabel: seg.label, family: family),
                corrected != seg.label.lowercased() {
