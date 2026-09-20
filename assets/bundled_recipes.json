@@ -403476,7 +403476,7 @@
     "title": "Really Easy Vegan Gravy or Cheese Sauce",
     "name": "Really Easy Vegan Gravy or Cheese Sauce",
     "image": "assets/images/recipes/en_really_easy_vegan_gravy_or_cheese_sauce_728f4335fb.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "maintain",
@@ -403540,10 +403540,10 @@
     "glycemic_load": 0,
     "insulin_units": 2.9,
     "tags": [
+      "dinner",
       "diabetes",
       "en",
       "maintain",
-      "snack",
       "vegetarian"
     ],
     "health_score": 78,
@@ -403558,7 +403558,7 @@
     "title": "Tofu \"alfredo\" Sauce",
     "name": "Tofu \"alfredo\" Sauce",
     "image": "assets/images/recipes/en_tofu_alfredo_sauce_c2ab4ac105.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "maintain",
       "vegetarian",
@@ -403628,9 +403628,9 @@
     "glycemic_load": 0,
     "insulin_units": 28.0,
     "tags": [
+      "dinner",
       "en",
       "maintain",
-      "snack",
       "vegetarian",
       "weight_loss"
     ],
@@ -403889,7 +403889,7 @@
     "title": "Vegetable tempura with soy & dipping sauce",
     "name": "Vegetable tempura with soy & dipping sauce",
     "image": "assets/images/recipes/en_vegetable_tempura_with_soy_dipping_sauce_d69df2f609.webp",
-    "meal_type": "snack",
+    "meal_type": "dinner",
     "goals": [
       "diabetes",
       "maintain",
@@ -403960,10 +403960,10 @@
     "glycemic_load": 0,
     "insulin_units": 11.6,
     "tags": [
+      "dinner",
       "diabetes",
       "en",
       "maintain",
-      "snack",
       "vegan",
       "vegetarian"
     ],
