@@ -290,9 +290,18 @@ def food101_class_to_prompt(raw: str) -> str:
 class SubsetFood101(Dataset):
     """Food-101 restricted to the first ``max_classes`` categories and capped at
     ``max_samples_per_class`` images each, with labels remapped to a contiguous
-    range. Enables fast smoke tests without touching the full 75k-image split."""
+    range. Enables fast smoke tests without touching the full 75k-image split.
 
-    def __init__(self, root, split, transform, max_classes, max_samples_per_class):
+    ``val_fraction`` carves a per-class held-out slice OUT OF the official
+    ``train`` split (never out of ``test``, which stays reserved for the
+    baseline-vs-LoRA gate in ``eval_mobileclip_lora.py``) so training can be
+    checkpointed against genuine held-out accuracy instead of train accuracy.
+    The split is a fixed, deterministic tail slice per class (Food-101's file
+    ordering is not shuffled), so ``holdout="train"`` and ``holdout="val"``
+    are always disjoint and reproducible across runs/checkpoints."""
+
+    def __init__(self, root, split, transform, max_classes, max_samples_per_class,
+                 val_fraction: float = 0.0, holdout: str = "train"):
         from torchvision.datasets import Food101
 
         self.base = Food101(root=root, split=split, download=True)
@@ -305,15 +314,26 @@ class SubsetFood101(Dataset):
         self.classes = [classes[i] for i in sorted(keep_labels)]
         self.remap = {old: new for new, old in enumerate(sorted(keep_labels))}
 
-        per_class: dict[int, int] = {}
-        self.indices: list[int] = []
+        by_class: dict[int, list[int]] = {}
         for idx, label in enumerate(self.base._labels):
             if label not in keep_labels:
                 continue
-            if max_samples_per_class and per_class.get(label, 0) >= max_samples_per_class:
+            bucket = by_class.setdefault(label, [])
+            # Cap applies to the combined train+val pool per class, so turning
+            # on --val-fraction shrinks the training budget rather than growing
+            # the total images read (fair comparison against a non-val run).
+            if max_samples_per_class and len(bucket) >= max_samples_per_class:
                 continue
-            per_class[label] = per_class.get(label, 0) + 1
-            self.indices.append(idx)
+            bucket.append(idx)
+
+        self.indices: list[int] = []
+        for label, idxs in by_class.items():
+            n_val = int(round(len(idxs) * val_fraction)) if val_fraction > 0 else 0
+            if n_val > 0:
+                train_idxs, val_idxs = idxs[:-n_val], idxs[-n_val:]
+            else:
+                train_idxs, val_idxs = idxs, []
+            self.indices.extend(val_idxs if holdout == "val" else train_idxs)
 
     def __len__(self) -> int:
         return len(self.indices)
@@ -356,6 +376,28 @@ def save_adapter(peft_model, path: Path, meta: dict) -> None:
     (path / "food_classes.json").write_text(json.dumps(meta, indent=2))
 
 
+@torch.no_grad()
+def evaluate_accuracy(model, loader, text_prototypes, device) -> float:
+    """Zero-shot top-1 accuracy against the frozen text prototypes, used to
+    pick the best checkpoint on genuinely held-out data instead of train_acc
+    (train_acc keeps climbing with memorisation and is a poor stand-in for
+    the held-out Food-101 "test" accuracy that actually gates bundling)."""
+    was_training = model.training
+    model.eval()
+    correct, total = 0, 0
+    for images, labels in loader:
+        images = images.to(device, non_blocking=True)
+        labels = labels.to(device, non_blocking=True)
+        feats = model.encode_image(images)
+        feats = feats / feats.norm(dim=-1, keepdim=True)
+        logits = feats @ text_prototypes.T
+        correct += (logits.argmax(dim=-1) == labels).sum().item()
+        total += images.size(0)
+    if was_training:
+        model.train()
+    return correct / max(1, total)
+
+
 # ── Training ────────────────────────────────────────────────────────────────
 def train(args) -> int:
     set_seed(args.seed)
@@ -371,6 +413,7 @@ def train(args) -> int:
     )
 
     # Data ------------------------------------------------------------------
+    val_dataset = None
     if args.dummy_data:
         dataset = DummyFoodData(
             image_size,
@@ -381,6 +424,9 @@ def train(args) -> int:
         raw_classes = dataset.classes
         print(f"DUMMY smoke-test data: {len(dataset)} synthetic images, "
               f"{len(raw_classes)} classes from {args.vocab}")
+        if args.val_fraction > 0:
+            print("--val-fraction is ignored in --dummy-data mode; "
+                  "checkpoint selection falls back to train_acc.")
     else:
         dataset = SubsetFood101(
             args.data_dir,
@@ -388,9 +434,27 @@ def train(args) -> int:
             preprocess_train,
             args.max_classes,
             args.max_samples_per_class,
+            val_fraction=args.val_fraction,
+            holdout="train",
         )
         raw_classes = dataset.classes
         print(f"Food-101 train: {len(dataset)} images, {len(raw_classes)} classes")
+        if args.val_fraction > 0:
+            # Held out of the "train" split's own files — never the official
+            # "test" split, which eval_mobileclip_lora.py needs untouched for
+            # the baseline-vs-LoRA gate. Uses preprocess_val (no augmentation)
+            # so accuracy reflects genuine generalisation, not train-time crops.
+            val_dataset = SubsetFood101(
+                args.data_dir,
+                "train",
+                preprocess_val,
+                args.max_classes,
+                args.max_samples_per_class,
+                val_fraction=args.val_fraction,
+                holdout="val",
+            )
+            print(f"Held-out validation (from train split): {len(val_dataset)} images "
+                  f"({args.val_fraction:.0%} per class).")
 
     class_prompts = [food101_class_to_prompt(c) for c in raw_classes]
     loader = DataLoader(
@@ -401,6 +465,15 @@ def train(args) -> int:
         pin_memory=device.type == "cuda",
         drop_last=len(dataset) > args.batch_size,
     )
+    val_loader = None
+    if val_dataset is not None and len(val_dataset) > 0:
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=args.workers,
+            pin_memory=device.type == "cuda",
+        )
 
     # Frozen text prototypes (computed once — text tower never trains) --------
     text_prototypes = build_text_prototypes(model, tokenizer, class_prompts, device)
@@ -474,17 +547,36 @@ def train(args) -> int:
 
         epoch_loss = running_loss / max(1, running_total)
         epoch_acc = running_correct / max(1, running_total)
-        print(f"Epoch {epoch + 1}: loss={epoch_loss:.4f} train_acc={epoch_acc:.4f}")
+
+        # Prefer held-out validation accuracy for "best" selection: train_acc
+        # keeps climbing with memorisation (it is NOT a proxy for the held-out
+        # Food-101 "test" accuracy that actually gates bundling — this is what
+        # let a previous run save a "best_adapter" that regressed 20 points
+        # below the zero-shot baseline). Falls back to train_acc only when no
+        # --val-fraction was requested (e.g. legacy runs, --dummy-data smoke
+        # tests) — that fallback is a known-weaker signal, not a recommendation.
+        if val_loader is not None:
+            val_acc = evaluate_accuracy(peft_model, val_loader, text_prototypes, device)
+            print(f"Epoch {epoch + 1}: loss={epoch_loss:.4f} train_acc={epoch_acc:.4f} "
+                  f"val_acc={val_acc:.4f}")
+            selection_metric, metric_name = val_acc, "val_acc"
+        else:
+            print(f"Epoch {epoch + 1}: loss={epoch_loss:.4f} train_acc={epoch_acc:.4f} "
+                  f"(no --val-fraction: best_adapter selection falls back to train_acc, "
+                  f"a weaker generalisation signal)")
+            selection_metric, metric_name = epoch_acc, "train_acc"
 
         save_adapter(peft_model, output_dir / "last_adapter",
                      {**meta_base, "epoch": epoch, "global_step": global_step,
-                      "train_loss": epoch_loss, "train_acc": epoch_acc})
-        if epoch_acc > best_acc:
-            best_acc = epoch_acc
+                      "train_loss": epoch_loss, "train_acc": epoch_acc,
+                      "val_acc": selection_metric if metric_name == "val_acc" else None})
+        if selection_metric > best_acc:
+            best_acc = selection_metric
             save_adapter(peft_model, output_dir / "best_adapter",
                          {**meta_base, "epoch": epoch, "global_step": global_step,
-                          "train_loss": epoch_loss, "train_acc": epoch_acc})
-            print(f"New best train_acc={best_acc:.4f} -> {output_dir / 'best_adapter'}")
+                          "train_loss": epoch_loss, "train_acc": epoch_acc,
+                          "val_acc": selection_metric if metric_name == "val_acc" else None})
+            print(f"New best {metric_name}={best_acc:.4f} -> {output_dir / 'best_adapter'}")
 
     save_adapter(peft_model, output_dir / "final_adapter",
                  {**meta_base, "epochs": args.epochs, "global_step": global_step})
@@ -528,6 +620,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-samples-per-class", "--max_samples_per_class",
                         dest="max_samples_per_class", type=int, default=0,
                         help="Cap images per class (0 = all). Use small values for smoke tests.")
+    parser.add_argument("--val-fraction", "--val_fraction", dest="val_fraction",
+                        type=float, default=0.1,
+                        help="Fraction of each class's TRAIN-split images (never the official "
+                             "test split) held out for validation-based checkpoint selection. "
+                             "0 disables validation and falls back to train_acc (not recommended "
+                             "— train_acc previously picked a checkpoint that regressed sharply "
+                             "on held-out accuracy).")
     # Optimisation -----------------------------------------------------------
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch-size", "--batch_size", dest="batch_size", type=int, default=64)
