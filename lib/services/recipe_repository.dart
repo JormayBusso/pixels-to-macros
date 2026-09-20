@@ -291,7 +291,10 @@ class RecipeRepository {
   }
 
   bool _matchesGoal(Recipe recipe, NutritionGoalType goal) {
-    if (recipe.goals.contains(goal)) return true;
+    if (recipe.goals.contains(goal)) {
+      return goal != NutritionGoalType.keto ||
+          _isRecipeEligibleForGoal(recipe, goal);
+    }
     switch (goal) {
       case NutritionGoalType.pescatarian:
       case NutritionGoalType.mediterranean:
