@@ -2130,6 +2130,14 @@ class AppLocalizations {
           'es': 'Denso en energía sin mucha proteína o fibra.',
           'de': 'Energiedicht ohne viel Eiweiß oder Ballaststoffe.',
         });
+      case 'excessiveEntryEnergy':
+        return _t({
+          'en': 'This single entry is exceptionally high in energy.',
+          'pl': 'Ten pojedynczy wpis ma wyjątkowo wysoką wartość energetyczną.',
+          'nl': 'Deze enkele invoer bevat uitzonderlijk veel energie.',
+          'es': 'Esta entrada individual tiene una cantidad excepcional de energía.',
+          'de': 'Dieser einzelne Eintrag hat einen außergewöhnlich hohen Energiegehalt.',
+        });
       case 'diabetesCarbFiber':
         return _t({
           'en': 'For diabetes, carbs are better when fiber is higher.',
