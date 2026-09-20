@@ -1602,7 +1602,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             ),
                             Expanded(
                               child: Text(
-                                e.value,
+                                IngredientLocalizer.localize(
+                                  e.value,
+                                  targetLang: ingredientLang,
+                                  sourceLang: r.language,
+                                ),
                                 style: TextStyle(
                                   fontSize: 14,
                                   height: 1.55,
