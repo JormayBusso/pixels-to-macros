@@ -319,22 +319,67 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     }
   }
 
+  /// Silently initialises speech only when both permissions are already
+  /// granted. Permissions are requested when the user taps the mic, never on
+  /// screen open, so a not-yet-allowed mic never shows an error banner.
   Future<void> _initSpeech() async {
+    final mic = await Permission.microphone.status;
+    final speech = await Permission.speech.status;
+    if (!mic.isGranted || !speech.isGranted) {
+      _available = false;
+      if (mounted) setState(() {});
+      return;
+    }
+    await _initRecognizer();
+  }
+
+  /// Ensures mic + speech permissions on tap: shows the iOS system prompt when
+  /// it can still be shown, otherwise an in-app pop-up that opens Settings.
+  Future<bool> _ensurePermissions() async {
+    var mic = await Permission.microphone.status;
+    var speech = await Permission.speech.status;
+    if (mic.isGranted && speech.isGranted) return true;
+    if (!mic.isGranted && !mic.isPermanentlyDenied && !mic.isRestricted) {
+      mic = await Permission.microphone.request();
+    }
+    if (mic.isGranted &&
+        !speech.isGranted &&
+        !speech.isPermanentlyDenied &&
+        !speech.isRestricted) {
+      speech = await Permission.speech.request();
+    }
+    if (mic.isGranted && speech.isGranted) return true;
+    if (mounted) await _showPermissionDialog();
+    return false;
+  }
+
+  Future<void> _showPermissionDialog() async {
+    final l10n = AppLocalizations.of(context);
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.mic_none_rounded),
+        title: Text(l10n.voiceMicPermissionTitle),
+        content: Text(l10n.voiceMicPermissionBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              openAppSettings();
+            },
+            child: Text(l10n.openSettings),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _initRecognizer() async {
     try {
-      // Request microphone + speech-recognition permissions up-front. Without an
-      // explicit prompt, speech_to_text.initialize() can silently return false
-      // and the screen looked "not available" for no clear reason.
-      final mic = await Permission.microphone.request();
-      final speech = await Permission.speech.request();
-      if (!mic.isGranted || !speech.isGranted) {
-        _available = false;
-        if (mounted) {
-          setState(() =>
-              _error = AppLocalizations.of(context).voiceEnableInSettings);
-        }
-        if (mounted) setState(() {});
-        return;
-      }
       _available = await _speech.initialize(
         onError: (e) {
           if (!mounted) return;
@@ -342,6 +387,12 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
           // result — otherwise a code like "error_no_match" overwrites a
           // perfectly good transcript with a cryptic, scary message.
           if (_parsed.isNotEmpty || _transcript.trim().isNotEmpty) return;
+          final code = e.errorMsg.toLowerCase();
+          if (code.contains('permission') || code.contains('denied')) {
+            setState(() => _listening = false);
+            _showPermissionDialog();
+            return;
+          }
           setState(() => _error = _friendlySpeechError(e.errorMsg));
         },
         onStatus: (status) {
@@ -390,7 +441,10 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     return l10n.voiceErrGeneric;
   }
 
-  void _startListening() {
+  Future<void> _startListening() async {
+    if (!await _ensurePermissions()) return;
+    if (!_available) await _initRecognizer();
+    if (!mounted) return;
     if (!_available) {
       setState(() =>
           _error = AppLocalizations.of(context).voiceNotAvailableOnDevice);
@@ -938,7 +992,7 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                         ? 'Listening… speak naturally'
                         : (_available
                             ? 'Tap to speak'
-                            : 'Initialising speech…'),
+                            : AppLocalizations.of(context).voiceTapToAllowMic),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight:
