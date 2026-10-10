@@ -237,6 +237,10 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
   `FoodLabelEmbeddings.json` are gated/inert until bundled.
 - **Bundled models and how to regenerate them** (all `*.mlmodelc` are gitignored; the
   pbxproj references all 7, so a missing one fails the build with "couldn't be opened").
+  **Fastest restore:** download the backup from GitHub Release `models-2026-10-10`. Unzip
+  `*.mlmodelc.zip` into `ios/Runner/` and `training-output-mlpackages.zip` into
+  `training/output/`, then check them against `SHA256SUMS.txt`. After retraining or
+  re-exporting a model, upload a new dated `models-YYYY-MM-DD` release.
   Use a Python 3.11 venv at `training/.venv` (gitignored via `.git/info/exclude`) with
   `torch==2.7.0` (newest torch coremltools 9 is tested with) + `training/requirements.txt`:
   - `FoodSegYolo` — **custom-trained**, cannot be regenerated from public weights. Source:
