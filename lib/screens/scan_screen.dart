@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -26,10 +28,8 @@ import '../widgets/confidence_badge.dart';
 import '../widgets/ai_scan_processing_view.dart';
 import '../widgets/dual_photo_capture_overlay.dart';
 import '../widgets/ai_scan_edge_glow.dart';
-import '../widgets/ai_scan_sweep_overlay.dart';
 import '../models/scan_diagnostics.dart';
 import '../providers/scan_diagnostics_provider.dart';
-import '../widgets/premium_theme_effects.dart';
 import '../widgets/scan_tutorial_overlay.dart';
 import 'scan_3d_viewer_screen.dart';
 import '../widgets/scan_3d_viewer.dart' show Scan3DObject;
@@ -59,6 +59,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   double _stability = 0.0; // 0..1 from CoreMotion (1 = perfectly still)
   double _alignmentScore = 0.0; // 0..1 target-orientation score
   bool _aligned = false; // current orientation matches the active capture step
+  double _tiltError = 0.0; // signed pitch error vs. the active step's target
   int _stableHoldTicks =
       0; // consecutive aligned+stable polls before auto-shutter
   String _detectedDepthMode = 'unknown';
@@ -71,6 +72,17 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   bool _torchOn = false;
   double _ambientLux = -1.0;
   int _pitchTickCounter = 0;
+
+  /// Live food detection on the camera preview (native "AI glow").
+  bool _foodDetected = false;
+  bool _liveDetectionAvailable = false;
+  bool _liveGlowRunning = false;
+  String? _liveGlowStyleKey;
+  bool? _liveGlowSideView;
+
+  /// Camera frame aspect (long / short side) reported by the native preview;
+  /// the guide sits on the frame's centred square like the native ROI.
+  double _videoAspect = ScanGuideGeometry.defaultVideoAspect;
 
   /// The guided capture takes two deliberate, orientation- and stability-gated
   /// photos: a top-down view, then a side profile. The auto-shutter fires only
@@ -124,6 +136,72 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       }
     });
     _checkTutorial();
+    _bridge.setLiveDetectionListener(
+      _onLiveDetection,
+      onVideoSize: _onPreviewVideoSize,
+    );
+  }
+
+  void _onPreviewVideoSize(double width, double height) {
+    final aspect = math.max(width, height) / math.min(width, height);
+    if (!mounted || (aspect - _videoAspect).abs() < 1e-4) return;
+    setState(() => _videoAspect = aspect);
+  }
+
+  void _onLiveDetection(LiveFoodDetection d) {
+    if (!mounted) return;
+    final detected = d.detected && _liveGlowRunning;
+    if (detected == _foodDetected &&
+        d.available == _liveDetectionAvailable) {
+      return;
+    }
+    setState(() {
+      _foodDetected = detected;
+      _liveDetectionAvailable = d.available;
+    });
+  }
+
+  /// Starts, restyles, re-targets or stops the native live food glow so it
+  /// only runs while the user is framing a shot (never while capturing or
+  /// processing). Called from build; only talks to the platform channel when
+  /// something actually changed.
+  void _syncLiveGlow({
+    required bool want,
+    required ScanChromePalette palette,
+    required bool reduceMotion,
+    required bool sideView,
+  }) {
+    if (!want) {
+      if (_liveGlowRunning) {
+        _liveGlowRunning = false;
+        _liveGlowStyleKey = null;
+        _liveGlowSideView = null;
+        unawaited(_bridge.stopLiveGlow());
+        if (_foodDetected) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_liveGlowRunning) {
+              setState(() => _foodDetected = false);
+            }
+          });
+        }
+      }
+      return;
+    }
+    final styleKey = '${palette.hashCode}|$reduceMotion';
+    if (!_liveGlowRunning || styleKey != _liveGlowStyleKey) {
+      _liveGlowRunning = true;
+      _liveGlowStyleKey = styleKey;
+      _liveGlowSideView = sideView;
+      unawaited(_bridge.startLiveGlow(
+        colors: palette.nativeColors,
+        premium: palette.premium,
+        reduceMotion: reduceMotion,
+        sideView: sideView,
+      ));
+    } else if (sideView != _liveGlowSideView) {
+      _liveGlowSideView = sideView;
+      unawaited(_bridge.updateLiveGlowRoi(sideView: sideView));
+    }
   }
 
   void _checkTutorial() {
@@ -310,6 +388,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   @override
   void dispose() {
     _pitchTimer?.cancel();
+    _bridge.setLiveDetectionListener(null);
+    if (_liveGlowRunning) {
+      _liveGlowRunning = false;
+      unawaited(_bridge.stopLiveGlow());
+    }
     _isInferenceRunning = false;
     _capturing = false;
     // Make sure we never leave the torch on after the user leaves the screen.
@@ -362,17 +445,21 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     // Which orientation does the active capture step require?
     bool aligned;
     double alignmentScore;
+    double tiltError;
     if (state == ScanState.waitingForTopView || state == ScanState.captureTop) {
-      final error = (pitch - _topViewTargetRad).abs();
+      tiltError = pitch - _topViewTargetRad;
+      final error = tiltError.abs();
       aligned = error <= _perfectAlignRad; // exactly straight down
       alignmentScore = _alignmentScoreFor(error);
     } else if (state == ScanState.moveSide || state == ScanState.captureSide) {
-      final error = (pitch - _sideViewTargetRad).abs();
+      tiltError = pitch - _sideViewTargetRad;
+      final error = tiltError.abs();
       aligned = error <= _perfectAlignRad; // exactly horizontal (two-sided)
       alignmentScore = _alignmentScoreFor(error);
     } else {
       aligned = false;
       alignmentScore = 0.0;
+      tiltError = 0.0;
     }
 
     final bool stable = stability >= _stableThreshold ||
@@ -389,6 +476,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       _stability = stability;
       _alignmentScore = alignmentScore;
       _aligned = aligned;
+      _tiltError = tiltError;
     });
 
     // Sample ambient light every ~5 ticks — cheap; drives the low-light banner.
@@ -742,6 +830,32 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     final l10n = AppLocalizations.of(context);
     final isProcessing =
         scanState == ScanState.calculating || scanState == ScanState.done;
+    final mq = MediaQuery.of(context);
+    final screen = mq.size;
+    final landscape = screen.width > screen.height;
+    final palette = ScanChromePalette.of(context);
+    final cameraVisible = _orientationReady && _sessionStarted && !isProcessing;
+    final captureChrome =
+        _orientationReady && _sessionStarted && _isCaptureState(scanState);
+
+    // Live "AI glow" on the food: only while framing a shot in landscape.
+    final framing = scanState == ScanState.waitingForTopView ||
+        scanState == ScanState.moveSide;
+    _syncLiveGlow(
+      want: cameraVisible &&
+          landscape &&
+          framing &&
+          !_capturing &&
+          !_showTutorial,
+      palette: palette,
+      reduceMotion: mq.disableAnimations || mq.accessibleNavigation,
+      sideView: scanState == ScanState.moveSide,
+    );
+
+    final railX = landscape
+        ? ScanGuideGeometry.rightRailCenterX(screen, mq.padding, _videoAspect)
+        : screen.width - mq.padding.right - 14 - 22;
+    final lowLight = _ambientLux >= 0 && _ambientLux < 200 && !_torchOn;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -751,28 +865,16 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           // Hide the platform view during inference/done so Flutter widgets
           // (close button, cancel) can receive touches unobstructed.
           // ARKit inference runs on a background Swift thread independently.
-          if (_orientationReady && _sessionStarted && !isProcessing)
+          // The native view also draws the live "AI glow" on detected food.
+          if (cameraVisible)
             const Positioned.fill(
               child: UiKitView(viewType: 'com.pixelstomacros/ar_camera'),
             )
           else
             const Positioned.fill(child: ColoredBox(color: Colors.black)),
 
-          // ── Themed "AI is scanning" sweep over the live camera ───────
-          // Scan-line + reconstruction grid + corner reticles, tinted to the
-          // active premium theme so the scan reads as on-device intelligence.
-          if (_orientationReady && _sessionStarted && !isProcessing)
-            Positioned.fill(
-              child: AiScanSweepOverlay(
-                active: _isCaptureState(scanState),
-                intensity: _capturing ? 1.0 : 0.82,
-              ),
-            ),
-
           // ── Guided dual-photo capture overlay ────────────────────────
-          if (_orientationReady &&
-              _sessionStarted &&
-              _isCaptureState(scanState))
+          if (captureChrome)
             Positioned.fill(
               child: DualPhotoCaptureOverlay(
                 scanState: scanState,
@@ -782,13 +884,17 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 holdProgress: _holdProgress,
                 capturing: _capturing,
                 scanMode: _detectedDepthMode,
+                tiltError: _tiltError,
+                foodDetected: _foodDetected,
+                liveDetectionAvailable: _liveDetectionAvailable,
+                videoAspect: _videoAspect,
                 onManualCapture: _manualCapture,
               ),
             ),
 
           if (scanState == ScanState.calculating)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 104,
+              top: mq.padding.top + 104,
               left: 16,
               right: 16,
               child: AiScanProcessingView(
@@ -798,14 +904,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             ),
 
           // ── Premium AI edge effect (signals on-device intelligence) ──
-          // Theme-aware Siri-style glow that hugs the screen edges while a
-          // scan is in progress. IgnorePointer + premium-gated internally.
+          // Theme-aware glow that hugs the screen edges while a scan is in
+          // progress. IgnorePointer + premium-gated internally.
           if (_orientationReady && _sessionStarted)
             Positioned.fill(
               child: AiScanEdgeGlow(
                 active: _isCaptureState(scanState) ||
                     scanState == ScanState.calculating,
-                intensity: scanState == ScanState.calculating ? 1.0 : 0.78,
+                intensity: scanState == ScanState.calculating ? 1.0 : 0.7,
               ),
             ),
 
@@ -840,101 +946,107 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               ),
             ),
 
-          // ── Close button (top-left) ─────────────────────────────────
+          // ── Close button (top-left) — translucent glass circle ──────
           Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            left: 8,
-            child: Material(
-              color: Colors.transparent,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white70, size: 28),
-                onPressed: () => unawaited(_closeScan()),
+            top: mq.padding.top + 12,
+            left: (landscape ? mq.padding.left : 0) + 12,
+            child: _GlassCircleButton(
+              size: 40,
+              semanticsLabel: l10n.close,
+              onTap: () => unawaited(_closeScan()),
+              child: const Icon(
+                CupertinoIcons.xmark,
+                color: Colors.white,
+                size: 18,
               ),
             ),
           ),
 
-          // ── Flash toggle (top-right) — iOS-camera-style bolt button ──
-          // Off = translucent dark pill with a slashed bolt (bolt.slash.fill);
-          // On = solid highlight with the amber bolt (bolt.fill), exactly like
-          // the flash control in Apple's Camera app. Larger circular tap target
-          // so it is easy to reach with a thumb during a landscape scan.
+          // ── Flash toggle — iPhone Camera style ──────────────────────
+          // Off = translucent glass circle with a slashed bolt
+          // (bolt.slash.fill); On = solid Camera-app yellow with a black bolt
+          // (bolt.fill). Sits at the top of the right control rail.
           Positioned(
-            top: MediaQuery.of(context).padding.top + 10,
-            right: 14,
-            child: Semantics(
-              button: true,
-              label: _torchOn ? l10n.turnOffFlashlight : l10n.turnOnFlashlight,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () async {
-                  final next = !_torchOn;
-                  final ok = await _bridge.setTorch(next);
-                  if (!context.mounted) return;
-                  if (ok) {
-                    setState(() => _torchOn = next);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            AppLocalizations.of(context).flashlightUnavailable),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                },
-                child: Container(
-                  width: 46,
-                  height: 46,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _torchOn
-                        ? Colors.white
-                        : Colors.black.withValues(alpha: 0.38),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      width: 1,
+            top: mq.padding.top + 12,
+            left: railX - 22,
+            child: _GlassCircleButton(
+              size: 44,
+              semanticsLabel:
+                  _torchOn ? l10n.turnOffFlashlight : l10n.turnOnFlashlight,
+              fill: _torchOn ? _cameraYellow : null,
+              onTap: () async {
+                final next = !_torchOn;
+                final ok = await _bridge.setTorch(next);
+                if (!context.mounted) return;
+                if (ok) {
+                  unawaited(HapticFeedback.selectionClick());
+                  setState(() => _torchOn = next);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          AppLocalizations.of(context).flashlightUnavailable),
+                      duration: const Duration(seconds: 2),
                     ),
-                  ),
-                  child: Icon(
-                    _torchOn
-                        ? CupertinoIcons.bolt_fill
-                        : CupertinoIcons.bolt_slash_fill,
-                    color: _torchOn ? AppTheme.amber500 : Colors.white,
-                    size: 24,
-                  ),
+                  );
+                }
+              },
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 160),
+                transitionBuilder: (child, anim) =>
+                    ScaleTransition(scale: anim, child: child),
+                child: Icon(
+                  _torchOn
+                      ? CupertinoIcons.bolt_fill
+                      : CupertinoIcons.bolt_slash_fill,
+                  key: ValueKey(_torchOn),
+                  color: _torchOn ? Colors.black : Colors.white,
+                  size: 20,
                 ),
               ),
             ),
           ),
 
-          // ── Low-light warning banner ────────────────────────────────
-          if (_ambientLux >= 0 && _ambientLux < 200 && !_torchOn)
+          // ── Low-light hint — compact chip under the flash button ────
+          if (lowLight && captureChrome)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 56,
-              left: 16,
-              right: 16,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.amber500),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.nightlight_round,
-                        color: AppTheme.amber500, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        l10n.lowLightScanWarning,
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 12),
-                      ),
+              top: mq.padding.top + 66,
+              left: landscape ? railX - 66 : null,
+              right: landscape ? null : 14,
+              width: 132,
+              child: IgnorePointer(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _cameraYellow.withValues(alpha: 0.55),
                     ),
-                  ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        CupertinoIcons.moon_fill,
+                        color: _cameraYellow,
+                        size: 14,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.lowLightScanWarning,
+                        textAlign: TextAlign.center,
+                        maxLines: 5,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1023,12 +1135,17 @@ class _BottomPanel extends StatelessWidget {
 
           // ── Processing ────────────────────────────────────────────
           if (scanState == ScanState.calculating) ...[
-            _ProcessingIndicator(
-              text: depthMode == 'monocular_scale'
+            Text(
+              depthMode == 'monocular_scale'
                   ? l10n.generatingEstimated3dModel
                   : l10n.buildingLidar3dModel,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 13,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             TextButton(
               onPressed: onClose,
               child: Text(l10n.cancel,
@@ -1216,13 +1333,6 @@ class _StateProgressRow extends StatelessWidget {
   const _StateProgressRow({required this.state});
   final ScanState state;
 
-  static const _steps = [
-    (ScanState.waitingForTopView, 'Top'),
-    (ScanState.moveSide, 'Side'),
-    (ScanState.calculating, 'Analyse'),
-    (ScanState.done, 'Done'),
-  ];
-
   int get _activeIndex {
     return switch (state) {
       ScanState.waitingForTopView => 0,
@@ -1239,10 +1349,17 @@ class _StateProgressRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final active = _activeIndex;
+    final steps = [
+      l10n.scanTopView,
+      l10n.scanSideView,
+      l10n.scanStepAnalyse,
+      l10n.done,
+    ];
     return Row(
       children: [
-        for (var i = 0; i < _steps.length; i++) ...[
+        for (var i = 0; i < steps.length; i++) ...[
           if (i > 0)
             Expanded(
               child: Container(
@@ -1251,7 +1368,7 @@ class _StateProgressRow extends StatelessWidget {
               ),
             ),
           _StepDot(
-            label: _steps[i].$2,
+            label: steps[i],
             isActive: i == active,
             isCompleted: i < active,
             isError: state.isError && i == active,
@@ -1318,43 +1435,6 @@ class _StepDot extends StatelessWidget {
 }
 
 // ── Shared widgets ──────────────────────────────────────────────────────────
-
-class _ProcessingIndicator extends StatelessWidget {
-  const _ProcessingIndicator({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final visualTheme = context.visualTheme;
-    return Column(
-      children: [
-        PremiumFocusRing(
-          enabled: visualTheme.premium,
-          animate: visualTheme.premium,
-          radius: 28,
-          padding: const EdgeInsets.all(3),
-          child: SizedBox(
-            width: 40,
-            height: 40,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation(
-                visualTheme.premium
-                    ? visualTheme.primaryAccent
-                    : context.primary400,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          text,
-          style: const TextStyle(color: Colors.white54, fontSize: 13),
-        ),
-      ],
-    );
-  }
-}
 
 class _InfoChipDark extends StatelessWidget {
   const _InfoChipDark({required this.icon, required this.label});
@@ -1505,6 +1585,63 @@ class _ScanErrorBox extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// iPhone Camera flash-on yellow.
+const Color _cameraYellow = Color(0xFFFFD60A);
+
+/// Circular translucent "glass" control used by the camera chrome (close and
+/// flash), modelled on the round controls of the iPhone Camera app.
+class _GlassCircleButton extends StatelessWidget {
+  const _GlassCircleButton({
+    required this.size,
+    required this.semanticsLabel,
+    required this.onTap,
+    required this.child,
+    this.fill,
+  });
+
+  final double size;
+  final String semanticsLabel;
+  final VoidCallback onTap;
+  final Widget child;
+
+  /// Solid fill (e.g. flash on); null = translucent glass.
+  final Color? fill;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: semanticsLabel,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox.square(
+          dimension: size,
+          child: ClipOval(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: fill ?? Colors.black.withValues(alpha: 0.42),
+                  border: Border.all(
+                    color: fill != null
+                        ? Colors.transparent
+                        : Colors.white.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: child,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_theme.dart';
+import '../core/app_localizations.dart';
+import 'dual_photo_capture_overlay.dart' show ScanChromePalette, ScanGuideGeometry;
 
 /// One-time tutorial overlay shown before the user's first scan.
 ///
-/// Shows 3 quick tips with illustrations, then a "Got it" button.
+/// Three short steps (top view → side view → results), each with a glyph that
+/// matches the on-camera guide (circle for the top view, rounded frame for the
+/// side view), then a "Got it" button.
 class ScanTutorialOverlay extends StatefulWidget {
   const ScanTutorialOverlay({super.key, required this.onDismiss});
   final VoidCallback onDismiss;
@@ -13,30 +16,11 @@ class ScanTutorialOverlay extends StatefulWidget {
   State<ScanTutorialOverlay> createState() => _ScanTutorialOverlayState();
 }
 
+enum _TipGlyph { circle, frame, model }
+
 class _ScanTutorialOverlayState extends State<ScanTutorialOverlay> {
   final _controller = PageController();
   int _page = 0;
-
-  static const _tips = [
-    _TipData(
-      icon: Icons.crop_free,
-      title: 'Step 1 — Top View',
-      body: 'Hold your phone about 30 cm directly above the plate.\n'
-          'Centre the food inside the green reticle.',
-    ),
-    _TipData(
-      icon: Icons.rotate_90_degrees_cw,
-      title: 'Step 2 — Side View',
-      body: 'Slowly tilt the phone to a 45° side angle.\n'
-          'This lets the app estimate food height and volume.',
-    ),
-    _TipData(
-      icon: Icons.auto_awesome,
-      title: 'Step 3 — Results',
-      body: 'The AI analyses the image in under 3 seconds.\n'
-          'You can edit any food item if needed.',
-    ),
-  ];
 
   @override
   void dispose() {
@@ -46,83 +30,120 @@ class _ScanTutorialOverlayState extends State<ScanTutorialOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final palette = ScanChromePalette.of(context);
+    final tips = [
+      (
+        glyph: _TipGlyph.circle,
+        title: '${l10n.scanTutorialStep(1)} · ${l10n.scanTopView}',
+        body: l10n.scanTutorialTopBody,
+      ),
+      (
+        glyph: _TipGlyph.frame,
+        title: '${l10n.scanTutorialStep(2)} · ${l10n.scanSideView}',
+        body: l10n.scanTutorialSideBody,
+      ),
+      (
+        glyph: _TipGlyph.model,
+        title: '${l10n.scanTutorialStep(3)} · ${l10n.scanTutorialResults}',
+        body: l10n.scanTutorialResultsBody,
+      ),
+    ];
+    final last = _page >= tips.length - 1;
+
     return Material(
-      color: Colors.black87,
+      color: const Color(0xF20B0C0F),
       child: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 24),
-            const Text(
-              'How to Scan',
-              style: TextStyle(
+            const SizedBox(height: 20),
+            Text(
+              l10n.scanTutorialTitle,
+              style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
                 color: Colors.white,
+                letterSpacing: -0.2,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Quick tutorial — shown only once',
-              style: TextStyle(fontSize: 13, color: Colors.white54),
+            const SizedBox(height: 6),
+            Text(
+              l10n.scanTutorialSubtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white.withValues(alpha: 0.62),
+              ),
             ),
-            const SizedBox(height: 24),
-
-            // ── Tip pages ──────────────────────────────────────────────
+            const SizedBox(height: 12),
             Expanded(
               child: PageView.builder(
                 controller: _controller,
-                itemCount: _tips.length,
+                itemCount: tips.length,
                 onPageChanged: (i) => setState(() => _page = i),
-                itemBuilder: (_, i) => _TipPage(tip: _tips[i]),
+                itemBuilder: (_, i) => _TipPage(
+                  glyph: tips[i].glyph,
+                  title: tips[i].title,
+                  body: tips[i].body,
+                  palette: palette,
+                ),
               ),
             ),
-
-            // ── Page dots ──────────────────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
-                _tips.length,
+                tips.length,
                 (i) => AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: _page == i ? 24 : 8,
-                  height: 8,
+                  width: _page == i ? 22 : 7,
+                  height: 7,
                   decoration: BoxDecoration(
-                    color: _page == i ? context.primary400 : Colors.white24,
+                    color: _page == i
+                        ? palette.accent
+                        : Colors.white.withValues(alpha: 0.24),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 32),
-
-            // ── Actions ────────────────────────────────────────────────
+            const SizedBox(height: 20),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 children: [
                   TextButton(
                     onPressed: widget.onDismiss,
-                    child: const Text(
-                      'Skip',
-                      style: TextStyle(color: Colors.white54),
+                    child: Text(
+                      l10n.skip,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
                     ),
                   ),
                   const Spacer(),
-                  ElevatedButton(
-                    onPressed: _page < _tips.length - 1
-                        ? () => _controller.nextPage(
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: palette.accent,
+                      foregroundColor: palette.onAccent,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 12,
+                      ),
+                      shape: const StadiumBorder(),
+                    ),
+                    onPressed: last
+                        ? widget.onDismiss
+                        : () => _controller.nextPage(
                               duration: const Duration(milliseconds: 300),
                               curve: Curves.easeOut,
-                            )
-                        : widget.onDismiss,
-                    child: Text(
-                        _page < _tips.length - 1 ? 'Next' : 'Got it!'),
+                            ),
+                    child: Text(last ? l10n.gotIt : l10n.next),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -130,60 +151,170 @@ class _ScanTutorialOverlayState extends State<ScanTutorialOverlay> {
   }
 }
 
-class _TipData {
-  const _TipData({
-    required this.icon,
+class _TipPage extends StatelessWidget {
+  const _TipPage({
+    required this.glyph,
     required this.title,
     required this.body,
+    required this.palette,
   });
-  final IconData icon;
+
+  final _TipGlyph glyph;
   final String title;
   final String body;
-}
-
-class _TipPage extends StatelessWidget {
-  const _TipPage({required this.tip});
-  final _TipData tip;
+  final ScanChromePalette palette;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              color: context.primary600.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-              border: Border.all(
-                  color: context.primary400.withValues(alpha: 0.4), width: 2),
-            ),
-            child: Icon(tip.icon, size: 48, color: context.primary400),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            tip.title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            tip.body,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.white70,
-              height: 1.5,
-            ),
-          ),
-        ],
+    final visual = Container(
+      width: 112,
+      height: 112,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.05),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        boxShadow: palette.premium
+            ? [
+                BoxShadow(
+                  color: palette.accent.withValues(alpha: 0.28),
+                  blurRadius: 28,
+                  spreadRadius: -4,
+                ),
+              ]
+            : null,
+      ),
+      child: Center(
+        child: glyph == _TipGlyph.model
+            ? Icon(Icons.view_in_ar_rounded, size: 46, color: palette.accent)
+            : CustomPaint(
+                size: const Size(64, 64),
+                painter: _GuideGlyph(
+                  frame: glyph == _TipGlyph.frame,
+                  palette: palette,
+                ),
+              ),
       ),
     );
+
+    final text = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          body,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.white.withValues(alpha: 0.78),
+            height: 1.45,
+          ),
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth > constraints.maxHeight * 1.4;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: (constraints.maxHeight - 16).clamp(0, double.infinity),
+            ),
+            child: Center(
+              child: wide
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        visual,
+                        const SizedBox(width: 28),
+                        Flexible(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 420),
+                            child: text,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [visual, const SizedBox(height: 22), text],
+                    ),
+            ),
+          ),
+        );
+      },
+    );
   }
+}
+
+class _GuideGlyph extends CustomPainter {
+  _GuideGlyph({required this.frame, required this.palette});
+
+  final bool frame;
+  final ScanChromePalette palette;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final r = size.shortestSide / 2 - 2;
+    final RRect shape;
+    if (frame) {
+      final w = r * 2;
+      final h = w * ScanGuideGeometry.sideHeightFactor;
+      shape = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: c, width: w, height: h),
+        Radius.circular(h * ScanGuideGeometry.sideCornerFactor),
+      );
+    } else {
+      shape = RRect.fromRectAndRadius(
+        Rect.fromCircle(center: c, radius: r),
+        Radius.circular(r),
+      );
+    }
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4;
+    if (palette.premium) {
+      stroke.shader =
+          SweepGradient(colors: [...palette.gradient, palette.gradient.first])
+              .createShader(shape.outerRect);
+    } else {
+      stroke.color = palette.accent;
+    }
+    canvas.drawRRect(shape, stroke);
+    // Food blob inside the guide.
+    final food = Paint()..color = Colors.white.withValues(alpha: 0.8);
+    if (frame) {
+      final base = shape.outerRect;
+      final path = Path()
+        ..moveTo(base.left + base.width * 0.22, base.bottom - 6)
+        ..quadraticBezierTo(
+          c.dx,
+          base.top + 2,
+          base.right - base.width * 0.22,
+          base.bottom - 6,
+        )
+        ..close();
+      canvas.drawPath(path, food);
+    } else {
+      canvas.drawOval(
+        Rect.fromCenter(center: c, width: r * 1.0, height: r * 0.8),
+        food,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GuideGlyph old) =>
+      old.frame != frame || old.palette != palette;
 }

@@ -43,7 +43,7 @@ class _AiScanEdgeGlowState extends State<AiScanEdgeGlow>
     super.initState();
     _flow = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 7),
+      duration: const Duration(seconds: 9),
     );
     _fade = AnimationController(
       vsync: this,
@@ -139,7 +139,6 @@ class _EdgeGlowPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final center = rect.center;
     final phase = progress * 2 * math.pi;
     final i = intensity.clamp(0.0, 1.0);
 
@@ -164,14 +163,13 @@ class _EdgeGlowPainter extends CustomPainter {
       const Radius.circular(52),
     );
 
-    // Layered inward bloom: wide & soft → dense & bright → hot core band. The
-    // strokes are centred on the inset frame so the glow spreads inward; the
-    // outward half stays within the margin and is clipped flush.
+    // Restrained inward bloom: a wide soft band plus a tighter one, then a
+    // fine crisp line — reads as a premium "intelligence active" edge without
+    // competing with the camera image.
     canvas.saveLayer(rect, Paint());
     const blooms = <({double width, double blur, double alpha})>[
-      (width: 30, blur: 8, alpha: 0.30),
-      (width: 20, blur: 6, alpha: 0.55),
-      (width: 10, blur: 4, alpha: 0.85),
+      (width: 18, blur: 10, alpha: 0.22),
+      (width: 8, blur: 5, alpha: 0.40),
     ];
     for (final b in blooms) {
       final paint = Paint()
@@ -184,34 +182,12 @@ class _EdgeGlowPainter extends CustomPainter {
     }
     canvas.restore();
 
-    // Crisp, vivid inner edge line for a defined premium border.
     final line = Paint()
       ..shader = shader
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.0)
-      ..color = Colors.white.withValues(alpha: 0.96 * opacity);
+      ..strokeWidth = 1.6
+      ..color = Colors.white.withValues(alpha: 0.78 * opacity);
     canvas.drawRRect(frame, line);
-
-    // Gentle pulsing corner accents (additive) that brighten as the sweep
-    // passes — kept small and inset so they read as energy, not stray blobs.
-    final accent = Paint()
-      ..shader = shader
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 12 * i
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14)
-      ..blendMode = BlendMode.plus
-      ..color = Colors.white.withValues(alpha: 0.22 * opacity * i);
-    for (var c = 0; c < 4; c++) {
-      final a = phase + c * math.pi / 2;
-      final pulse = 0.5 + 0.5 * math.sin(a);
-      if (pulse < 0.5) continue;
-      final corner = Offset(
-        center.dx + (c == 0 || c == 3 ? 1 : -1) * (size.width / 2 - margin - 6),
-        center.dy + (c < 2 ? -1 : 1) * (size.height / 2 - margin - 6),
-      );
-      canvas.drawCircle(corner, 44 * pulse * i, accent);
-    }
 
     canvas.restore();
   }

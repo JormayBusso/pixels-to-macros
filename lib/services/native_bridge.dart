@@ -281,4 +281,107 @@ class NativeBridge {
       return -1.0;
     }
   }
+
+  // ── Live food glow (camera preview) ──────────────────────────────────────
+
+  final _liveGlowChannel =
+      const MethodChannel('com.pixelstomacros/live_glow');
+
+  /// Starts throttled on-device food detection on the live AR preview and
+  /// draws the "AI glow" natively on the detected food.
+  ///
+  /// [colors] are ARGB ints (theme accent / gradient). [sideView] selects the
+  /// capture ROI the glow is clipped to — the TOP circle or the SIDE rounded
+  /// rectangle; native lays it out on the camera frame's centred square with
+  /// the exact `ScanMaskGeometry` capture geometry.
+  Future<void> startLiveGlow({
+    required List<int> colors,
+    required bool premium,
+    required bool reduceMotion,
+    required bool sideView,
+  }) async {
+    try {
+      await _liveGlowChannel.invokeMethod<void>('start', {
+        'colors': colors,
+        'premium': premium,
+        'reduceMotion': reduceMotion,
+        'roi': _liveGlowRoi(sideView),
+      });
+    } catch (e) {
+      debugPrint('[LiveGlow] start failed: $e');
+    }
+  }
+
+  static Map<String, String> _liveGlowRoi(bool sideView) =>
+      {'shape': sideView ? 'roundedRect' : 'circle'};
+
+  /// Switches the glow's capture ROI (see [startLiveGlow]).
+  Future<void> updateLiveGlowRoi({required bool sideView}) async {
+    try {
+      await _liveGlowChannel.invokeMethod<void>(
+          'updateRoi', {'roi': _liveGlowRoi(sideView)});
+    } catch (e) {
+      debugPrint('[LiveGlow] updateRoi failed: $e');
+    }
+  }
+
+  /// Stops live detection and fades the glow out.
+  Future<void> stopLiveGlow() async {
+    try {
+      await _liveGlowChannel.invokeMethod<void>('stop');
+    } catch (e) {
+      debugPrint('[LiveGlow] stop failed: $e');
+    }
+  }
+
+  /// Registers (or clears, with null) the listener for live detection state
+  /// changes pushed from native (`onLiveDetection`). [onVideoSize] receives
+  /// the camera frame size in pixels whenever it changes
+  /// (`onPreviewVideoSize`), so the guide matches the native capture ROI.
+  void setLiveDetectionListener(
+    void Function(LiveFoodDetection)? listener, {
+    void Function(double width, double height)? onVideoSize,
+  }) {
+    if (listener == null && onVideoSize == null) {
+      _liveGlowChannel.setMethodCallHandler(null);
+      return;
+    }
+    _liveGlowChannel.setMethodCallHandler((call) async {
+      final args = call.arguments;
+      if (args is! Map) return null;
+      if (call.method == 'onLiveDetection' && listener != null) {
+        listener(LiveFoodDetection(
+          detected: args['detected'] == true,
+          available: args['available'] != false,
+          backend: args['backend']?.toString() ?? 'none',
+        ));
+      } else if (call.method == 'onPreviewVideoSize' && onVideoSize != null) {
+        final w = args['width'];
+        final h = args['height'];
+        if (w is num && h is num && w > 0 && h > 0) {
+          onVideoSize(w.toDouble(), h.toDouble());
+        }
+      }
+      return null;
+    });
+  }
+}
+
+/// Live-preview food detection state reported by the native detector.
+@immutable
+class LiveFoodDetection {
+  const LiveFoodDetection({
+    required this.detected,
+    required this.available,
+    required this.backend,
+  });
+
+  /// Food is currently visible inside the capture guide.
+  final bool detected;
+
+  /// A detection backend is running (false = no model could be loaded).
+  final bool available;
+
+  /// Backend in use: `yolo`, `segformer`, `vision` or `none`.
+  final String backend;
 }
