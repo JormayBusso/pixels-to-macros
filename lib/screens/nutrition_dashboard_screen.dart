@@ -376,9 +376,9 @@ class _GoalContextNote extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: goal.color.withOpacity(0.08),
+        color: context.primary50,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: goal.color.withOpacity(0.25)),
+        border: Border.all(color: context.primary200),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

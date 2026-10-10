@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_localizations.dart';
 import '../providers/challenge_provider.dart';
 import '../theme/app_theme.dart';
+import 'card_title_box.dart';
 import 'premium_theme_effects.dart';
 
 /// Compact card showing this week's 3 challenges with progress.
@@ -23,39 +24,26 @@ class WeeklyChallengesCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Text('⚡', style: TextStyle(fontSize: 16)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  l10n.weeklyChallengesTitle,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+          CardTitleBox(
+            leading: const Text('⚡', style: TextStyle(fontSize: 16)),
+            title: l10n.weeklyChallengesTitle,
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(8),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
+              child: Text(
+                '$completed/${state.activeChallenges.length}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
                   color: completed == state.activeChallenges.length
-                      ? Colors.green.withValues(alpha: 0.12)
-                      : context.primary100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '$completed/${state.activeChallenges.length}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: completed == state.activeChallenges.length
-                        ? Colors.green
-                        : context.primary600,
-                  ),
+                      ? Colors.green.shade800
+                      : AppTheme.gray900,
                 ),
               ),
-            ],
+            ),
           ),
           const SizedBox(height: 10),
           ...state.activeChallenges.map((c) {

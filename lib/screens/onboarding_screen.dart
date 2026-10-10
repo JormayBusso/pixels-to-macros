@@ -590,13 +590,13 @@ class _GoalTypePage extends StatelessWidget {
                 final premium = context.isPremiumTheme;
                 final selectedFill = premium
                     ? context.visualTheme.primaryAccent.withValues(alpha: 0.22)
-                    : goal.lightColor;
+                    : context.primary100;
                 final unselectedFill =
                     premium ? context.appSubtleFillColor : Colors.white;
                 final selectedBorder =
-                    premium ? context.visualTheme.primaryAccent : goal.color;
+                    premium ? context.visualTheme.primaryAccent : context.primary500;
                 final labelColor = isSelected
-                    ? (premium ? context.appTextColor : goal.color)
+                    ? (premium ? context.appTextColor : context.primary700)
                     : (premium ? context.appMutedTextColor : AppTheme.gray600);
                 return GestureDetector(
                   onTap: () => onSelect(goal),
@@ -650,10 +650,9 @@ class _GoalTypePage extends StatelessWidget {
               key: ValueKey(selected),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: selected.lightColor,
+                color: context.primary50,
                 borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: selected.color.withValues(alpha: 0.4)),
+                border: Border.all(color: context.primary200),
               ),
               child: Row(
                 children: [
@@ -663,7 +662,7 @@ class _GoalTypePage extends StatelessWidget {
                     child: Text(
                       AppLocalizations.of(context).nutritionGoalDescription(selected.name),
                       style: TextStyle(
-                          fontSize: 12, color: selected.color, height: 1.4),
+                          fontSize: 12, color: context.primaryOnTint, height: 1.4),
                     ),
                   ),
                 ],
@@ -741,7 +740,7 @@ class _ConfirmPage extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: goalType.color,
+                    color: context.primaryOnTint,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -759,7 +758,7 @@ class _ConfirmPage extends StatelessWidget {
                     CalcInfoButton(
                         id: CalcInfoId.dailyCalories,
                         size: 16,
-                        color: goalType.color),
+                        color: context.primaryOnTint),
                   ],
                 ),
               ],
@@ -787,7 +786,7 @@ class _ConfirmPage extends StatelessWidget {
                 max: 5000,
                 step: 100,
                 unit: 'kcal',
-                color: goalType.color,
+                color: context.primary500,
                 warningValue: goalCal,
                 dangerValue: (goalCal * 1.25).round(),
                 onChanged: onCaloriesChanged,
@@ -838,9 +837,9 @@ class _ConfirmPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: goalType.lightColor,
+              color: context.primary50,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: goalType.color.withValues(alpha: 0.3)),
+              border: Border.all(color: context.primary200),
             ),
             child: Builder(builder: (_) {
               final carbCal = carbLimit * 4;
@@ -850,7 +849,8 @@ class _ConfirmPage extends StatelessWidget {
               final pct = calories > 0 ? (total / calories * 100).round() : 0;
               return Row(
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: goalType.color),
+                  Icon(Icons.info_outline,
+                      size: 16, color: context.primaryOnTint),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -858,7 +858,7 @@ class _ConfirmPage extends StatelessWidget {
                           .macrosAddUpTo(total, pct, calories),
                       style: TextStyle(
                         fontSize: 11,
-                        color: goalType.color,
+                        color: context.primaryOnTint,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -866,7 +866,7 @@ class _ConfirmPage extends StatelessWidget {
                   CalcInfoButton(
                       id: CalcInfoId.macroTargets,
                       size: 16,
-                      color: goalType.color),
+                      color: context.primaryOnTint),
                 ],
               );
             }),

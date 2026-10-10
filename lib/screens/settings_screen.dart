@@ -26,6 +26,7 @@ import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/goal_mascot_widget.dart';
 import '../widgets/calc_info_button.dart';
+import '../widgets/card_title_box.dart';
 import '../widgets/badge_gallery_screen.dart';
 import '../widgets/premium_theme_effects.dart';
 import '../widgets/tour_keys.dart';
@@ -349,541 +350,572 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       controller: _accountScrollController,
       padding: const EdgeInsets.all(16),
       children: [
-        _SectionHeader(l10n.profile),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _nameCtrl,
-                  decoration: InputDecoration(
-                    labelText: l10n.yourName,
-                    prefixIcon: const Icon(Icons.person_outline),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Consumer(
-                  builder: (context, ref, _) => _WeightCalibrationCard(
-                    onTargetsChanged: (calories, weightKg) {
-                      setState(() {
-                        _goalCtrl.text = calories.toString();
-                        _weightCtrl.text =
-                            GoalDefaults.formatWeightKg(weightKg);
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _HealthSyncCard(
-                  onTargetChanged: (calories) {
-                    setState(() => _goalCtrl.text = calories.toString());
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _goalCtrl,
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.done,
-                  onEditingComplete: () => FocusScope.of(context).unfocus(),
-                  decoration: InputDecoration(
-                    labelText: l10n.dailyCalorieGoal,
-                    prefixIcon: const Icon(Icons.flag_outlined),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Gender picker
-                Consumer(
-                  builder: (context, ref, _) {
-                    final prefs = ref.watch(userPrefsProvider);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.selectGender,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: context.appMutedTextColor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SegmentedButton<UserGender>(
-                          segments: [
-                            ButtonSegment(
-                              value: UserGender.male,
-                              label: Text(l10n.male),
-                              icon: const Icon(Icons.male, size: 18),
-                            ),
-                            ButtonSegment(
-                              value: UserGender.female,
-                              label: Text(l10n.female),
-                              icon: const Icon(Icons.female, size: 18),
-                            ),
-                            ButtonSegment(
-                              value: UserGender.preferNotToSay,
-                              label: Text(l10n.other),
-                              icon: const Icon(Icons.help_outline, size: 18),
-                            ),
-                          ],
-                          selected: {prefs.gender},
-                          onSelectionChanged: (selection) async {
-                            final gender = selection.first;
-                            final isMale = gender == UserGender.male;
-                            final weight = double.tryParse(
-                                  _weightCtrl.text.replaceAll(',', '.'),
-                                ) ??
-                                prefs.weightKg;
-                            final height = double.tryParse(
-                                  _heightCtrl.text.replaceAll(',', '.'),
-                                ) ??
-                                prefs.heightCm;
-                            final snappedWeight =
-                                GoalDefaults.snapWeightKg(weight);
-                            final snappedHeight =
-                                GoalDefaults.snapHeightCm(height);
-                            final calories = GoalDefaults.caloriesForProfile(
-                              prefs.nutritionGoal,
-                              weightKg: snappedWeight,
-                              heightCm: snappedHeight,
-                              muscleMassLevel: prefs.muscleMassLevel,
-                              male: isMale,
-                            );
-                            final macros = GoalDefaults.macroGrams(
-                              prefs.nutritionGoal,
-                              calories,
-                            );
-                            setState(() {
-                              _weightCtrl.text =
-                                  GoalDefaults.formatWeightKg(snappedWeight);
-                              _heightCtrl.text =
-                                  GoalDefaults.formatHeightCm(snappedHeight);
-                              _goalCtrl.text = calories.toString();
-                              _carbCtrl.text =
-                                  macros.carbG.clamp(15, 500).toString();
-                              _proteinCtrl.text =
-                                  macros.proteinG.clamp(30, 300).toString();
-                              _fatCtrl.text =
-                                  macros.fatG.clamp(20, 250).toString();
-                            });
-                            await ref.read(userPrefsProvider.notifier).update(
-                                  prefs.copyWith(
-                                    gender: gender,
-                                    weightKg: snappedWeight,
-                                    heightCm: snappedHeight,
-                                    dailyCalorieGoal: calories,
-                                    dailyCarbLimitG:
-                                        macros.carbG.clamp(15, 500),
-                                    dailyProteinTargetG:
-                                        macros.proteinG.clamp(30, 300),
-                                    dailyFatTargetG: macros.fatG.clamp(20, 250),
-                                  ),
-                                );
-                          },
-                          style: SegmentedButton.styleFrom(
-                            textStyle: const TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                Consumer(
-                  builder: (context, ref, _) {
-                    final prefs = ref.watch(userPrefsProvider);
-                    final weight = double.tryParse(
-                          _weightCtrl.text.replaceAll(',', '.'),
-                        ) ??
-                        prefs.weightKg;
-                    return _WeightSettingsInput(
-                      value: weight,
-                      onChanged: _setWeightKg,
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                Consumer(
-                  builder: (context, ref, _) {
-                    final prefs = ref.watch(userPrefsProvider);
-                    final height = double.tryParse(
-                          _heightCtrl.text.replaceAll(',', '.'),
-                        ) ??
-                        prefs.heightCm;
-                    return _BodyProfileSettingsInput(
-                      heightCm: height,
-                      muscleMassLevel: prefs.muscleMassLevel,
-                      onHeightChanged: _setHeightCm,
-                      onMuscleChanged: _setMuscleMassLevel,
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordCtrl,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context).password,
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
+        _TitledSection(
+          title: l10n.profile,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _nameCtrl,
+                      decoration: InputDecoration(
+                        labelText: l10n.yourName,
+                        prefixIcon: const Icon(Icons.person_outline),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Consumer(
+                      builder: (context, ref, _) => _WeightCalibrationCard(
+                        onTargetsChanged: (calories, weightKg) {
+                          setState(() {
+                            _goalCtrl.text = calories.toString();
+                            _weightCtrl.text =
+                                GoalDefaults.formatWeightKg(weightKg);
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _HealthSyncCard(
+                      onTargetChanged: (calories) {
+                        setState(() => _goalCtrl.text = calories.toString());
                       },
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _goalCtrl,
+                      keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.done,
+                      onEditingComplete: () => FocusScope.of(context).unfocus(),
+                      decoration: InputDecoration(
+                        labelText: l10n.dailyCalorieGoal,
+                        prefixIcon: const Icon(Icons.flag_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Gender picker
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final prefs = ref.watch(userPrefsProvider);
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.selectGender,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: context.appMutedTextColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SegmentedButton<UserGender>(
+                              segments: [
+                                ButtonSegment(
+                                  value: UserGender.male,
+                                  label: Text(l10n.male),
+                                  icon: const Icon(Icons.male, size: 18),
+                                ),
+                                ButtonSegment(
+                                  value: UserGender.female,
+                                  label: Text(l10n.female),
+                                  icon: const Icon(Icons.female, size: 18),
+                                ),
+                                ButtonSegment(
+                                  value: UserGender.preferNotToSay,
+                                  label: Text(l10n.other),
+                                  icon:
+                                      const Icon(Icons.help_outline, size: 18),
+                                ),
+                              ],
+                              selected: {prefs.gender},
+                              onSelectionChanged: (selection) async {
+                                final gender = selection.first;
+                                final isMale = gender == UserGender.male;
+                                final weight = double.tryParse(
+                                      _weightCtrl.text.replaceAll(',', '.'),
+                                    ) ??
+                                    prefs.weightKg;
+                                final height = double.tryParse(
+                                      _heightCtrl.text.replaceAll(',', '.'),
+                                    ) ??
+                                    prefs.heightCm;
+                                final snappedWeight =
+                                    GoalDefaults.snapWeightKg(weight);
+                                final snappedHeight =
+                                    GoalDefaults.snapHeightCm(height);
+                                final calories =
+                                    GoalDefaults.caloriesForProfile(
+                                  prefs.nutritionGoal,
+                                  weightKg: snappedWeight,
+                                  heightCm: snappedHeight,
+                                  muscleMassLevel: prefs.muscleMassLevel,
+                                  male: isMale,
+                                );
+                                final macros = GoalDefaults.macroGrams(
+                                  prefs.nutritionGoal,
+                                  calories,
+                                );
+                                setState(() {
+                                  _weightCtrl.text =
+                                      GoalDefaults.formatWeightKg(
+                                          snappedWeight);
+                                  _heightCtrl.text =
+                                      GoalDefaults.formatHeightCm(
+                                          snappedHeight);
+                                  _goalCtrl.text = calories.toString();
+                                  _carbCtrl.text =
+                                      macros.carbG.clamp(15, 500).toString();
+                                  _proteinCtrl.text =
+                                      macros.proteinG.clamp(30, 300).toString();
+                                  _fatCtrl.text =
+                                      macros.fatG.clamp(20, 250).toString();
+                                });
+                                await ref
+                                    .read(userPrefsProvider.notifier)
+                                    .update(
+                                      prefs.copyWith(
+                                        gender: gender,
+                                        weightKg: snappedWeight,
+                                        heightCm: snappedHeight,
+                                        dailyCalorieGoal: calories,
+                                        dailyCarbLimitG:
+                                            macros.carbG.clamp(15, 500),
+                                        dailyProteinTargetG:
+                                            macros.proteinG.clamp(30, 300),
+                                        dailyFatTargetG:
+                                            macros.fatG.clamp(20, 250),
+                                      ),
+                                    );
+                              },
+                              style: SegmentedButton.styleFrom(
+                                textStyle: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final prefs = ref.watch(userPrefsProvider);
+                        final weight = double.tryParse(
+                              _weightCtrl.text.replaceAll(',', '.'),
+                            ) ??
+                            prefs.weightKg;
+                        return _WeightSettingsInput(
+                          value: weight,
+                          onChanged: _setWeightKg,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final prefs = ref.watch(userPrefsProvider);
+                        final height = double.tryParse(
+                              _heightCtrl.text.replaceAll(',', '.'),
+                            ) ??
+                            prefs.heightCm;
+                        return _BodyProfileSettingsInput(
+                          heightCm: height,
+                          muscleMassLevel: prefs.muscleMassLevel,
+                          onHeightChanged: _setHeightCm,
+                          onMuscleChanged: _setMuscleMassLevel,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _passwordCtrl,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context).password,
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility),
+                          onPressed: () {
+                            setState(
+                                () => _obscurePassword = !_obscurePassword);
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _save,
+                        child: Text(l10n.saveChanges),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _save,
-                    child: Text(l10n.saveChanges),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
         const SizedBox(height: 24),
-
-        _SectionHeader(l10n.nutritionGoal),
-        const SizedBox(height: 12),
-        _NutritionGoalPickerCard(
-          onTargetsChanged: (calories, macros) {
-            setState(() {
-              _goalCtrl.text = calories.toString();
-              _carbCtrl.text = macros.carbG.clamp(15, 500).toString();
-              _proteinCtrl.text = macros.proteinG.clamp(30, 300).toString();
-              _fatCtrl.text = macros.fatG.clamp(20, 250).toString();
-            });
-          },
-        ),
-        const SizedBox(height: 12),
-        // Diabetes management card — only shown for Diabetes goal
-        Consumer(
-          builder: (context, ref, _) {
-            final prefs = ref.watch(userPrefsProvider);
-            if (prefs.nutritionGoal != NutritionGoalType.diabetes) {
-              return const SizedBox.shrink();
-            }
-            return const _DiabetesSettingsCard();
-          },
+        _TitledSection(
+          title: l10n.nutritionGoal,
+          children: [
+            _NutritionGoalPickerCard(
+              onTargetsChanged: (calories, macros) {
+                setState(() {
+                  _goalCtrl.text = calories.toString();
+                  _carbCtrl.text = macros.carbG.clamp(15, 500).toString();
+                  _proteinCtrl.text = macros.proteinG.clamp(30, 300).toString();
+                  _fatCtrl.text = macros.fatG.clamp(20, 250).toString();
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+            // Diabetes management card — only shown for Diabetes goal
+            Consumer(
+              builder: (context, ref, _) {
+                final prefs = ref.watch(userPrefsProvider);
+                if (prefs.nutritionGoal != NutritionGoalType.diabetes) {
+                  return const SizedBox.shrink();
+                }
+                return const _DiabetesSettingsCard();
+              },
+            ),
+          ],
         ),
         const SizedBox(height: 24),
+        _TitledSection(
+          title: l10n.dailyMacroTargets,
+          children: [
+            Consumer(
+              builder: (context, ref, _) {
+                final prefs = ref.watch(userPrefsProvider);
+                final goalType = prefs.nutritionGoal;
+                final calories = prefs.dailyCalorieGoal;
+                final r = GoalDefaults.macroRatios(goalType);
+                final idealCarb = (calories * r.carb / 4).round();
+                final idealProtein = (calories * r.protein / 4).round();
+                final idealFat = (calories * r.fat / 9).round();
 
-        _SectionHeader(l10n.dailyMacroTargets),
-        const SizedBox(height: 12),
-        Consumer(
-          builder: (context, ref, _) {
-            final prefs = ref.watch(userPrefsProvider);
-            final goalType = prefs.nutritionGoal;
-            final calories = prefs.dailyCalorieGoal;
-            final r = GoalDefaults.macroRatios(goalType);
-            final idealCarb = (calories * r.carb / 4).round();
-            final idealProtein = (calories * r.protein / 4).round();
-            final idealFat = (calories * r.fat / 9).round();
-
-            return Card(
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SettingsSlider(
+                          label: '🍞 Carbs',
+                          value: int.tryParse(_carbCtrl.text) ??
+                              prefs.dailyCarbLimitG,
+                          min: 15,
+                          max: 500,
+                          step: 5,
+                          unit: 'g / day',
+                          color: Colors.amber.shade700,
+                          recommendedValue: idealCarb,
+                          warningValue:
+                              (idealCarb * 1.3).round().clamp(20, 500),
+                          dangerValue: (idealCarb * 1.6).round().clamp(30, 500),
+                          onChanged: (v) {
+                            setState(() => _carbCtrl.text = v.toString());
+                            _saveSilent();
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _SettingsSlider(
+                          label: '💪 Protein',
+                          value: int.tryParse(_proteinCtrl.text) ??
+                              prefs.dailyProteinTargetG,
+                          min: 30,
+                          max: 300,
+                          step: 5,
+                          unit: 'g / day',
+                          color: Colors.red.shade600,
+                          recommendedValue: idealProtein,
+                          warningValue:
+                              (idealProtein * 1.3).round().clamp(40, 300),
+                          dangerValue:
+                              (idealProtein * 1.6).round().clamp(50, 300),
+                          onChanged: (v) {
+                            setState(() => _proteinCtrl.text = v.toString());
+                            _saveSilent();
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _SettingsSlider(
+                          label: '🥑 Fat',
+                          value: int.tryParse(_fatCtrl.text) ??
+                              prefs.dailyFatTargetG,
+                          min: 20,
+                          max: 250,
+                          step: 5,
+                          unit: 'g / day',
+                          color: Colors.green.shade600,
+                          recommendedValue: idealFat,
+                          warningValue: (idealFat * 1.3).round().clamp(25, 250),
+                          dangerValue: (idealFat * 1.6).round().clamp(35, 250),
+                          onChanged: (v) {
+                            setState(() => _fatCtrl.text = v.toString());
+                            _saveSilent();
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        // Macro breakdown info
+                        Builder(builder: (_) {
+                          final carbVal = int.tryParse(_carbCtrl.text) ??
+                              prefs.dailyCarbLimitG;
+                          final protVal = int.tryParse(_proteinCtrl.text) ??
+                              prefs.dailyProteinTargetG;
+                          final fatVal = int.tryParse(_fatCtrl.text) ??
+                              prefs.dailyFatTargetG;
+                          final total = carbVal * 4 + protVal * 4 + fatVal * 9;
+                          final pct = calories > 0
+                              ? (total / calories * 100).round()
+                              : 0;
+                          return Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: context.primary50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: context.primary200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline,
+                                    size: 14, color: context.primaryOnTint),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Macros add up to $total kcal ($pct% of $calories kcal target)',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: context.primaryOnTint,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _TitledSection(
+          title: l10n.waterGoal,
+          children: [
+            Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SettingsSlider(
-                      label: '🍞 Carbs',
-                      value:
-                          int.tryParse(_carbCtrl.text) ?? prefs.dailyCarbLimitG,
-                      min: 15,
-                      max: 500,
-                      step: 5,
-                      unit: 'g / day',
-                      color: Colors.amber.shade700,
-                      recommendedValue: idealCarb,
-                      warningValue: (idealCarb * 1.3).round().clamp(20, 500),
-                      dangerValue: (idealCarb * 1.6).round().clamp(30, 500),
-                      onChanged: (v) {
-                        setState(() => _carbCtrl.text = v.toString());
-                        _saveSilent();
-                      },
+                    TextField(
+                      controller: _waterCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: l10n.dailyWaterGoalMl,
+                        prefixIcon: const Icon(Icons.water_drop_outlined),
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    _SettingsSlider(
-                      label: '💪 Protein',
-                      value: int.tryParse(_proteinCtrl.text) ??
-                          prefs.dailyProteinTargetG,
-                      min: 30,
-                      max: 300,
-                      step: 5,
-                      unit: 'g / day',
-                      color: Colors.red.shade600,
-                      recommendedValue: idealProtein,
-                      warningValue: (idealProtein * 1.3).round().clamp(40, 300),
-                      dangerValue: (idealProtein * 1.6).round().clamp(50, 300),
-                      onChanged: (v) {
-                        setState(() => _proteinCtrl.text = v.toString());
-                        _saveSilent();
-                      },
+                    Wrap(
+                      spacing: 8,
+                      children: [1500, 2000, 2500, 3000].map((ml) {
+                        return ActionChip(
+                          label: Text(
+                              '${ml ~/ 1000}.${(ml % 1000) ~/ 100 == 0 ? '0' : (ml % 1000) ~/ 100}L'),
+                          onPressed: () =>
+                              setState(() => _waterCtrl.text = ml.toString()),
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: 12),
-                    _SettingsSlider(
-                      label: '🥑 Fat',
-                      value:
-                          int.tryParse(_fatCtrl.text) ?? prefs.dailyFatTargetG,
-                      min: 20,
-                      max: 250,
-                      step: 5,
-                      unit: 'g / day',
-                      color: Colors.green.shade600,
-                      recommendedValue: idealFat,
-                      warningValue: (idealFat * 1.3).round().clamp(25, 250),
-                      dangerValue: (idealFat * 1.6).round().clamp(35, 250),
-                      onChanged: (v) {
-                        setState(() => _fatCtrl.text = v.toString());
-                        _saveSilent();
-                      },
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _save,
+                        child: Text(l10n.saveWaterGoal),
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    // Macro breakdown info
-                    Builder(builder: (_) {
-                      final carbVal =
-                          int.tryParse(_carbCtrl.text) ?? prefs.dailyCarbLimitG;
-                      final protVal = int.tryParse(_proteinCtrl.text) ??
-                          prefs.dailyProteinTargetG;
-                      final fatVal =
-                          int.tryParse(_fatCtrl.text) ?? prefs.dailyFatTargetG;
-                      final total = carbVal * 4 + protVal * 4 + fatVal * 9;
-                      final pct =
-                          calories > 0 ? (total / calories * 100).round() : 0;
-                      return Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: context.isPremiumTheme
-                              ? context.primary50
-                              : goalType.lightColor,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: goalType.color.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.info_outline,
-                                size: 14, color: goalType.color),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                'Macros add up to $total kcal ($pct% of $calories kcal target)',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: goalType.color,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
                   ],
                 ),
               ),
-            );
-          },
+            ),
+          ],
         ),
         const SizedBox(height: 24),
-
-        _SectionHeader(l10n.waterGoal),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: _waterCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: l10n.dailyWaterGoalMl,
-                    prefixIcon: const Icon(Icons.water_drop_outlined),
+        _TitledSection(
+          title: l10n.reminders,
+          children: [
+            const _RemindersCard(),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _TitledSection(
+          title: l10n.aboutSection,
+          children: [
+            Card(
+              child: ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: context.primary100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.tour_outlined, color: context.primary600),
+                ),
+                title: Text(l10n.replayAppTour,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(l10n.replayAppTourSubtitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  ref.read(userPrefsProvider.notifier).replayAppTutorial();
+                  ref.read(showTourProvider.notifier).state = true;
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _TitledSection(
+          title: l10n.weeklyReview,
+          children: [
+            Container(
+              key: TourKeys.weeklyReviewCard,
+              child: const _WeeklyBadgeRecapCard(),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: context.primary100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.emoji_events_outlined,
+                      color: context.primary600),
+                ),
+                title: Text(l10n.badgeCollectionTitle,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(l10n.badgeCollectionSubtitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const BadgeGalleryScreen(),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  children: [1500, 2000, 2500, 3000].map((ml) {
-                    return ActionChip(
-                      label: Text(
-                          '${ml ~/ 1000}.${(ml % 1000) ~/ 100 == 0 ? '0' : (ml % 1000) ~/ 100}L'),
-                      onPressed: () =>
-                          setState(() => _waterCtrl.text = ml.toString()),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _save,
-                    child: Text(l10n.saveWaterGoal),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        _SectionHeader(l10n.reminders),
-        const SizedBox(height: 12),
-        const _RemindersCard(),
-
-        const SizedBox(height: 24),
-        _SectionHeader(l10n.aboutSection),
-        const SizedBox(height: 12),
-        Card(
-          child: ListTile(
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: context.primary100,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(Icons.tour_outlined, color: context.primary600),
-            ),
-            title: Text(l10n.replayAppTour,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(l10n.replayAppTourSubtitle),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              ref.read(userPrefsProvider.notifier).replayAppTutorial();
-              ref.read(showTourProvider.notifier).state = true;
-            },
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        _SectionHeader(l10n.weeklyReview),
-        const SizedBox(height: 12),
-        Container(
-          key: TourKeys.weeklyReviewCard,
-          child: const _WeeklyBadgeRecapCard(),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: ListTile(
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: context.primary100,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(Icons.emoji_events_outlined,
-                  color: context.primary600),
-            ),
-            title: Text(l10n.badgeCollectionTitle,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(l10n.badgeCollectionSubtitle),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const BadgeGalleryScreen(),
               ),
             ),
-          ),
+          ],
         ),
         const SizedBox(height: 24),
-
-        _SectionHeader(l10n.smartGroceryTitle),
-        const SizedBox(height: 12),
-        const _SmartGroceryToggleCard(),
+        _TitledSection(
+          title: l10n.smartGroceryTitle,
+          children: [
+            const _SmartGroceryToggleCard(),
+          ],
+        ),
         const SizedBox(height: 24),
-
-        _SectionHeader(l10n.vacationMode),
-        const SizedBox(height: 12),
-        Container(
-          key: TourKeys.vacationModeCard,
-          child: Consumer(
-            builder: (context, ref, _) {
-              final vacation =
-                  ref.watch(userPrefsProvider.select((p) => p.vacationMode));
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+        _TitledSection(
+          title: l10n.vacationMode,
+          children: [
+            Container(
+              key: TourKeys.vacationModeCard,
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final vacation = ref
+                      .watch(userPrefsProvider.select((p) => p.vacationMode));
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.beach_access_outlined,
-                              color: Color(0xFFF57C00)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(l10n.vacationMode,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15)),
-                                const SizedBox(height: 2),
-                                Text(
-                                  l10n.vacationModeDesc,
-                                  style: TextStyle(
-                                      fontSize: 12, color: context.appMutedTextColor),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Switch(
-                            value: vacation,
-                            onChanged: (v) => ref
-                                .read(userPrefsProvider.notifier)
-                                .setVacationMode(v),
-                          ),
-                        ],
-                      ),
-                      if (vacation) ...[
-                        const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppTheme.amber100.withValues(
-                              alpha: context.isPremiumTheme ? 0.18 : 1,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: AppTheme.amber500.withValues(alpha: 0.35),
-                            ),
-                          ),
-                          child: Row(
-                            children: const [
-                              Icon(Icons.info_outline,
-                                  size: 14, color: Color(0xFFF57C00)),
-                              SizedBox(width: 6),
+                          Row(
+                            children: [
+                              const Icon(Icons.beach_access_outlined,
+                                  color: Color(0xFFF57C00)),
+                              const SizedBox(width: 10),
                               Expanded(
-                                child: Text(
-                                  '🏖️  Vacation active — your streak is protected.',
-                                  style: TextStyle(
-                                      fontSize: 11, color: Color(0xFFF57C00)),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(l10n.vacationMode,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 15)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      l10n.vacationModeDesc,
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: context.appMutedTextColor),
+                                    ),
+                                  ],
                                 ),
+                              ),
+                              Switch(
+                                value: vacation,
+                                onChanged: (v) => ref
+                                    .read(userPrefsProvider.notifier)
+                                    .setVacationMode(v),
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
+                          if (vacation) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppTheme.amber100.withValues(
+                                  alpha: context.isPremiumTheme ? 0.18 : 1,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color:
+                                      AppTheme.amber500.withValues(alpha: 0.35),
+                                ),
+                              ),
+                              child: Row(
+                                children: const [
+                                  Icon(Icons.info_outline,
+                                      size: 14, color: Color(0xFFF57C00)),
+                                  SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      '🏖️  Vacation active — your streak is protected.',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: Color(0xFFF57C00)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -894,62 +926,77 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _SectionHeader(l10n.language),
-        const SizedBox(height: 12),
-        Consumer(
-          builder: (context, ref, _) {
-            final current = ref.watch(localeProvider);
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: AppLanguage.values.map((lang) {
-                    final selected = lang == current;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: ListTile(
-                        leading: Text(lang.flag,
-                            style: const TextStyle(fontSize: 22)),
-                        title: Text(
-                          lang.nativeName,
-                          style: TextStyle(
-                            fontWeight:
-                                selected ? FontWeight.w700 : FontWeight.w400,
+        _TitledSection(
+          title: l10n.language,
+          children: [
+            Consumer(
+              builder: (context, ref, _) {
+                final current = ref.watch(localeProvider);
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: AppLanguage.values.map((lang) {
+                        final selected = lang == current;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: ListTile(
+                            leading: Text(lang.flag,
+                                style: const TextStyle(fontSize: 22)),
+                            title: Text(
+                              lang.nativeName,
+                              style: TextStyle(
+                                fontWeight: selected
+                                    ? FontWeight.w700
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                            trailing: selected
+                                ? Icon(Icons.check_circle,
+                                    color: context.primary500)
+                                : null,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            selectedTileColor:
+                                context.primary500.withValues(alpha: 0.08),
+                            selected: selected,
+                            onTap: () {
+                              ref
+                                  .read(localeProvider.notifier)
+                                  .setLanguage(lang);
+                            },
                           ),
-                        ),
-                        trailing: selected
-                            ? Icon(Icons.check_circle,
-                                color: context.primary500)
-                            : null,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        selectedTileColor:
-                            context.primary500.withValues(alpha: 0.08),
-                        selected: selected,
-                        onTap: () {
-                          ref.read(localeProvider.notifier).setLanguage(lang);
-                        },
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            );
-          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
         const SizedBox(height: 24),
-        _SectionHeader(l10n.textSize),
-        const SizedBox(height: 12),
-        _TextSizePickerCard(),
+        _TitledSection(
+          title: l10n.textSize,
+          children: [
+            _TextSizePickerCard(),
+          ],
+        ),
         const SizedBox(height: 24),
-        _SectionHeader(l10n.mascot),
-        const SizedBox(height: 12),
-        _MascotPickerCard(),
+        _TitledSection(
+          title: l10n.mascot,
+          children: [
+            _MascotPickerCard(),
+          ],
+        ),
         const SizedBox(height: 24),
-        _SectionHeader(l10n.appColorTheme),
-        const SizedBox(height: 12),
-        const _ThemeColorPickerCard(),
+        _TitledSection(
+          title: l10n.appColorTheme,
+          children: [
+            const _ThemeColorPickerCard(),
+          ],
+        ),
       ],
     );
   }
@@ -959,164 +1006,178 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _SectionHeader(l10n.dataAndPrivacy),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l10n.dataStoredLocally,
-                  style: TextStyle(fontSize: 13, color: context.appMutedTextColor),
-                ),
-                const SizedBox(height: 16),
-                _InfoRow(
-                  icon: Icons.phone_iphone,
-                  label: l10n.storage,
-                  value: l10n.onDeviceOnly,
-                ),
-                const SizedBox(height: 8),
-                _InfoRow(
-                  icon: Icons.cloud_off,
-                  label: l10n.cloudSync,
-                  value: l10n.noneLabel,
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.download),
-                    label: Text(l10n.exportDailySummary),
-                    onPressed: () => _exportCsv(detailed: false),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.download),
-                    label: Text(l10n.exportDetailedData),
-                    onPressed: () => _exportCsv(detailed: true),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    label: Text(
-                      l10n.clearAllScanHistory,
-                      style: const TextStyle(color: Colors.red),
+        _TitledSection(
+          title: l10n.dataAndPrivacy,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.dataStoredLocally,
+                      style: TextStyle(
+                          fontSize: 13, color: context.appMutedTextColor),
                     ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.red),
+                    const SizedBox(height: 16),
+                    _InfoRow(
+                      icon: Icons.phone_iphone,
+                      label: l10n.storage,
+                      value: l10n.onDeviceOnly,
                     ),
-                    onPressed: () async {
-                      final l10n = AppLocalizations.of(context);
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: Text(l10n.clearScanHistory),
-                          content: Text(l10n.deleteScanDesc),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: Text(l10n.cancel),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              style: TextButton.styleFrom(
-                                  foregroundColor: Colors.red),
-                              child: Text(l10n.delete),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirm == true && mounted) {
-                        final db = await DatabaseService.instance.database;
-                        await db.delete('scan_results');
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(AppLocalizations.of(context)
-                                    .scanHistoryCleared)),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        _SectionHeader(l10n.database),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _InfoRow(
-                  icon: Icons.restaurant_menu,
-                  label: l10n.foodDatabaseEntries,
-                  value: '$_foodCount',
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.list_alt),
-                    label: Text(l10n.browseFoodDatabase),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const FoodDatabaseScreen(),
+                    const SizedBox(height: 8),
+                    _InfoRow(
+                      icon: Icons.cloud_off,
+                      label: l10n.cloudSync,
+                      value: l10n.noneLabel,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.download),
+                        label: Text(l10n.exportDailySummary),
+                        onPressed: () => _exportCsv(detailed: false),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.download),
+                        label: Text(l10n.exportDetailedData),
+                        onPressed: () => _exportCsv(detailed: true),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon:
+                            const Icon(Icons.delete_outline, color: Colors.red),
+                        label: Text(
+                          l10n.clearAllScanHistory,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                        ),
+                        onPressed: () async {
+                          final l10n = AppLocalizations.of(context);
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: Text(l10n.clearScanHistory),
+                              content: Text(l10n.deleteScanDesc),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: Text(l10n.cancel),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red),
+                                  child: Text(l10n.delete),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true && mounted) {
+                            final db = await DatabaseService.instance.database;
+                            await db.delete('scan_results');
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text(AppLocalizations.of(context)
+                                        .scanHistoryCleared)),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
         const SizedBox(height: 24),
-        _SectionHeader(l10n.cloudSync),
-        const SizedBox(height: 12),
-        const _CloudSyncCard(),
-        const SizedBox(height: 24),
-        _SectionHeader(l10n.aboutSection),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Pixels to Macros',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: context.primary700,
-                  ),
+        _TitledSection(
+          title: l10n.database,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _InfoRow(
+                      icon: Icons.restaurant_menu,
+                      label: l10n.foodDatabaseEntries,
+                      value: '$_foodCount',
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.list_alt),
+                        label: Text(l10n.browseFoodDatabase),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const FoodDatabaseScreen(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 4),
-                Text(
-                  '100% offline Multi-Food Calorie Scanner\n'
-                  'Flutter + ARKit + CoreML',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: context.appMutedTextColor,
-                    height: 1.5,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _TitledSection(
+          title: l10n.cloudSync,
+          children: [
+            const _CloudSyncCard(),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _TitledSection(
+          title: l10n.aboutSection,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pixels to Macros',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: context.primary700,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '100% offline Multi-Food Calorie Scanner\n'
+                      'Flutter + ARKit + CoreML',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: context.appMutedTextColor,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -1127,140 +1188,176 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _SectionHeader(l10n.evaluationTools),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l10n.evaluationToolsDesc,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: context.appMutedTextColor,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.science),
-                    label: Text(l10n.evaluationDashboard),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const EvalDashboardScreen(),
+        _TitledSection(
+          title: l10n.evaluationTools,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.evaluationToolsDesc,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: context.appMutedTextColor,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.science),
+                        label: Text(l10n.evaluationDashboard),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const EvalDashboardScreen(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
         const SizedBox(height: 24),
-        _SectionHeader(l10n.debug),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.insights_outlined),
-                    label: Text(AppLocalizations.of(context).scannerDiagnostics),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const ScanDiagnosticsScreen(),
+        _TitledSection(
+          title: l10n.debug,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.insights_outlined),
+                        label: Text(
+                            AppLocalizations.of(context).scannerDiagnostics),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ScanDiagnosticsScreen(),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Testing tools — reset the app to the initial state.',
-                  style: TextStyle(fontSize: 13, color: context.appMutedTextColor),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.restart_alt, color: Colors.red),
-                    label: const Text(
-                      'Full App Reset (Testing)',
-                      style: TextStyle(color: Colors.red),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Testing tools — reset the app to the initial state.',
+                      style: TextStyle(
+                          fontSize: 13, color: context.appMutedTextColor),
                     ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.red),
-                    ),
-                    onPressed: () async {
-                      final l10n = AppLocalizations.of(context);
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: Text(l10n.resetEntireApp),
-                          content: Text(l10n.deleteScanDesc),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: Text(l10n.cancel),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              style: TextButton.styleFrom(
-                                  foregroundColor: Colors.red),
-                              child: Text(l10n.resetEverything),
-                            ),
-                          ],
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.restart_alt, color: Colors.red),
+                        label: const Text(
+                          'Full App Reset (Testing)',
+                          style: TextStyle(color: Colors.red),
                         ),
-                      );
-                      if (confirm == true && mounted) {
-                        await DatabaseService.instance.resetAllData();
-                        await ref.read(userPrefsProvider.notifier).reset();
-                        if (mounted) {
-                          // Sign out if auth is active
-                          try {
-                            if (isSupabaseConfigured) {
-                              await supabase.auth.signOut();
-                            }
-                          } catch (_) {}
-                          unawaited(
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                  builder: (_) => const OnboardingScreen()),
-                              (route) => false,
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                        ),
+                        onPressed: () async {
+                          final l10n = AppLocalizations.of(context);
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: Text(l10n.resetEntireApp),
+                              content: Text(l10n.deleteScanDesc),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: Text(l10n.cancel),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red),
+                                  child: Text(l10n.resetEverything),
+                                ),
+                              ],
                             ),
                           );
-                        }
-                      }
-                    },
-                  ),
+                          if (confirm == true && mounted) {
+                            await DatabaseService.instance.resetAllData();
+                            await ref.read(userPrefsProvider.notifier).reset();
+                            if (mounted) {
+                              // Sign out if auth is active
+                              try {
+                                if (isSupabaseConfigured) {
+                                  await supabase.auth.signOut();
+                                }
+                              } catch (_) {}
+                              unawaited(
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                      builder: (_) => const OnboardingScreen()),
+                                  (route) => false,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ],
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
+/// A settings section rendered as one card: the shared [CardTitleBox] on top,
+/// then the section content. Cards nested inside are flattened so the section
+/// reads as a single container.
+class _TitledSection extends StatelessWidget {
+  const _TitledSection({required this.title, required this.children});
   final String title;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: context.appTextColor,
+    final theme = Theme.of(context);
+    final flat = theme.copyWith(
+      cardTheme: const CardThemeData(
+        color: Colors.transparent,
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
+      ),
+    );
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          CardTitleBox(
+            margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            title: title,
+          ),
+          const SizedBox(height: 4),
+          Theme(
+            data: flat,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1903,7 +2000,8 @@ class _NutritionGoalPickerCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              AppLocalizations.of(context).nutritionGoalDescription(current.name),
+              AppLocalizations.of(context)
+                  .nutritionGoalDescription(current.name),
               style: TextStyle(fontSize: 13, color: context.appMutedTextColor),
             ),
             const SizedBox(height: 16),
@@ -1916,24 +2014,26 @@ class _NutritionGoalPickerCard extends ConsumerWidget {
                 return ChoiceChip(
                   avatar:
                       Text(goal.emoji, style: const TextStyle(fontSize: 16)),
-                  label: Text(AppLocalizations.of(context).nutritionGoalLabel(goal.name)),
+                  label: Text(AppLocalizations.of(context)
+                      .nutritionGoalLabel(goal.name)),
                   selected: selected,
+                  showCheckmark: false,
                   backgroundColor: premium ? context.appSubtleFillColor : null,
                   selectedColor: premium
                       ? context.visualTheme.primaryAccent
                           .withValues(alpha: 0.85)
-                      : goal.lightColor,
+                      : context.primary100,
                   labelStyle: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: selected
-                        ? (premium ? Colors.white : goal.color)
+                        ? (premium ? Colors.white : context.primary700)
                         : context.appTextColor,
                   ),
                   side: BorderSide(
                     color: selected
                         ? (premium
                             ? context.visualTheme.primaryAccent
-                            : goal.color)
+                            : context.primary500)
                         : context.appBorderColor,
                   ),
                   onSelected: (_) async {
@@ -2439,8 +2539,8 @@ class _ThemePreviewTileState extends State<_ThemePreviewTile>
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.28),
                         shape: BoxShape.circle,
-                        border:
-                            Border.all(color: Colors.white.withValues(alpha: 0.5)),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.5)),
                       ),
                       child: const Icon(Icons.lock_outline,
                           color: Colors.white, size: 13),
@@ -2769,7 +2869,8 @@ class _CloudSyncCard extends ConsumerWidget {
               Text(
                 'Cloud sync not configured yet.\nAdd Supabase credentials to .env to enable.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: context.appMutedTextColor, fontSize: 13),
+                style:
+                    TextStyle(color: context.appMutedTextColor, fontSize: 13),
               ),
             ],
           ),
@@ -3208,7 +3309,8 @@ class _WeightCalibrationCard extends ConsumerWidget {
             else if (state.entries.isEmpty)
               Text(
                 l10n.noMonthlyWeightsYet,
-                style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
+                style:
+                    TextStyle(fontSize: 12, color: context.appMutedTextColor),
               )
             else
               Column(
@@ -3221,7 +3323,9 @@ class _WeightCalibrationCard extends ConsumerWidget {
                       isLatest
                           ? Icons.radio_button_checked
                           : Icons.radio_button_unchecked,
-                      color: isLatest ? context.primary600 : context.appMutedTextColor,
+                      color: isLatest
+                          ? context.primary600
+                          : context.appMutedTextColor,
                     ),
                     title: Text('${entry.weightKg.round()} kg'),
                     subtitle: Text(_formatMonth(entry.recordedAt)),
@@ -3406,9 +3510,11 @@ class _WeightSettingsInput extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('${GoalDefaults.minWeightKg.round()} kg',
-                style: TextStyle(fontSize: 11, color: context.appMutedTextColor)),
+                style:
+                    TextStyle(fontSize: 11, color: context.appMutedTextColor)),
             Text('${GoalDefaults.maxWeightKg.round()} kg',
-                style: TextStyle(fontSize: 11, color: context.appMutedTextColor)),
+                style:
+                    TextStyle(fontSize: 11, color: context.appMutedTextColor)),
           ],
         ),
         const SizedBox(height: 6),
@@ -3567,9 +3673,11 @@ class _BodyProfileSettingsInput extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('${GoalDefaults.minHeightCm.round()} cm',
-                style: TextStyle(fontSize: 11, color: context.appMutedTextColor)),
+                style:
+                    TextStyle(fontSize: 11, color: context.appMutedTextColor)),
             Text('${GoalDefaults.maxHeightCm.round()} cm',
-                style: TextStyle(fontSize: 11, color: context.appMutedTextColor)),
+                style:
+                    TextStyle(fontSize: 11, color: context.appMutedTextColor)),
           ],
         ),
         const SizedBox(height: 14),
@@ -3587,7 +3695,8 @@ class _BodyProfileSettingsInput extends StatelessWidget {
           runSpacing: 8,
           children: MuscleMassLevel.values.map((level) {
             return ChoiceChip(
-              label: Text(AppLocalizations.of(context).muscleMassLevelLabel(level.name)),
+              label: Text(AppLocalizations.of(context)
+                  .muscleMassLevelLabel(level.name)),
               selected: muscleMassLevel == level,
               selectedColor: context.primary100,
               onSelected: (_) => onMuscleChanged(level),
@@ -3596,7 +3705,8 @@ class _BodyProfileSettingsInput extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          AppLocalizations.of(context).muscleMassLevelDescription(muscleMassLevel.name),
+          AppLocalizations.of(context)
+              .muscleMassLevelDescription(muscleMassLevel.name),
           style: TextStyle(fontSize: 12, color: context.appMutedTextColor),
         ),
         const SizedBox(height: 4),

@@ -61,7 +61,7 @@ class AppTheme {
     final primary = (premium && brightness == Brightness.light)
         ? visual.primaryAccent
         : seed.color;
-    final surface = premium ? visual.background : seed.surfaceColor;
+    final surface = visual.background;
 
     // Compute lighter variants from the seed for borders/fills
     final light100 =
@@ -401,17 +401,21 @@ class AppVisualTheme {
         seed.color.withValues(alpha: 0.035),
         Colors.white,
       );
+      final scaffold = Color.alphaBlend(
+        seed.color.withValues(alpha: 0.09),
+        Colors.white,
+      );
       return AppVisualTheme(
         seed: seed,
         premium: false,
-        background: seed.surfaceColor,
+        background: scaffold,
         surface: Colors.white,
         // Free themes use PURE-WHITE cards on the seed's pale tinted scaffold
         // (seed.surfaceColor) so container edges stay clearly visible — a
         // near-white tinted card blended into the near-white background and the
         // edges disappeared.
         cardColor: Colors.white,
-        appBarColor: seed.surfaceColor,
+        appBarColor: scaffold,
         navBarColor: card,
         inputFillColor: input,
         borderColor:
@@ -780,8 +784,22 @@ extension ThemeColors on BuildContext {
   Color get appTextColor =>
       visualTheme.premium ? visualTheme.onSurface : AppTheme.gray900;
 
+  // gray600: gray500 drops below 4.5:1 on the tinted default scaffold.
   Color get appMutedTextColor =>
-      visualTheme.premium ? visualTheme.onMuted : AppTheme.gray500;
+      visualTheme.premium ? visualTheme.onMuted : AppTheme.gray600;
+
+  /// Readable theme-colored text/icon color on top of [primary50]..[primary200].
+  /// Darkens the seed until it reaches WCAG 4.5:1 against [primary200], so
+  /// light seeds like yellow stay legible.
+  Color get primaryOnTint {
+    if (visualTheme.premium) return visualTheme.onSurface;
+    final bg = primary200.computeLuminance();
+    for (var a = 0.35; a < 0.95; a += 0.05) {
+      final c = Color.alphaBlend(Colors.black.withValues(alpha: a), _seed);
+      if ((bg + 0.05) / (c.computeLuminance() + 0.05) >= 4.5) return c;
+    }
+    return AppTheme.gray900;
+  }
 
   /// Lightest tint — backgrounds, subtle fills.
   Color get primary50 => visualTheme.premium
