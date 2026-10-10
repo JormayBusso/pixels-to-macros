@@ -9,7 +9,6 @@ import 'providers/theme_provider.dart';
 import 'providers/user_prefs_provider.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
-import 'screens/intro_video_screen.dart';
 import 'services/app_recovery_service.dart';
 import 'services/debug_log.dart';
 
@@ -55,7 +54,7 @@ class PixelsToMacrosApp extends ConsumerWidget {
             child: child!,
           ),
         ),
-        home: const IntroVideoScreen(nextScreen: _AppGate()),
+        home: const _AppGate(),
       );
     } catch (e) {
       DebugLog.instance.log('App', 'Root build error: $e');
@@ -74,9 +73,9 @@ class PixelsToMacrosApp extends ConsumerWidget {
 
 /// Gates between onboarding and main app based on user preferences.
 ///
-/// The startup data load is kicked off during the intro video (see
-/// [startupLoadProvider]), so it is almost always finished by the time this
-/// gate is shown — the home screen appears with no loading spinner.
+/// The startup data load starts as soon as this gate is built (see
+/// [startupLoadProvider]) while the native intro overlay (AppDelegate) plays
+/// on top, so it is almost always finished by the time the overlay fades out.
 class _AppGate extends ConsumerWidget {
   const _AppGate();
 
@@ -84,7 +83,7 @@ class _AppGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final startup = ref.watch(startupLoadProvider);
     return startup.when(
-      // The load is triggered during the intro video, so this loading frame is
+      // The load runs under the native intro overlay, so this loading frame is
       // a rare fallback. Show the plain app background (no spinner) so there is
       // never a visible "loading" flash before the home screen.
       loading: () => const Scaffold(),

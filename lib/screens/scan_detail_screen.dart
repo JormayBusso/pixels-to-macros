@@ -132,6 +132,9 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
 
     final prefs = ref.watch(userPrefsProvider);
     final l10n = AppLocalizations.of(context);
+    final unmeasured = _scan.unmeasuredFoodLabels;
+    final hasUnmeasured = unmeasured.isNotEmpty;
+    final onlyUnmeasured = hasUnmeasured && _scan.foods.isEmpty;
     final isDiabetic = prefs.nutritionGoal == NutritionGoalType.diabetes;
     final restrictionAlerts = <String>{};
 
@@ -179,25 +182,31 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  Icon(Icons.check_circle, size: 48, color: context.primary500),
+                  Icon(
+                      onlyUnmeasured ? Icons.warning_amber : Icons.check_circle,
+                      size: 48,
+                      color: context.primary500),
                   const SizedBox(height: 12),
                   Text(
-                    '${avgTotal.round()} kcal',
+                    onlyUnmeasured
+                        ? l10n.scanVolumeUnmeasured
+                        : '${avgTotal.round()} kcal',
                     style: TextStyle(
-                      fontSize: 38,
+                      fontSize: onlyUnmeasured ? 24 : 38,
                       fontWeight: FontWeight.w800,
                       color: context.isPremiumTheme
                           ? context.visualTheme.primaryAccent
                           : AppTheme.gray900,
                     ),
                   ),
-                  Text(
-                    '± ${margin.round()} kcal',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: context.appMutedTextColor,
+                  if (!onlyUnmeasured)
+                    Text(
+                      '± ${margin.round()} kcal',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: context.appMutedTextColor,
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -209,8 +218,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                       const SizedBox(width: 12),
                       _InfoChip(
                         icon: Icons.restaurant,
-                        label:
-                            '${_scan.foods.length} item${_scan.foods.length == 1 ? '' : 's'}',
+                        label: l10n.scanItemCount(
+                            _scan.foods.length + unmeasured.length),
                       ),
                       const SizedBox(width: 12),
                       _InfoChip(
@@ -225,7 +234,22 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           ),
           const SizedBox(height: 16),
 
-          if (_scan.foods.isNotEmpty) ...[
+          if (hasUnmeasured) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  '${l10n.scanUnmeasuredFoods(unmeasured.join(', '))}\n'
+                  '${!onlyUnmeasured ? '${l10n.scanPartialNutrition}\n' : ''}'
+                  '${l10n.scanSideRecaptureGuidance}',
+                  style: TextStyle(color: context.appTextColor),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          if (_scan.foods.isNotEmpty || hasUnmeasured) ...[
             // Show the real captured scan images when available. Older rows may
             // only have imagePath; new scans persist both top and side captures.
             // Paths are re-anchored to the current app container so media keeps
@@ -257,10 +281,11 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           const SizedBox(height: 16),
 
           // ── Confidence score ─────────────────────────────────────────
-          ConfidenceRingCard(
-            caloriesMin: _scan.totalCaloriesMin,
-            caloriesMax: _scan.totalCaloriesMax,
-          ),
+          if (!hasUnmeasured)
+            ConfidenceRingCard(
+              caloriesMin: _scan.totalCaloriesMin,
+              caloriesMax: _scan.totalCaloriesMax,
+            ),
           const SizedBox(height: 12),
 
           if (restrictionAlerts.isNotEmpty) ...[
@@ -269,7 +294,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           ],
 
           // ── Plate Score ──────────────────────────────────────────────
-          if (_scan.foods.isNotEmpty) ...[
+          if (_scan.foods.isNotEmpty && !hasUnmeasured) ...[
             Builder(builder: (context) {
               final mealCal =
                   (_scan.totalCaloriesMin + _scan.totalCaloriesMax) / 2;
@@ -318,11 +343,12 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           // Bolus Calculator Mode. The banner prompts a 90-day review; the
           // card only shows an estimate when the calculator is available.
           const DiabetesReviewReminderBanner(),
-          BolusCalculatorCard(
-              initialCarbsG: totalCarbsG > 0 ? totalCarbsG : null),
+          if (!hasUnmeasured)
+            BolusCalculatorCard(
+                initialCarbsG: totalCarbsG > 0 ? totalCarbsG : null),
 
           // ── GL Thermometer (diabetes goal only) ───────────────────────
-          if (isDiabetic && _scan.foods.isNotEmpty) ...[
+          if (isDiabetic && _scan.foods.isNotEmpty && !hasUnmeasured) ...[
             _GlThermometerCard(
               scan: _scan,
               foodMap: _foodMap,
@@ -428,80 +454,83 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
               child: Text(
                 'Tap to edit  •  Long-press for ground truth  •  Swipe ← to remove',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: context.appMutedTextColor),
+                style:
+                    TextStyle(fontSize: 11, color: context.appMutedTextColor),
               ),
             ),
 
           // ── Calorie range breakdown ──────────────────────────────────
-          const SizedBox(height: 16),
-          Text(
-            'Calorie Range',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.gray700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _RangeRow(
-                    label: AppLocalizations.of(context).minimum,
-                    value: '${_scan.totalCaloriesMin.round()} kcal',
-                    color: context.primary600,
-                  ),
-                  const SizedBox(height: 8),
-                  _RangeRow(
-                    label: AppLocalizations.of(context).average,
-                    value: '${avgTotal.round()} kcal',
-                    color: AppTheme.gray900,
-                  ),
-                  const SizedBox(height: 8),
-                  _RangeRow(
-                    label: AppLocalizations.of(context).maximum,
-                    value: '${_scan.totalCaloriesMax.round()} kcal',
-                    color: AppTheme.amber700,
-                  ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: _scan.totalCaloriesMin.round(),
-                          child: Container(
-                            height: 8,
-                            color: context.primary400,
-                          ),
-                        ),
-                        Expanded(
-                          flex: (avgTotal - _scan.totalCaloriesMin)
-                              .round()
-                              .clamp(1, 9999),
-                          child: Container(
-                            height: 8,
-                            color: context.primary200,
-                          ),
-                        ),
-                        Expanded(
-                          flex: (_scan.totalCaloriesMax - avgTotal)
-                              .round()
-                              .clamp(1, 9999),
-                          child: Container(
-                            height: 8,
-                            color: AppTheme.amber500.withValues(alpha: 0.4),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+          if (!onlyUnmeasured) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Calorie Range',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.gray700,
               ),
             ),
-          ),
+            const SizedBox(height: 8),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _RangeRow(
+                      label: AppLocalizations.of(context).minimum,
+                      value: '${_scan.totalCaloriesMin.round()} kcal',
+                      color: context.primary600,
+                    ),
+                    const SizedBox(height: 8),
+                    _RangeRow(
+                      label: AppLocalizations.of(context).average,
+                      value: '${avgTotal.round()} kcal',
+                      color: AppTheme.gray900,
+                    ),
+                    const SizedBox(height: 8),
+                    _RangeRow(
+                      label: AppLocalizations.of(context).maximum,
+                      value: '${_scan.totalCaloriesMax.round()} kcal',
+                      color: AppTheme.amber700,
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: _scan.totalCaloriesMin.round(),
+                            child: Container(
+                              height: 8,
+                              color: context.primary400,
+                            ),
+                          ),
+                          Expanded(
+                            flex: (avgTotal - _scan.totalCaloriesMin)
+                                .round()
+                                .clamp(1, 9999),
+                            child: Container(
+                              height: 8,
+                              color: context.primary200,
+                            ),
+                          ),
+                          Expanded(
+                            flex: (_scan.totalCaloriesMax - avgTotal)
+                                .round()
+                                .clamp(1, 9999),
+                            child: Container(
+                              height: 8,
+                              color: AppTheme.amber500.withValues(alpha: 0.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           // ── Camera pose data (Part 9) ──────────────────────────────────
           if (_scan.topCameraPosition != null ||
               _scan.sideCameraPosition != null) ...[
@@ -534,7 +563,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                     const SizedBox(height: 4),
                     Text(
                       AppLocalizations.of(context).fullTransformNote,
-                      style: TextStyle(fontSize: 11, color: context.appMutedTextColor),
+                      style: TextStyle(
+                          fontSize: 11, color: context.appMutedTextColor),
                     ),
                   ],
                 ),
@@ -667,8 +697,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.black.withValues(alpha: 0.62),
                     foregroundColor: Colors.white,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
                   ),
                   onPressed: openModel,
                   icon: const Icon(Icons.threed_rotation, size: 18),
@@ -713,9 +743,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
   }
 
   String _scannerObjectId(String label) {
-    final cleaned = label
-        .replaceAll(' ', '_')
-        .replaceAll(RegExp(r'[^A-Za-z0-9_]'), '_');
+    final cleaned =
+        label.replaceAll(' ', '_').replaceAll(RegExp(r'[^A-Za-z0-9_]'), '_');
     return cleaned.isEmpty ? 'food' : cleaned;
   }
 
@@ -967,7 +996,8 @@ class _FoodDetailCard extends StatelessWidget {
                 children: [
                   Text(
                     '${food.caloriesMin.round()}',
-                    style: TextStyle(fontSize: 10, color: context.appMutedTextColor),
+                    style: TextStyle(
+                        fontSize: 10, color: context.appMutedTextColor),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -1013,7 +1043,8 @@ class _FoodDetailCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     '${food.caloriesMax.round()}',
-                    style: TextStyle(fontSize: 10, color: context.appMutedTextColor),
+                    style: TextStyle(
+                        fontSize: 10, color: context.appMutedTextColor),
                   ),
                 ],
               ),
@@ -1308,9 +1339,11 @@ class _GlThermometerCard extends StatelessWidget {
             const SizedBox(height: 6),
             Row(
               children: [
-                Text(AppLocalizations.of(context).cool, style: const TextStyle(fontSize: 10)),
+                Text(AppLocalizations.of(context).cool,
+                    style: const TextStyle(fontSize: 10)),
                 const Spacer(),
-                Text(AppLocalizations.of(context).hot, style: const TextStyle(fontSize: 10)),
+                Text(AppLocalizations.of(context).hot,
+                    style: const TextStyle(fontSize: 10)),
               ],
             ),
           ],

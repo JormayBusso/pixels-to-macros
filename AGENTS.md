@@ -293,10 +293,13 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
   assumption) — the two-silhouette **visual hull / space carving** (top ∩ side ∩ mirrored-side)
   — and nothing else.
 - iPhone 16 Plus has no LiDAR → **monocular dual-photo path**: TOP view is the authority and
-  the SIDE silhouette is hard-forced into height/profile. If a clean side silhouette genuinely
-  cannot be read on-device, reconstruct from the exact TOP silhouette (never a generic shape
-  or thickness floor) and tell the user the side capture must be level — do not hard-fail the
-  scan.
+  the SIDE silhouette is hard-forced into height/profile. **Height ALWAYS comes from a
+  measurement** — the matched side silhouette (monocular) or fused depth + side carve (LiDAR).
+  There is NO prior/default height, class-prior table, or top-only reconstruction. Side↔top
+  matching (`ScanMaskGeometry.matchSideSegments` + `sidePieceUnion`) gives every top food a side
+  profile; if the side photo is missing / has no food mask (or a LiDAR food has neither enough
+  depth nor a side silhouette), native throws `FlutterError` code `SIDE_VIEW_REQUIRED` and the
+  Dart scan flow asks the user to retake (nothing is saved). Never re-add a fallback height.
 - Volume→calories: `scan_result_provider` maps label → `FoodData` (fuzzy label match) →
   `calorieRange(volume)`. The **displayed mesh is the volume source** (`volume_source=display_mesh`).
 - **Scale is the monocular accuracy core.** Metric-scale hierarchy: `plate_diameter`

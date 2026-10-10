@@ -3096,6 +3096,35 @@ class AppLocalizations {
             'Richte die Kamera auf einen Teller oder ein Lebensmittel und scanne erneut.',
       });
 
+  String get sideViewRequiredTitle => _t({
+        'en': "The side photo didn't show your food",
+        'pl': 'Zdjęcie z boku nie pokazało jedzenia',
+        'nl': 'De zijfoto toonde je eten niet',
+        'es': 'La foto lateral no mostró tu comida',
+        'de': 'Das Seitenfoto hat dein Essen nicht gezeigt',
+      });
+
+  String get sideViewRequiredBody => _t({
+        'en':
+            "We couldn't see the food clearly in the side photo. Hold the phone level at the height of the food, with the whole food in frame, then retake both photos.",
+        'pl':
+            'Nie widzieliśmy wyraźnie jedzenia na zdjęciu z boku. Trzymaj telefon poziomo na wysokości jedzenia, tak aby całe jedzenie było w kadrze, a następnie zrób oba zdjęcia ponownie.',
+        'nl':
+            'We konden het eten niet duidelijk zien op de zijfoto. Houd de telefoon waterpas op de hoogte van het eten, met al het eten in beeld, en maak daarna beide foto\'s opnieuw.',
+        'es':
+            'No pudimos ver la comida con claridad en la foto lateral. Sostén el móvil nivelado a la altura de la comida, con toda la comida en el encuadre, y vuelve a hacer ambas fotos.',
+        'de':
+            'Auf dem Seitenfoto war das Essen nicht klar zu erkennen. Halte das Handy waagerecht auf Höhe des Essens, sodass das ganze Essen im Bild ist, und mache dann beide Fotos erneut.',
+      });
+
+  String get sideViewRequiredRetake => _t({
+        'en': 'Retake photos',
+        'pl': 'Zrób zdjęcia ponownie',
+        'nl': 'Foto\'s opnieuw maken',
+        'es': 'Repetir las fotos',
+        'de': 'Fotos erneut aufnehmen',
+      });
+
   String get scanAnalysisFailed => _t({
         'en': 'Scan analysis failed. Please rescan.',
         'pl': 'Analiza skanu nie powiodła się. Zeskanuj ponownie.',
@@ -6600,6 +6629,69 @@ class AppLocalizations {
             'Um Essen per Sprache zu erfassen, erlaube Mikrofon und Spracherkennung für Pixels to Macros in den Einstellungen.',
       });
 
+  String get voiceMicDeniedBody => _t({
+        'en':
+            'Microphone access is off for Pixels to Macros. Turn on Microphone in Settings to log food by voice.',
+        'pl':
+            'Dostęp do mikrofonu jest wyłączony dla Pixels to Macros. Włącz Mikrofon w Ustawieniach, aby zapisywać jedzenie głosem.',
+        'nl':
+            'Microfoontoegang staat uit voor Pixels to Macros. Zet Microfoon aan in Instellingen om eten met je stem te loggen.',
+        'es':
+            'El acceso al micrófono está desactivado para Pixels to Macros. Activa Micrófono en Ajustes para registrar comida por voz.',
+        'de':
+            'Der Mikrofonzugriff ist für Pixels to Macros aus. Aktiviere Mikrofon in den Einstellungen, um Essen per Sprache zu erfassen.',
+      });
+
+  String get voiceSpeechPermissionTitle => _t({
+        'en': 'Allow speech recognition',
+        'pl': 'Zezwól na rozpoznawanie mowy',
+        'nl': 'Spraakherkenning toestaan',
+        'es': 'Permitir reconocimiento de voz',
+        'de': 'Spracherkennung erlauben',
+      });
+
+  String get voiceSpeechDeniedBody => _t({
+        'en':
+            'Speech Recognition is off for Pixels to Macros. Turn it on in Settings to turn your voice into food items.',
+        'pl':
+            'Rozpoznawanie mowy jest wyłączone dla Pixels to Macros. Włącz je w Ustawieniach, aby zamieniać głos na produkty.',
+        'nl':
+            'Spraakherkenning staat uit voor Pixels to Macros. Zet het aan in Instellingen om je stem om te zetten in voedingsmiddelen.',
+        'es':
+            'El reconocimiento de voz está desactivado para Pixels to Macros. Actívalo en Ajustes para convertir tu voz en alimentos.',
+        'de':
+            'Die Spracherkennung ist für Pixels to Macros aus. Aktiviere sie in den Einstellungen, um deine Stimme in Lebensmittel umzuwandeln.',
+      });
+
+  String get voiceRestrictedTitle => _t({
+        'en': 'Voice logging is restricted',
+        'pl': 'Logowanie głosowe jest ograniczone',
+        'nl': 'Spraakloggen is beperkt',
+        'es': 'El registro por voz está restringido',
+        'de': 'Spracheingabe ist eingeschränkt',
+      });
+
+  String get voiceRestrictedBody => _t({
+        'en':
+            'Microphone or Speech Recognition is blocked on this device, for example by Screen Time or a device management profile. It cannot be turned on from this app.',
+        'pl':
+            'Mikrofon lub rozpoznawanie mowy jest zablokowane na tym urządzeniu, np. przez Czas przed ekranem lub profil zarządzania. Nie można tego włączyć z tej aplikacji.',
+        'nl':
+            'Microfoon of spraakherkenning is geblokkeerd op dit apparaat, bijvoorbeeld door Schermtijd of een beheerprofiel. Dit kan niet vanuit deze app worden aangezet.',
+        'es':
+            'El micrófono o el reconocimiento de voz están bloqueados en este dispositivo, por ejemplo por Tiempo de uso o un perfil de gestión. No se puede activar desde esta app.',
+        'de':
+            'Mikrofon oder Spracherkennung ist auf diesem Gerät gesperrt, z. B. durch Bildschirmzeit oder ein Verwaltungsprofil. Das kann nicht in dieser App aktiviert werden.',
+      });
+
+  String get voicePermissionOffHint => _t({
+        'en': 'Voice access is off. Tap the mic for help',
+        'pl': 'Dostęp głosowy jest wyłączony. Dotknij mikrofonu, aby uzyskać pomoc',
+        'nl': 'Spraaktoegang staat uit. Tik op de microfoon voor hulp',
+        'es': 'El acceso por voz está desactivado. Toca el micrófono para obtener ayuda',
+        'de': 'Sprachzugriff ist aus. Tippe auf das Mikrofon für Hilfe',
+      });
+
   String get voiceTapToAllowMic => _t({
         'en': 'Tap the mic to allow voice logging',
         'pl': 'Dotknij mikrofonu, aby zezwolić na logowanie głosowe',
@@ -8827,6 +8919,56 @@ class AppLocalizations {
         'nl': '3D-model bouwen',
         'es': 'Creando modelo 3D',
         'de': '3D-Modell erstellen',
+      });
+
+  String get scanVolumeUnmeasured => _t({
+        'en': 'Volume not measured',
+        'pl': 'Objętość niezmierzona',
+        'nl': 'Volume niet gemeten',
+        'es': 'Volumen no medido',
+        'de': 'Volumen nicht gemessen',
+      });
+
+  String scanUnmeasuredFoods(String foods) => _t({
+        'en': '$foods: volume not measured; excluded from nutrition.',
+        'pl': '$foods: objętość niezmierzona; pominięto w wartościach odżywczych.',
+        'nl': '$foods: volume niet gemeten; niet meegerekend in voedingswaarden.',
+        'es': '$foods: volumen no medido; no incluido en los valores nutricionales.',
+        'de': '$foods: Volumen nicht gemessen; nicht in den Nährwerten enthalten.',
+      });
+
+  String get scanSideRecaptureGuidance => _t({
+        'en': 'The top outline is kept, but the side silhouette could not be matched. '
+            'Repeat the scan with the phone upright at plate height, facing the food '
+            'straight on. Keep each food visible in a level side photo.',
+        'pl': 'Zachowano obrys z góry, ale nie udało się dopasować sylwetki z boku. '
+            'Powtórz skan, trzymając telefon pionowo na wysokości talerza, '
+            'na wprost jedzenia. Każdy produkt musi być widoczny na prostym zdjęciu z boku.',
+        'nl': 'De omtrek van boven blijft behouden, maar het zijprofiel kon niet worden gekoppeld. '
+            'Herhaal de scan met de telefoon rechtop op bordhoogte, recht voor het eten. '
+            'Houd elk product zichtbaar op een rechte zijfoto.',
+        'es': 'Se conserva el contorno superior, pero no se pudo asociar la silueta lateral. '
+            'Repite el escaneo con el teléfono vertical a la altura del plato, de frente a la comida. '
+            'Mantén cada alimento visible en una foto lateral nivelada.',
+        'de': 'Der Umriss von oben bleibt erhalten, aber die Seitensilhouette konnte nicht zugeordnet werden. '
+            'Wiederhole den Scan mit dem Handy aufrecht auf Tellerhöhe, direkt vor dem Essen. '
+            'Jedes Lebensmittel muss auf einem geraden Seitenfoto sichtbar sein.',
+      });
+
+  String get scanPartialNutrition => _t({
+        'en': 'Partial nutrition — measured foods only',
+        'pl': 'Częściowe wartości odżywcze — tylko zmierzone produkty',
+        'nl': 'Gedeeltelijke voedingswaarden — alleen gemeten producten',
+        'es': 'Valores nutricionales parciales: solo alimentos medidos',
+        'de': 'Unvollständige Nährwerte – nur gemessene Lebensmittel',
+      });
+
+  String get scanMeasuredFoodsLogged => _t({
+        'en': 'Only measured foods were saved to today’s diary.',
+        'pl': 'W dzisiejszym dzienniku zapisano tylko zmierzone produkty.',
+        'nl': 'Alleen gemeten producten zijn in het dagboek van vandaag opgeslagen.',
+        'es': 'Solo se han guardado los alimentos medidos en el diario de hoy.',
+        'de': 'Nur gemessene Lebensmittel wurden im heutigen Tagebuch gespeichert.',
       });
 
   String get scanTutorialTitle => _t({

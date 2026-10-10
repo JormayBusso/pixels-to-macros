@@ -393,16 +393,17 @@ class AppVisualTheme {
     Brightness brightness = Brightness.dark,
   }) {
     if (!seed.isPremium) {
+      final isDefault = seed == AppColorSeed.green;
       final card = Color.alphaBlend(
         seed.color.withValues(alpha: 0.045),
         Colors.white,
       );
       final input = Color.alphaBlend(
-        seed.color.withValues(alpha: 0.035),
+        seed.color.withValues(alpha: isDefault ? 0.07 : 0.035),
         Colors.white,
       );
       final scaffold = Color.alphaBlend(
-        seed.color.withValues(alpha: 0.09),
+        seed.color.withValues(alpha: isDefault ? 0.14 : 0.09),
         Colors.white,
       );
       return AppVisualTheme(
@@ -697,7 +698,12 @@ class AppVisualTheme {
       glowColor: accent.withValues(alpha: 0.28),
       onSurface: AppTheme.gray900,
       onDark: AppTheme.gray900,
-      onMuted: AppTheme.gray500,
+      onMuted: (tint(0.06).computeLuminance() + 0.05) /
+                  (AppTheme.gray500.computeLuminance() + 0.05) >=
+              4.5
+          ? AppTheme.gray500
+          : Color.alphaBlend(
+              Colors.black.withValues(alpha: 0.04), AppTheme.gray500),
       gradient: dark.gradient.map(readable).toList(),
       motionStyle: dark.motionStyle,
       motionDuration: dark.motionDuration,
@@ -804,13 +810,22 @@ extension ThemeColors on BuildContext {
   /// Lightest tint — backgrounds, subtle fills.
   Color get primary50 => visualTheme.premium
       ? Color.alphaBlend(_seed.withValues(alpha: 0.08), visualTheme.surface)
-      : Color.alphaBlend(_seed.withValues(alpha: 0.04), Colors.white);
+      : Color.alphaBlend(
+          _seed.withValues(
+              alpha: visualTheme.seed == AppColorSeed.green ? 0.07 : 0.04),
+          Colors.white);
   Color get primary100 => visualTheme.premium
       ? Color.alphaBlend(_seed.withValues(alpha: 0.14), visualTheme.surface)
-      : Color.alphaBlend(_seed.withValues(alpha: 0.10), Colors.white);
+      : Color.alphaBlend(
+          _seed.withValues(
+              alpha: visualTheme.seed == AppColorSeed.green ? 0.14 : 0.10),
+          Colors.white);
   Color get primary200 => visualTheme.premium
       ? Color.alphaBlend(_seed.withValues(alpha: 0.22), visualTheme.surface)
-      : Color.alphaBlend(_seed.withValues(alpha: 0.20), Colors.white);
+      : Color.alphaBlend(
+          _seed.withValues(
+              alpha: visualTheme.seed == AppColorSeed.green ? 0.26 : 0.20),
+          Colors.white);
   Color get primary300 => visualTheme.premium
       ? Color.alphaBlend(_seed.withValues(alpha: 0.32), visualTheme.surface)
       : Color.alphaBlend(_seed.withValues(alpha: 0.35), Colors.white);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_localizations.dart';
 import '../models/scan_diagnostics.dart';
 import '../providers/scan_diagnostics_provider.dart';
 import '../services/debug_log.dart';
@@ -213,9 +214,16 @@ class _FoodRow extends StatelessWidget {
           const SizedBox(height: 4),
           kv(
               'volume',
-              '${f.volumeCm3.toStringAsFixed(1)} cm³'
-                  '${f.rawVolumeCm3 != null ? '  (raw ${f.rawVolumeCm3!.toStringAsFixed(1)})' : ''}'),
-          if (f.weightG != null)
+              f.hasMeasuredVolume
+                  ? '${f.volumeCm3.toStringAsFixed(1)} cm³'
+                      '${f.rawVolumeCm3 != null ? '  (raw ${f.rawVolumeCm3!.toStringAsFixed(1)})' : ''}'
+                  : AppLocalizations.of(context).scanVolumeUnmeasured),
+          if (!f.hasMeasuredVolume)
+            Text(
+              AppLocalizations.of(context).scanSideRecaptureGuidance,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            ),
+          if (f.hasMeasuredVolume && f.weightG != null)
             kv(
                 'weight',
                 '${f.weightG!.toStringAsFixed(0)} g'
@@ -242,8 +250,7 @@ class _FoodRow extends StatelessWidget {
                     'sil ${f.silhouetteConfidence?.toStringAsFixed(2) ?? '-'}'
                     '${f.lowConfidence == true ? '  ⚠ LOW' : ''}'),
           if (f.temporalSmoothingApplied == true)
-            kv('temporal',
-                'smoothed across ${f.temporalSamples ?? '-'} scans'),
+            kv('temporal', 'smoothed across ${f.temporalSamples ?? '-'} scans'),
           kv(
               'views',
               'side=${f.sideViewApplied ?? false} · '

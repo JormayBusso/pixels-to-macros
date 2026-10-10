@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 
 import '../models/scan_result.dart';
+import '../models/food_data.dart';
 import '../services/database_service.dart';
 import '../services/debug_log.dart';
 import '../services/native_bridge.dart';
@@ -12,6 +13,7 @@ enum ScanFailureKind {
   analysisFailed,
   reconstructionFailed,
   dualSilhouetteFailed,
+  sideViewRequired,
 }
 
 /// Holds the results of the most recent scan.
@@ -21,24 +23,29 @@ class ScanResultState {
     this.error,
     this.failureKind,
     this.foods = const [],
+    this.unmeasuredFoodLabels = const [],
   });
 
   final bool loading;
   final String? error;
   final ScanFailureKind? failureKind;
   final List<DetectedFood> foods;
+  final List<String> unmeasuredFoodLabels;
+  bool get hasUnmeasuredFoods => unmeasuredFoodLabels.isNotEmpty;
 
   ScanResultState copyWith({
     bool? loading,
     String? error,
     ScanFailureKind? failureKind,
     List<DetectedFood>? foods,
+    List<String>? unmeasuredFoodLabels,
   }) {
     return ScanResultState(
       loading: loading ?? this.loading,
       error: error,
       failureKind: failureKind,
       foods: foods ?? this.foods,
+      unmeasuredFoodLabels: unmeasuredFoodLabels ?? this.unmeasuredFoodLabels,
     );
   }
 
@@ -52,7 +59,15 @@ class ScanResultState {
 /// and converts volume results into calorie estimates using the
 /// local food database.
 class ScanResultNotifier extends StateNotifier<ScanResultState> {
-  ScanResultNotifier() : super(const ScanResultState());
+  ScanResultNotifier({
+    Future<List<Map<String, dynamic>>> Function()? runInference,
+    Future<FoodData?> Function(String)? lookupFood,
+  })  : _runInference = runInference,
+        _lookupFood = lookupFood,
+        super(const ScanResultState());
+
+  final Future<List<Map<String, dynamic>>> Function()? _runInference;
+  final Future<FoodData?> Function(String)? _lookupFood;
 
   /// Maps model output labels to user-friendly DB labels where they differ.
   static const _labelAliases = {
@@ -148,11 +163,9 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     try {
       // Load the user's on-device label corrections so the native pipeline can
       // recognise foods they've already taught it. Local SQLite only.
-      final userExemplars =
-          await DatabaseService.instance.getFoodExemplars();
-      final rawVolumes = await NativeBridge.instance
-          .runVideoInference(userExemplars: userExemplars);
-      debugPrint('[SCAN] Flutter received ${rawVolumes.length} raw items from native');
+      final rawVolumes = await (_runInference?.call() ?? _runNativeInference());
+      debugPrint(
+          '[SCAN] Flutter received ${rawVolumes.length} raw items from native');
       for (final vol in rawVolumes) {
         debugPrint('[SCAN] Flutter item: $vol');
       }
@@ -169,20 +182,35 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
         return;
       }
 
-      final db = DatabaseService.instance;
       final foods = <DetectedFood>[];
+      final unmeasuredFoodLabels = <String>[];
 
       for (final vol in rawVolumes) {
         final rawLabel = vol['label'] as String? ?? 'unknown';
         final label = _normaliseLabel(rawLabel);
         if (label == null) {
-          DebugLog.instance.log('VideoScan', 'Rejected non-food label: $rawLabel');
+          DebugLog.instance
+              .log('VideoScan', 'Rejected non-food label: $rawLabel');
           continue;
         }
         final volumeCm3 = (vol['volume_cm3'] as num?)?.toDouble() ?? 0;
         final pixelCount = (vol['pixel_count'] as num?)?.toInt() ?? 0;
         final confidence = (vol['confidence'] as num?)?.toDouble();
         final framesUsed = (vol['frames_used'] as num?)?.toInt() ?? 0;
+
+        if (!ScanVolumeStatus.hasUsableVolume(
+          ScanVolumeStatus.fromMap(vol),
+          volumeCm3,
+        )) {
+          // Native has exported an outline, not a nutritional measurement.
+          // Do not let the volume-size gate erase it or invent nutrition.
+          unmeasuredFoodLabels.add(label);
+          DebugLog.instance.log(
+            'VideoScan',
+            '$label: volume unmeasured, side=${vol['side_missing_reason']}',
+          );
+          continue;
+        }
 
         if (!_passesDetectionGate(
           label: label,
@@ -198,7 +226,8 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
           continue;
         }
 
-        final foodData = await db.getFoodByLabelFuzzy(label);
+        final foodData = await (_lookupFood?.call(label) ??
+            DatabaseService.instance.getFoodByLabelFuzzy(label));
         final double calMin;
         final double calMax;
 
@@ -227,16 +256,19 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
                 '${confidence != null ? ", conf ${confidence.toStringAsFixed(2)}" : ""}');
       }
 
-      if (foods.isEmpty) {
+      if (foods.isEmpty && unmeasuredFoodLabels.isEmpty) {
         state = const ScanResultState(
           error: 'No food detected.',
           failureKind: ScanFailureKind.noFood,
         );
       } else {
-        state = ScanResultState(foods: foods);
+        state = ScanResultState(
+          foods: foods,
+          unmeasuredFoodLabels: unmeasuredFoodLabels,
+        );
       }
     } catch (e) {
-      final failureKind = _classifyFailure(e);
+      final failureKind = classifyFailure(e);
       DebugLog.instance.log(
         'VideoScan',
         'Native video inference failed: $e ($failureKind)',
@@ -250,14 +282,24 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     }
   }
 
-  ScanFailureKind _classifyFailure(Object error) {
+  Future<List<Map<String, dynamic>>> _runNativeInference() async {
+    final userExemplars = await DatabaseService.instance.getFoodExemplars();
+    return NativeBridge.instance
+        .runVideoInference(userExemplars: userExemplars);
+  }
+
+  @visibleForTesting
+  static ScanFailureKind classifyFailure(Object error) {
     if (error is PlatformException) {
+      if (error.code == 'SIDE_VIEW_REQUIRED') {
+        return ScanFailureKind.sideViewRequired;
+      }
       if (error.code == 'NO_FOOD_DETECTED') return ScanFailureKind.noFood;
       if (error.code == 'DUAL_SILHOUETTE_FAILED') {
         return ScanFailureKind.dualSilhouetteFailed;
       }
-      final message = '${error.message ?? ''} ${error.details ?? ''}'
-          .toLowerCase();
+      final message =
+          '${error.message ?? ''} ${error.details ?? ''}'.toLowerCase();
       if (_looksLikeNoFoodFailure(message)) return ScanFailureKind.noFood;
       if (message.contains('3d') || message.contains('export')) {
         return ScanFailureKind.reconstructionFailed;
@@ -271,7 +313,7 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     return ScanFailureKind.analysisFailed;
   }
 
-  bool _looksLikeNoFoodFailure(String text) {
+  static bool _looksLikeNoFoodFailure(String text) {
     return text.contains('no_food') ||
         text.contains('no food') ||
         text.contains('food_gate_rejected') ||

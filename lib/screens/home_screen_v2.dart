@@ -565,21 +565,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
               Card(
+                clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                      child: _SelectableSectionHeader(
-                        title: AppLocalizations.of(context).todaysFoods,
-                        selecting: _foodSelecting,
-                        selectedCount: _selectedFoodIds.length,
-                        onEnterSelection: _enterFoodSelection,
-                        onDelete: () => _confirmDeleteSelected(
-                          count: _selectedFoodIds.length,
-                          onConfirm: _deleteSelectedFoods,
-                        ),
-                        onCancel: _exitFoodSelection,
+                    _SelectableSectionHeader(
+                      title: AppLocalizations.of(context).todaysFoods,
+                      selecting: _foodSelecting,
+                      selectedCount: _selectedFoodIds.length,
+                      onEnterSelection: _enterFoodSelection,
+                      onDelete: () => _confirmDeleteSelected(
+                        count: _selectedFoodIds.length,
+                        onConfirm: _deleteSelectedFoods,
                       ),
+                      onCancel: _exitFoodSelection,
                     ),
                     if (intake.foods.isEmpty)
                       Padding(
@@ -766,222 +764,228 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               // ── Scan history (full list) ───────────────────────────
               Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    children: [
-                      _SelectableSectionHeader(
-                        title: AppLocalizations.of(context).scanHistory,
-                        selecting: _scanSelecting,
-                        selectedCount: _selectedScanIds.length,
-                        onEnterSelection: _enterScanSelection,
-                        onDelete: () => _confirmDeleteSelected(
-                          count: _selectedScanIds.length,
-                          onConfirm: _deleteSelectedScans,
-                        ),
-                        onCancel: _exitScanSelection,
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    _SelectableSectionHeader(
+                      title: AppLocalizations.of(context).scanHistory,
+                      selecting: _scanSelecting,
+                      selectedCount: _selectedScanIds.length,
+                      onEnterSelection: _enterScanSelection,
+                      onDelete: () => _confirmDeleteSelected(
+                        count: _selectedScanIds.length,
+                        onConfirm: _deleteSelectedScans,
                       ),
-                      const SizedBox(height: 8),
-                      if (todaysScans.isEmpty)
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Center(
-                              child: Column(
-                                children: [
-                                  Icon(Icons.camera_alt_outlined,
-                                      size: 40, color: AppTheme.gray200),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    AppLocalizations.of(context).noScansYet,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: context.appMutedTextColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        )
-                      else
-                        ...todaysScans.map((scan) {
-                          final avg =
-                              (scan.totalCaloriesMin + scan.totalCaloriesMax) /
-                                  2;
-                          final selecting = _scanSelecting;
-                          final selected = scan.id != null &&
-                              _selectedScanIds.contains(scan.id);
-
-                          final thumbPath = ScanMediaResolver.resolve(
-                              scan.topImagePath ?? scan.imagePath);
-                          final hasThumb = thumbPath != null;
-                          // Show the 3D model for ANY scan whose model file is
-                          // still on disk (kept for the media-retention window),
-                          // not just today's — older scans keep their 3D view too.
-                          final modelPath =
-                              ScanMediaResolver.resolve(scan.modelPath);
-                          final hasModel = modelPath != null;
-
-                          final card = GestureDetector(
-                            onTap: () {
-                              if (selecting) {
-                                if (scan.id != null) {
-                                  _toggleScanSelected(scan.id!);
-                                }
-                              } else {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        ScanDetailScreen(scan: scan),
-                                  ),
-                                );
-                              }
-                            },
-                            onLongPress: scan.id == null
-                                ? null
-                                : () => _toggleScanSelected(scan.id!),
-                            child: Card(
-                              color: selected ? context.primary50 : null,
-                              child: Column(
-                                children: [
-                                  ListTile(
-                                    leading: selecting
-                                        ? Icon(
-                                            selected
-                                                ? Icons.check_circle
-                                                : Icons.circle_outlined,
-                                            color: selected
-                                                ? context.primary600
-                                                : AppTheme.gray300,
-                                          )
-                                        : Hero(
-                                            tag: 'scan_icon_${scan.id}',
-                                            child: Container(
-                                              width: 40,
-                                              height: 40,
-                                              decoration: BoxDecoration(
-                                                color: context.primary100,
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              clipBehavior: Clip.antiAlias,
-                                              child: hasThumb
-                                                  ? Image.file(
-                                                      File(thumbPath),
-                                                      fit: BoxFit.cover,
-                                                    )
-                                                  : Icon(Icons.fastfood,
-                                                      color: context.primary600,
-                                                      size: 20),
-                                            ),
-                                          ),
-                                    title: Text(
-                                      AppLocalizations.of(context)
-                                          .scanItemCount(scan.foods.length),
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                    subtitle: Text(
-                                      hasModel
-                                          ? '${_timeAgo(context, scan.timestamp)} • ${AppLocalizations.of(context).scan3dModelTag}'
-                                          : _timeAgo(context, scan.timestamp),
+                      onCancel: _exitScanSelection,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(children: [
+                        if (todaysScans.isEmpty)
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.camera_alt_outlined,
+                                        size: 40, color: AppTheme.gray200),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      AppLocalizations.of(context).noScansYet,
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 14,
                                         color: context.appMutedTextColor,
                                       ),
                                     ),
-                                    trailing: Text(
-                                      '${avg.round()} kcal',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        color: context.primary700,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          ...todaysScans.map((scan) {
+                            final avg = (scan.totalCaloriesMin +
+                                    scan.totalCaloriesMax) /
+                                2;
+                            final selecting = _scanSelecting;
+                            final selected = scan.id != null &&
+                                _selectedScanIds.contains(scan.id);
+
+                            final thumbPath = ScanMediaResolver.resolve(
+                                scan.topImagePath ?? scan.imagePath);
+                            final hasThumb = thumbPath != null;
+                            // Show the 3D model for ANY scan whose model file is
+                            // still on disk (kept for the media-retention window),
+                            // not just today's — older scans keep their 3D view too.
+                            final modelPath =
+                                ScanMediaResolver.resolve(scan.modelPath);
+                            final hasModel = modelPath != null;
+
+                            final card = GestureDetector(
+                              onTap: () {
+                                if (selecting) {
+                                  if (scan.id != null) {
+                                    _toggleScanSelected(scan.id!);
+                                  }
+                                } else {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          ScanDetailScreen(scan: scan),
+                                    ),
+                                  );
+                                }
+                              },
+                              onLongPress: scan.id == null
+                                  ? null
+                                  : () => _toggleScanSelected(scan.id!),
+                              child: Card(
+                                color: selected ? context.primary50 : null,
+                                child: Column(
+                                  children: [
+                                    ListTile(
+                                      leading: selecting
+                                          ? Icon(
+                                              selected
+                                                  ? Icons.check_circle
+                                                  : Icons.circle_outlined,
+                                              color: selected
+                                                  ? context.primary600
+                                                  : AppTheme.gray300,
+                                            )
+                                          : Hero(
+                                              tag: 'scan_icon_${scan.id}',
+                                              child: Container(
+                                                width: 40,
+                                                height: 40,
+                                                decoration: BoxDecoration(
+                                                  color: context.primary100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                clipBehavior: Clip.antiAlias,
+                                                child: hasThumb
+                                                    ? Image.file(
+                                                        File(thumbPath),
+                                                        fit: BoxFit.cover,
+                                                      )
+                                                    : Icon(Icons.fastfood,
+                                                        color:
+                                                            context.primary600,
+                                                        size: 20),
+                                              ),
+                                            ),
+                                      title: Text(
+                                        AppLocalizations.of(context)
+                                            .scanItemCount(scan.foods.length),
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                      subtitle: Text(
+                                        hasModel
+                                            ? '${_timeAgo(context, scan.timestamp)} • ${AppLocalizations.of(context).scan3dModelTag}'
+                                            : _timeAgo(context, scan.timestamp),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: context.appMutedTextColor,
+                                        ),
+                                      ),
+                                      trailing: Text(
+                                        '${avg.round()} kcal',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          color: context.primary700,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  if (hasModel && !selecting)
-                                    Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                          12, 0, 12, 12),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: SizedBox(
-                                          height: 180,
-                                          width: double.infinity,
-                                          child: IgnorePointer(
-                                            child: Scan3DViewer(
-                                              modelPath: modelPath,
+                                    if (hasModel && !selecting)
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            12, 0, 12, 12),
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          child: SizedBox(
+                                            height: 180,
+                                            width: double.infinity,
+                                            child: IgnorePointer(
+                                              child: Scan3DViewer(
+                                                modelPath: modelPath,
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
+                            );
 
-                          // Swipe-to-delete only when not multi-selecting.
-                          final Widget content = (selecting || scan.id == null)
-                              ? card
-                              : Dismissible(
-                                  key: ValueKey('scan_${scan.id}'),
-                                  direction: DismissDirection.endToStart,
-                                  background: Container(
-                                    alignment: Alignment.centerRight,
-                                    padding: const EdgeInsets.only(right: 20),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.shade400,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Icon(Icons.delete_outline,
-                                        color: Colors.white),
-                                  ),
-                                  confirmDismiss: (_) async {
-                                    return await showDialog<bool>(
-                                      context: context,
-                                      builder: (ctx) => AlertDialog(
-                                        title: Text(AppLocalizations.of(context)
-                                            .deleteScanTitle),
-                                        content: Text(
-                                            AppLocalizations.of(context)
-                                                .deleteScanHistoryConfirm),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(ctx, false),
-                                            child: Text(
-                                                AppLocalizations.of(context)
-                                                    .cancel),
-                                          ),
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(ctx, true),
-                                            child: Text(
-                                                AppLocalizations.of(context)
-                                                    .delete,
-                                                style: const TextStyle(
-                                                    color: Colors.red)),
-                                          ),
-                                        ],
+                            // Swipe-to-delete only when not multi-selecting.
+                            final Widget content = (selecting ||
+                                    scan.id == null)
+                                ? card
+                                : Dismissible(
+                                    key: ValueKey('scan_${scan.id}'),
+                                    direction: DismissDirection.endToStart,
+                                    background: Container(
+                                      alignment: Alignment.centerRight,
+                                      padding: const EdgeInsets.only(right: 20),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade400,
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
-                                    );
-                                  },
-                                  onDismissed: (_) async {
-                                    await ref
-                                        .read(historyProvider.notifier)
-                                        .deleteScan(scan.id!);
-                                  },
-                                  child: card,
-                                );
+                                      child: const Icon(Icons.delete_outline,
+                                          color: Colors.white),
+                                    ),
+                                    confirmDismiss: (_) async {
+                                      return await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: Text(
+                                              AppLocalizations.of(context)
+                                                  .deleteScanTitle),
+                                          content: Text(
+                                              AppLocalizations.of(context)
+                                                  .deleteScanHistoryConfirm),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, false),
+                                              child: Text(
+                                                  AppLocalizations.of(context)
+                                                      .cancel),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, true),
+                                              child: Text(
+                                                  AppLocalizations.of(context)
+                                                      .delete,
+                                                  style: const TextStyle(
+                                                      color: Colors.red)),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                    onDismissed: (_) async {
+                                      await ref
+                                          .read(historyProvider.notifier)
+                                          .deleteScan(scan.id!);
+                                    },
+                                    child: card,
+                                  );
 
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: content,
-                          );
-                        }),
-                    ],
-                  ),
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: content,
+                            );
+                          }),
+                      ]),
+                    ),
+                  ],
                 ),
               ),
 
@@ -1093,10 +1097,12 @@ class _CalorieRingCardState extends State<_CalorieRingCard>
 
     return PremiumSurface(
       padding: const EdgeInsets.all(16),
+      header: CardTitleBox(
+        borderRadius: BorderRadius.zero,
+        title: AppLocalizations.of(context).calories,
+      ),
       child: Column(
         children: [
-          CardTitleBox(title: AppLocalizations.of(context).calories),
-          const SizedBox(height: 16),
           Row(
             children: [
               // Animated ring
@@ -1306,6 +1312,7 @@ class _SelectableSectionHeader extends StatelessWidget {
     final fg = CardTitleBox.foregroundOf(context);
     if (!selecting) {
       return CardTitleBox(
+        borderRadius: BorderRadius.zero,
         title: title,
         // Discoverable multi-select affordance (no long-press required).
         trailing: InkWell(
@@ -1320,34 +1327,37 @@ class _SelectableSectionHeader extends StatelessWidget {
     }
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(left: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: CardTitleBox.fillOf(context),
-        borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              l10n.selectedCount(selectedCount),
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: fg,
-              ),
+          Text(
+            l10n.selectedCount(selectedCount),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: fg,
             ),
           ),
-          TextButton.icon(
-            onPressed: selectedCount == 0 ? null : onDelete,
-            icon: Icon(Icons.delete_outline,
-                size: 18, color: Colors.red.shade700),
-            label:
-                Text(l10n.delete, style: TextStyle(color: Colors.red.shade700)),
-          ),
-          TextButton(
-            onPressed: onCancel,
-            style: TextButton.styleFrom(foregroundColor: fg),
-            child: Text(l10n.cancel),
+          Wrap(
+            alignment: WrapAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: selectedCount == 0 ? null : onDelete,
+                icon: Icon(Icons.delete_outline,
+                    size: 18, color: Colors.red.shade700),
+                label: Text(l10n.delete,
+                    style: TextStyle(color: Colors.red.shade700)),
+              ),
+              TextButton(
+                onPressed: onCancel,
+                style: TextButton.styleFrom(foregroundColor: fg),
+                child: Text(l10n.cancel),
+              ),
+            ],
           ),
         ],
       ),
@@ -1385,12 +1395,12 @@ class _GoalProgressCard extends StatelessWidget {
     return PremiumSurface(
       padding: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
+      header: CardTitleBox(
+        borderRadius: BorderRadius.zero,
+        title: AppLocalizations.of(context).nutritionGoalLabel(goal.name),
+      ),
       child: Column(
         children: [
-          CardTitleBox(
-            margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-            title: AppLocalizations.of(context).nutritionGoalLabel(goal.name),
-          ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -1545,39 +1555,38 @@ class _RecommendationsCard extends ConsumerWidget {
     return PremiumSurface(
       padding: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
+      header: CardTitleBox(
+        borderRadius: BorderRadius.zero,
+        icon: Icons.auto_awesome,
+        title: AppLocalizations.of(context).smartRecommendations,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                AppLocalizations.of(context).tipsCount(state.recs.length),
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.gray900,
+                ),
+              ),
+            ),
+            CalcInfoButton(
+              id: CalcInfoId.recommendations,
+              color: CardTitleBox.foregroundOf(context),
+            ),
+          ],
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CardTitleBox(
-            margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-            icon: Icons.auto_awesome,
-            title: AppLocalizations.of(context).smartRecommendations,
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    AppLocalizations.of(context).tipsCount(state.recs.length),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.gray900,
-                    ),
-                  ),
-                ),
-                CalcInfoButton(
-                  id: CalcInfoId.recommendations,
-                  color: CardTitleBox.foregroundOf(context),
-                ),
-              ],
-            ),
-          ),
           // Recommendation items
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -1695,50 +1704,48 @@ class _HydrationCard extends ConsumerWidget {
 
     return PremiumSurface(
       padding: const EdgeInsets.all(16),
+      header: Builder(builder: (context) {
+        final fg = CardTitleBox.foregroundOf(context);
+        const tight = BoxConstraints(minWidth: 32, minHeight: 32);
+        return CardTitleBox(
+          borderRadius: BorderRadius.zero,
+          title: AppLocalizations.of(context).hydrationTitle,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline, size: 20),
+                color: fg,
+                padding: EdgeInsets.zero,
+                constraints: tight,
+                tooltip: AppLocalizations.of(context).removeWaterTooltip,
+                onPressed:
+                    intake > 0 ? () => _removeWater(context, ref, 250) : null,
+              ),
+              IconButton(
+                key: TourKeys.hydrationAddDrink,
+                icon: const Icon(Icons.add_circle_outline, size: 22),
+                color: fg,
+                padding: EdgeInsets.zero,
+                constraints: tight,
+                tooltip: AppLocalizations.of(context).addDrinkTooltip,
+                onPressed: () => _showDrinkSheet(context, ref),
+              ),
+              IconButton(
+                icon: const Icon(Icons.tune, size: 20),
+                color: fg,
+                padding: EdgeInsets.zero,
+                constraints: tight,
+                tooltip: AppLocalizations.of(context).adjustWaterGoalTooltip,
+                onPressed: () => _showGoalDialog(context, ref, goal),
+              ),
+            ],
+          ),
+        );
+      }),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Builder(builder: (context) {
-            final fg = CardTitleBox.foregroundOf(context);
-            const tight = BoxConstraints(minWidth: 32, minHeight: 32);
-            return CardTitleBox(
-              title: AppLocalizations.of(context).hydrationTitle,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove_circle_outline, size: 20),
-                    color: fg,
-                    padding: EdgeInsets.zero,
-                    constraints: tight,
-                    tooltip: AppLocalizations.of(context).removeWaterTooltip,
-                    onPressed: intake > 0
-                        ? () => _removeWater(context, ref, 250)
-                        : null,
-                  ),
-                  IconButton(
-                    key: TourKeys.hydrationAddDrink,
-                    icon: const Icon(Icons.add_circle_outline, size: 22),
-                    color: fg,
-                    padding: EdgeInsets.zero,
-                    constraints: tight,
-                    tooltip: AppLocalizations.of(context).addDrinkTooltip,
-                    onPressed: () => _showDrinkSheet(context, ref),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.tune, size: 20),
-                    color: fg,
-                    padding: EdgeInsets.zero,
-                    constraints: tight,
-                    tooltip:
-                        AppLocalizations.of(context).adjustWaterGoalTooltip,
-                    onPressed: () => _showGoalDialog(context, ref, goal),
-                  ),
-                ],
-              ),
-            );
-          }),
-          const SizedBox(height: 12),
           Row(
             children: [
               // Glass mascot

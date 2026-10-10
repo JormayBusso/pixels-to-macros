@@ -7,14 +7,24 @@
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
     </dependencies>
     <scenes>
-    <!--Launch Screen — pure black, no logo. The intro video starts immediately
-        when Flutter renders, so users see: tap icon → black → video plays. -->
+    <!--Launch Screen — black with the intro video's first frame (app icon),
+        pinned to the screen edges. AppDelegate's native intro overlay uses the
+        identical geometry, so the launch zoom flows straight into the video. -->
         <scene sceneID="EHf-IW-A2E">
             <objects>
                 <viewController id="01J-lp-oVM" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" image="IntroFirstFrame" translatesAutoresizingMaskIntoConstraints="NO" id="Ifr-01-aaa"/>
+                        </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
+                        <constraints>
+                            <constraint firstItem="Ifr-01-aaa" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="Ifr-02-bbb"/>
+                            <constraint firstItem="Ze5-6b-2t3" firstAttribute="trailing" secondItem="Ifr-01-aaa" secondAttribute="trailing" id="Ifr-03-ccc"/>
+                            <constraint firstItem="Ifr-01-aaa" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="Ifr-04-ddd"/>
+                            <constraint firstItem="Ifr-01-aaa" firstAttribute="width" secondItem="Ifr-01-aaa" secondAttribute="height" multiplier="710:720" id="Ifr-05-eee"/>
+                        </constraints>
                         <color key="backgroundColor" red="0" green="0" blue="0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </view>
                 </viewController>
@@ -23,4 +33,7 @@
             <point key="canvasLocation" x="53" y="375"/>
         </scene>
     </scenes>
+    <resources>
+        <image name="IntroFirstFrame" width="710" height="720"/>
+    </resources>
 </document>

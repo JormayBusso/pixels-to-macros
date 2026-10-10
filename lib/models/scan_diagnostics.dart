@@ -1,4 +1,5 @@
 import '../services/perf_monitor.dart';
+import 'scan_result.dart';
 
 /// Structured per-food diagnostics captured from the native scanner pipeline.
 ///
@@ -35,11 +36,17 @@ class FoodDiagnostic {
     this.fallbackUsed,
     this.estimated,
     this.debug,
+    this.volumeStatus,
+    this.sideMissingReason,
   });
 
   final String label;
   final String scanMode;
   final double volumeCm3;
+  final ScanVolumeStatus? volumeStatus;
+  final String? sideMissingReason;
+  bool get hasMeasuredVolume =>
+      ScanVolumeStatus.hasUsableVolume(volumeStatus, volumeCm3);
   final String? scaleSource;
   final double? rawVolumeCm3;
   final double? footprintAreaCm2;
@@ -74,6 +81,8 @@ class FoodDiagnostic {
       label: (m['label'] as String?) ?? 'unknown',
       scanMode: (m['scan_mode'] as String?) ?? 'unknown',
       volumeCm3: _d(m['volume_cm3']) ?? 0,
+      volumeStatus: ScanVolumeStatus.fromMap(m),
+      sideMissingReason: m['side_missing_reason'] as String?,
       scaleSource: m['scale_source'] as String?,
       rawVolumeCm3: _d(m['raw_volume_cm3']),
       footprintAreaCm2: _d(m['footprint_area_cm2']),
@@ -174,9 +183,14 @@ class ScanDiagnostics {
     for (final f in foods) {
       b.writeln('');
       b.writeln('  • ${f.label}  (${f.scanMode})');
-      b.writeln('    volume:    ${f.volumeCm3.toStringAsFixed(1)} cm³'
-          '${f.rawVolumeCm3 != null ? ' (raw ${f.rawVolumeCm3!.toStringAsFixed(1)})' : ''}');
-      if (f.weightG != null) {
+      b.writeln(f.hasMeasuredVolume
+          ? '    volume:    ${f.volumeCm3.toStringAsFixed(1)} cm³'
+              '${f.rawVolumeCm3 != null ? ' (raw ${f.rawVolumeCm3!.toStringAsFixed(1)})' : ''}'
+          : '    volume:    unmeasured (nutrition excluded)');
+      b.writeln(
+          '    volume_measured: ${f.volumeStatus?.name ?? 'legacy_unknown'}'
+          '${f.sideMissingReason != null ? ' side_missing_reason=${f.sideMissingReason}' : ''}');
+      if (f.hasMeasuredVolume && f.weightG != null) {
         b.writeln('    weight:    ${f.weightG!.toStringAsFixed(0)} g'
             '${f.densityGCm3 != null ? ' @ ${f.densityGCm3} g/cm³' : ''}');
       }
@@ -188,7 +202,8 @@ class ScanDiagnostics {
       b.writeln('    scale:     ${f.scaleSource ?? '-'}'
           '${f.pixelsPerCm != null ? ' (${f.pixelsPerCm} px/cm)' : ''}'
           '${f.fallbackReason != null && f.fallbackReason != 'none' ? ' fallback=${f.fallbackReason}' : ''}');
-      b.writeln('    confidence: overall=${f.confidence?.toStringAsFixed(2) ?? '-'} '
+      b.writeln(
+          '    confidence: overall=${f.confidence?.toStringAsFixed(2) ?? '-'} '
           'scale=${f.scaleConfidence?.toStringAsFixed(2) ?? '-'} '
           'seg=${f.segmentationConfidence?.toStringAsFixed(2) ?? '-'} '
           'sil=${f.silhouetteConfidence?.toStringAsFixed(2) ?? '-'}'

@@ -120,6 +120,15 @@ final class InferencePipeline {
         case volumeFailed
         case model3DExportFailed(String)
         case dualSilhouetteFailed(String, String)
+        /// A food with no measured height: non-LiDAR without a usable side
+        /// silhouette, or LiDAR with too little fused depth and no usable side
+        /// silhouette. There is no prior, default height or top-only shape to
+        /// fall back to (AGENTS.md §9), so the user retakes a level side photo.
+        case sideViewRequired(String)
+
+        /// Verbatim message surfaced to Dart with FlutterError code
+        /// `SIDE_VIEW_REQUIRED`.
+        static let sideViewRequiredMessage = "Side photo did not show the food clearly; retake a level side photo."
 
         var errorDescription: String? {
             switch self {
@@ -132,7 +141,44 @@ final class InferencePipeline {
                 return "3D scan failed. Please rescan. (\(reason))"
             case .dualSilhouetteFailed(let reason, _):
                 return "Dual-silhouette reconstruction failed. (\(reason))"
+            case .sideViewRequired:
+                return PipelineError.sideViewRequiredMessage
             }
+        }
+    }
+
+    /// Monocular gate: the side photo must exist AND contain at least one food
+    /// silhouette, or no height can be measured. Returns the failure reason, or
+    /// nil when the scan may proceed. Pure for unit tests.
+    static func monocularSideViewFailure(sideFrameCaptured: Bool, sideProfileCount: Int) -> String? {
+        if !sideFrameCaptured { return "missing_side_capture" }
+        if sideProfileCount <= 0 { return "no_side_food_mask" }
+        return nil
+    }
+
+    /// LiDAR gate for a top food that has neither enough fused depth nor a
+    /// usable side-silhouette hull (`DepthFusion.lastUnresolvedFoods`).
+    /// Side-related reasons ask for a retake of the side photo; anything else
+    /// is a measurement failure. Pure for unit tests.
+    static func lidarUnresolvedFailure(
+        _ food: DepthFusion.UnresolvedFood,
+        sideFrameCaptured: Bool,
+        sideProfileCount: Int
+    ) -> PipelineError {
+        let prefix = "lidar_food#\(food.topIndex)_insufficient_depth"
+        switch food.reason {
+        case "no_side_silhouette", "unmatched_side_silhouette":
+            if let missing = monocularSideViewFailure(
+                sideFrameCaptured: sideFrameCaptured, sideProfileCount: sideProfileCount) {
+                return .sideViewRequired("\(prefix)_\(missing)")
+            }
+            return .sideViewRequired("\(prefix)_no_side_silhouette")
+        case "invalid_side_silhouette", "empty_top_side_intersection", "empty_side_hull":
+            return .sideViewRequired("\(prefix)_\(food.reason)")
+        case "no_measured_support_plane":
+            return .model3DExportFailed("no_measured_support_plane")
+        default:
+            return .model3DExportFailed("\(prefix)_\(food.reason)")
         }
     }
 
@@ -188,8 +234,9 @@ final class InferencePipeline {
         lastModel3DObjects = []
 
         print("[SCAN] ═══════════ VIDEO SCAN START ═══════════")
-        print("[SCAN] build=2026-07-21g (no-side height not inflated; nut priors flat; CLIP can correct wrong produce label)")
-        print("[SCAN] recorder: topFrame=\(recorder.topFrame != nil), topViewFrames=\(recorder.topViewFrames.count), lightFrames=\(recorder.lightFrames.count), frameCount=\(recorder.frameCount)")
+        print("[SCAN] build=2026-10-10b (monocular height = side silhouette only; LiDAR height = fused depth, else exact side-silhouette hull; no priors/default heights; SIDE_VIEW_REQUIRED when side has no food)")
+        print("[CAPTUREPAIR] inference id=\(recorder.captureID) top=\(recorder.topFrame?.timestamp.description ?? "none") side=\(recorder.sideFrame?.timestamp.description ?? "none")")
+        print("[SCAN] recorder: topFrame=\(recorder.topFrame != nil), sideFrame=\(recorder.sideFrame != nil), topViewFrames=\(recorder.topViewFrames.count), lightFrames=\(recorder.lightFrames.count), frameCount=\(recorder.frameCount)")
 
         // If no top frame was captured (e.g. recording stopped immediately),
         // fail hard. Successful video scans must produce a valid 3-D model.
@@ -423,12 +470,14 @@ final class InferencePipeline {
         }
         print("[SCAN] foodPresenceGate PASSED")
 
-        // ── 3b. Non-LiDAR camera fallback ──────────────────────────────
+        // ── 3b. Non-LiDAR dual-photo visual hull ───────────────────────
         // If ARKit did not provide scene depth, do NOT force the device
-        // through DepthFusion. Generate an estimated 3-D object from the
-        // top-view segmentation mask, using the side view only when its
-        // silhouette validates as a profile for those top-view objects.
-        if !recorder.hasDepthData {
+        // through DepthFusion. Every food is reconstructed from its top mask ∩
+        // its matched side silhouette (mirrored). Without a side silhouette the
+        // scan fails with SIDE_VIEW_REQUIRED — never a prior/default height.
+        var capturedSideProfiles: [MonocularVolumeEstimator.SideProfile] = []
+        var capturedSideRGB: CVPixelBuffer?
+        if !recorder.hasDepthData || recorder.sideFrame != nil {
             var sideProfiles: [MonocularVolumeEstimator.SideProfile] = []
             var sidePreprocessedRGB: CVPixelBuffer?
             if let sideFrame = recorder.sideFrame {
@@ -460,7 +509,19 @@ final class InferencePipeline {
                         topSegments: segments,
                         axes: sideAxes,
                         roiShape: sideShape,
-                        cropSidePx: min(sideBufferW, sideBufferH)
+                        cropSidePx: min(sideBufferW, sideBufferH),
+                        calibration: recorder.tableDistanceCm.map {
+                            MonocularVolumeEstimator.PhotoCalibration(
+                                topTransform: topFrame.cameraTransform,
+                                topIntrinsics: topFrame.cameraIntrinsics,
+                                topWidth: CVPixelBufferGetWidth(topFrame.pixelBuffer),
+                                topHeight: CVPixelBufferGetHeight(topFrame.pixelBuffer),
+                                topCrop: plate.rect,
+                                sideTransform: sideFrame.cameraTransform,
+                                sideIntrinsics: sideFrame.cameraIntrinsics,
+                                sideWidth: sideBufferW, sideHeight: sideBufferH, sideCrop: sideCrop,
+                                tableY: topFrame.cameraTransform.columns.3.y - Float($0 / 100))
+                        }
                     )
                 } ?? []
                 let check = monocularEstimator.validateDualSilhouette(
@@ -470,70 +531,54 @@ final class InferencePipeline {
                     alignment: check.alignmentScore, segConfTop: check.segConfTop,
                     segConfSide: check.segConfSide, attempt: 1, reason: check.reason)
                 print("[DUALHULL] \(debug)")
-                if check.valid {
-                    sideProfiles = extractedProfiles
-                    print("[PIPELINE] camera fallback: accepted sideProfiles=\(sideProfiles.count) matchedTops=\(sideProfiles.compactMap { $0.topSegmentIndex }.map { "#\($0)" }.joined(separator: ","))")
-                } else {
-                    print("[PIPELINE] camera fallback: side invalid (\(check.reason)); using top-mask fallback")
+                // Primary-object validation is telemetry, not a plate-wide veto.
+                // Each estimator object independently validates its own profile.
+                sideProfiles = extractedProfiles.compactMap {
+                    monocularEstimator.usableSideProfile($0, for: $0.label)
                 }
+                print("[PIPELINE] side profiles preserved individually=\(sideProfiles.count) primaryCheck=\(check.reason)")
             } else {
                 let dbg = dualSilhouetteDebugJSON(
                     topValid: true, sideValid: false, alignment: 0,
                     segConfTop: segments.map { $0.confidence }.max() ?? 0,
                     segConfSide: 0, attempt: 1, reason: "missing_side_view")
                 print("[DUALHULL] \(dbg)")
-                print("[PIPELINE] camera fallback: missing side view; using top-mask fallback")
+                print("[PIPELINE] missing side view (no top-only fallback exists)")
             }
-            let estimate = try monocularEstimator.estimate(
-                segments: segments,
-                topFrame: topFrame,
-                sideFrame: recorder.sideFrame,
-                sideProfiles: sideProfiles,
-                maskWidth: preprocessor.modelInputWidth,
-                maskHeight: preprocessor.modelInputHeight,
-                measuredHeightCm: nil,
-                preprocessedRGB: preprocessedRGB,
-                sidePreprocessedRGB: sidePreprocessedRGB,
-                tableDistanceCm: recorder.tableDistanceCm
-            )
+            capturedSideProfiles = sideProfiles
+            capturedSideRGB = sidePreprocessedRGB
+        }
+        if !recorder.hasDepthData {
+            if let reason = Self.monocularSideViewFailure(
+                sideFrameCaptured: recorder.sideFrame != nil,
+                sideProfileCount: capturedSideProfiles.count
+            ) {
+                print("[PIPELINE] SIDE_VIEW_REQUIRED reason=\(reason) topSegments=\(segments.count) sideProfiles=\(capturedSideProfiles.count)")
+                throw PipelineError.sideViewRequired(reason)
+            }
+            let estimate: MonocularVolumeEstimator.Result
+            do {
+                estimate = try monocularEstimator.estimate(
+                    segments: segments,
+                    topFrame: topFrame,
+                    sideFrame: recorder.sideFrame,
+                    sideProfiles: capturedSideProfiles,
+                    maskWidth: preprocessor.modelInputWidth,
+                    maskHeight: preprocessor.modelInputHeight,
+                    measuredHeightCm: nil,
+                    preprocessedRGB: preprocessedRGB,
+                    sidePreprocessedRGB: capturedSideRGB,
+                    tableDistanceCm: recorder.tableDistanceCm
+                )
+            } catch MonocularVolumeEstimator.EstimateError.sideViewRequired(let reason) {
+                print("[PIPELINE] SIDE_VIEW_REQUIRED reason=\(reason)")
+                throw PipelineError.sideViewRequired(reason)
+            }
             lastModel3DPath = estimate.modelPath
             lastModel3DObjects = estimate.objects
             print("[PIPELINE] camera estimate success: true")
             print("[PIPELINE] model3dPath: \(estimate.modelPath)")
             print("[PIPELINE] file exists: \(FileManager.default.fileExists(atPath: estimate.modelPath))")
-            return estimate.json
-        }
-
-        // ── 3c. Bowl on a LiDAR device ──────────────────────────────────
-        // A food in a bowl is occluded: neither the side camera NOR LiDAR depth
-        // can see the food's hidden underside (the food surface blocks the view
-        // straight down into the bowl). So a detected bowl is reconstructed with
-        // the SAME rounded-cavity model as the non-LiDAR path — this keeps the
-        // 3-D model identical on both sensor paths and avoids meshing the
-        // container walls as food. Only fires when the conservative bowl
-        // heuristic matches; every other LiDAR scan is unchanged and still runs
-        // DepthFusion below.
-        if monocularEstimator.isBowlScene(
-            segments: segments,
-            topFrame: topFrame,
-            maskWidth: preprocessor.modelInputWidth,
-            maskHeight: preprocessor.modelInputHeight
-        ) {
-            print("[PIPELINE] LiDAR bowl detected — routing to rounded-cavity reconstruction")
-            let estimate = try monocularEstimator.estimate(
-                segments: segments,
-                topFrame: topFrame,
-                sideFrame: nil,
-                sideProfiles: [],
-                maskWidth: preprocessor.modelInputWidth,
-                maskHeight: preprocessor.modelInputHeight,
-                measuredHeightCm: nil,
-                preprocessedRGB: preprocessedRGB,
-                tableDistanceCm: recorder.tableDistanceCm
-            )
-            lastModel3DPath = estimate.modelPath
-            lastModel3DObjects = estimate.objects
-            print("[PIPELINE] LiDAR bowl estimate success: true, path=\(estimate.modelPath)")
             return estimate.json
         }
 
@@ -593,30 +638,51 @@ final class InferencePipeline {
             imageWidth:  CVPixelBufferGetWidth(topFrame.pixelBuffer),
             imageHeight: CVPixelBufferGetHeight(topFrame.pixelBuffer)
         )
+        // Measured ARKit table plane: the support plane only when no labelled
+        // depth voxel exists to measure the plate from.
+        fusion.setTablePlaneY(recorder.tableDistanceCm.map {
+            topFrame.cameraTransform.columns.3.y - Float($0 / 100)
+        })
 
         // ── 6. Voxel clusters + 3-D export (hard contract) ─────────────
         // A successful scan exists ONLY if these voxels produce a real file
         // on disk. No 2-D volume substitute, no thumbnail success path.
+        // Sparse depth is not a failure by itself: every food without enough
+        // fused depth is rebuilt from its exact top ∩ side silhouettes, or the
+        // scan fails below (never a prior/default height).
         print("[PIPELINE] depth clusters: occupied_voxels=\(fusion.totalOccupiedVoxels), " +
-              "top_frames=\(recorder.topViewFrames.count), side_frames=\(recorder.lightFrames.count)")
-        guard fusion.totalOccupiedVoxels > 10 else {
-            print("[PIPELINE] voxel clusters: 0")
-            print("[PIPELINE] export success: false")
-            print("[PIPELINE] model3dPath: nil")
-            print("[PIPELINE] file exists: false")
-            throw PipelineError.model3DExportFailed("no_voxel_grid")
-        }
+              "top_frames=\(recorder.topViewFrames.count), side_frames=\(recorder.lightFrames.count)" +
+              (fusion.totalOccupiedVoxels > 10 ? "" : " sparse_depth=true"))
 
         // ── 5b. Side-silhouette carving (top ∩ side hull, AGENTS.md §9) ──
         if let sideFrame = recorder.sideFrame {
-            fusion.setSideSilhouette(lidarSideSilhouette(sideFrame: sideFrame, topFrame: topFrame))
+            // Borrowed (occluded/nearest) side pieces belong to another food;
+            // LiDAR keeps carving only with each food's own silhouette.
+            fusion.setSideSilhouette(lidarSideSilhouette(
+                sideFrame: sideFrame, topFrame: topFrame,
+                profiles: capturedSideProfiles.filter { !$0.sideShared }))
         } else {
-            print("[DUALHULL] path=lidar side carving skipped (missing_side_view) — top-mask + depth hull only")
+            print("[DUALHULL] path=lidar sideApplied=false reason=missing_side_capture geometry=observed_top_depth")
         }
 
         let voxelClusters = fusion.voxelClusters()
         print("[PIPELINE] voxel clusters: \(voxelClusters.count) " +
-              voxelClusters.map { "\($0.id)=\($0.voxelKeys.count)" }.joined(separator: ", "))
+              voxelClusters.map { "\($0.id)=\($0.voxelKeys.count)(\($0.heightSource.rawValue))" }.joined(separator: ", "))
+        if let unresolved = fusion.lastUnresolvedFoods.first {
+            let error = Self.lidarUnresolvedFailure(
+                unresolved,
+                sideFrameCaptured: recorder.sideFrame != nil,
+                sideProfileCount: capturedSideProfiles.filter { !$0.sideShared }.count)
+            let summary = fusion.lastUnresolvedFoods
+                .map { "food#\($0.topIndex)(\($0.label)):\($0.reason)" }.joined(separator: ",")
+            if case .sideViewRequired(let reason) = error {
+                print("[PIPELINE] SIDE_VIEW_REQUIRED path=lidar reason=\(reason) unresolved=\(summary)")
+            } else {
+                print("[PIPELINE] lidar measurement failed: \(error.localizedDescription) unresolved=\(summary)")
+            }
+            print("[PIPELINE] export success: false")
+            throw error
+        }
         guard !voxelClusters.isEmpty else {
             print("[PIPELINE] export success: false")
             print("[PIPELINE] model3dPath: nil")
@@ -635,7 +701,8 @@ final class InferencePipeline {
             sideIntrinsics: recorder.sideFrame?.cameraIntrinsics,
             sideImageWidth: recorder.sideFrame.map { CVPixelBufferGetWidth($0.pixelBuffer) } ?? 0,
             sideImageHeight: recorder.sideFrame.map { CVPixelBufferGetHeight($0.pixelBuffer) } ?? 0,
-            sideDepthBuffer: recorder.sideFrame?.depthBuffer
+            sideDepthBuffer: recorder.sideFrame?.depthBuffer,
+            clusters: voxelClusters
         )
         print("[SCAN] exportFoodObjects: \(foodObjects.count) meshes — \(foodObjects.map { "\($0.id)(v=\($0.vertices.count),f=\($0.faces.count/3))" }.joined(separator: ", "))")
         guard !foodObjects.isEmpty else {
@@ -643,6 +710,13 @@ final class InferencePipeline {
             print("[PIPELINE] model3dPath: nil")
             print("[PIPELINE] file exists: false")
             throw PipelineError.model3DExportFailed("mesh_reconstruction_empty")
+        }
+        // No silent drops: every measured food must reach the displayed mesh.
+        let exportedIDs = Set(foodObjects.map(\.id))
+        let droppedIDs = voxelClusters.map(\.id).filter { !exportedIDs.contains($0) }
+        guard droppedIDs.isEmpty else {
+            print("[PIPELINE] export success: false dropped=\(droppedIDs.joined(separator: ","))")
+            throw PipelineError.model3DExportFailed("mesh_reconstruction_empty_\(droppedIDs.joined(separator: ","))")
         }
 
         // EXPERIMENTAL (#4, default-off): compare scene-mesh volumes vs the live
@@ -689,11 +763,64 @@ final class InferencePipeline {
         for seg in segments where segByLabel[seg.label] == nil {
             segByLabel[seg.label] = seg
         }
+        // Match the prerequisites used by DepthFusion's carving branch, using
+        // the source cluster's top instance rather than its possibly shared label.
+        let payloadSideSilhouette = recorder.sideFrame.flatMap {
+            lidarSideSilhouette(sideFrame: $0, topFrame: topFrame,
+                                profiles: capturedSideProfiles.filter { !$0.sideShared })
+        }
+        func sideMissingReason(for obj: DepthFusion.Food3DObject) -> String {
+            guard recorder.sideFrame != nil else { return "missing_capture" }
+            guard let side = payloadSideSilhouette else { return "unmatched_occluded_or_invalid_mask" }
+            guard let cluster = voxelClusters.first(where: { $0.id == obj.id }),
+                  let topIndex = cluster.topSegmentIndex,
+                  let mask = side.instanceMasks[topIndex] else {
+                return "unmatched_occluded_or_invalid_mask"
+            }
+            guard !mask.isEmpty, let maskW = mask.first?.count, maskW > 0,
+                  side.imageWidth > 0, side.imageHeight > 0,
+                  side.cropRect.width > 0.001, side.cropRect.height > 0.001 else {
+                return "invalid_side_silhouette"
+            }
+            let fx = side.cameraIntrinsics.columns.0.x
+            let fy = side.cameraIntrinsics.columns.1.y
+            guard abs(fx) > 0.0001, abs(fy) > 0.0001 else {
+                return "invalid_side_intrinsics"
+            }
+            let horizontal = side.cameraTransform.columns.0
+            let up = side.cameraTransform.columns.1
+            let rawAxis = abs(horizontal.y) < abs(up.y)
+                ? SIMD3<Float>(horizontal.x, 0, horizontal.z)
+                : SIMD3<Float>(-up.x, 0, -up.z)
+            guard simd_length(rawAxis) > 0.0001 else { return "invalid_side_axis" }
+            guard cluster.sideCarved else { return "side_carve_empty_kept_measured_depth" }
+            return "none"
+        }
+        func measurementMetadata(for obj: DepthFusion.Food3DObject) -> [String: Any] {
+            let sideReason = sideMissingReason(for: obj)
+            let sideApplied = sideReason == "none"
+            let meshVolume = round(obj.volumeCm3 * 10) / 10
+            let validMeshVolume = meshVolume.isFinite && meshVolume > 0 &&
+                !obj.vertices.isEmpty && !obj.faces.isEmpty
+            let measured = sideApplied && validMeshVolume
+            let heightSource = voxelClusters.first(where: { $0.id == obj.id })?.heightSource ?? .depth
+            return [
+                "height_source": heightSource.rawValue,
+                "volume_measured": measured,
+                "side_view_applied": sideApplied,
+                "side_missing_reason": sideReason,
+                "volume_measurement_reason": measured ? "none"
+                    : (sideApplied ? "invalid_display_mesh_volume" : sideReason),
+                // No fallback geometry exists on the LiDAR path.
+                "fallback_used": false,
+                "low_confidence": !measured,
+            ]
+        }
         lastModel3DObjects = foodObjects.map { obj -> [String: Any] in
             let seg = segByLabel[obj.label]
             let confidence = Double(seg?.confidence ?? 1.0)
             let dims = Self.meshDimensionsCm(obj.vertices)
-            return [
+            var metadata: [String: Any] = [
                 "id":           obj.id,
                 "label":        obj.label,
                 "volume_cm3":   round(obj.volumeCm3 * 10) / 10,
@@ -713,6 +840,8 @@ final class InferencePipeline {
                 "embedding": (seg?.embedding ?? []).map { Double($0) },
                 "label_source": seg?.labelSource ?? "recognizer",
             ]
+            metadata.merge(measurementMetadata(for: obj)) { _, current in current }
+            return metadata
         }
 
         // ── 7. Serialise ONLY exported 3-D objects to JSON ──────────────
@@ -745,6 +874,7 @@ final class InferencePipeline {
             d["candidate_labels"] = seg?.candidateLabels ?? []
             d["embedding"] = (seg?.embedding ?? []).map { Double($0) }
             d["label_source"] = seg?.labelSource ?? "recognizer"
+            d.merge(measurementMetadata(for: obj)) { _, current in current }
             // [EVAL] one line per food for known-weight calibration (#3).
             print("[EVAL] label=\(obj.label) volume_cm3=\(String(format: "%.1f", obj.volumeCm3)) voxels=\(obj.voxelCount) mode=lidar_mesh")
             payload.append(d)
@@ -896,7 +1026,8 @@ final class InferencePipeline {
         topSegments: [SegmentationService.SegmentedObject],
         axes: SideProfileAxes,
         roiShape: ScanMaskGeometry.ROIShape,
-        cropSidePx: Int
+        cropSidePx: Int,
+        calibration: MonocularVolumeEstimator.PhotoCalibration?
     ) -> [MonocularVolumeEstimator.SideProfile] {
         var sideSegments: [SegmentationService.SegmentedObject]
         do {
@@ -911,6 +1042,9 @@ final class InferencePipeline {
         sideSegments = constrainToCaptureROI(sideSegments, shape: roiShape)
         let inROISideCount = sideSegments.count
         sideSegments = mergeOverlappingInstances(sideSegments, view: "side")
+        sideSegments = splitDisconnectedInstances(
+            sideSegments, maskWidth: preprocessor.modelInputWidth,
+            maskHeight: preprocessor.modelInputHeight)
         print("[INSTANCES] view=side raw=\(rawSideCount) inROI=\(inROISideCount) afterMerge=\(sideSegments.count) (profiles only — the side view never adds instances)")
         guard !sideSegments.isEmpty else {
             print("[PIPELINE] side-profile: no side segments")
@@ -938,9 +1072,28 @@ final class InferencePipeline {
             var lo = maxIdx >= minIdx ? Double(minIdx) / Double(dim) : 0
             var hi = maxIdx >= minIdx ? Double(maxIdx + 1) / Double(dim) : 0
             if axes.reversed { (lo, hi) = (1.0 - hi, 1.0 - lo) }
-            return ScanMaskGeometry.SideMatchTop(
+            var descriptor = ScanMaskGeometry.SideMatchTop(
                 lo: lo, hi: hi, area: segment.pixelCount,
                 label: segment.label, classIndex: segment.classIndex)
+            if let calibration {
+                var projected: [Double] = []
+                var depths: [Double] = []
+                for r in 0..<h {
+                    for c in 0..<min(w, mask[r].count) where mask[r][c] != 0 {
+                        guard let world = calibration.topWorld(
+                            row: (Double(r) + 0.5) / Double(h),
+                            column: (Double(c) + 0.5) / Double(w)),
+                            let uv = calibration.sideUV(world: world) else { continue }
+                        projected.append(Double(axes.verticalUsesColumns ? uv.y : uv.x))
+                        let cameraPoint = calibration.sideTransform.inverse * SIMD4(world.x, world.y, world.z, 1)
+                        depths.append(Double(-cameraPoint.z))
+                    }
+                }
+                descriptor.projectedLo = projected.min()
+                descriptor.projectedHi = projected.max()
+                descriptor.cameraDepth = depths.isEmpty ? nil : depths.reduce(0, +) / Double(depths.count)
+            }
+            return descriptor
         }
 
         // SIDE segments along the side horizontal axis (rows when the side
@@ -982,41 +1135,48 @@ final class InferencePipeline {
         let assignments = ScanMaskGeometry.matchSideSegments(
             tops: tops, sides: sides, horizontalDim: horizontalDim)
         var profiles: [MonocularVolumeEstimator.SideProfile] = []
+        let sideMasks = sideSegments.map(\.mask)
         for (topIndex, top) in topSegments.enumerated() {
-            guard let a = assignments.first(where: { $0.topIndex == topIndex }) else {
-                print("[SIDEMATCH] top#\(topIndex)(\(top.label)) ← none (no side segment overlaps its footprint; top-mask fallback for this food)")
+            let mine = assignments.filter { $0.topIndex == topIndex }
+            guard !mine.isEmpty else {
+                print("[SIDEMATCH] top#\(topIndex)(\(top.label)) ← none (no side segment available; no prior fallback — scan will require a side view)")
                 continue
             }
-            let side = sideSegments[a.sideIndex]
-            // The matched piece: the side mask restricted to the assigned
-            // horizontal range (the whole segment unless it was shared).
-            var pieceMask = side.mask
-            var count = 0
+            // The food's side silhouette is the UNION of every piece assigned
+            // to it (split stem/highlight/shadow pieces are rejoined).
+            let union = ScanMaskGeometry.sidePieceUnion(
+                sideMasks: sideMasks, assignments: mine,
+                horizontalAlongRows: axes.verticalUsesColumns)
+            let pieceMask = union.mask
+            let count = union.pixelCount
+            let sideList = mine.map { "\($0.sideIndex)(\(sideSegments[$0.sideIndex].label))[\($0.from),\($0.to)]\($0.reason)\($0.isShared ? "*" : "")" }
+                .joined(separator: ",")
+            guard count > 0 else {
+                print("[SIDEMATCH] top#\(topIndex)(\(top.label)) ← sides [\(sideList)] empty union")
+                continue
+            }
             var rowTotal = 0
             var columnTotal = 0
             for r in 0..<pieceMask.count {
                 for c in 0..<pieceMask[r].count where pieceMask[r][c] != 0 {
-                    let horizontal = axes.verticalUsesColumns ? r : c
-                    if horizontal < a.from || horizontal > a.to {
-                        pieceMask[r][c] = 0
-                    } else {
-                        count += 1
-                        rowTotal += r
-                        columnTotal += c
-                    }
+                    rowTotal += r
+                    columnTotal += c
                 }
             }
-            guard count > 0 else {
-                print("[SIDEMATCH] top#\(topIndex)(\(top.label)) ← side seg \(a.sideIndex)(\(side.label)) empty range=[\(a.from),\(a.to)]")
-                continue
-            }
+            let largestPiece = zip(mine, union.piecePixels).max { $0.1 < $1.1 }!.0
+            let side = sideSegments[largestPiece.sideIndex]
+            let isSplit = mine.contains(where: \.isSplit)
+            let shared = mine.allSatisfy(\.isShared)
+            let reasons = mine.map(\.reason).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+                .joined(separator: "+")
+            let score = mine.map(\.score).max() ?? 0
             var piece = SegmentationService.SegmentedObject(
                 label: side.label,
                 classIndex: side.classIndex,
                 mask: pieceMask,
                 pixelCount: count,
                 centroid: (rowTotal / count, columnTotal / count),
-                confidence: side.confidence
+                confidence: mine.map { sideSegments[$0.sideIndex].confidence }.max() ?? side.confidence
             )
             piece.candidateLabels = side.candidateLabels
             guard var profile = makeSideProfile(
@@ -1025,14 +1185,28 @@ final class InferencePipeline {
                 imageWidth: cropSidePx,
                 imageHeight: cropSidePx
             ) else {
-                print("[SIDEMATCH] top#\(topIndex)(\(top.label)) ← side seg \(a.sideIndex)(\(side.label)) rejected by profile bounds range=[\(a.from),\(a.to)] px=\(count)")
+                print("[SIDEMATCH] top#\(topIndex)(\(top.label)) ← sides [\(sideList)] rejected by profile bounds px=\(count)")
                 continue
             }
+            profile.matchReason = reasons
+            profile.sideShared = shared
             profile.topSegmentIndex = topIndex
-            profile.matchScore = a.score
+            profile.matchScore = score
             profile.sourceMask = pieceMask
             profile.verticalIndexIncreasesUp = axes.verticalIndexIncreasesUp
-            print("[SIDEMATCH] top#\(topIndex)(\(top.label)) ← side seg \(a.sideIndex)(\(side.label)) score=\(String(format: "%.2f", a.score)) range=[\(a.from),\(a.to)]\(a.isSplit ? " split" : "") sidePx=\(count) ar=\(String(format: "%.2f", profile.aspectRatio)) topSpan=\(String(format: "%.2f-%.2f", tops[topIndex].lo, tops[topIndex].hi))")
+            profile.calibration = calibration
+            if let calibration,
+               let centre = calibration.topWorld(
+                    row: (Double(top.centroid.row) + 0.5) / Double(top.mask.count),
+                    column: (Double(top.centroid.col) + 0.5) / Double(top.mask.first?.count ?? 1)),
+               let bottom = calibration.sideWorld(
+                    uv: profile.sourceUV(axisU: 0.5, heightFraction: 0), through: centre),
+               let upper = calibration.sideWorld(
+                    uv: profile.sourceUV(axisU: 0.5, heightFraction: 1), through: centre) {
+                profile.measuredHeightCm = Double(abs(upper.y - bottom.y)) * 100
+                profile.sourceBaseHeightM = min(upper.y, bottom.y) - calibration.tableY
+            }
+            print("[SIDEMATCH] top#\(topIndex)(\(top.label)) ← sides [\(sideList)] reason=\(reasons) shared=\(shared)\(isSplit ? " split" : "") score=\(String(format: "%.2f", score)) sidePx=\(count) ar=\(String(format: "%.2f", profile.aspectRatio)) measuredH=\(profile.measuredHeightCm.map { String(format: "%.2fcm", $0) } ?? "uncalibrated") topSpan=\(String(format: "%.2f-%.2f", tops[topIndex].lo, tops[topIndex].hi))")
             profiles.append(profile)
         }
         print("[PIPELINE] side-profile: profiles=\(profiles.count), " +
@@ -1047,7 +1221,8 @@ final class InferencePipeline {
     /// when the side mask is unusable, so the scan never fails on it.
     private func lidarSideSilhouette(
         sideFrame: FrameCaptureService.CapturedFrame,
-        topFrame: FrameCaptureService.CapturedFrame
+        topFrame: FrameCaptureService.CapturedFrame,
+        profiles: [MonocularVolumeEstimator.SideProfile]
     ) -> DepthFusion.SideSilhouette? {
         let sideAxes = sideProfileAxes(sideFrame: sideFrame, topFrame: topFrame)
         let bufferW = CVPixelBufferGetWidth(sideFrame.pixelBuffer)
@@ -1055,27 +1230,7 @@ final class InferencePipeline {
         let crop = ScanMaskGeometry.centredSquareCrop(width: bufferW, height: bufferH)
         let shape = ScanMaskGeometry.ROIShape.roundedRect(
             longAxisAlongColumns: !sideAxes.verticalUsesColumns)
-        guard let capture = autoreleasepool(invoking: {
-            preprocessor.preprocess(pixelBuffer: sideFrame.pixelBuffer, plateRect: crop)
-                .flatMap { captureROIFrame(from: $0, shape: shape) }
-        }) else {
-            print("[DUALHULL] path=lidar side carving skipped (side_preprocess_failed)")
-            return nil
-        }
-        var sideSegments: [SegmentationService.SegmentedObject]
-        do {
-            sideSegments = yoloSegmentationService.isAvailable
-                ? try yoloSegmentationService.segment(pixelBuffer: capture)
-                : try segmentationService.segment(pixelBuffer: capture)
-        } catch {
-            print("[DUALHULL] path=lidar side carving skipped (side_segmentation_failed: \(error))")
-            return nil
-        }
-        let raw = sideSegments.count
-        sideSegments = constrainToCaptureROI(sideSegments, shape: shape)
-        sideSegments = mergeOverlappingInstances(sideSegments, view: "side_lidar")
-        print("[INSTANCES] view=side path=lidar raw=\(raw) afterMerge=\(sideSegments.count) (silhouette only — the side view never adds instances)")
-        guard let first = sideSegments.first?.mask, !first.isEmpty,
+        guard let first = profiles.first?.sourceMask, !first.isEmpty,
               let maskW = first.first?.count, maskW > 0 else {
             print("[DUALHULL] path=lidar side carving skipped (no_side_food_mask)")
             return nil
@@ -1083,9 +1238,9 @@ final class InferencePipeline {
         let maskH = first.count
         var union = [[UInt8]](repeating: [UInt8](repeating: 0, count: maskW), count: maskH)
         var onPixels = 0
-        for segment in sideSegments where segment.mask.count == maskH {
+        for profile in profiles where profile.sourceMask.count == maskH {
             for r in 0..<maskH {
-                let row = segment.mask[r]
+                let row = profile.sourceMask[r]
                 for c in 0..<min(maskW, row.count) where row[c] != 0 && union[r][c] == 0 {
                     union[r][c] = 1
                     onPixels += 1
@@ -1093,13 +1248,17 @@ final class InferencePipeline {
             }
         }
         let coverage = Double(onPixels) / Double(maskW * maskH)
-        guard coverage >= 0.002 else {
-            print("[DUALHULL] path=lidar side carving skipped (side_mask_too_small coverage=\(String(format: "%.4f", coverage)))")
+        guard onPixels > 0 else {
+            print("[DUALHULL] path=lidar side carving skipped (empty_matched_side_masks)")
             return nil
         }
         print("[ROI] view=side path=lidar \(ScanMaskGeometry.ROI(width: maskW, height: maskH, shape: shape).logDescription) crop=centred_square buffer=\(bufferW)x\(bufferH) sideMaskCoverage=\(String(format: "%.3f", coverage))")
         return DepthFusion.SideSilhouette(
             mask: union,
+            instanceMasks: Dictionary(uniqueKeysWithValues: profiles.compactMap {
+                guard let index = $0.topSegmentIndex else { return nil }
+                return (index, $0.sourceMask)
+            }),
             cropRect: crop,
             roiShape: shape,
             cameraTransform: sideFrame.cameraTransform,
@@ -1342,11 +1501,10 @@ final class InferencePipeline {
 
         let horizontalExtent = maxHorizontal - minHorizontal + 1
         let verticalExtent = maxVertical - minVertical + 1
-        let sampleCount = min(192, max(24, horizontalExtent))
+        let sampleCount = horizontalExtent
         var heights = [Double](repeating: 0, count: sampleCount)
         var bottoms = [Double](repeating: 0, count: sampleCount)
         var tops = [Double](repeating: 0, count: sampleCount)
-        var hasSample = [Bool](repeating: false, count: sampleCount)
 
         for sampleIndex in 0..<sampleCount {
             let h0 = minHorizontal + Int((Double(sampleIndex) * Double(horizontalExtent) / Double(sampleCount)).rounded(.down))
@@ -1389,53 +1547,10 @@ final class InferencePipeline {
                 }
                 bottoms[sampleIndex] = min(1.0, max(0.0, bottomOffset))
                 tops[sampleIndex] = min(1.0, max(0.0, topOffset))
-                hasSample[sampleIndex] = true
             }
         }
 
-        // Interpolate tiny segmentation gaps inside the side silhouette, but
-        // keep true endpoints tapered. This avoids a notch in the exported mesh
-        // when the side mask has a one-column dropout.
-        for i in 0..<sampleCount where !hasSample[i] {
-            var left: Int?
-            var right: Int?
-            if i > 0 {
-                for j in stride(from: i - 1, through: 0, by: -1) where hasSample[j] {
-                    left = j
-                    break
-                }
-            }
-            if i + 1 < sampleCount {
-                for j in (i + 1)..<sampleCount where hasSample[j] {
-                    right = j
-                    break
-                }
-            }
-            switch (left, right) {
-            case let (l?, r?):
-                let t = Double(i - l) / Double(r - l)
-                heights[i] = heights[l] * (1.0 - t) + heights[r] * t
-                bottoms[i] = bottoms[l] * (1.0 - t) + bottoms[r] * t
-                tops[i] = tops[l] * (1.0 - t) + tops[r] * t
-            case let (l?, nil):
-                heights[i] = heights[l] * 0.35
-                bottoms[i] = bottoms[l]
-                tops[i] = max(bottoms[i], bottoms[i] + heights[i])
-            case let (nil, r?):
-                heights[i] = heights[r] * 0.35
-                bottoms[i] = bottoms[r]
-                tops[i] = max(bottoms[i], bottoms[i] + heights[i])
-            default:
-                heights[i] = 0
-                bottoms[i] = 0
-                tops[i] = 0
-            }
-        }
-
-        // Keep the side silhouette as extracted from the photo. We still fill
-        // tiny missing interior samples above, but we do not blur the contour;
-        // smoothing here made the displayed mesh prettier while moving the side
-        // outline away from the exact captured mask.
+        // One sample per measured mask column/row. Empty samples stay empty.
         let exactHeights = heights.map { min(1.0, max(0.0, $0)) }
         let exactBottoms = bottoms.map { min(1.0, max(0.0, $0)) }
         let exactTops = tops.map { min(1.0, max(0.0, $0)) }
@@ -1448,7 +1563,7 @@ final class InferencePipeline {
         let horizontalFullPx = Double(horizontalExtent) * horizontalFullDim / max(1.0, horizontalMaskDim)
         let aspectRatio = verticalFullPx / max(1.0, horizontalFullPx)
         let coverage = Double(segment.pixelCount) / Double(max(1, maskW * maskH))
-        guard aspectRatio > 0.05, aspectRatio < 4.0, coverage > 0.001 else { return nil }
+        guard aspectRatio.isFinite, aspectRatio > 0, segment.pixelCount > 0 else { return nil }
 
         return MonocularVolumeEstimator.SideProfile(
             label: segment.label,
@@ -1468,91 +1583,6 @@ final class InferencePipeline {
             textureVerticalMin: Double(minVertical) / max(1.0, verticalMaskDim),
             textureVerticalMax: Double(maxVertical + 1) / max(1.0, verticalMaskDim)
         )
-    }
-
-    /// Measure the dominant food's true vertical height (cm) from the side
-    /// view. Segments the side frame, takes the largest food mask, measures its
-    /// extent along the gravity-aligned image axis (robust to portrait OR
-    /// landscape via the camera transform), and converts pixels → cm with the
-    /// pinhole model (focal length × assumed 30 cm hold distance). Returns nil
-    /// when there is no side frame / food, or the result is implausible — the
-    /// estimator then falls back to the class height prior. Purely additive: it
-    /// can never make the estimate worse than the prior-only path.
-    private func measureSideHeightCm(
-        _ sideFrame: FrameCaptureService.CapturedFrame
-    ) -> Double? {
-        guard let pre = preprocessor.preprocess(
-            pixelBuffer: sideFrame.pixelBuffer, plateRect: nil
-        ) else { return nil }
-
-        let sideSegments: [SegmentationService.SegmentedObject]
-        do {
-            sideSegments = yoloSegmentationService.isAvailable
-                ? try yoloSegmentationService.segment(pixelBuffer: pre)
-                : try segmentationService.segment(pixelBuffer: pre)
-        } catch {
-            print("[PIPELINE] side-height: segmentation failed: \(error)")
-            return nil
-        }
-        guard let largest = sideSegments.first, !largest.mask.isEmpty else {
-            return nil
-        }
-
-        // Which image axis runs vertically? Project world-up onto the camera
-        // basis: whichever of the camera's right/up vectors aligns more with
-        // gravity tells us whether image columns or rows are the vertical axis.
-        let t = sideFrame.cameraTransform
-        let camRight = simd_normalize(
-            simd_float3(t.columns.0.x, t.columns.0.y, t.columns.0.z))
-        let camUp = simd_normalize(
-            simd_float3(t.columns.1.x, t.columns.1.y, t.columns.1.z))
-        let worldUp = simd_float3(0, 1, 0)
-        let useColumns =
-            abs(simd_dot(camRight, worldUp)) >= abs(simd_dot(camUp, worldUp))
-
-        // Food mask extent along the chosen (vertical) axis, in mask pixels.
-        let maskH = largest.mask.count
-        let maskW = largest.mask.first?.count ?? 0
-        guard maskH > 0, maskW > 0 else { return nil }
-        var minIdx = Int.max
-        var maxIdx = -1
-        if useColumns {
-            for r in 0..<maskH {
-                let row = largest.mask[r]
-                for c in 0..<maskW where row[c] == 1 {
-                    if c < minIdx { minIdx = c }
-                    if c > maxIdx { maxIdx = c }
-                }
-            }
-        } else {
-            for r in 0..<maskH where largest.mask[r].contains(1) {
-                if r < minIdx { minIdx = r }
-                if r > maxIdx { maxIdx = r }
-            }
-        }
-        guard maxIdx >= minIdx else { return nil }
-
-        // Mask extent → full-frame pixels → cm via the pinhole model.
-        let maskExtent = Double(maxIdx - minIdx + 1)
-        let maskDim = Double(useColumns ? maskW : maskH)
-        let fullDim = Double(useColumns
-            ? CVPixelBufferGetWidth(sideFrame.pixelBuffer)
-            : CVPixelBufferGetHeight(sideFrame.pixelBuffer))
-        let pixelExtentFull = maskExtent * (fullDim / maskDim)
-
-        let k = sideFrame.cameraIntrinsics
-        let focal = Double(useColumns ? k.columns.0.x : k.columns.1.y)
-        guard focal > 1 else { return nil }
-
-        let distanceCm = 30.0 // guided hold distance (matches scan guidance)
-        let heightCm = pixelExtentFull * distanceCm / focal
-
-        guard heightCm >= 0.5, heightCm <= 25.0 else {
-            print("[PIPELINE] side-height: \(String(format: "%.1f", heightCm)) cm out of range — ignoring")
-            return nil
-        }
-        print("[PIPELINE] side-view measured height: \(String(format: "%.1f", heightCm)) cm (axis=\(useColumns ? "cols" : "rows"))")
-        return heightCm
     }
 
     /// Replace low-trust segmentation labels with ML Kit's confident specific
@@ -2425,7 +2455,9 @@ final class InferencePipeline {
         let far = values[min(values.count - 1, values.count * 9 / 10)]
         let heightCm = Double(max(0, far - near) * 100.0)
         guard heightCm >= 0.5 else { return nil }
-        return min(8.0, max(0.8, heightCm))
+        // Raw central depth spread for the food-presence gate/log only. It is
+        // never a food height, shape or volume source, so no clamp/floor.
+        return heightCm
     }
 
 }
@@ -2941,6 +2973,9 @@ enum ScanMaskGeometry {
         let area: Int
         let label: String
         let classIndex: Int
+        var projectedLo: Double?
+        var projectedHi: Double?
+        var cameraDepth: Double?
         var centre: Double { (lo + hi) * 0.5 }
     }
 
@@ -2965,44 +3000,52 @@ enum ScanMaskGeometry {
         let to: Int
         let score: Double
         let isSplit: Bool
+        /// True when this top borrows a side slice that belongs to another top
+        /// (occluded behind it, or left unmatched and given the nearest one).
+        var isShared: Bool = false
+        /// Why this side piece was given to this top (logged as [SIDEMATCH]).
+        var reason: String = "overlap"
     }
 
-    /// Assign each top instance its own side-silhouette segment (or a slice of
-    /// one). The side view only ever provides PROFILES — it never adds
-    /// instances. Single food: the most prominent, best-centred side segment
-    /// (label agreement is a small bonus because labels are view-dependent).
-    /// Several foods: top footprints are mapped linearly onto the side view's
-    /// horizontal span and matched by interval containment; when two foods
-    /// share one side segment (they touch in the side view) it is cut at the
-    /// narrowest point (waist) between their predicted positions.
+    /// Assign every top instance one or more side-silhouette pieces. The side
+    /// view only ever provides PROFILES — it never adds instances — and a real
+    /// side silhouette is never dropped (AGENTS.md §9: there is no prior,
+    /// default height or top-only shape to fall back to). A top may receive
+    /// several pieces (their union is its silhouette).
+    ///
+    /// - One top food: it gets the union of ALL side food segments (stem /
+    ///   highlight / shadow splits are rejoined).
+    /// - Several foods: each top's footprint is mapped onto the side
+    ///   horizontal axis (calibrated photo-pose projection, else a linear map
+    ///   of the top span onto the side span). A side segment goes to the
+    ///   top(s) it overlaps; one shared by separated foods is cut at the
+    ///   narrowest point (waist) between their predicted positions, and
+    ///   co-located (occluded) foods share the front food's piece.
+    /// - Side pieces overlapping no top are paired with still-unmatched tops by
+    ///   horizontal ORDER, or else unioned into the nearest top.
+    /// - A top still unmatched borrows the nearest side piece by position.
     static func matchSideSegments(
         tops: [SideMatchTop],
         sides: [SideMatchSide],
         horizontalDim: Int
     ) -> [SideMatchAssignment] {
         guard !tops.isEmpty, !sides.isEmpty, horizontalDim > 0 else { return [] }
-        let maxSideArea = sides.map(\.area).max() ?? 0
         let candidates = sides.indices.filter {
-            sides[$0].area > 0 && sides[$0].hi >= sides[$0].lo &&
-            Double(sides[$0].area) >= 0.15 * Double(maxSideArea)
+            sides[$0].area > 0 && sides[$0].hi >= sides[$0].lo
         }
         guard !candidates.isEmpty else { return [] }
-        func label(_ t: Int, _ s: Int) -> Double {
-            sameFood(tops[t].label, tops[t].classIndex, sides[s].label, sides[s].classIndex) ? 1 : 0
+        func sorted(_ list: [SideMatchAssignment]) -> [SideMatchAssignment] {
+            list.sorted {
+                ($0.topIndex, $0.sideIndex, $0.from) < ($1.topIndex, $1.sideIndex, $1.from)
+            }
         }
 
         if tops.count == 1 {
-            var best: (side: Int, score: Double)?
-            for s in candidates {
-                let prominence = Double(sides[s].area) / Double(max(1, maxSideArea))
-                let centred = min(1.0, max(0.0, sides[s].centredness))
-                let score = 0.45 * prominence + 0.35 * centred + 0.20 * label(0, s)
-                if best == nil || score > best!.score { best = (s, score) }
-            }
-            guard let best else { return [] }
-            return [SideMatchAssignment(topIndex: 0, sideIndex: best.side,
-                                        from: sides[best.side].lo, to: sides[best.side].hi,
-                                        score: best.score, isSplit: false)]
+            let reason = candidates.count == 1 ? "single_food" : "single_food_union"
+            return sorted(candidates.map {
+                SideMatchAssignment(topIndex: 0, sideIndex: $0, from: sides[$0].lo, to: sides[$0].hi,
+                                    score: 1, isSplit: false, isShared: false, reason: reason)
+            })
         }
 
         let maxTopArea = tops.map(\.area).max() ?? 0
@@ -3017,69 +3060,66 @@ enum ScanMaskGeometry {
         let topSpan = max(1e-6, b - a)
         func predict(_ x: Double) -> Double { h0 + (x - a) / topSpan * (h1 - h0) }
         func predicted(_ t: Int) -> (lo: Double, hi: Double) {
-            (predict(tops[t].lo), predict(tops[t].hi))
+            if let lo = tops[t].projectedLo, let hi = tops[t].projectedHi {
+                return (lo * Double(horizontalDim), hi * Double(horizontalDim))
+            }
+            return (predict(tops[t].lo), predict(tops[t].hi))
         }
-        func score(_ t: Int, _ s: Int) -> Double {
+        func predictedCentre(_ t: Int) -> Double {
+            let p = predicted(t)
+            return (p.lo + p.hi) * 0.5
+        }
+        func sideCentre(_ s: Int) -> Double { (Double(sides[s].lo) + Double(sides[s].hi + 1)) * 0.5 }
+        /// Fraction of the narrower of the two intervals covered by their
+        /// intersection: 1 when one contains the other.
+        func overlap(_ t: Int, _ s: Int) -> Double {
             let p = predicted(t)
             let sLo = Double(sides[s].lo), sHi = Double(sides[s].hi + 1)
             let inter = max(0, min(p.hi, sHi) - max(p.lo, sLo))
-            let contain = inter / max(1e-6, p.hi - p.lo)
-            let iou = inter / max(1e-6, max(p.hi, sHi) - min(p.lo, sLo))
-            return 0.6 * contain + 0.25 * iou + 0.15 * label(t, s)
+            return inter / max(1e-6, min(p.hi - p.lo, sHi - sLo))
         }
-
-        var users: [Int: [Int]] = [:]
-        var chosenScore: [Int: Double] = [:]
-        let order = tops.indices.sorted {
-            tops[$0].area != tops[$1].area ? tops[$0].area > tops[$1].area : $0 < $1
-        }
-        for t in order {
-            let small = !substantial.contains(t)
-            var best: (side: Int, score: Double)?
-            for s in candidates {
-                // A small top may only take a side segment nobody uses, so a
-                // crumb never steals or slices a main food's silhouette.
-                if small, users[s] != nil { continue }
-                let sc = score(t, s)
-                guard sc >= 0.35 else { continue }
-                if best == nil || sc > best!.score { best = (s, sc) }
-            }
-            guard let best else { continue }
-            chosenScore[t] = best.score
-            users[best.side, default: []].append(t)
+        /// A small, uncalibrated top never slices a main food's silhouette.
+        func mayOwn(_ t: Int, among owners: [Int]) -> Bool {
+            substantial.contains(t) || tops[t].projectedLo != nil
+                || !owners.contains(where: { substantial.contains($0) })
         }
 
         var result: [SideMatchAssignment] = []
-        for (s, members) in users {
+        var unowned: [Int] = []
+
+        // Phase 1: overlap ownership (+ waist split / occlusion sharing).
+        for s in candidates {
             let side = sides[s]
-            if members.count == 1 {
-                let t = members[0]
-                result.append(SideMatchAssignment(topIndex: t, sideIndex: s, from: side.lo, to: side.hi,
-                                                  score: chosenScore[t] ?? 0, isSplit: false))
+            let scored = tops.indices.map { ($0, overlap($0, s)) }.filter { $0.1 >= 0.25 }
+            guard let best = scored.map(\.1).max() else {
+                unowned.append(s)
                 continue
             }
-            let sorted = members.sorted {
-                predict(tops[$0].centre) < predict(tops[$1].centre)
+            var owners = scored.filter { $0.1 >= 0.5 * best }.map(\.0)
+            owners = owners.filter { mayOwn($0, among: owners) }
+            let scoreOf = Dictionary(uniqueKeysWithValues: scored)
+            let members = owners.sorted { predictedCentre($0) < predictedCentre($1) }
+            guard !members.isEmpty else {
+                unowned.append(s)
+                continue
             }
-            // Foods whose predicted spans overlap heavily are one behind the
-            // other in the side view (occlusion) and share the same slice.
-            var clusters: [[Int]] = [[sorted[0]]]
-            for k in 1..<sorted.count {
-                let prev = predicted(sorted[k - 1])
-                let cur = predicted(sorted[k])
-                let overlap = max(0, min(prev.hi, cur.hi) - max(prev.lo, cur.lo))
+            var clusters: [[Int]] = [[members[0]]]
+            for k in 1..<max(1, members.count) {
+                let prev = predicted(members[k - 1])
+                let cur = predicted(members[k])
+                let inter = max(0, min(prev.hi, cur.hi) - max(prev.lo, cur.lo))
                 let minWidth = min(prev.hi - prev.lo, cur.hi - cur.lo)
-                if overlap >= 0.5 * minWidth {
-                    clusters[clusters.count - 1].append(sorted[k])
+                if inter >= 0.5 * minWidth {
+                    clusters[clusters.count - 1].append(members[k])
                 } else {
-                    clusters.append([sorted[k]])
+                    clusters.append([members[k]])
                 }
             }
             var bounds = [(lo: Int, hi: Int)](repeating: (side.lo, side.hi), count: clusters.count)
             if clusters.count > 1 {
                 for k in 0..<(clusters.count - 1) {
-                    let c0 = clusters[k].map { predict(tops[$0].centre) }.reduce(0, +) / Double(clusters[k].count)
-                    let c1 = clusters[k + 1].map { predict(tops[$0].centre) }.reduce(0, +) / Double(clusters[k + 1].count)
+                    let c0 = clusters[k].map { predictedCentre($0) }.reduce(0, +) / Double(clusters[k].count)
+                    let c1 = clusters[k + 1].map { predictedCentre($0) }.reduce(0, +) / Double(clusters[k + 1].count)
                     let delta = c1 - c0
                     let mid = (c0 + c1) * 0.5
                     let lo = max(side.lo, Int((c0 + 0.25 * delta).rounded(.up)))
@@ -3103,14 +3143,109 @@ enum ScanMaskGeometry {
                 }
             }
             for (k, cluster) in clusters.enumerated() where bounds[k].lo <= bounds[k].hi {
+                // Co-located tops (one occludes the other in the side view):
+                // the front one (calibrated camera depth) — else the largest —
+                // owns the piece and the others share it.
+                let primary: Int
+                if cluster.allSatisfy({ tops[$0].cameraDepth != nil }) {
+                    primary = cluster.min { tops[$0].cameraDepth! < tops[$1].cameraDepth! }!
+                } else {
+                    primary = cluster.max {
+                        tops[$0].area != tops[$1].area ? tops[$0].area < tops[$1].area : $0 > $1
+                    }!
+                }
                 for t in cluster {
-                    result.append(SideMatchAssignment(topIndex: t, sideIndex: s,
-                                                      from: bounds[k].lo, to: bounds[k].hi,
-                                                      score: chosenScore[t] ?? 0,
-                                                      isSplit: clusters.count > 1))
+                    let shared = t != primary
+                    result.append(SideMatchAssignment(
+                        topIndex: t, sideIndex: s, from: bounds[k].lo, to: bounds[k].hi,
+                        score: scoreOf[t] ?? 0, isSplit: clusters.count > 1,
+                        isShared: shared, reason: shared ? "occluded_shared" : "overlap"))
                 }
             }
         }
-        return result.sorted { $0.topIndex < $1.topIndex }
+
+        // Phase 2: side pieces that overlap no top. Pair them with still
+        // unmatched tops by horizontal ORDER; otherwise they are split-off
+        // parts (stem/highlight/shadow) of the nearest top and are unioned.
+        if !unowned.isEmpty {
+            let assignedTops = Set(result.map(\.topIndex))
+            let freeTops = tops.indices.filter { !assignedTops.contains($0) }
+                .sorted { predictedCentre($0) < predictedCentre($1) }
+            let freeSides = unowned.sorted { sideCentre($0) < sideCentre($1) }
+            for (rank, s) in freeSides.enumerated() {
+                let t: Int
+                let reason: String
+                if !freeTops.isEmpty {
+                    let sideRank = (Double(rank) + 0.5) / Double(freeSides.count)
+                    t = freeTops.indices.min {
+                        abs((Double($0) + 0.5) / Double(freeTops.count) - sideRank)
+                            < abs((Double($1) + 0.5) / Double(freeTops.count) - sideRank)
+                    }.map { freeTops[$0] }!
+                    reason = "order"
+                } else {
+                    t = tops.indices.min {
+                        abs(predictedCentre($0) - sideCentre(s)) < abs(predictedCentre($1) - sideCentre(s))
+                    }!
+                    reason = "nearest_piece"
+                }
+                result.append(SideMatchAssignment(
+                    topIndex: t, sideIndex: s, from: sides[s].lo, to: sides[s].hi,
+                    score: overlap(t, s), isSplit: false, isShared: false, reason: reason))
+            }
+        }
+
+        // Phase 3: a top still without a piece borrows the side piece nearest
+        // to its predicted position (never a prior).
+        let owned = result
+        for t in tops.indices where !owned.contains(where: { $0.topIndex == t }) {
+            let c = predictedCentre(t)
+            func distance(_ x: SideMatchAssignment) -> Double {
+                let lo = Double(x.from), hi = Double(x.to + 1)
+                return c < lo ? lo - c : (c > hi ? c - hi : 0)
+            }
+            guard let nearest = owned.min(by: {
+                let d0 = distance($0), d1 = distance($1)
+                return d0 != d1 ? d0 < d1 : $0.isShared == false && $1.isShared
+            }) else { continue }
+            result.append(SideMatchAssignment(
+                topIndex: t, sideIndex: nearest.sideIndex, from: nearest.from, to: nearest.to,
+                score: 0, isSplit: nearest.isSplit, isShared: true, reason: "nearest_shared"))
+        }
+        return sorted(result)
+    }
+
+    /// Union of the assigned side-mask pieces for ONE top: each assignment
+    /// contributes its side mask restricted to `from…to` along the side
+    /// horizontal axis (rows when `horizontalAlongRows`). Returns the union
+    /// mask, its pixel count and each assignment's own pixel count. Pure.
+    static func sidePieceUnion(
+        sideMasks: [[[UInt8]]],
+        assignments: [SideMatchAssignment],
+        horizontalAlongRows: Bool
+    ) -> (mask: [[UInt8]], pixelCount: Int, piecePixels: [Int]) {
+        let height = sideMasks.map(\.count).max() ?? 0
+        let width = sideMasks.flatMap { $0.map(\.count) }.max() ?? 0
+        var union = [[UInt8]](repeating: [UInt8](repeating: 0, count: width), count: height)
+        var total = 0
+        var piecePixels: [Int] = []
+        for a in assignments {
+            var pixels = 0
+            if a.sideIndex >= 0, a.sideIndex < sideMasks.count {
+                let mask = sideMasks[a.sideIndex]
+                for r in 0..<mask.count {
+                    for c in 0..<mask[r].count where mask[r][c] != 0 {
+                        let horizontal = horizontalAlongRows ? r : c
+                        guard horizontal >= a.from, horizontal <= a.to else { continue }
+                        pixels += 1
+                        if union[r][c] == 0 {
+                            union[r][c] = 1
+                            total += 1
+                        }
+                    }
+                }
+            }
+            piecePixels.append(pixels)
+        }
+        return (union, total, piecePixels)
     }
 }

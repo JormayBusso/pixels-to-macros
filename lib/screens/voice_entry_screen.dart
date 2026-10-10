@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -13,6 +16,7 @@ import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/locale_provider.dart';
 import '../services/database_service.dart';
+import '../services/voice_permission_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/premium_theme_effects.dart';
 import 'voice/voice_translation.dart';
@@ -29,9 +33,18 @@ class VoiceEntryScreen extends ConsumerStatefulWidget {
   ConsumerState<VoiceEntryScreen> createState() => _VoiceEntryScreenState();
 }
 
-class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
+class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen>
+    with WidgetsBindingObserver {
   final SpeechToText _speech = SpeechToText();
-  bool _available = false;
+  late final SpeechRecognizerBinding _recognizer =
+      SpeechRecognizerBinding(_speech);
+  final VoicePermissionService _permissions = VoicePermissionService();
+  // speech_to_text initializes once per app session, so a re-entered screen
+  // starts ready instead of flashing the "allow" hint.
+  late bool _available = _recognizer.isAvailable;
+  // Real platform authorization, re-read on open/tap/resume; null = unknown.
+  VoiceAccess? _access;
+  bool _starting = false;
   bool _listening = false;
   String _transcript = '';
   List<_ParsedFood> _parsed = [];
@@ -307,8 +320,18 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   @override
   void initState() {
     super.initState();
-    _initSpeech();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_refreshAccess());
     _loadFoods();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Returning from Settings: re-read the real statuses. Skipped while a
+    // tap is requesting permissions (the system prompt also resumes the app).
+    if (state == AppLifecycleState.resumed && !_starting) {
+      unawaited(_refreshAccess());
+    }
   }
 
   Future<void> _loadFoods() async {
@@ -319,103 +342,126 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     }
   }
 
-  /// Silently initialises speech only when both permissions are already
-  /// granted. Permissions are requested when the user taps the mic, never on
-  /// screen open, so a not-yet-allowed mic never shows an error banner.
-  Future<void> _initSpeech() async {
-    final mic = await Permission.microphone.status;
-    final speech = await Permission.speech.status;
-    if (!mic.isGranted || !speech.isGranted) {
-      _available = false;
-      if (mounted) setState(() {});
-      return;
-    }
-    await _initRecognizer();
+  /// Reads the real microphone + speech statuses without prompting, and
+  /// initialises the recognizer once both are granted. Permissions are only
+  /// requested when the user taps the mic, never on screen open.
+  Future<void> _refreshAccess() async {
+    final access = await _permissions.check();
+    if (!mounted) return;
+    setState(() => _access = access);
+    if (access == VoiceAccess.granted) await _initRecognizer();
   }
 
-  /// Ensures mic + speech permissions on tap: shows the iOS system prompt when
-  /// it can still be shown, otherwise an in-app pop-up that opens Settings.
-  Future<bool> _ensurePermissions() async {
-    var mic = await Permission.microphone.status;
-    var speech = await Permission.speech.status;
-    if (mic.isGranted && speech.isGranted) return true;
-    if (!mic.isGranted && !mic.isPermanentlyDenied && !mic.isRestricted) {
-      mic = await Permission.microphone.request();
-    }
-    if (mic.isGranted &&
-        !speech.isGranted &&
-        !speech.isPermanentlyDenied &&
-        !speech.isRestricted) {
-      speech = await Permission.speech.request();
-    }
-    if (mic.isGranted && speech.isGranted) return true;
-    if (mounted) await _showPermissionDialog();
-    return false;
-  }
-
-  Future<void> _showPermissionDialog() async {
+  /// Shows guidance for an access state the system prompt can no longer fix.
+  Future<void> _showAccessDialog(VoiceAccess access) async {
     final l10n = AppLocalizations.of(context);
+    final restricted = access == VoiceAccess.micRestricted ||
+        access == VoiceAccess.speechRestricted;
+    final speech = access == VoiceAccess.speechDenied;
+    final String title;
+    final String body;
+    if (restricted) {
+      title = l10n.voiceRestrictedTitle;
+      body = l10n.voiceRestrictedBody;
+    } else if (speech) {
+      title = l10n.voiceSpeechPermissionTitle;
+      body = l10n.voiceSpeechDeniedBody;
+    } else if (access == VoiceAccess.micDenied) {
+      title = l10n.voiceMicPermissionTitle;
+      body = l10n.voiceMicDeniedBody;
+    } else {
+      title = l10n.voiceMicPermissionTitle;
+      body = l10n.voiceMicPermissionBody;
+    }
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.mic_none_rounded),
-        title: Text(l10n.voiceMicPermissionTitle),
-        content: Text(l10n.voiceMicPermissionBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              openAppSettings();
-            },
-            child: Text(l10n.openSettings),
-          ),
-        ],
+        icon: Icon(speech
+            ? Icons.record_voice_over_outlined
+            : Icons.mic_none_rounded),
+        title: Text(title),
+        content: Text(body),
+        actions: restricted
+            ? [
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text(l10n.ok),
+                ),
+              ]
+            : [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    openAppSettings();
+                  },
+                  child: Text(l10n.openSettings),
+                ),
+              ],
       ),
     );
   }
 
   Future<void> _initRecognizer() async {
+    var ok = false;
     try {
-      _available = await _speech.initialize(
-        onError: (e) {
-          if (!mounted) return;
-          // Ignore late/transient plugin errors once we already have a usable
-          // result — otherwise a code like "error_no_match" overwrites a
-          // perfectly good transcript with a cryptic, scary message.
-          if (_parsed.isNotEmpty || _transcript.trim().isNotEmpty) return;
-          final code = e.errorMsg.toLowerCase();
-          if (code.contains('permission') || code.contains('denied')) {
-            setState(() => _listening = false);
-            _showPermissionDialog();
-            return;
-          }
-          setState(() => _error = _friendlySpeechError(e.errorMsg));
-        },
-        onStatus: (status) {
-          if (status == 'done' || status == 'notListening') {
-            if (mounted) setState(() => _listening = false);
-          }
-        },
-      );
-      if (!_available && mounted) {
-        // Permissions granted but the OS reported no recogniser — on iOS this is
-        // almost always Dictation being turned off in Settings.
-        setState(() =>
-            _error = AppLocalizations.of(context).voiceEnableDictation);
-      }
+      ok = await _recognizer.initialize(
+          onError: _onSpeechError, onStatus: _onSpeechStatus);
     } catch (e) {
-      _available = false;
-      if (mounted) {
-        debugPrint('Speech recognition unavailable: $e');
-        setState(() =>
-            _error = AppLocalizations.of(context).voiceEnableDictation);
-      }
+      debugPrint('[VoiceEntry] speech initialize failed: $e');
     }
-    if (mounted) setState(() {});
+    debugPrint('[VoiceEntry] recognizer available=$ok access=$_access');
+    if (!mounted) return;
+    final dictation = AppLocalizations.of(context).voiceEnableDictation;
+    setState(() {
+      _available = ok;
+      // Permissions are granted here, so a missing recogniser is an
+      // availability problem (on iOS usually Siri & Dictation turned off),
+      // never a permission one.
+      if (!ok) {
+        _error = dictation;
+      } else if (_error == dictation) {
+        _error = null;
+      }
+    });
+  }
+
+  void _onSpeechError(SpeechRecognitionError e) {
+    if (!mounted) return;
+    // Ignore late/transient plugin errors once we already have a usable
+    // result — otherwise a code like "error_no_match" overwrites a
+    // perfectly good transcript with a cryptic, scary message.
+    if (_parsed.isNotEmpty || _transcript.trim().isNotEmpty) return;
+    if (isSpeechAuthorizationError(e.errorMsg)) {
+      setState(() => _listening = false);
+      unawaited(_handleAuthorizationError());
+      return;
+    }
+    setState(() => _error = _friendlySpeechError(e.errorMsg));
+  }
+
+  void _onSpeechStatus(String status) {
+    if (status == 'done' || status == 'notListening') {
+      if (mounted) setState(() => _listening = false);
+    }
+  }
+
+  /// A recognizer "not authorized" error is confirmed against the real
+  /// statuses: only a genuinely missing permission shows the permission
+  /// dialog; otherwise the recognizer itself is unavailable.
+  Future<void> _handleAuthorizationError() async {
+    final access = await _permissions.check();
+    if (!mounted) return;
+    setState(() => _access = access);
+    if (access == VoiceAccess.granted) {
+      setState(() =>
+          _error = AppLocalizations.of(context).voiceEnableDictation);
+      return;
+    }
+    await _showAccessDialog(access);
   }
 
   /// Turns raw speech-plugin error codes (e.g. "error_no_match") into clear,
@@ -432,6 +478,9 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
     if (c.contains('permission') || c.contains('denied')) {
       return l10n.voiceErrPermission;
     }
+    if (c.contains('recognizer_disabled')) {
+      return l10n.voiceEnableDictation;
+    }
     if (c.contains('network')) {
       return l10n.voiceErrNetwork;
     }
@@ -442,13 +491,21 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
   }
 
   Future<void> _startListening() async {
-    if (!await _ensurePermissions()) return;
-    if (!_available) await _initRecognizer();
-    if (!mounted) return;
-    if (!_available) {
-      setState(() =>
-          _error = AppLocalizations.of(context).voiceNotAvailableOnDevice);
-      return;
+    if (_starting) return;
+    _starting = true;
+    try {
+      final access = await _permissions.ensure();
+      if (!mounted) return;
+      setState(() => _access = access);
+      if (access != VoiceAccess.granted) {
+        await _showAccessDialog(access);
+        return;
+      }
+      // Cheap once initialised; also re-binds this screen's callbacks.
+      await _initRecognizer();
+      if (!mounted || !_available) return;
+    } finally {
+      _starting = false;
     }
     setState(() {
       _error = null;
@@ -467,11 +524,13 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
         'es': 'es_ES',
         'de': 'de_DE',
       };
-      _speech.listen(
+      await _speech.listen(
         onResult: _onResult,
         localeId: localeMap[langCode] ?? 'en_US',
-        listenMode: ListenMode.dictation,
-        partialResults: true,
+        listenOptions: SpeechListenOptions(
+          listenMode: ListenMode.dictation,
+          partialResults: true,
+        ),
       );
     } catch (e) {
       setState(() {
@@ -851,9 +910,11 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     try {
       _speech.stop();
     } catch (_) {}
+    _recognizer.detach();
     _mealNameCtrl.dispose();
     _disposeGramControllers();
     super.dispose();
@@ -989,10 +1050,14 @@ class _VoiceEntryScreenState extends ConsumerState<VoiceEntryScreen> {
                   const SizedBox(height: 8),
                   Text(
                     _listening
-                        ? 'Listening… speak naturally'
-                        : (_available
-                            ? 'Tap to speak'
-                            : AppLocalizations.of(context).voiceTapToAllowMic),
+                        ? l10n.listening
+                        : (_available ||
+                                _access == null ||
+                                _access == VoiceAccess.granted)
+                            ? l10n.tapToSpeak
+                            : (_access == VoiceAccess.notDetermined
+                                ? l10n.voiceTapToAllowMic
+                                : l10n.voicePermissionOffHint),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight:

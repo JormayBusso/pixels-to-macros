@@ -35,15 +35,9 @@ final class VolumeCalculator {
         maskHeight: Int
     ) -> [FoodVolume] {
 
-        // If no depth → use heuristic flat-plate estimate
-        guard let depthBuffer else {
-            return estimateWithoutDepth(
-                objects: objects,
-                pixelsPerCm: pixelsPerCm,
-                maskWidth: maskWidth,
-                maskHeight: maskHeight
-            )
-        }
+        // No depth → no measured height. Never substitute a heuristic/default
+        // height (AGENTS.md §9).
+        guard let depthBuffer else { return [] }
 
         CVPixelBufferLockBaseAddress(depthBuffer, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(depthBuffer, .readOnly) }
@@ -51,14 +45,7 @@ final class VolumeCalculator {
         let depthW = CVPixelBufferGetWidth(depthBuffer)
         let depthH = CVPixelBufferGetHeight(depthBuffer)
         let depthRowBytes = CVPixelBufferGetBytesPerRow(depthBuffer)
-        guard let depthBase = CVPixelBufferGetBaseAddress(depthBuffer) else {
-            return estimateWithoutDepth(
-                objects: objects,
-                pixelsPerCm: pixelsPerCm,
-                maskWidth: maskWidth,
-                maskHeight: maskHeight
-            )
-        }
+        guard let depthBase = CVPixelBufferGetBaseAddress(depthBuffer) else { return [] }
 
         let depthPtr = depthBase.assumingMemoryBound(to: Float32.self)
         let depthFloatsPerRow = depthRowBytes / MemoryLayout<Float32>.stride
@@ -101,33 +88,5 @@ final class VolumeCalculator {
         }
 
         return results
-    }
-
-    // MARK: – Heuristic fallback (no depth)
-
-    /// When depth data is unavailable, assume an average food height based
-    /// on the area fraction of the plate (larger area → likely flatter food).
-    private func estimateWithoutDepth(
-        objects: [SegmentationService.SegmentedObject],
-        pixelsPerCm: CGFloat,
-        maskWidth: Int,
-        maskHeight: Int
-    ) -> [FoodVolume] {
-        let totalPixels = maskWidth * maskHeight
-        let pixelAreaCm2 = pow(1.0 / Double(pixelsPerCm), 2)
-
-        return objects.map { obj in
-            let areaFraction = Double(obj.pixelCount) / Double(max(totalPixels, 1))
-            // Heuristic: bigger area → flatter (1-2 cm), smaller area → taller (2-4 cm)
-            let estimatedHeightCm = areaFraction > 0.3 ? 1.5 : 3.0
-            let areaCm2 = Double(obj.pixelCount) * pixelAreaCm2
-            let volume = areaCm2 * estimatedHeightCm
-
-            return FoodVolume(
-                label: obj.label,
-                volumeCm3: volume,
-                pixelCount: obj.pixelCount
-            )
-        }
     }
 }

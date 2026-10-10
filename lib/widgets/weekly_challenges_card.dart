@@ -21,31 +21,31 @@ class WeeklyChallengesCard extends ConsumerWidget {
 
     return PremiumSurface(
       padding: const EdgeInsets.all(14),
+      header: CardTitleBox(
+        borderRadius: BorderRadius.zero,
+        leading: const Text('⚡', style: TextStyle(fontSize: 16)),
+        title: l10n.weeklyChallengesTitle,
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            '$completed/${state.activeChallenges.length}',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: completed == state.activeChallenges.length
+                  ? Colors.green.shade800
+                  : AppTheme.gray900,
+            ),
+          ),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CardTitleBox(
-            leading: const Text('⚡', style: TextStyle(fontSize: 16)),
-            title: l10n.weeklyChallengesTitle,
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '$completed/${state.activeChallenges.length}',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: completed == state.activeChallenges.length
-                      ? Colors.green.shade800
-                      : AppTheme.gray900,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
           ...state.activeChallenges.map((c) {
             final progress = state.progress[c.type] ?? 0;
             final done = progress >= c.target;
@@ -85,8 +85,7 @@ class WeeklyChallengesCard extends ConsumerWidget {
                                 value: pct,
                                 minHeight: 4,
                                 backgroundColor: context.appSubtleFillColor,
-                                color:
-                                    done ? Colors.green : context.primary500,
+                                color: done ? Colors.green : context.primary500,
                               ),
                             ),
                           ],
@@ -106,8 +105,7 @@ class WeeklyChallengesCard extends ConsumerWidget {
                       Icon(
                         Icons.info_outline,
                         size: 14,
-                        color:
-                            context.appMutedTextColor.withValues(alpha: 0.7),
+                        color: context.appMutedTextColor.withValues(alpha: 0.7),
                       ),
                     ],
                   ),
@@ -307,7 +305,9 @@ class StreakFreezeIndicator extends ConsumerWidget {
             Icon(
               Icons.ac_unit,
               size: 14,
-              color: freeze.remaining > 0 ? Colors.blue : context.appMutedTextColor,
+              color: freeze.remaining > 0
+                  ? Colors.blue
+                  : context.appMutedTextColor,
             ),
             const SizedBox(width: 3),
             Text(
@@ -315,7 +315,9 @@ class StreakFreezeIndicator extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: freeze.remaining > 0 ? Colors.blue : context.appMutedTextColor,
+                color: freeze.remaining > 0
+                    ? Colors.blue
+                    : context.appMutedTextColor,
               ),
             ),
           ],

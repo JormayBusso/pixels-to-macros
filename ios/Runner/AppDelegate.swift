@@ -1,10 +1,12 @@
 import UIKit
 import Flutter
+import AVFoundation
 
 @main
 @objc class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
     var flutterEngine = FlutterEngine(name: "io.flutter", project: nil)
+    private var introOverlay: IntroOverlayView?
 
     func application(
         _ application: UIApplication,
@@ -24,6 +26,13 @@ import Flutter
         window?.rootViewController = flutterVC
         window?.makeKeyAndVisible()
         window?.backgroundColor = .black
+        flutterVC.view.backgroundColor = .black
+
+        if let window = window {
+            introOverlay = IntroOverlayView.present(on: window) { [weak self] in
+                self?.introOverlay = nil
+            }
+        }
 
         // ── Custom scanner method channel ──────────────────────────────────
         let scannerReg = flutterEngine.registrar(forPlugin: "ScannerPlugin")!
@@ -55,5 +64,144 @@ import Flutter
         )
 
         return true
+    }
+}
+
+// MARK: - Native intro overlay
+
+/// Plays `assets/ptm_enter.mp4` natively over Flutter from the first launch
+/// frame. LaunchScreen.storyboard shows the video's first frame (the icon
+/// crop, 710x720 of the 1280x720 video) edge-to-edge, so the overlay uses the
+/// identical geometry and the OS launch zoom flows straight into the video.
+final class IntroOverlayView: UIView {
+    private static let videoSize = CGSize(width: 1280, height: 720)
+    private static let cropRect = CGRect(x: 285, y: 0, width: 710, height: 720)
+    private static let timeout: TimeInterval = 4
+
+    private let content = UIView()
+    private let imageView = UIImageView()
+    private var player: AVPlayer?
+    private var playerLayer: AVPlayerLayer?
+    private var readyObservation: NSKeyValueObservation?
+    private var statusObservation: NSKeyValueObservation?
+    private var endObserver: NSObjectProtocol?
+    private var failObserver: NSObjectProtocol?
+    private var onFinished: (() -> Void)?
+    private var finishing = false
+
+    static func present(on window: UIWindow, onFinished: @escaping () -> Void) -> IntroOverlayView {
+        let overlay = IntroOverlayView(frame: window.bounds)
+        overlay.onFinished = onFinished
+        window.addSubview(overlay)
+        overlay.start()
+        return overlay
+    }
+
+    private override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .black
+        autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        isUserInteractionEnabled = true
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private func start() {
+        let screen = bounds.size
+        // Video pixels -> points so the icon crop spans exactly the screen width.
+        let s = screen.width / Self.cropRect.width
+        let cropH = Self.cropRect.height * s
+        let center = CGPoint(x: screen.width / 2, y: screen.height / 2)
+
+        content.frame = bounds
+        addSubview(content)
+
+        imageView.image = UIImage(named: "IntroFirstFrame")
+        imageView.contentMode = .scaleToFill
+        imageView.frame = CGRect(x: 0, y: center.y - cropH / 2, width: screen.width, height: cropH)
+        content.addSubview(imageView)
+
+        // Hard timeout: never leave the overlay stuck.
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.timeout) { [weak self] in
+            self?.finish()
+        }
+
+        let key = FlutterDartProject.lookupKey(forAsset: "assets/ptm_enter.mp4")
+        guard let path = Bundle.main.path(forResource: key, ofType: nil) else {
+            finish()
+            return
+        }
+
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+
+        let item = AVPlayerItem(url: URL(fileURLWithPath: path))
+        let player = AVPlayer(playerItem: item)
+        player.isMuted = true
+        player.actionAtItemEnd = .pause
+        self.player = player
+
+        let layer = AVPlayerLayer(player: player)
+        layer.videoGravity = .resize
+        layer.backgroundColor = UIColor.black.cgColor
+        let layerW = Self.videoSize.width * s
+        let layerH = Self.videoSize.height * s
+        layer.frame = CGRect(x: center.x - layerW / 2, y: center.y - layerH / 2, width: layerW, height: layerH)
+        content.layer.insertSublayer(layer, below: imageView.layer)
+        playerLayer = layer
+
+        // Keep the first-frame image on top until the video can display, so
+        // there is never a black gap; then drop it (the frames are identical).
+        readyObservation = layer.observe(\.isReadyForDisplay, options: [.new]) { [weak self] l, _ in
+            guard l.isReadyForDisplay else { return }
+            DispatchQueue.main.async { self?.imageView.isHidden = true }
+        }
+        statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
+            if item.status == .failed {
+                DispatchQueue.main.async { self?.finish() }
+            }
+        }
+        endObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
+        ) { [weak self] _ in self?.finish() }
+        failObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main
+        ) { [weak self] _ in self?.finish() }
+
+        // Continuous ease-in zoom until the square icon content covers the screen height.
+        let endScale = max(screen.height / cropH, 1)
+        let duration = 1.3346
+        player.play()
+        UIView.animate(withDuration: duration, delay: 0, options: [.curveEaseIn, .allowUserInteraction]) {
+            self.content.transform = CGAffineTransform(scaleX: endScale, y: endScale)
+        }
+    }
+
+    private func finish() {
+        guard !finishing else { return }
+        finishing = true
+        UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseOut], animations: {
+            self.alpha = 0
+        }, completion: { _ in
+            self.teardown()
+        })
+    }
+
+    private func teardown() {
+        readyObservation?.invalidate()
+        statusObservation?.invalidate()
+        readyObservation = nil
+        statusObservation = nil
+        if let o = endObserver { NotificationCenter.default.removeObserver(o) }
+        if let o = failObserver { NotificationCenter.default.removeObserver(o) }
+        endObserver = nil
+        failObserver = nil
+        player?.pause()
+        playerLayer?.player = nil
+        playerLayer?.removeFromSuperlayer()
+        player = nil
+        playerLayer = nil
+        removeFromSuperview()
+        onFinished?()
+        onFinished = nil
     }
 }

@@ -35,6 +35,8 @@ final class MultiFrameRecorder {
     /// RGB side/reference frame captured after the top frame. Used by the
     /// non-LiDAR monocular estimator as an optional height/quality cue.
     private(set) var sideFrame: FrameCaptureService.CapturedFrame?
+    private(set) var captureID = UUID().uuidString
+    private var topSessionGeneration: Int?
 
     /// All sampled frames that had depth data available.
     private(set) var lightFrames: [LightFrame] = []
@@ -96,6 +98,8 @@ final class MultiFrameRecorder {
         guard !isActive else { return }
         topFrame    = nil
         sideFrame   = nil
+        captureID = UUID().uuidString
+        topSessionGeneration = nil
         topViewFrames = []
         lightFrames = []
         meshAnchors = []
@@ -128,6 +132,7 @@ final class MultiFrameRecorder {
         lightFrames = []
         meshAnchors = []
         tableDistanceCm = nil
+        topSessionGeneration = nil
     }
 
     // MARK: – Guided dual-photo capture
@@ -148,6 +153,9 @@ final class MultiFrameRecorder {
         tableDistanceCm = nil
         topImagePath = nil
         sideImagePath = nil
+        captureID = UUID().uuidString
+        topSessionGeneration = nil
+        print("[CAPTUREPAIR] begin id=\(captureID)")
     }
 
     /// Capture the current AR frame as the top-down reference photo (RGB + depth).
@@ -157,6 +165,14 @@ final class MultiFrameRecorder {
     @discardableResult
     func captureTopFrame(from sessionManager: ARSessionManager) -> Bool {
         guard let arFrame = sessionManager.latestFrame else { return false }
+        // A replacement top invalidates every observation tied to the old top.
+        sideFrame = nil
+        sideImagePath = nil
+        lightFrames = []
+        topViewFrames = []
+        tableDistanceCm = nil
+        topSessionGeneration = sessionManager.generation
+        captureID = UUID().uuidString
         currentPitch = arFrame.camera.eulerAngles.x
 
         let meshes = arFrame.anchors.compactMap { $0 as? ARMeshAnchor }
@@ -194,7 +210,7 @@ final class MultiFrameRecorder {
             }
             topImagePath = MultiFrameRecorder.writeSnapshot(pixBuf, suffix: "top")
         }
-        print("[SCAN] dual-photo top frame captured (depth=\(topFrame?.depthBuffer != nil))")
+        print("[CAPTUREPAIR] top id=\(captureID) generation=\(sessionManager.generation) timestamp=\(arFrame.timestamp) depth=\(topFrame?.depthBuffer != nil)")
         return topFrame != nil
     }
 
@@ -203,8 +219,17 @@ final class MultiFrameRecorder {
     /// `false` if no frame was ready or the top frame has not been captured yet.
     @discardableResult
     func captureSideFrame(from sessionManager: ARSessionManager) -> Bool {
-        guard topFrame != nil, let arFrame = sessionManager.latestFrame else { return false }
+        guard let top = topFrame, let arFrame = sessionManager.latestFrame,
+              topSessionGeneration == sessionManager.generation,
+              arFrame.timestamp > top.timestamp else {
+            sideFrame = nil
+            sideImagePath = nil
+            lightFrames = []
+            print("[CAPTUREPAIR] side rejected id=\(captureID) reason=missing_top_or_session_changed_or_stale_frame")
+            return false
+        }
         currentPitch = arFrame.camera.eulerAngles.x
+        lightFrames = []
 
         let meshes = arFrame.anchors.compactMap { $0 as? ARMeshAnchor }
         if !meshes.isEmpty { meshAnchors = meshes }
@@ -225,18 +250,18 @@ final class MultiFrameRecorder {
                 timestamp:        arFrame.timestamp
             )
 
-            if let depth = depthBuf, lightFrames.count < maxFrames {
-                lightFrames.append(LightFrame(
+            if let depth = depthBuf {
+                lightFrames = [LightFrame(
                     depthBuffer:      MultiFrameRecorder.copyPixelBuffer(depth),
                     cameraTransform:  transform,
                     cameraIntrinsics: intrinsics,
                     imageWidth:  w,
                     imageHeight: h
-                ))
+                )]
             }
             sideImagePath = MultiFrameRecorder.writeSnapshot(pixBuf, suffix: "side")
         }
-        print("[SCAN] dual-photo side frame captured (depth=\(sideFrame?.depthBuffer != nil))")
+        print("[CAPTUREPAIR] side id=\(captureID) generation=\(sessionManager.generation) timestamp=\(arFrame.timestamp) depth=\(sideFrame?.depthBuffer != nil)")
         return sideFrame != nil
     }
 
@@ -315,6 +340,7 @@ final class MultiFrameRecorder {
             // First frame → full top frame (RGB + depth).
             // Deep-copy pixel buffers so ARKit can reuse its internal pool.
             if topFrame == nil && isTopView {
+                topSessionGeneration = sessionManager.generation
                 print("[SCAN] sampleFrame topFrame: pitch=\(String(format: "%.2f", currentPitch)), sceneDepth=\(arFrame.sceneDepth != nil), depthMap=\(depthBuf != nil)")
                 topFrame = FrameCaptureService.CapturedFrame(
                     pixelBuffer:     MultiFrameRecorder.copyPixelBuffer(pixBuf),

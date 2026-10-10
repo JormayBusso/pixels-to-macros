@@ -4,8 +4,8 @@ import CoreImage
 import CoreMedia
 import Flutter
 import QuartzCore
+import simd
 import UIKit
-import Vision
 
 /// Embeds a live ARKit camera feed as a Flutter platform view.
 ///
@@ -15,7 +15,7 @@ import Vision
 /// ≈30 fps and pushed to the display layer as CMSampleBuffers.
 ///
 /// The view also hosts the live "AI glow": a throttled on-device food detector
-/// (see `LiveFoodDetector`) whose soft mask is drawn as Core Animation layers
+/// (see `LiveFoodDetector`) whose blurred mask is drawn as soft Core Animation glow layers
 /// exactly over the aspect-fit preview (see `LiveGlowLayers`). It is driven
 /// from Flutter over `com.pixelstomacros/live_glow` (see
 /// `LiveFoodGlowController`).
@@ -153,6 +153,18 @@ final class ARCameraPreviewView: NSObject, FlutterPlatformView {
     private var displayLink: CADisplayLink?
     private var detector: LiveFoodDetector?
     private var videoSize: CGSize?
+    private var liveContext: LivePreviewContext?
+    private var lastFrameTimestamp: TimeInterval?
+    private var overlayTimestamp: TimeInterval?
+    private var overlayCameraTransform: simd_float4x4?
+
+    private struct LivePreviewContext: Equatable {
+        let generation: Int
+        let bounds: CGRect
+        let orientation: UIInterfaceOrientation
+        let roi: LiveGlowROI?
+        let videoSize: CGSize
+    }
 
     init(frame: CGRect, sessionManager: ARSessionManager?) {
         self.sessionManager = sessionManager
@@ -203,6 +215,7 @@ final class ARCameraPreviewView: NSObject, FlutterPlatformView {
     private func stopDisplayLink() {
         displayLink?.invalidate()
         displayLink = nil
+        invalidateLiveOverlay()
     }
 
     // MARK: – Frame rendering
@@ -211,9 +224,31 @@ final class ARCameraPreviewView: NSObject, FlutterPlatformView {
         autoreleasepool {
             // Hold a strong reference for the duration of this tick so
             // the manager can't be deallocated mid-access.
-            guard let manager = sessionManager,
-                  let pixelBuffer = manager.latestFrame?.capturedImage
-            else { return }
+            guard let manager = sessionManager, let frame = manager.latestFrame,
+                  UIApplication.shared.applicationState == .active,
+                  hostView.window != nil, !hostView.isHidden
+            else {
+                if liveContext != nil { invalidateLiveOverlay() }
+                return
+            }
+            let pixelBuffer = frame.capturedImage
+            let now = CACurrentMediaTime()
+            if let timestamp = overlayTimestamp,
+               !LiveFoodOverlayPolicy.isFresh(timestamp: timestamp, now: now)
+                || overlayCameraTransform.map({
+                    !LiveFoodOverlayPolicy.cameraIsAligned($0, frame.camera.transform)
+                }) == true {
+                hostView.glow?.setVisible(false)
+                overlayTimestamp = nil
+                overlayCameraTransform = nil
+                LiveFoodGlowController.shared.clearDetection()
+            }
+            guard now - frame.timestamp <= LiveFoodOverlayPolicy.maxAge else {
+                if liveContext != nil { invalidateLiveOverlay() }
+                return
+            }
+            guard frame.timestamp != lastFrameTimestamp else { return }
+            lastFrameTimestamp = frame.timestamp
 
             // Build a CMVideoFormatDescription for this pixel buffer.
             var formatDesc: CMVideoFormatDescription?
@@ -259,32 +294,60 @@ final class ARCameraPreviewView: NSObject, FlutterPlatformView {
                 LiveFoodGlowController.shared.reportVideoSize(size)
             }
 
-            feedLiveDetector(pixelBuffer)
+            feedLiveDetector(frame)
         }
     }
 
     // MARK: – Live food glow
 
-    /// Offers the current camera frame to the detector. Never blocks: the
-    /// detector drops the frame when it is busy or throttled.
-    private func feedLiveDetector(_ pixelBuffer: CVPixelBuffer) {
+    /// Offers the latest frame, dropping it while busy or throttled. Only the
+    /// small camera-buffer copy runs here; model inference stays off-main.
+    private func feedLiveDetector(_ frame: ARFrame) {
         let controller = LiveFoodGlowController.shared
         guard controller.enabled,
               hostView.window != nil, !hostView.isHidden,
               let glow = hostView.glow, let detector
         else { return }
 
+        let context = LivePreviewContext(
+            generation: sessionManager?.generation ?? -1,
+            bounds: hostView.bounds,
+            orientation: hostView.window?.windowScene?.interfaceOrientation ?? .unknown,
+            roi: controller.roi,
+            videoSize: videoSize ?? .zero)
+        if context != liveContext {
+            invalidateLiveOverlay()
+            liveContext = context
+            hostView.applyOrientationTransform(for: hostView.bounds)
+        }
         let now = CACurrentMediaTime()
         guard detector.canAccept(at: now),
               let roi = glow.roiInMaskGrid(LiveFoodDetector.grid)
         else { return }
 
-        detector.submit(pixelBuffer, roi: roi, at: now) { [weak self] result in
+        let timestamp = frame.timestamp
+        let cameraTransform = frame.camera.transform
+        detector.submit(frame.capturedImage, roi: roi, at: now, frameTimestamp: timestamp) { [weak self] result in
             guard let self, let glow = self.hostView.glow,
-                  LiveFoodGlowController.shared.enabled
+                  self.liveContext == context,
+                  self.hostView.window != nil, !self.hostView.isHidden,
+                  self.hostView.bounds == context.bounds,
+                  self.hostView.window?.windowScene?.interfaceOrientation == context.orientation,
+                  self.sessionManager?.generation == context.generation,
+                  UIApplication.shared.applicationState == .active,
+                  LiveFoodGlowController.shared.enabled,
+                  let current = self.sessionManager?.latestFrame,
+                  LiveFoodOverlayPolicy.isFresh(timestamp: timestamp, now: CACurrentMediaTime()),
+                  LiveFoodOverlayPolicy.cameraIsAligned(cameraTransform, current.camera.transform)
             else { return }
-            glow.update(fill: result.fill, edge: result.edge, core: result.core)
-            glow.setVisible(result.present)
+            if result.present, let fill = result.fill, let edge = result.edge, let core = result.core {
+                glow.update(fill: fill, edge: edge, core: core)
+                glow.setVisible(true)
+            } else {
+                glow.setVisible(false)
+            }
+            self.overlayTimestamp = timestamp
+            self.overlayCameraTransform = cameraTransform
             LiveFoodGlowController.shared.report(
                 detected: result.present,
                 available: result.available,
@@ -292,14 +355,24 @@ final class ARCameraPreviewView: NSObject, FlutterPlatformView {
         }
     }
 
+    private func invalidateLiveOverlay() {
+        detector?.reset()
+        liveContext = nil
+        lastFrameTimestamp = nil
+        overlayTimestamp = nil
+        overlayCameraTransform = nil
+        hostView.glow?.setVisible(false)
+        LiveFoodGlowController.shared.clearDetection()
+    }
+
     /// Applies the current controller state (enabled / style / ROI).
     fileprivate func applyLiveGlowState() {
         let controller = LiveFoodGlowController.shared
         guard controller.enabled else {
-            detector?.reset()
-            hostView.glow?.setVisible(false)
+            invalidateLiveOverlay()
             return
         }
+        if liveContext?.roi != controller.roi { invalidateLiveOverlay() }
         if hostView.glow == nil {
             let glow = LiveGlowLayers(style: controller.style)
             if let videoSize { glow.videoSize = videoSize }
@@ -462,6 +535,11 @@ final class LiveFoodGlowController {
         ])
     }
 
+    func clearDetection() {
+        guard let last = lastReport, last.detected else { return }
+        report(detected: false, available: last.available, backend: last.backend)
+    }
+
     private static func parseRoi(_ raw: Any?) -> LiveGlowROI? {
         guard let map = raw as? [String: Any],
               let shape = map["shape"] as? String
@@ -503,38 +581,187 @@ struct LiveGlowGridROI {
 }
 
 struct LiveGlowResult {
-    let fill: CGImage
-    let edge: CGImage
-    let core: CGImage
+    let fill: CGImage?
+    let edge: CGImage?
+    let core: CGImage?
     let present: Bool
     let available: Bool
     let backend: String
 }
 
+/// A semantic allowlist, never a class-index guess: YOLO class zero is candy,
+/// whereas the dense model's class zero is background. Unknown/generic classes
+/// and class-agnostic foreground masks cannot identify food.
+enum LiveFoodOverlayPolicy {
+    static let maxAge: TimeInterval = 0.35
+    static let foodLabels: Set<String> = [
+        "candy", "egg tart", "french fries", "chocolate", "biscuit", "popcorn",
+        "pudding", "ice cream", "cheese butter", "cake", "wine", "milkshake",
+        "coffee", "juice", "milk", "tea", "almond", "red beans", "cashew",
+        "dried cranberries", "soy", "walnut", "peanut", "egg", "apple", "date",
+        "apricot", "avocado", "banana", "strawberry", "cherry", "blueberry",
+        "raspberry", "mango", "olives", "peach", "lemon", "pear", "fig",
+        "pineapple", "grape", "kiwi", "melon", "orange", "watermelon", "steak",
+        "pork", "chicken duck", "sausage", "fried meat", "lamb", "sauce",
+        "crab", "fish", "shellfish", "shrimp", "soup", "bread", "corn",
+        "hamburg", "pizza", "hanamaki baozi", "wonton dumplings", "pasta",
+        "noodles", "rice", "pie", "tofu", "eggplant", "potato", "garlic",
+        "cauliflower", "tomato", "kelp", "seaweed", "spring onion", "rape",
+        "ginger", "okra", "lettuce", "pumpkin", "cucumber", "white radish",
+        "carrot", "asparagus", "bamboo shoots", "broccoli", "celery stick",
+        "cilantro mint", "snow peas", "cabbage", "bean sprouts", "onion",
+        "pepper", "green beans", "french beans", "king oyster mushroom",
+        "shiitake", "enoki mushroom", "oyster mushroom", "white button mushroom",
+        "salad", "taro", "white mushroom", "black fungus", "dough", "rice noodle",
+        "chicken", "sandwich", "hot dog", "donut",
+    ]
+
+    static func accepts(label: String, confidence: Float) -> Bool {
+        let name = label.lowercased().replacingOccurrences(of: "_", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return confidence.isFinite && confidence >= 0.55 && foodLabels.contains(name)
+    }
+
+    static func isFresh(timestamp: TimeInterval, now: TimeInterval) -> Bool {
+        let age = now - timestamp
+        return age.isFinite && age >= 0 && age <= maxAge
+    }
+
+    static func cameraIsAligned(_ a: simd_float4x4, _ b: simd_float4x4) -> Bool {
+        let translation = simd_distance(
+            SIMD3(a.columns.3.x, a.columns.3.y, a.columns.3.z),
+            SIMD3(b.columns.3.x, b.columns.3.y, b.columns.3.z))
+        let rotationA = simd_quatf(simd_float3x3(
+            SIMD3(a.columns.0.x, a.columns.0.y, a.columns.0.z),
+            SIMD3(a.columns.1.x, a.columns.1.y, a.columns.1.z),
+            SIMD3(a.columns.2.x, a.columns.2.y, a.columns.2.z)))
+        let rotationB = simd_quatf(simd_float3x3(
+            SIMD3(b.columns.0.x, b.columns.0.y, b.columns.0.z),
+            SIMD3(b.columns.1.x, b.columns.1.y, b.columns.1.z),
+            SIMD3(b.columns.2.x, b.columns.2.y, b.columns.2.z)))
+        return translation <= 0.01 && abs(simd_dot(rotationA.vector, rotationB.vector)) >= cos(Float.pi / 120)
+    }
+
+    /// Smooth fill/edge/core alpha fields (0…1) from the current binary mask
+    /// only; no temporal smearing. Blurred enough that grid cells never show.
+    static func glowFields(_ mask: [Float], grid g: Int)
+        -> (fill: [Float], edge: [Float], core: [Float])? {
+        let n = g * g
+        guard g > 0, mask.count == n else { return nil }
+        let soft = boxBlur(boxBlur(boxBlur(mask, g, 2), g, 2), g, 1)
+        var fill = [Float](repeating: 0, count: n)
+        var rim = [Float](repeating: 0, count: n)
+        for i in 0..<n {
+            let s = soft[i]
+            let t = max(0, min(1, (s - 0.35) / 0.30))
+            fill[i] = t * t * (3 - 2 * t)
+            rim[i] = max(0, min(1, 1 - abs(s - 0.5) * 3.2))
+        }
+        let halo = boxBlur(boxBlur(rim, g, 4), g, 4)
+        var edge = [Float](repeating: 0, count: n)
+        var core = [Float](repeating: 0, count: n)
+        for i in 0..<n {
+            let h = min(1, halo[i] * 2.2)
+            edge[i] = max(rim[i] * 0.9, h * 0.6)
+            core[i] = rim[i] * rim[i] * rim[i]
+        }
+        return (fill, edge, core)
+    }
+
+    /// Separable box blur with clamped edges (running sums, O(n)).
+    static func boxBlur(_ src: [Float], _ g: Int, _ radius: Int) -> [Float] {
+        guard radius > 0 else { return src }
+        let norm = 1 / Float(2 * radius + 1)
+        var tmp = [Float](repeating: 0, count: g * g)
+        var out = [Float](repeating: 0, count: g * g)
+        for y in 0..<g {
+            let row = y * g
+            var sum: Float = 0
+            for k in -radius...radius { sum += src[row + min(max(k, 0), g - 1)] }
+            for x in 0..<g {
+                tmp[row + x] = sum * norm
+                sum += src[row + min(x + radius + 1, g - 1)] - src[row + max(x - radius, 0)]
+            }
+        }
+        for x in 0..<g {
+            var sum: Float = 0
+            for k in -radius...radius { sum += tmp[min(max(k, 0), g - 1) * g + x] }
+            for y in 0..<g {
+                out[y * g + x] = sum * norm
+                sum += tmp[min(y + radius + 1, g - 1) * g + x] - tmp[max(y - radius, 0) * g + x]
+            }
+        }
+        return out
+    }
+
+    /// Premultiplied white RGBA image whose alpha is `values` (0…1).
+    static func alphaImage(_ values: [Float], _ g: Int) -> CGImage? {
+        var bytes = [UInt8](repeating: 0, count: g * g * 4)
+        for i in 0..<(g * g) {
+            let a = UInt8(max(0, min(255, values[i] * 255)))
+            let o = i * 4
+            bytes[o] = a
+            bytes[o + 1] = a
+            bytes[o + 2] = a
+            bytes[o + 3] = a
+        }
+        guard let provider = CGDataProvider(data: Data(bytes) as CFData) else { return nil }
+        return CGImage(
+            width: g, height: g,
+            bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: g * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+            provider: provider, decode: nil, shouldInterpolate: true,
+            intent: .defaultIntent)
+    }
+}
+
+struct LiveFoodFrameGate {
+    private(set) var busy = false
+    private(set) var generation = 0
+    private var lastSubmit: TimeInterval = -.infinity
+
+    func canAccept(at now: TimeInterval) -> Bool {
+        !busy && now - lastSubmit >= 0.12
+    }
+
+    mutating func begin(at now: TimeInterval) -> Int? {
+        guard canAccept(at: now) else { return nil }
+        busy = true
+        lastSubmit = now
+        return generation
+    }
+
+    mutating func invalidate() {
+        generation += 1
+        // Work still owns the only slot until it actually returns.
+        lastSubmit = -.infinity
+    }
+
+    mutating func finish(token: Int, timestamp: TimeInterval, now: TimeInterval) -> Bool {
+        busy = false
+        return token == generation && LiveFoodOverlayPolicy.isFresh(timestamp: timestamp, now: now)
+    }
+}
+
 /// Throttled live food detection on the AR preview.
 ///
 /// Follows Apple's real-time Vision/Core ML guidance: one frame in flight on a
-/// background serial queue, frames dropped while busy, ~5 Hz cap, and the
+/// background serial queue, frames dropped while busy, ~8 Hz cap, and the
 /// camera buffer released right after a small square copy is made (so ARKit's
 /// frame pool is never starved). Backends, in order: the bundled YOLO-seg
-/// food model, the SegFormer food segmenter, then Vision's class-agnostic
-/// foreground instance mask (live preview only). Masks are fused on a
-/// 160×160 grid with temporal smoothing and turned into soft alpha images for
-/// the glow layers.
+/// food model, then the dense food segmenter. No class-agnostic fallback.
+/// Current masks become blurred glow alpha images without temporal smearing.
 final class LiveFoodDetector {
 
     static let grid = 160
     static let inputSide = 320
-    static let minInterval: CFTimeInterval = 0.2
-
     enum Backend: String {
-        case undecided, yolo, segformer, vision, none
+        case undecided, yolo, segformer, none
     }
 
     // Main-thread state.
-    private var busy = false
-    private var lastSubmit: CFTimeInterval = 0
-    private var generation = 0
+    private var gate = LiveFoodFrameGate()
 
     // Queue state.
     private let queue = DispatchQueue(
@@ -542,15 +769,8 @@ final class LiveFoodDetector {
     private var backend: Backend = .undecided
     private var yolo: YOLOSegmentationService?
     private var segformer: SegmentationService?
-    private var cocoWhitelist = false
-    private var accumulator: [Float]?
-    private var positives = 0
-    private var negatives = 0
-    private var visible = false
     private var runs = 0
     private var consecutiveFailures = 0
-    private var timedRuns = 0
-    private var timedTotalMs = 0.0
     private var pool: CVPixelBufferPool?
     private lazy var ciContext = CIContext(options: [
         .workingColorSpace: NSNull(),
@@ -558,46 +778,39 @@ final class LiveFoodDetector {
         .cacheIntermediates: false,
     ])
 
-    private static let cocoFood: Set<String> = [
-        "banana", "apple", "sandwich", "orange", "broccoli", "carrot",
-        "hot dog", "pizza", "donut", "cake",
-    ]
-    private static let denied: Set<String> = [
-        "background", "plate", "bowl", "table", "dining table", "cup",
-        "fork", "knife", "spoon", "cutlery", "tableware", "wine glass",
-        "bottle", "other",
-    ]
-
     func canAccept(at now: CFTimeInterval) -> Bool {
-        !busy && now - lastSubmit >= Self.minInterval
+        gate.canAccept(at: now)
     }
 
-    /// Invalidates in-flight work and clears the temporal state.
+    /// Invalidates results without freeing the occupied inference slot.
     func reset() {
-        generation += 1
-        busy = false
-        queue.async { [self] in
-            accumulator = nil
-            positives = 0
-            negatives = 0
-            visible = false
-        }
+        gate.invalidate()
     }
 
     func submit(
         _ pixelBuffer: CVPixelBuffer,
         roi: LiveGlowGridROI,
         at now: CFTimeInterval,
+        frameTimestamp: TimeInterval,
         completion: @escaping (LiveGlowResult) -> Void
     ) {
-        busy = true
-        lastSubmit = now
-        let gen = generation
+        guard let token = gate.begin(at: now) else { return }
+        // Copy before dispatching: the inference closure retains only our small
+        // buffer, never an ARKit frame-pool buffer for the whole model request.
+        let copyStarted = CACurrentMediaTime()
+        guard let input = makeSquareInput(pixelBuffer) else {
+            _ = gate.finish(token: token, timestamp: frameTimestamp, now: CACurrentMediaTime())
+            return
+        }
+        let prepMs = (CACurrentMediaTime() - copyStarted) * 1000
         queue.async { [self] in
-            let result = autoreleasepool { process(pixelBuffer, roi: roi) }
+            let result = autoreleasepool { process(input, roi: roi, prepMs: prepMs) }
             DispatchQueue.main.async { [self] in
-                guard gen == generation else { return }
-                busy = false
+                guard gate.finish(token: token, timestamp: frameTimestamp, now: CACurrentMediaTime()) else {
+                    print(String(format: "[LiveGlow] drop_stale age=%.0fms token=%d",
+                                 (CACurrentMediaTime() - frameTimestamp) * 1000, token))
+                    return
+                }
                 if let result { completion(result) }
             }
         }
@@ -605,9 +818,7 @@ final class LiveFoodDetector {
 
     // MARK: Pipeline (queue)
 
-    private func process(_ source: CVPixelBuffer, roi: LiveGlowGridROI) -> LiveGlowResult? {
-        let t0 = CACurrentMediaTime()
-        guard let input = makeSquareInput(source) else { return nil }
+    private func process(_ input: CVPixelBuffer, roi: LiveGlowGridROI, prepMs: Double) -> LiveGlowResult? {
         let t1 = CACurrentMediaTime()
 
         if backend == .undecided { decideBackend() }
@@ -629,23 +840,20 @@ final class LiveFoodDetector {
         let t2 = CACurrentMediaTime()
         let inferMs = (t2 - t1) * 1000
 
-        if ran { trackSpeed(inferMs) }
-
         let post = postProcess(union, roi: roi)
         let t3 = CACurrentMediaTime()
         runs += 1
         if ran && (runs <= 5 || runs % 10 == 0) {
             print(String(
                 format: "[LiveGlow] infer=%.1fms masks=%d backend=%@ prep=%.1fms post=%.1fms present=%@",
-                inferMs, masks, backend.rawValue, (t1 - t0) * 1000,
+                inferMs, masks, backend.rawValue, prepMs,
                 (t3 - t2) * 1000, post.present ? "1" : "0"))
         }
-        guard let images = post.images else { return nil }
         return LiveGlowResult(
-            fill: images.fill,
-            edge: images.edge,
-            core: images.core,
-            present: visible,
+            fill: post.images?.fill,
+            edge: post.images?.edge,
+            core: post.images?.core,
+            present: post.present,
             available: backend != .none,
             backend: backend.rawValue)
     }
@@ -654,7 +862,6 @@ final class LiveFoodDetector {
         let y = YOLOSegmentationService()
         if y.isAvailable {
             yolo = y
-            cocoWhitelist = y.loadedResource != "FoodSegYolo"
             backend = .yolo
         } else {
             let s = SegmentationService()
@@ -662,7 +869,7 @@ final class LiveFoodDetector {
                 segformer = s
                 backend = .segformer
             } else {
-                backend = .vision
+                backend = .none
             }
         }
         print("[LiveGlow] backend=\(backend.rawValue) resource=\(yolo?.loadedResource ?? "-")")
@@ -678,38 +885,17 @@ final class LiveFoodDetector {
                 segformer = s
                 next = .segformer
             } else {
-                next = .vision
+                next = .none
             }
         case .segformer:
             segformer = nil
-            next = .vision
+            next = .none
         default:
             next = .none
         }
         print("[LiveGlow] backend \(backend.rawValue) → \(next.rawValue)")
         backend = next
         consecutiveFailures = 0
-        timedRuns = 0
-        timedTotalMs = 0
-    }
-
-    /// After two warm-up runs, switch to the lighter Vision detector when the
-    /// model backend averages more than 400 ms (it would lag the preview).
-    private func trackSpeed(_ ms: Double) {
-        guard backend == .yolo || backend == .segformer else { return }
-        timedRuns += 1
-        guard timedRuns > 2 else { return }
-        timedTotalMs += ms
-        if timedRuns == 7 {
-            let avg = timedTotalMs / 5
-            if avg > 400 {
-                print(String(format: "[LiveGlow] %@ too slow (avg %.0fms) → vision",
-                             backend.rawValue, avg))
-                yolo = nil
-                segformer = nil
-                backend = .vision
-            }
-        }
     }
 
     /// Runs the active backend and ORs the kept food masks into `union`.
@@ -717,14 +903,12 @@ final class LiveFoodDetector {
         switch backend {
         case .yolo:
             guard let yolo else { return 0 }
-            let objects = try yolo.segment(pixelBuffer: input)
+            let objects = try yolo.segmentForLivePreview(pixelBuffer: input)
             return accumulate(objects, into: &union)
         case .segformer:
             guard let segformer else { return 0 }
-            let objects = try segformer.segment(pixelBuffer: input)
+            let objects = try segformer.segmentForLivePreview(pixelBuffer: input)
             return accumulate(objects, into: &union)
-        case .vision:
-            return try runVision(input, into: &union)
         case .undecided, .none:
             return 0
         }
@@ -737,13 +921,12 @@ final class LiveFoodDetector {
         let g = Self.grid
         var kept = 0
         for object in objects {
-            let label = object.label.lowercased()
-            if Self.denied.contains(label) { continue }
-            if cocoWhitelist && backend == .yolo && !Self.cocoFood.contains(label) { continue }
-            if object.confidence < 0.30 { continue }
+            guard LiveFoodOverlayPolicy.accepts(label: object.label, confidence: object.confidence) else { continue }
             let rows = object.mask.count
-            guard rows > 0, let cols = object.mask.first?.count, cols > 0 else { continue }
-            if Float(object.pixelCount) < 0.002 * Float(rows * cols) { continue }
+            guard rows > 0, let cols = object.mask.first?.count, cols > 0,
+                  object.mask.allSatisfy({ $0.count == cols }) else { continue }
+            let fraction = Float(object.pixelCount) / Float(rows * cols)
+            guard fraction >= 0.002, fraction <= 0.75 else { continue }
             kept += 1
             for gy in 0..<g {
                 let sy = min(rows - 1, Int((Float(gy) + 0.5) * Float(rows) / Float(g)))
@@ -754,32 +937,9 @@ final class LiveFoodDetector {
                     if row[sx] != 0 { union[base + gx] = 1 }
                 }
             }
+            if kept >= 8 { break }
         }
         return kept
-    }
-
-    private func runVision(_ input: CVPixelBuffer, into union: inout [Float]) throws -> Int {
-        let request = VNGenerateForegroundInstanceMaskRequest()
-        let handler = VNImageRequestHandler(cvPixelBuffer: input, options: [:])
-        try handler.perform([request])
-        guard let observation = request.results?.first else { return 0 }
-        let mask = observation.instanceMask
-        CVPixelBufferLockBaseAddress(mask, .readOnly)
-        defer { CVPixelBufferUnlockBaseAddress(mask, .readOnly) }
-        guard let base = CVPixelBufferGetBaseAddress(mask) else { return 0 }
-        let w = CVPixelBufferGetWidth(mask)
-        let h = CVPixelBufferGetHeight(mask)
-        let stride = CVPixelBufferGetBytesPerRow(mask)
-        let bytes = base.assumingMemoryBound(to: UInt8.self)
-        let g = Self.grid
-        for gy in 0..<g {
-            let sy = min(h - 1, Int((Float(gy) + 0.5) * Float(h) / Float(g)))
-            for gx in 0..<g {
-                let sx = min(w - 1, Int((Float(gx) + 0.5) * Float(w) / Float(g)))
-                if bytes[sy * stride + sx] != 0 { union[gy * g + gx] = 1 }
-            }
-        }
-        return observation.allInstances.count
     }
 
     /// Centre-square crop of the camera frame, scaled to `inputSide`² BGRA.
@@ -819,26 +979,10 @@ final class LiveFoodDetector {
 
     // MARK: Mask post-processing (queue)
 
-    private struct Images {
-        let fill: CGImage
-        let edge: CGImage
-        let core: CGImage
-    }
-
     private func postProcess(
         _ union: [Float], roi: LiveGlowGridROI
-    ) -> (images: Images?, present: Bool) {
+    ) -> (images: (fill: CGImage, edge: CGImage, core: CGImage)?, present: Bool) {
         let g = Self.grid
-        let n = g * g
-        var acc = accumulator ?? union
-        if accumulator != nil {
-            for i in 0..<n { acc[i] = 0.45 * acc[i] + 0.55 * union[i] }
-        }
-        accumulator = acc
-
-        let soft = Self.boxBlur(Self.boxBlur(acc, g, 2), g, 1)
-
-        // Presence: smoothed food area inside the capture guide.
         var inside = 0
         var roiArea = 0
         let r = max(0, min(roi.radius, min(roi.rect.width, roi.rect.height) / 2))
@@ -855,90 +999,18 @@ final class LiveFoodDetector {
                     let dx = max(abs(CGFloat(x) + 0.5 - cx) - hx, 0)
                     if dx * dx + dy * dy > r * r { continue }
                     roiArea += 1
-                    if soft[y * g + x] > 0.5 { inside += 1 }
+                    if union[y * g + x] > 0.5 { inside += 1 }
                 }
             }
         }
         let present = roiArea > 0 && inside >= max(40, Int(Double(roiArea) * 0.004))
-        if present {
-            positives += 1
-            negatives = 0
-            if positives >= 1 { visible = true }
-        } else {
-            negatives += 1
-            positives = 0
-            if negatives >= 3 { visible = false }
-        }
-
-        var fill = [Float](repeating: 0, count: n)
-        var rim = [Float](repeating: 0, count: n)
-        for i in 0..<n {
-            let s = soft[i]
-            let t = max(0, min(1, (s - 0.35) / 0.30))
-            fill[i] = t * t * (3 - 2 * t)
-            rim[i] = max(0, min(1, 1 - abs(s - 0.5) * 3.2))
-        }
-        let halo = Self.boxBlur(Self.boxBlur(rim, g, 4), g, 4)
-        var edge = [Float](repeating: 0, count: n)
-        var core = [Float](repeating: 0, count: n)
-        for i in 0..<n {
-            let h = min(1, halo[i] * 2.2)
-            edge[i] = max(rim[i] * 0.9, h * 0.6)
-            core[i] = rim[i] * rim[i] * rim[i]
-        }
-
-        guard let fillImage = Self.alphaImage(fill, g),
-              let edgeImage = Self.alphaImage(edge, g),
-              let coreImage = Self.alphaImage(core, g)
+        guard present,
+              let f = LiveFoodOverlayPolicy.glowFields(union, grid: g),
+              let fill = LiveFoodOverlayPolicy.alphaImage(f.fill, g),
+              let edge = LiveFoodOverlayPolicy.alphaImage(f.edge, g),
+              let core = LiveFoodOverlayPolicy.alphaImage(f.core, g)
         else { return (nil, present) }
-        return (Images(fill: fillImage, edge: edgeImage, core: coreImage), present)
-    }
-
-    /// Separable box blur with clamped edges (running sums, O(n)).
-    private static func boxBlur(_ src: [Float], _ g: Int, _ radius: Int) -> [Float] {
-        guard radius > 0 else { return src }
-        let norm = 1 / Float(2 * radius + 1)
-        var tmp = [Float](repeating: 0, count: g * g)
-        var out = [Float](repeating: 0, count: g * g)
-        for y in 0..<g {
-            let row = y * g
-            var sum: Float = 0
-            for k in -radius...radius { sum += src[row + min(max(k, 0), g - 1)] }
-            for x in 0..<g {
-                tmp[row + x] = sum * norm
-                sum += src[row + min(x + radius + 1, g - 1)] - src[row + max(x - radius, 0)]
-            }
-        }
-        for x in 0..<g {
-            var sum: Float = 0
-            for k in -radius...radius { sum += tmp[min(max(k, 0), g - 1) * g + x] }
-            for y in 0..<g {
-                out[y * g + x] = sum * norm
-                sum += tmp[min(y + radius + 1, g - 1) * g + x] - tmp[max(y - radius, 0) * g + x]
-            }
-        }
-        return out
-    }
-
-    /// Premultiplied white RGBA image whose alpha is `values` (0…1).
-    private static func alphaImage(_ values: [Float], _ g: Int) -> CGImage? {
-        var bytes = [UInt8](repeating: 0, count: g * g * 4)
-        for i in 0..<(g * g) {
-            let a = UInt8(max(0, min(255, values[i] * 255)))
-            let o = i * 4
-            bytes[o] = a
-            bytes[o + 1] = a
-            bytes[o + 2] = a
-            bytes[o + 3] = a
-        }
-        guard let provider = CGDataProvider(data: Data(bytes) as CFData) else { return nil }
-        return CGImage(
-            width: g, height: g,
-            bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: g * 4,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-            provider: provider, decode: nil, shouldInterpolate: true,
-            intent: .defaultIntent)
+        return ((fill, edge, core), present)
     }
 }
 

@@ -33,10 +33,53 @@ final class DepthFusion {
 
     /// Voxel values:  nil = empty, 0 = occupied-unlabelled, >0 = label index.
     private var grid: [VoxelKey: Int32] = [:]
+    private var topInstanceByVoxel: [VoxelKey: Int] = [:]
 
     /// Label string → label index mapping (1-based).
     private(set) var labelMap: [String: Int32] = [:]
     private var nextLabel: Int32 = 1
+
+    /// Top-photo projection recorded by `assignLabels`. Kept so a food whose
+    /// fused LiDAR depth is too sparse can still be reconstructed from its
+    /// exact top ∩ side silhouettes in the same metric world frame.
+    private struct TopProjection {
+        let masks: [[[UInt8]]]
+        let labels: [String]
+        let plateRect: CGRect
+        let transform: simd_float4x4
+        let intrinsics: simd_float3x3
+        let maskWidth: Int
+        let maskHeight: Int
+        let imageWidth: Int
+        let imageHeight: Int
+    }
+    private var topProjection: TopProjection?
+
+    /// World-space Y (metres) of the ARKit-tracked table plane, used as the
+    /// support plane only when no labelled depth voxel exists to measure it.
+    private var tablePlaneY: Float?
+
+    func setTablePlaneY(_ y: Float?) {
+        tablePlaneY = y.flatMap { $0.isFinite ? $0 : nil }
+    }
+
+    /// Where a LiDAR food's height came from. There is no prior/default.
+    enum HeightSource: String {
+        case depth
+        case sideSilhouette = "side_silhouette"
+    }
+
+    /// A top food instance that has neither enough fused depth nor a usable
+    /// matched side silhouette. The pipeline fails the scan for it rather
+    /// than inventing a height (AGENTS.md §9).
+    struct UnresolvedFood: Equatable {
+        let topIndex: Int
+        let label: String
+        let reason: String
+    }
+
+    /// Filled by every `voxelClusters()` call.
+    private(set) var lastUnresolvedFoods: [UnresolvedFood] = []
 
     // MARK: – Depth integration
 
@@ -142,12 +185,14 @@ final class DepthFusion {
 
         // Flatten all masks into a single pixel-label array at mask resolution.
         var combinedMask = [Int32](repeating: 0, count: maskWidth * maskHeight)
-        for seg in segments {
+        var combinedInstances = [Int](repeating: -1, count: maskWidth * maskHeight)
+        for (index, seg) in segments.enumerated() {
             let lIdx = labelMap[seg.label]!
             for r in 0..<maskHeight {
                 for c in 0..<maskWidth {
                     if seg.mask[r][c] == 1 && combinedMask[r * maskWidth + c] == 0 {
                         combinedMask[r * maskWidth + c] = lIdx
+                        combinedInstances[r * maskWidth + c] = index
                     }
                 }
             }
@@ -168,6 +213,16 @@ final class DepthFusion {
         let pRw = Float(plateRect.width)
         let pRh = Float(plateRect.height)
         guard pRw > 0.001 && pRh > 0.001 else { return }
+        topProjection = TopProjection(
+            masks: segments.map(\.mask),
+            labels: segments.map(\.label),
+            plateRect: plateRect,
+            transform: topFrameTransform,
+            intrinsics: topFrameIntrinsics,
+            maskWidth: maskWidth,
+            maskHeight: maskHeight,
+            imageWidth: imageWidth,
+            imageHeight: imageHeight)
 
         var topDepthPtr: UnsafeMutablePointer<Float32>?
         var topDepthWidth = 0
@@ -236,6 +291,7 @@ final class DepthFusion {
                     }
                 }
                 pendingLabels.append((key: key, label: label))
+                topInstanceByVoxel[key] = combinedInstances[mv * maskWidth + mu]
             }
         }
 
@@ -269,14 +325,13 @@ final class DepthFusion {
     /// Food silhouette from the SIDE photo. AGENTS.md §9 requires the LiDAR
     /// model to be constrained by the exact TOP and SIDE silhouettes too: the
     /// top mask already gates labelling (`assignLabels`), and this mask carves
-    /// the solidified voxels (space carving, Kutulakos & Seitz 2000). Unlike
-    /// the monocular path no mirroring is needed — the side camera pose is
-    /// known from ARKit, so every voxel is projected through the REAL side
-    /// camera and removed when it falls outside the side food silhouette.
+    /// the solidified voxels through the captured side camera. The transverse
+    /// constraint mirrors that same observed profile; it invents no primitive.
     struct SideSilhouette {
         /// Union of the side-view food masks over `cropRect` (`mask[row][col]`,
         /// 1 = food), already constrained to the side rounded-rect ROI.
         let mask: [[UInt8]]
+        let instanceMasks: [Int: [[UInt8]]]
         /// Normalised region of the full side buffer the mask covers
         /// (top-left origin, same convention as `FramePreprocessor`).
         let cropRect: CGRect
@@ -294,15 +349,53 @@ final class DepthFusion {
         sideSilhouette = silhouette
     }
 
-    /// Keep only voxels whose centre projects inside the side food silhouette
-    /// (and the side ROI). If carving would keep less than 10 % of the cluster
-    /// the side mask does not describe this food (pose mis-registration, food
-    /// outside the side ROI, segmentation miss): carving is skipped for this
-    /// cluster instead of failing the scan, and the reason is logged.
-    private func carveBySideSilhouette(_ solid: [VoxelKey], id: String) -> [VoxelKey] {
-        guard let side = sideSilhouette else { return solid }
-        let maskH = side.mask.count
-        let maskW = side.mask.first?.count ?? 0
+    /// Result of the exact two-silhouette carve. Carving runs on a finer
+    /// sub-voxel grid so sub-centimetre (flat) foods keep their measured
+    /// thickness instead of vanishing or snapping to a whole 1 cm voxel.
+    struct CarvedSolid {
+        let keys: [VoxelKey]
+        /// Edge length (metres) of the grid `keys` live on.
+        let voxelSizeM: Float
+    }
+
+    /// Finest sub-voxel factor (4 → 2.5 mm, 2 → 5 mm, else 1 cm) that keeps
+    /// every carved dimension inside the 256-cell Surface Nets limit.
+    static func carveRefineFactor(maxExtentVoxels: Int32) -> Int32 {
+        for factor: Int32 in [4, 2] where (maxExtentVoxels + 2) * factor <= 250 { return factor }
+        return 1
+    }
+
+    /// Keep only voxels inside this top instance's side mask and its mirrored
+    /// transverse constraint. Never undo carving because retention is low.
+    /// Without usable side data the measured depth solid is returned as-is.
+    func carveBySideSilhouette(_ solid: [VoxelKey], id: String, topIndex: Int?) -> CarvedSolid {
+        exactSideCarve(solid, id: id, topIndex: topIndex)
+            ?? CarvedSolid(keys: solid, voxelSizeM: voxelSizeM)
+    }
+
+    /// The exact top ∩ side ∩ mirrored-side carve (same semantics as the
+    /// monocular `sideIntersection`): a voxel survives only when its centre is
+    /// inside the side mask AND the same side profile, rotated 90° about the
+    /// vertical onto the transverse axis (normalised over the footprint
+    /// extent, like monocular `uTransverse`), also contains its height. Each
+    /// 1 cm voxel is split into sub-voxels that are tested individually, so
+    /// the SIDE silhouette — not the 1 cm grid — decides how thick a thin food
+    /// is (and a 1–2 px pose error cannot erase a whole 1 cm layer). Returns
+    /// nil when this instance has no usable matched side silhouette.
+    ///
+    /// - Parameters:
+    ///   - solidVoxelSizeM: grid of `solid`; nil = the fusion grid (1 cm),
+    ///     which is then refined. A finer grid is carved as-is.
+    private func exactSideCarve(
+        _ solid: [VoxelKey], solidVoxelSizeM: Float? = nil, id: String, topIndex: Int?
+    ) -> CarvedSolid? {
+        guard let side = sideSilhouette, let topIndex,
+              let mask = side.instanceMasks[topIndex] else {
+            print("[DUALHULL] path=lidar id=\(id) sideApplied=false reason=missing_or_unmatched_instance top#=\(topIndex?.description ?? "none") geometry=observed_top_depth")
+            return nil
+        }
+        let maskH = mask.count
+        let maskW = mask.first?.count ?? 0
         let cropX = Float(side.cropRect.minX)
         let cropY = Float(side.cropRect.minY)
         let cropW = Float(side.cropRect.width)
@@ -310,51 +403,106 @@ final class DepthFusion {
         guard maskH > 0, maskW > 0, side.imageWidth > 0, side.imageHeight > 0,
               cropW > 0.001, cropH > 0.001 else {
             print("[DUALHULL] path=lidar id=\(id) side carving skipped (invalid side silhouette \(maskW)x\(maskH))")
-            return solid
+            return nil
         }
         let k = side.cameraIntrinsics
         let fx = k.columns.0.x, fy = k.columns.1.y
         let cx = k.columns.2.x, cy = k.columns.2.y
         guard abs(fx) > 0.0001, abs(fy) > 0.0001 else {
             print("[DUALHULL] path=lidar id=\(id) side carving skipped (invalid side intrinsics)")
-            return solid
+            return nil
         }
+        let horizontal = side.cameraTransform.columns.0
+        let up = side.cameraTransform.columns.1
+        let rawAxis = abs(horizontal.y) < abs(up.y)
+            ? SIMD3<Float>(horizontal.x, 0, horizontal.z) : SIMD3<Float>(-up.x, 0, -up.z)
+        guard simd_length(rawAxis) > 0.0001 else {
+            print("[DUALHULL] path=lidar id=\(id) side carving skipped (invalid side axis)")
+            return nil
+        }
+        let axis = simd_normalize(rawAxis)
+        let transverse = simd_cross(SIMD3<Float>(0, 1, 0), axis)
         let worldToCamera = side.cameraTransform.inverse
         let roi = ScanMaskGeometry.ROI(width: maskW, height: maskH, shape: side.roiShape)
         let imgW = Float(side.imageWidth)
         let imgH = Float(side.imageHeight)
-
-        var kept: [VoxelKey] = []
-        kept.reserveCapacity(solid.count)
-        var outsideView = 0
-        var outsideMask = 0
-        for key in solid {
-            let centre = SIMD3<Float>(
-                (Float(key.x) + 0.5) * voxelSizeM,
-                (Float(key.y) + 0.5) * voxelSizeM,
-                (Float(key.z) + 0.5) * voxelSizeM)
+        func inside(_ world: SIMD3<Float>) -> Bool? {
             guard let p = Self.projectToImage(
-                centre, worldToCamera: worldToCamera, fx: fx, fy: fy, cx: cx, cy: cy
-            ) else { outsideView += 1; continue }
+                world, worldToCamera: worldToCamera, fx: fx, fy: fy, cx: cx, cy: cy) else { return nil }
             let pu = (p.u / imgW - cropX) / cropW
             let pv = (p.v / imgH - cropY) / cropH
-            guard pu >= 0, pu < 1, pv >= 0, pv < 1 else { outsideView += 1; continue }
+            guard pu >= 0, pu < 1, pv >= 0, pv < 1 else { return nil }
             let mc = min(maskW - 1, Int(pu * Float(maskW)))
             let mr = min(maskH - 1, Int(pv * Float(maskH)))
-            guard roi.contains(row: mr, column: mc),
-                  mc < side.mask[mr].count, side.mask[mr][mc] != 0 else {
-                outsideMask += 1
-                continue
+            return roi.contains(row: mr, column: mc) && mc < mask[mr].count && mask[mr][mc] != 0
+        }
+
+        // Sub-voxel candidates: every measured solid voxel split into factor³
+        // cells (nothing is added outside the measured solid).
+        let inputSize = solidVoxelSizeM ?? voxelSizeM
+        var factor: Int32 = 1
+        var candidates: [VoxelKey] = []
+        if solidVoxelSizeM == nil, !solid.isEmpty {
+            var lo = solid[0], hi = solid[0]
+            for key in solid {
+                lo = VoxelKey(x: min(lo.x, key.x), y: min(lo.y, key.y), z: min(lo.z, key.z))
+                hi = VoxelKey(x: max(hi.x, key.x), y: max(hi.y, key.y), z: max(hi.z, key.z))
             }
+            factor = Self.carveRefineFactor(
+                maxExtentVoxels: max(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z) + 1)
+            candidates.reserveCapacity(solid.count * Int(factor * factor * factor))
+            for key in solid {
+                for dy in 0..<factor { for dz in 0..<factor { for dx in 0..<factor {
+                    candidates.append(VoxelKey(
+                        x: key.x * factor + dx, y: key.y * factor + dy, z: key.z * factor + dz))
+                } } }
+            }
+        } else {
+            candidates = solid
+        }
+        let size = inputSize / Float(factor)
+        guard !candidates.isEmpty else { return CarvedSolid(keys: [], voxelSizeM: size) }
+
+        @inline(__always) func centre(_ key: VoxelKey) -> SIMD3<Float> {
+            SIMD3<Float>(Float(key.x) + 0.5, Float(key.y) + 0.5, Float(key.z) + 0.5) * size
+        }
+        var centroid = SIMD3<Float>(repeating: 0)
+        var aMin = Float.greatestFiniteMagnitude, aMax = -Float.greatestFiniteMagnitude
+        var tMin = Float.greatestFiniteMagnitude, tMax = -Float.greatestFiniteMagnitude
+        for key in candidates {
+            let c = centre(key)
+            centroid += c
+            let a = simd_dot(c, axis), t = simd_dot(c, transverse)
+            aMin = min(aMin, a); aMax = max(aMax, a)
+            tMin = min(tMin, t); tMax = max(tMax, t)
+        }
+        centroid /= Float(candidates.count)
+        // Footprint extents (cell edges, not centres) along both axes.
+        aMin -= size * 0.5; aMax += size * 0.5
+        tMin -= size * 0.5; tMax += size * 0.5
+        let centreLine = centroid - axis * simd_dot(centroid, axis)
+
+        var kept: [VoxelKey] = []
+        kept.reserveCapacity(candidates.count)
+        var outsideView = 0
+        var outsideMask = 0
+        var outsideMirrored = 0
+        for key in candidates {
+            let c = centre(key)
+            guard let matched = inside(c) else { outsideView += 1; continue }
+            guard matched else { outsideMask += 1; continue }
+            // The SAME side profile rotated onto the transverse axis: this
+            // voxel's normalised transverse position samples the profile at
+            // that normalised position along the side axis, on the instance's
+            // centre plane, at the voxel's own height.
+            let u = (simd_dot(c, transverse) - tMin) / max(tMax - tMin, 1e-6)
+            var mirrored = centreLine + axis * (aMin + u * (aMax - aMin))
+            mirrored.y = c.y
+            guard inside(mirrored) == true else { outsideMirrored += 1; continue }
             kept.append(key)
         }
-        let minimumKept = max(8, solid.count / 10)
-        guard kept.count >= minimumKept else {
-            print("[DUALHULL] path=lidar id=\(id) side carving skipped: kept=\(kept.count)/\(solid.count) < \(minimumKept) (outsideView=\(outsideView) outsideMask=\(outsideMask)) — side silhouette does not cover this food (mis-registration / outside side ROI); top-mask hull kept")
-            return solid
-        }
-        print("[DUALHULL] path=lidar id=\(id) carvedBySide=\(solid.count - kept.count)/\(solid.count) kept=\(kept.count) outsideView=\(outsideView) outsideMask=\(outsideMask) (top ∩ side visual hull)")
-        return kept
+        print("[DUALHULL] path=lidar id=\(id) top#=\(topIndex) sideApplied=true subVoxel=\(String(format: "%.1f", size * 1000))mm carvedBySide=\(candidates.count - kept.count)/\(candidates.count) kept=\(kept.count) outsideView=\(outsideView) outsideMask=\(outsideMask) outsideMirrored=\(outsideMirrored) (top ∩ side ∩ side-rotated-onto-transverse; never undo exact carving)")
+        return CarvedSolid(keys: kept, voxelSizeM: size)
     }
 
     // MARK: – Volume queries
@@ -415,6 +563,11 @@ final class DepthFusion {
 
     func reset() {
         grid.removeAll()
+        topInstanceByVoxel.removeAll()
+        sideSilhouette = nil
+        topProjection = nil
+        tablePlaneY = nil
+        lastUnresolvedFoods = []
         labelMap.removeAll()
         nextLabel = 1
     }
@@ -454,6 +607,7 @@ final class DepthFusion {
         let id: String
         let label: String
         let instanceIndex: Int
+        let topSegmentIndex: Int?
         /// Voxel keys in the ARKit world-space integer grid, AFTER plate
         /// subtraction AND column solidification. These are no longer the raw
         /// measured depth shell — every (x,z) column has been filled from the
@@ -463,6 +617,15 @@ final class DepthFusion {
         /// Volume in cm³, derived ONLY from `voxelKeys.count × voxelSize³`
         /// (i.e. the solidified column count, a true volume — not surface area).
         let volumeCm3: Double
+        /// Grid edge (metres) of `voxelKeys`: 1 cm for raw depth columns, a
+        /// finer sub-voxel grid once side-silhouette carving was applied.
+        var voxelSizeM: Float = 0.01
+        /// True when the exact top ∩ side ∩ mirrored-side carve shaped it.
+        var sideCarved: Bool = false
+        /// `.depth` = fused LiDAR surface (side-carved when matched);
+        /// `.sideSilhouette` = exact top ∩ side hull for a food whose depth
+        /// was too sparse. Never a prior or default height.
+        var heightSource: HeightSource = .depth
     }
 
     /// One reconstructed food object: per-instance voxel cluster turned into
@@ -514,82 +677,303 @@ final class DepthFusion {
     ///   6. When a side silhouette is set (`setSideSilhouette`), carve away
     ///      every solid voxel that projects outside the side food mask, so
     ///      the result is the top ∩ side visual hull (AGENTS.md §9).
+    ///   7. Every top food left without a depth cluster is rebuilt from its
+    ///      exact top ∩ side ∩ mirrored-side silhouettes, or listed in
+    ///      `lastUnresolvedFoods` so the caller fails the scan. No prior,
+    ///      default height or thickness floor exists on this path.
     ///
     /// The returned clusters are the ONLY input to mesh export and
     /// canonical volume math.
     func voxelClusters(minVoxelCount: Int = defaultMinVoxelsPerCluster) -> [FoodVoxelCluster] {
+        lastUnresolvedFoods = []
         // 1. Bucket by class label.
         var keysByLabel: [Int32: [VoxelKey]] = [:]
         for (key, label) in grid where label > 0 {
             keysByLabel[label, default: []].append(key)
         }
         print("[SCAN] voxelClusters: totalOccupied=\(grid.count), labelled=\(keysByLabel.values.reduce(0) { $0 + $1.count }), labels=\(keysByLabel.count), minVoxelCount=\(minVoxelCount)")
-        guard !keysByLabel.isEmpty else {
-            print("[SCAN] voxelClusters: NO labelled voxels — returning empty")
-            return []
-        }
 
         // 2. Plate-plane subtraction.
         // Find the lowest stable Y across ALL labelled voxels (the plate
         // top) and drop anything more than `plateEpsilonVoxels` below it.
+        // With no labelled depth at all, the ARKit-tracked table plane is the
+        // only measured support plane; never an assumed one.
         let allKeys = keysByLabel.values.flatMap { $0 }
-        let platePlaneVoxelY: Int32 = robustMinY(of: allKeys, percentile: 0.05)
-        // ε = 1 voxel below the estimated plate plane. Voxels strictly
-        // below this line are reflections / table noise.
-        let plateCutoffY: Int32 = platePlaneVoxelY - 1
+        let platePlaneVoxelY: Int32?
+        let planeSource: String
+        if !allKeys.isEmpty {
+            platePlaneVoxelY = robustMinY(of: allKeys, percentile: 0.05)
+            planeSource = "labelled_depth_p05"
+        } else if let tablePlaneY {
+            platePlaneVoxelY = Int32((tablePlaneY / voxelSizeM).rounded(.down))
+            planeSource = "arkit_table_plane"
+        } else {
+            platePlaneVoxelY = nil
+            planeSource = "none"
+        }
 
         let indexToName = Dictionary(uniqueKeysWithValues: labelMap.map { ($1, $0) })
-        let voxVolCm3 = pow(Double(voxelSizeM * 100), 3)
-
-        print("[SCAN] voxelClusters: plateCutoffY=\(plateCutoffY), platePlaneVoxelY=\(platePlaneVoxelY)")
 
         var clusters: [FoodVoxelCluster] = []
-        // Deterministic ordering so cluster IDs are stable across runs with
-        // identical input — Dictionary iteration order is not deterministic.
-        let sortedLabelIdxs = keysByLabel.keys.sorted()
-        for labelIdx in sortedLabelIdxs {
-            guard let label = indexToName[labelIdx] else { continue }
-            let rawKeys = keysByLabel[labelIdx] ?? []
-            let pruned = rawKeys.filter { $0.y >= plateCutoffY }
-            print("[SCAN] voxelClusters: label=\(label) raw=\(rawKeys.count) afterPlateSubtraction=\(pruned.count) threshold=\(minVoxelCount)")
-            guard pruned.count >= minVoxelCount else {
-                print("[SCAN] voxelClusters: DROPPED label=\(label) (\(pruned.count) < \(minVoxelCount))")
-                continue
-            }
+        var coveredTops = Set<Int>()
+        var nextInstance: [String: Int] = [:]
+        if let platePlaneVoxelY {
+            // ε = 1 voxel below the estimated plate plane. Voxels strictly
+            // below this line are reflections / table noise.
+            let plateCutoffY: Int32 = platePlaneVoxelY - 1
+            print("[SCAN] voxelClusters: plateCutoffY=\(plateCutoffY), platePlaneVoxelY=\(platePlaneVoxelY) planeSource=\(planeSource)")
 
-            // 3. Connected components → per-instance clusters.
-            let components = connectedComponents(of: pruned)
-            print("[SCAN] voxelClusters: label=\(label) components=\(components.count) sizes=\(components.map { $0.count }.sorted(by: >).prefix(5))")
-            // Largest-first so `instanceIndex = 0` is the dominant instance.
-            let sorted = components.sorted { $0.count > $1.count }
-            var instanceIndex = 0
-            for comp in sorted {
-                // Noise gate on the raw surface shell, BEFORE solidification.
-                guard comp.count >= minVoxelCount else {
-                    print("[SCAN] voxelClusters: DROPPED component \(label)_\(instanceIndex) (\(comp.count) < \(minVoxelCount))")
+            // Deterministic ordering so cluster IDs are stable across runs with
+            // identical input — Dictionary iteration order is not deterministic.
+            let sortedLabelIdxs = keysByLabel.keys.sorted()
+            for labelIdx in sortedLabelIdxs {
+                guard let label = indexToName[labelIdx] else { continue }
+                let rawKeys = keysByLabel[labelIdx] ?? []
+                let pruned = rawKeys.filter { $0.y >= plateCutoffY }
+                print("[SCAN] voxelClusters: label=\(label) raw=\(rawKeys.count) afterPlateSubtraction=\(pruned.count) threshold=\(minVoxelCount)")
+                guard pruned.count >= minVoxelCount else {
+                    print("[SCAN] voxelClusters: insufficient depth label=\(label) (\(pruned.count) < \(minVoxelCount)) — side-silhouette hull or SIDE_VIEW_REQUIRED")
                     continue
                 }
-                // 5. Solidify: turn the measured depth shell into a true solid
-                //    by integrating height per (x,z) column from the plate
-                //    plane up to the surface. This is the source of truth for
-                //    BOTH volume and the Surface-Nets mesh (contract rule #1).
+
+                // 3. Connected components → per-instance clusters.
+                let perTop = Dictionary(grouping: pruned) { topInstanceByVoxel[$0] ?? -1 }
+                let components = perTop.keys.sorted().flatMap { top in
+                    connectedComponents(of: perTop[top]!).map { (top: top, keys: $0) }
+                }
+                print("[SCAN] voxelClusters: label=\(label) components=\(components.count) sizes=\(components.map { $0.keys.count }.sorted(by: >).prefix(5))")
+                // Largest-first so `instanceIndex = 0` is the dominant instance;
+                // ties break on top index then lowest key for stable ids.
+                let sorted = components.map { (top: $0.top, keys: $0.keys, anchor: Self.minKey($0.keys)) }
+                    .sorted {
+                        if $0.keys.count != $1.keys.count { return $0.keys.count > $1.keys.count }
+                        if $0.top != $1.top { return $0.top < $1.top }
+                        return Self.keyLess($0.anchor, $1.anchor)
+                    }
+                for comp in sorted {
+                    // Noise gate on the raw surface shell, BEFORE solidification.
+                    guard comp.keys.count >= minVoxelCount else {
+                        print("[SCAN] voxelClusters: insufficient depth component label=\(label) top#=\(comp.top) (\(comp.keys.count) < \(minVoxelCount))")
+                        continue
+                    }
+                    // 5. Solidify: turn the measured depth shell into a true solid
+                    //    by integrating height per (x,z) column from the plate
+                    //    plane up to the surface. This is the source of truth for
+                    //    BOTH volume and the Surface-Nets mesh (contract rule #1).
+                    let instanceIndex = nextInstance[label, default: 0]
+                    let id = "\(label)_\(instanceIndex)"
+                    let topIndex: Int? = comp.top >= 0 ? comp.top : nil
+                    // 6. Side-silhouette carve (top ∩ side hull) AFTER the column
+                    //    fill, so the filled interior is constrained as well.
+                    let filled = solidifyColumns(comp.keys, platePlaneY: platePlaneVoxelY)
+                    var solid = CarvedSolid(keys: filled, voxelSizeM: voxelSizeM)
+                    var sideCarved = false
+                    if let carved = exactSideCarve(filled, id: id, topIndex: topIndex) {
+                        if carved.keys.isEmpty {
+                            // Measured depth is real geometry: a side mask that
+                            // misses it (pose error, mismatch) must not delete
+                            // the food. Keep the measured depth solid uncarved.
+                            print("[LIDAR] food#\(topIndex?.description ?? "none") id=\(id) side carve emptied a depth-measured cluster → keeping measured depth geometry (sideCarved=false)")
+                        } else {
+                            solid = carved
+                            sideCarved = true
+                        }
+                    }
+                    let ys = solid.keys.map(\.y)
+                    let heightCm = Float((ys.max() ?? 0) - (ys.min() ?? 0) + 1) * solid.voxelSizeM * 100
+                    let solidVolCm3 = pow(Double(solid.voxelSizeM * 100), 3)
+                    print("[LIDAR] food#\(topIndex?.description ?? "none") id=\(id) label=\(label) heightSource=depth surfaceVoxels=\(comp.keys.count) solidVoxels=\(solid.keys.count) cell=\(String(format: "%.1f", solid.voxelSizeM * 1000))mm heightCm=\(String(format: "%.2f", heightCm)) sideCarved=\(sideCarved) plane=\(planeSource)")
+                    clusters.append(FoodVoxelCluster(
+                        id: id,
+                        label: label,
+                        instanceIndex: instanceIndex,
+                        topSegmentIndex: topIndex,
+                        voxelKeys: solid.keys,
+                        volumeCm3: Double(solid.keys.count) * solidVolCm3,
+                        voxelSizeM: solid.voxelSizeM,
+                        sideCarved: sideCarved,
+                        heightSource: .depth
+                    ))
+                    nextInstance[label] = instanceIndex + 1
+                    if let topIndex { coveredTops.insert(topIndex) }
+                }
+            }
+        } else {
+            print("[SCAN] voxelClusters: NO labelled voxels and no ARKit table plane — no measured support plane")
+        }
+
+        // 7. Every top food without enough fused depth is reconstructed from
+        //    its exact top ∩ side ∩ mirrored-side silhouettes, or reported as
+        //    unresolved. Never a prior, default height or thickness floor.
+        if let projection = topProjection {
+            for (topIndex, mask) in projection.masks.enumerated() where !coveredTops.contains(topIndex) {
+                guard mask.contains(where: { $0.contains(1) }) else { continue }
+                let label = projection.labels[topIndex]
+                guard let platePlaneVoxelY else {
+                    print("[LIDAR] food#\(topIndex) label=\(label) heightSource=none reason=no_measured_support_plane")
+                    lastUnresolvedFoods.append(UnresolvedFood(
+                        topIndex: topIndex, label: label, reason: "no_measured_support_plane"))
+                    continue
+                }
+                let instanceIndex = nextInstance[label, default: 0]
                 let id = "\(label)_\(instanceIndex)"
-                // 6. Side-silhouette carve (top ∩ side hull) AFTER the column
-                //    fill, so the filled interior is constrained as well.
-                let solid = carveBySideSilhouette(
-                    solidifyColumns(comp, platePlaneY: platePlaneVoxelY), id: id)
-                guard !solid.isEmpty else { continue }
+                // Exact metric support plane: the ARKit plane height when that is
+                // the source, else the bottom of the measured plate-plane voxel.
+                let planeYM = planeSource == "arkit_table_plane"
+                    ? (tablePlaneY ?? Float(platePlaneVoxelY) * voxelSizeM)
+                    : Float(platePlaneVoxelY) * voxelSizeM
+                let hull = sideSilhouetteHull(topIndex: topIndex, planeYM: planeYM, id: id)
+                guard hull.reason == nil, !hull.keys.isEmpty else {
+                    let reason = hull.reason ?? "empty_side_hull"
+                    print("[LIDAR] food#\(topIndex) label=\(label) heightSource=none reason=\(reason) (insufficient depth; no prior/default height is ever used)")
+                    lastUnresolvedFoods.append(UnresolvedFood(topIndex: topIndex, label: label, reason: reason))
+                    continue
+                }
+                let ys = hull.keys.map(\.y)
+                let heightCm = Float((ys.max() ?? 0) - (ys.min() ?? 0) + 1) * hull.voxelSizeM * 100
+                print("[LIDAR] food#\(topIndex) id=\(id) label=\(label) heightSource=side_silhouette solidVoxels=\(hull.keys.count) cell=\(String(format: "%.1f", hull.voxelSizeM * 1000))mm heightCm=\(String(format: "%.2f", heightCm)) plane=\(planeSource)")
                 clusters.append(FoodVoxelCluster(
                     id: id,
                     label: label,
                     instanceIndex: instanceIndex,
-                    voxelKeys: solid,
-                    volumeCm3: Double(solid.count) * voxVolCm3
+                    topSegmentIndex: topIndex,
+                    voxelKeys: hull.keys,
+                    volumeCm3: Double(hull.keys.count) * pow(Double(hull.voxelSizeM * 100), 3),
+                    voxelSizeM: hull.voxelSizeM,
+                    sideCarved: true,
+                    heightSource: .sideSilhouette
                 ))
-                instanceIndex += 1
+                nextInstance[label] = instanceIndex + 1
             }
         }
         return clusters
+    }
+
+    /// Exact two-silhouette hull for a top food with too little fused depth:
+    /// sub-voxel cells (¼ of the fusion grid, 2.5 mm) between the measured
+    /// support plane and the top camera whose centre projects inside this
+    /// instance's TOP mask and its matched SIDE mask, then the same
+    /// top ∩ side ∩ mirrored-side carve as depth clusters. The fine vertical
+    /// grid lets a flat food keep its true sub-centimetre side height (no
+    /// floor, no 1 cm quantisation). Returns a non-nil `reason` when it
+    /// cannot be measured.
+    private func sideSilhouetteHull(
+        topIndex: Int, planeYM: Float, id: String
+    ) -> (keys: [VoxelKey], voxelSizeM: Float, reason: String?) {
+        let sub = voxelSizeM / 4
+        guard let top = topProjection, topIndex >= 0, topIndex < top.masks.count else {
+            return ([], sub, "no_top_projection")
+        }
+        guard let side = sideSilhouette else { return ([], sub, "no_side_silhouette") }
+        guard let sideMask = side.instanceMasks[topIndex] else { return ([], sub, "unmatched_side_silhouette") }
+        let sideH = sideMask.count
+        let sideW = sideMask.first?.count ?? 0
+        let k = side.cameraIntrinsics
+        let sFx = k.columns.0.x, sFy = k.columns.1.y, sCx = k.columns.2.x, sCy = k.columns.2.y
+        guard sideH > 0, sideW > 0, side.imageWidth > 0, side.imageHeight > 0,
+              side.cropRect.width > 0.001, side.cropRect.height > 0.001,
+              abs(sFx) > 0.0001, abs(sFy) > 0.0001 else {
+            return ([], sub, "invalid_side_silhouette")
+        }
+        let mask = top.masks[topIndex]
+        let tFx = top.intrinsics.columns.0.x, tFy = top.intrinsics.columns.1.y
+        let tCx = top.intrinsics.columns.2.x, tCy = top.intrinsics.columns.2.y
+        let pRx = Float(top.plateRect.minX), pRy = Float(top.plateRect.minY)
+        let pRw = Float(top.plateRect.width), pRh = Float(top.plateRect.height)
+        guard abs(tFx) > 0.0001, abs(tFy) > 0.0001, top.imageWidth > 0, top.imageHeight > 0,
+              top.maskWidth > 0, top.maskHeight > 0, pRw > 0.001, pRh > 0.001 else {
+            return ([], sub, "invalid_top_projection")
+        }
+        let camPos = SIMD3<Float>(top.transform.columns.3.x, top.transform.columns.3.y, top.transform.columns.3.z)
+        let rotation = simd_float3x3(
+            SIMD3<Float>(top.transform.columns.0.x, top.transform.columns.0.y, top.transform.columns.0.z),
+            SIMD3<Float>(top.transform.columns.1.x, top.transform.columns.1.y, top.transform.columns.1.z),
+            SIMD3<Float>(top.transform.columns.2.x, top.transform.columns.2.y, top.transform.columns.2.z))
+        // First cell whose centre is on/above the measured support plane; the
+        // same 5 cm near limit as `integrate` caps it (nothing measured above).
+        let bottomY = Int32((planeYM / sub - 0.5).rounded(.up))
+        let ceilingY = Int32(((camPos.y - 0.05) / sub).rounded(.down))
+        guard ceilingY > bottomY else { return ([], sub, "top_camera_below_support_plane") }
+
+        // Horizontal search box = the top mask's viewing cone between the
+        // support plane and the ceiling (exact rays, no padding of the shape).
+        var minX = Int32.max, maxX = Int32.min, minZ = Int32.max, maxZ = Int32.min
+        let planes = [Float(bottomY) * sub, (Float(ceilingY) + 1) * sub]
+        for r in 0..<min(mask.count, top.maskHeight) {
+            let row = mask[r]
+            for c in 0..<min(row.count, top.maskWidth) where row[c] != 0 {
+                let u = (pRx + (Float(c) + 0.5) / Float(top.maskWidth) * pRw) * Float(top.imageWidth)
+                let v = (pRy + (Float(r) + 0.5) / Float(top.maskHeight) * pRh) * Float(top.imageHeight)
+                let dir = rotation * SIMD3<Float>((u - tCx) / tFx, -(v - tCy) / tFy, -1)
+                guard dir.y < -0.0001 else { return ([], sub, "top_ray_not_toward_support_plane") }
+                for planeY in planes {
+                    let t = (planeY - camPos.y) / dir.y
+                    guard t > 0 else { continue }
+                    let hit = camPos + dir * t
+                    let vx = Int32((hit.x / sub).rounded(.down))
+                    let vz = Int32((hit.z / sub).rounded(.down))
+                    minX = min(minX, vx); maxX = max(maxX, vx)
+                    minZ = min(minZ, vz); maxZ = max(maxZ, vz)
+                }
+            }
+        }
+        guard minX <= maxX, minZ <= maxZ else { return ([], sub, "empty_top_mask") }
+        minX -= 1; maxX += 1; minZ -= 1; maxZ += 1
+        // Surface Nets meshes at most 256 cells (incl. padding) per axis.
+        let maxDim: Int32 = 250
+        guard maxX - minX < maxDim, maxZ - minZ < maxDim else {
+            return ([], sub, "hull_search_box_too_large")
+        }
+
+        let topInv = top.transform.inverse
+        let sideInv = side.cameraTransform.inverse
+        let sideROI = ScanMaskGeometry.ROI(width: sideW, height: sideH, shape: side.roiShape)
+        let cropX = Float(side.cropRect.minX), cropY = Float(side.cropRect.minY)
+        let cropW = Float(side.cropRect.width), cropH = Float(side.cropRect.height)
+        var candidates: [VoxelKey] = []
+        for y in bottomY...ceilingY {
+            for z in minZ...maxZ {
+                for x in minX...maxX {
+                    let centre = SIMD3<Float>(Float(x) + 0.5, Float(y) + 0.5, Float(z) + 0.5) * sub
+                    guard let tp = Self.projectToImage(
+                        centre, worldToCamera: topInv, fx: tFx, fy: tFy, cx: tCx, cy: tCy) else { continue }
+                    let pu = (tp.u / Float(top.imageWidth) - pRx) / pRw
+                    let pv = (tp.v / Float(top.imageHeight) - pRy) / pRh
+                    guard pu >= 0, pu < 1, pv >= 0, pv < 1 else { continue }
+                    let mu = Int(pu * Float(top.maskWidth)), mv = Int(pv * Float(top.maskHeight))
+                    guard mv < mask.count, mu < mask[mv].count, mask[mv][mu] != 0 else { continue }
+                    guard let sp = Self.projectToImage(
+                        centre, worldToCamera: sideInv, fx: sFx, fy: sFy, cx: sCx, cy: sCy) else { continue }
+                    let su = (sp.u / Float(side.imageWidth) - cropX) / cropW
+                    let sv = (sp.v / Float(side.imageHeight) - cropY) / cropH
+                    guard su >= 0, su < 1, sv >= 0, sv < 1 else { continue }
+                    let sc = min(sideW - 1, Int(su * Float(sideW)))
+                    let sr = min(sideH - 1, Int(sv * Float(sideH)))
+                    guard sideROI.contains(row: sr, column: sc),
+                          sc < sideMask[sr].count, sideMask[sr][sc] != 0 else { continue }
+                    candidates.append(VoxelKey(x: x, y: y, z: z))
+                }
+            }
+        }
+        guard !candidates.isEmpty else { return ([], sub, "empty_top_side_intersection") }
+        // The mirrored-side constraint needs the extents of the top ∩ side
+        // body, exactly like a solidified depth cluster (already sub-voxel).
+        guard let carved = exactSideCarve(
+            candidates, solidVoxelSizeM: sub, id: id, topIndex: topIndex) else {
+            return ([], sub, "invalid_side_silhouette")
+        }
+        return carved.keys.isEmpty
+            ? ([], sub, "empty_side_hull") : (carved.keys, carved.voxelSizeM, nil)
+    }
+
+    private static func minKey(_ keys: [VoxelKey]) -> VoxelKey {
+        keys.min(by: keyLess) ?? VoxelKey(x: 0, y: 0, z: 0)
+    }
+
+    private static func keyLess(_ a: VoxelKey, _ b: VoxelKey) -> Bool {
+        if a.x != b.x { return a.x < b.x }
+        if a.y != b.y { return a.y < b.y }
+        return a.z < b.z
     }
 
     /// Group occupied voxels into instance-level clusters (after plate
@@ -608,6 +992,7 @@ final class DepthFusion {
     ///     parameters used by `assignLabels` — they MUST be the top frame's
     ///     full-resolution values so reprojection lines up with the camera.
     ///   - minVoxelCount: forwarded to `voxelClusters()`.
+    ///   - clusters: clusters from an earlier `voxelClusters()` call.
     func exportFoodObjects(
         topPixelBuffer: CVPixelBuffer?,
         topTransform: simd_float4x4,
@@ -620,12 +1005,14 @@ final class DepthFusion {
         sideImageWidth: Int = 0,
         sideImageHeight: Int = 0,
         sideDepthBuffer: CVPixelBuffer? = nil,
-        minVoxelCount: Int = defaultMinVoxelsPerCluster
+        minVoxelCount: Int = defaultMinVoxelsPerCluster,
+        clusters precomputed: [FoodVoxelCluster]? = nil
     ) -> [Food3DObject] {
         // Single source of truth: clusters drive mesh output, and the final
         // displayed mesh drives the reported volume so user-visible geometry
-        // and nutrition math stay in lockstep.
-        let clusters = voxelClusters(minVoxelCount: minVoxelCount)
+        // and nutrition math stay in lockstep. Callers that already ran
+        // `voxelClusters()` pass them in so ids and geometry are identical.
+        let clusters = precomputed ?? voxelClusters(minVoxelCount: minVoxelCount)
         guard !clusters.isEmpty else { return [] }
 
         // Lock the top frame's BGRA buffer once for colour sampling.
@@ -801,12 +1188,13 @@ final class DepthFusion {
             // The mesh is emitted from the exact voxel-derived silhouette with
             // NO smoothing/subdivision/Taubin, matching the monocular path's
             // exact-silhouette contract.
-            let mesh = SurfaceNets.build(voxels: cluster.voxelKeys, voxelSizeM: voxelSizeM)
-            guard !mesh.vertices.isEmpty, mesh.faces.count >= 3 else { continue }
+            let mesh = SurfaceNets.build(voxels: cluster.voxelKeys, voxelSizeM: cluster.voxelSizeM)
+            guard !mesh.vertices.isEmpty, mesh.faces.count >= 3 else {
+                print("[LIDAR] id=\(cluster.id) heightSource=\(cluster.heightSource.rawValue) dropped reason=empty_mesh voxels=\(cluster.voxelKeys.count)")
+                continue
+            }
             let meshVolumeCm3 = Self.meshVolumeCm3(vertices: mesh.vertices, faces: mesh.faces)
-            let displayedVolumeCm3 = meshVolumeCm3.isFinite && meshVolumeCm3 > 1.0
-                ? meshVolumeCm3
-                : cluster.volumeCm3
+            let displayedVolumeCm3 = meshVolumeCm3.isFinite ? meshVolumeCm3 : 0
             print("[DepthFusion] exportFoodObjects volume label=\(cluster.label) id=\(cluster.id) displayMesh=\(String(format: "%.1f", displayedVolumeCm3))cm3 voxel=\(String(format: "%.1f", cluster.volumeCm3))cm3")
 
             var colors = [UInt8](repeating: 200, count: mesh.vertices.count * 3)
@@ -837,6 +1225,16 @@ final class DepthFusion {
             var sideFacingCount = 0
             var sideColoredCount = 0
             var sideColorSum = SIMD3<Float>(repeating: 0)
+            func insideMatchedSide(u: Float, v: Float) -> Bool {
+                guard let side = sideSilhouette, let topIndex = cluster.topSegmentIndex,
+                      let mask = side.instanceMasks[topIndex],
+                      let width = mask.first?.count, width > 0, !mask.isEmpty else { return false }
+                let pu = (u / Float(side.imageWidth) - Float(side.cropRect.minX)) / Float(side.cropRect.width)
+                let pv = (v / Float(side.imageHeight) - Float(side.cropRect.minY)) / Float(side.cropRect.height)
+                guard pu >= 0, pu < 1, pv >= 0, pv < 1 else { return false }
+                let row = Int(pv * Float(mask.count)), col = Int(pu * Float(width))
+                return col < mask[row].count && mask[row][col] != 0
+            }
             if abs(fx) > 0.0001, abs(fy) > 0.0001, imageWidth > 0, imageHeight > 0 {
                 let iw = Float(imageWidth)
                 let ih = Float(imageHeight)
@@ -859,6 +1257,7 @@ final class DepthFusion {
                            ),
                            sp.u >= 0, sp.u <= Float(sideImageWidth),
                            sp.v >= 0, sp.v <= Float(sideImageHeight),
+                           insideMatchedSide(u: sp.u, v: sp.v),
                            sideDepthAgrees(u: sp.u, v: sp.v, depth: sp.depth) {
                             uvs[i] = atlasUV(
                                 u0: Food3DTextureBaker.atlasSideU0,

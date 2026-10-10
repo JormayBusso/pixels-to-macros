@@ -8,6 +8,32 @@ land.
 > The agent cannot run this — it requires the physical iPhone 16 Plus
 > (monocular, no LiDAR) and real food. This is the human-in-the-loop checklist.
 
+## Live food contour checks
+
+LiDAR framing and non-LiDAR TOP/SIDE framing use the same
+`com.pixelstomacros/ar_camera` preview and native live contour renderer. Saved
+capture segmentation, geometry and texture projection are separate and unchanged
+by the live-only gates.
+
+- Check a plate with food, then an empty table, plate, utensils and other objects:
+  only recognized food classes should receive contours. Unknown/generic labels
+  are rejected; ML food-class false positives remain possible.
+- Pan/rotate the camera, switch TOP to SIDE, close/reopen the scanner and
+  background/foreground the app. Old outlines must disappear rather than trail
+  the previous image. Check both landscape directions and the guide alignment.
+- Contours should be thin and crisp, with a subtle fill and no blurred halo,
+  historical-mask blending, cross-fade or moving shimmer.
+- Paste `[LiveGlow] backend=`, `infer=`, `drop_stale`, `roi` and any
+  `label_map_rejected` logs. Frames older than 350 ms or displaced by more than
+  1 cm / 3° are not displayed. A slow model can therefore yield fewer/no live
+  contours; it must not fall back to highlighting arbitrary foreground objects.
+- Host regression checks: `python3 ios/RunnerTests/run_live_overlay_checks.py`.
+  These validate live label gates, reset/backlog handling, freshness, camera
+  motion, vector boundaries and ROI mapping, not on-device ML/render quality.
+
+Scheduling follows Apple's [TN2445](https://developer.apple.com/library/archive/technotes/tn2445/_index.html):
+one inference slot, discard busy frames, and promptly release camera buffers.
+
 ## Where the data comes from
 
 Every successful scan now captures a full telemetry snapshot. Open it via:
@@ -91,11 +117,88 @@ For each item, capture top + side as guided, then open Scanner Diagnostics:
 | Symptom in diagnostics                         | Likely cause / next step                                   |
 | ---------------------------------------------- | ---------------------------------------------------------- |
 | `scale_source = fallback_22cm`                 | Plate not detected — improve plate framing/contrast.       |
-| `side=false`, `fallback=true`                  | Side mask rejected by `usableSideProfile` gates.           |
+| `side=false`, `fallback=true`                  | Missing capture, unmatched/occluded food, or invalid mask; inspect `[CAPTUREPAIR]` and `[SIDEMATCH]`. Top-only monocular geometry is a zero-thickness sheet, not an inferred portion. |
 | Visible horizontal layers                      | Monocular mesh should report `surface_extraction_mode = contour_loft`; otherwise an old layered hull path is still being used. |
-| Cube/cylinder shape                            | Mesh smoothing/rim taper regression (Food3DExporter).      |
+| Cube/cylinder shape                            | Inspect missing-side input and silhouette association; do not add smoothing, rim taper, or class thickness. |
 | `guardrail: softened` on a normal portion      | Raw volume overshoot — review envelope for that label.     |
 | `volume_cm3` swings wildly on identical scans  | Unstable scale or silhouette extraction.                   |
+
+## October 2026 dual-photo repeatability regression
+
+The five-piece beef plate (468 g **after trimming**) exposed three code-level
+failures, independent of theme: overlapping top spans deliberately shared the
+same side-mask slice; a failed **primary** silhouette check discarded every
+other valid side profile; and missing side evidence generated an invented
+0.4–2.2 cm extrusion. Photo color used local silhouette bounding-box coordinates
+rather than the captured camera geometry. Detection count remains an ML result:
+the side capture never creates a missing fifth top detection.
+
+### Native contracts
+
+- **Capture:** replacement top capture invalidates previous side RGB/depth and
+  calibration. A side must be newer than the top and from the same AR session
+  generation. An inference-in-flight gate prevents another scan from replacing
+  or releasing the recorder while its background pipeline is reading it.
+- **Non-LiDAR:** profiles survive primary-check failure and are validated per
+  item. Small/thin/rectangular measured profiles are not rejected merely by
+  area, aspect ratio, or fill. Disconnected side masks are separated using their
+  original pixels. Pose/intrinsics/crop plus the captured table plane project top
+  footprints into the side image; ambiguous overlapping footprints are never
+  given identical side slices. With calibration the nearest visible item may
+  own an occluding segment; hidden items stay explicitly unmatched.
+- **Geometry:** exact top mask intersects the measured side profile and its
+  mirrored transverse profile. Empty side samples remain empty; no gap filling,
+  top-hole filling, primitive, class dimension/thickness floor, subdivision, or
+  smoothing is introduced. Missing monocular height produces an exact top-mask
+  sheet with `scan_mode=monocular_top_only`, `volume_measured=false`,
+  `side_missing_reason`, and zero display-mesh volume—not an inferred portion.
+  The old generic hidden bowl-cavity route is disabled on both sensor paths.
+- **Color:** calibrated monocular side vertices and atlas coordinates use the
+  captured top/side poses, intrinsics, crops, and table plane. Samples must stay
+  inside their matched side mask; off-image projections fall back to top-photo
+  color rather than clamping onto another food. If no table plane is available,
+  existing mask-bounds correspondence is explicitly logged as
+  `projection=uncalibrated_mask_bounds`; its accuracy is not claimed.
+- **LiDAR separately:** top-instance ownership survives label assignment;
+  separate top masks remain separate even when their same-label depth shells
+  touch. Each cluster is carved by its **matched instance mask**, not the union
+  of all foods, and also by its mirrored transverse side constraint. Low
+  retention never undoes carving. Side-photo colors require the same matched
+  mask plus camera visibility/depth tests. Missing side retains observed depth,
+  logs degraded geometry explicitly, and never substitutes a class primitive.
+  Surface Nets remains the existing depth surface extraction; no added
+  smoothing/subdivision. The exported mesh remains the volume source.
+
+Reliable references: Apple's [scene-depth point-cloud example](https://developer.apple.com/documentation/arkit/displaying-a-point-cloud-using-scene-depth)
+for captured-image intrinsics and ARKit camera/world projection conventions;
+Laurentini's visual-hull definition (intersection of silhouette cones, not a
+recovery of hidden concavities). The symmetry of the transverse side remains an
+explicit observation-limited assumption.
+
+### Deterministic checks and device acceptance
+
+Run `python3 ios/RunnerTests/run_repeatability_checks.py`: six existing-target
+XCTest regression methods execute against extracted **production** Swift
+helpers with fail-fast assertions (no copied algorithm). Covers duplicated
+profiles, calibrated occlusion, small mislabeled pieces, missing side, crop/
+gravity/photo projection, and thin profiles/out-of-image sampling. The host
+check is not an iOS typecheck or substitute for release/simulator compilation;
+the coordinator must run those builds and deploy.
+
+Re-scan the unchanged five-piece plate at least three times, keeping the side
+capture **level** and exposing separated profiles; repeat with LiDAR separately.
+Paste `[CAPTUREPAIR]`, `[INSTANCES]`, `[SIDEMATCH]`, `[DUALHULL]`,
+`[MonocularEstimator] visual-hull`, `[SIDECOLOR]`, `[ScaleValidation]`,
+`[EVAL]`, and `[Scan3DViewer]`/sidecar `avgColor` logs. Check five top instances,
+unique appropriate side-mask owners, both scales/crops, missing-side reasons,
+side color, and `volume_source=display_mesh`. Render/accuracy acceptance is
+**device-only and unconfirmed** until these runs.
+
+**Required UI follow-up (not changed here):** consume `volume_measured=false`
+without presenting zero calories/weight as a measured portion; show a localized
+(en/nl/es/de/pl) level-side recapture prompt and distinguish missing capture,
+occlusion/unmatched masks, and unavailable calibration. Native diagnostics alone
+do not provide that user-facing explanation.
 
 ## Record results
 

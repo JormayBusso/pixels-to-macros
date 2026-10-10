@@ -1,3 +1,27 @@
+import 'dart:convert';
+
+/// Null means a legacy record did not declare whether volume was measured.
+enum ScanVolumeStatus {
+  measured,
+  unmeasured;
+
+  static ScanVolumeStatus? fromMap(Map<String, dynamic> map) {
+    final measured = map['volume_measured'];
+    if (measured is bool) {
+      return measured ? ScanVolumeStatus.measured : ScanVolumeStatus.unmeasured;
+    }
+    if (map['scan_mode'] == 'monocular_top_only') {
+      return ScanVolumeStatus.unmeasured;
+    }
+    return null;
+  }
+
+  static bool hasUsableVolume(ScanVolumeStatus? status, double volumeCm3) =>
+      status != ScanVolumeStatus.unmeasured &&
+      volumeCm3.isFinite &&
+      volumeCm3 > 0;
+}
+
 /// Result of a single scan stored locally (Part 13 — result history).
 class ScanResult {
   final int? id;
@@ -42,15 +66,37 @@ class ScanResult {
   double get totalCaloriesMax =>
       foods.fold(0.0, (sum, f) => sum + f.caloriesMax);
 
+  /// Unmeasured objects live in model metadata, never in nutrition rows.
+  List<String> get unmeasuredFoodLabels {
+    final raw = modelObjectsJson;
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final objects = jsonDecode(raw) as List<dynamic>;
+      return [
+        for (final object in objects.whereType<Map>())
+          if (!ScanVolumeStatus.hasUsableVolume(
+            ScanVolumeStatus.fromMap(Map<String, dynamic>.from(object)),
+            (object['volume_cm3'] as num?)?.toDouble() ?? 0,
+          ))
+            object['label'] as String? ?? '',
+      ].where((label) => label.isNotEmpty).toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,
       'timestamp': timestamp.toIso8601String(),
       'depth_mode': depthMode,
       if (topCameraPosition != null) 'top_camera_position': topCameraPosition,
-      if (topCameraTransform != null) 'top_camera_transform': topCameraTransform,
-      if (sideCameraPosition != null) 'side_camera_position': sideCameraPosition,
-      if (sideCameraTransform != null) 'side_camera_transform': sideCameraTransform,
+      if (topCameraTransform != null)
+        'top_camera_transform': topCameraTransform,
+      if (sideCameraPosition != null)
+        'side_camera_position': sideCameraPosition,
+      if (sideCameraTransform != null)
+        'side_camera_transform': sideCameraTransform,
       if (imagePath != null) 'image_path': imagePath,
       if (topImagePath != null) 'top_image_path': topImagePath,
       if (sideImagePath != null) 'side_image_path': sideImagePath,

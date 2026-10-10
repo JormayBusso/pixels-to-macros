@@ -109,7 +109,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   /// over a ~22° band so it reads 99-100% only when the shot is truly square-on.
   static const double _perfectAlignRad = 0.050; // ~2.9° = "100% aligned"
   static const double _alignFalloffRad = 0.384; // ~22° meter falloff band
-  static const double _topViewTargetRad = -1.5707963267948966; // -90° straight down
+  static const double _topViewTargetRad =
+      -1.5707963267948966; // -90° straight down
   static const double _sideViewTargetRad = 0.0; // 0° perfectly horizontal
 
   @override
@@ -151,8 +152,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   void _onLiveDetection(LiveFoodDetection d) {
     if (!mounted) return;
     final detected = d.detected && _liveGlowRunning;
-    if (detected == _foodDetected &&
-        d.available == _liveDetectionAvailable) {
+    if (detected == _foodDetected && d.available == _liveDetectionAvailable) {
       return;
     }
     setState(() {
@@ -510,7 +510,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   /// fires on the strict boolean (error <= _perfectAlignRad), not this meter.
   double _alignmentScoreFor(double error) {
     if (error <= _perfectAlignRad) return 1.0;
-    final t = (error - _perfectAlignRad) / (_alignFalloffRad - _perfectAlignRad);
+    final t =
+        (error - _perfectAlignRad) / (_alignFalloffRad - _perfectAlignRad);
     return (1.0 - t).clamp(0.0, 1.0).toDouble();
   }
 
@@ -625,7 +626,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     if (!mounted) return;
     PerfMonitor.instance.end();
 
-    if (result == null || (result.foods.isEmpty && result.error == null)) {
+    if (result == null ||
+        (result.foods.isEmpty &&
+            !result.hasUnmeasuredFoods &&
+            result.error == null)) {
       _hapticError();
       setState(() => _sessionErrorDetail = null);
       ref.read(scanStateProvider.notifier).plateNotDetected();
@@ -1087,6 +1091,9 @@ class _BottomPanel extends StatelessWidget {
     if (scanState == ScanState.depthFailed) {
       return l10n.cameraSessionFailedTitle;
     }
+    if (scanResult.failureKind == ScanFailureKind.sideViewRequired) {
+      return l10n.sideViewRequiredTitle;
+    }
     if (scanResult.failureKind == ScanFailureKind.dualSilhouetteFailed) {
       return "Couldn't build a 3D scan";
     }
@@ -1096,6 +1103,9 @@ class _BottomPanel extends StatelessWidget {
   }
 
   String _scanErrorBody(AppLocalizations l10n) {
+    if (scanResult.failureKind == ScanFailureKind.sideViewRequired) {
+      return l10n.sideViewRequiredBody;
+    }
     if (scanResult.failureKind == ScanFailureKind.dualSilhouetteFailed) {
       return 'We need a clear top AND side view of the food to build the '
           'model. Please scan again:';
@@ -1155,10 +1165,17 @@ class _BottomPanel extends StatelessWidget {
 
           // ── Done → results + confidence ───────────────────────────
           if (scanState == ScanState.done) ...[
-            ConfidenceBadge(
-              caloriesMin: scanResult.totalCaloriesMin,
-              caloriesMax: scanResult.totalCaloriesMax,
-            ),
+            if (!scanResult.hasUnmeasuredFoods)
+              ConfidenceBadge(
+                caloriesMin: scanResult.totalCaloriesMin,
+                caloriesMax: scanResult.totalCaloriesMax,
+              ),
+            if (scanResult.hasUnmeasuredFoods)
+              Text(
+                '${l10n.scanUnmeasuredFoods(scanResult.unmeasuredFoodLabels.join(', '))}\n'
+                '${l10n.scanSideRecaptureGuidance}',
+                style: const TextStyle(color: Colors.white),
+              ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -1177,8 +1194,8 @@ class _BottomPanel extends StatelessWidget {
                   ),
                 _InfoChipDark(
                   icon: Icons.restaurant,
-                  label:
-                      '${scanResult.foods.length} item${scanResult.foods.length == 1 ? '' : 's'}',
+                  label: l10n.scanItemCount(scanResult.foods.length +
+                      scanResult.unmeasuredFoodLabels.length),
                 ),
               ],
             ),
@@ -1316,7 +1333,10 @@ class _BottomPanel extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: onRetry,
-                    child: Text(AppLocalizations.of(context).retry),
+                    child: Text(scanResult.failureKind ==
+                            ScanFailureKind.sideViewRequired
+                        ? l10n.sideViewRequiredRetake
+                        : l10n.retry),
                   ),
                 ),
               ],
@@ -1470,9 +1490,18 @@ class _DualSilhouetteTips extends StatelessWidget {
   const _DualSilhouetteTips();
 
   static const List<(IconData, String)> _tips = [
-    (Icons.wb_sunny_outlined, 'Use even lighting — avoid glare and deep shadows'),
-    (Icons.center_focus_strong, 'Keep the whole food centred and fully in frame'),
-    (Icons.pan_tool_outlined, "Hold steady — don't move the food between shots"),
+    (
+      Icons.wb_sunny_outlined,
+      'Use even lighting — avoid glare and deep shadows'
+    ),
+    (
+      Icons.center_focus_strong,
+      'Keep the whole food centred and fully in frame'
+    ),
+    (
+      Icons.pan_tool_outlined,
+      "Hold steady — don't move the food between shots"
+    ),
     (Icons.lens_blur, 'Wipe the lens and use a plain, uncluttered background'),
   ];
 

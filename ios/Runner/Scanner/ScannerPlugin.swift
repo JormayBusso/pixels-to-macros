@@ -31,6 +31,7 @@ final class ScannerPlugin {
     /// PLY snapshot from the most recent scan. The recorder releases buffers
     /// after inference, so export keeps this lightweight text copy.
     private static var lastVideoPLY: String?
+    private static var inferenceInFlight = false
 
     // MARK: - Registration
 
@@ -51,6 +52,11 @@ final class ScannerPlugin {
         _ call: FlutterMethodCall,
         result: @escaping FlutterResult
     ) {
+        if inferenceInFlight,
+           ["beginScan", "captureTopFrame", "captureSideFrame", "startRecording", "runVideoInference"].contains(call.method) {
+            result(FlutterError(code: "SCAN_BUSY", message: "Scan inference is still running", details: nil))
+            return
+        }
         switch call.method {
 
         case "getDepthMode":
@@ -127,6 +133,8 @@ final class ScannerPlugin {
             result(nil)
 
         case "runVideoInference":
+            inferenceInFlight = true
+            recorder.stopRecording()
             // On-device exemplar learning: Dart passes the user's locally-stored
             // label corrections so the pipeline can recognise foods the user has
             // already taught it. This data comes from local SQLite and is never
@@ -143,7 +151,10 @@ final class ScannerPlugin {
                 let safeResult: FlutterResult = { value in
                     guard !resultCalled else { return }
                     resultCalled = true
-                    DispatchQueue.main.async { result(value) }
+                    DispatchQueue.main.async {
+                        inferenceInFlight = false
+                        result(value)
+                    }
                 }
 
                 var swiftError: Error? = nil
@@ -170,29 +181,7 @@ final class ScannerPlugin {
                     ))
                 } else if let err = swiftError {
                     print("[ScannerPlugin] runVideoInference failed: \(err)")
-                    if let pipelineError = err as? InferencePipeline.PipelineError,
-                       case .noFoodDetected(let reason) = pipelineError {
-                        safeResult(FlutterError(
-                            code: "NO_FOOD_DETECTED",
-                            message: "No food detected.",
-                            details: reason
-                        ))
-                        return
-                    }
-                    if let pipelineError = err as? InferencePipeline.PipelineError,
-                       case .dualSilhouetteFailed(let reason, let debug) = pipelineError {
-                        safeResult(FlutterError(
-                            code: "DUAL_SILHOUETTE_FAILED",
-                            message: reason,
-                            details: debug
-                        ))
-                        return
-                    }
-                    safeResult(FlutterError(
-                        code: "VIDEO_INFERENCE_FAILED",
-                        message: err.localizedDescription,
-                        details: nil
-                    ))
+                    safeResult(ScannerPlugin.flutterError(for: err))
                 } else {
                     safeResult(FlutterError(code: "VIDEO_INFERENCE_FAILED", message: "Unknown error", details: nil))
                 }
@@ -375,5 +364,25 @@ final class ScannerPlugin {
             }
         }
         return kr == KERN_SUCCESS ? Int64(info.resident_size) : 0
+    }
+
+    /// Maps a scan pipeline error to the FlutterError contract Dart expects.
+    static func flutterError(for error: Error) -> FlutterError {
+        if let pipelineError = error as? InferencePipeline.PipelineError {
+            switch pipelineError {
+            case .noFoodDetected(let reason):
+                return FlutterError(code: "NO_FOOD_DETECTED", message: "No food detected.", details: reason)
+            case .dualSilhouetteFailed(let reason, let debug):
+                return FlutterError(code: "DUAL_SILHOUETTE_FAILED", message: reason, details: debug)
+            case .sideViewRequired(let reason):
+                return FlutterError(
+                    code: "SIDE_VIEW_REQUIRED",
+                    message: InferencePipeline.PipelineError.sideViewRequiredMessage,
+                    details: reason)
+            default:
+                break
+            }
+        }
+        return FlutterError(code: "VIDEO_INFERENCE_FAILED", message: error.localizedDescription, details: nil)
     }
 }

@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/scan_result.dart';
+
 /// One reconstructed food object passed from the native pipeline. Mirrors
 /// `lastModel3DObjects` produced by `InferencePipeline` so the Flutter UI
 /// and the SceneKit scene graph stay in sync via stable cluster `id`s.
@@ -20,6 +22,8 @@ class Scan3DObject {
     this.candidateLabels = const [],
     this.embedding = const [],
     this.labelSource,
+    this.volumeStatus,
+    this.sideMissingReason,
   });
 
   factory Scan3DObject.fromMap(Map<String, dynamic> m) {
@@ -41,6 +45,8 @@ class Scan3DObject {
               .toList(growable: false) ??
           const [],
       labelSource: m['label_source'] as String?,
+      volumeStatus: ScanVolumeStatus.fromMap(m),
+      sideMissingReason: m['side_missing_reason'] as String?,
     );
   }
 
@@ -48,6 +54,11 @@ class Scan3DObject {
   final String id;
   final String label;
   final double volumeCm3;
+  final ScanVolumeStatus? volumeStatus;
+  final String? sideMissingReason;
+
+  bool get hasMeasuredVolume =>
+      ScanVolumeStatus.hasUsableVolume(volumeStatus, volumeCm3);
   final int voxelCount;
   final double confidence;
 
@@ -82,6 +93,9 @@ class Scan3DObject {
         'id': id,
         'label': label,
         'volume_cm3': volumeCm3,
+        if (volumeStatus != null)
+          'volume_measured': volumeStatus == ScanVolumeStatus.measured,
+        if (sideMissingReason != null) 'side_missing_reason': sideMissingReason,
         'voxel_count': voxelCount,
         'confidence': confidence,
         if (debug != null) 'debug': debug,

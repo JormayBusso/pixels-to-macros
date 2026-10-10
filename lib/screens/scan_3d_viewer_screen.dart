@@ -59,12 +59,19 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
     final edited = await _ingredientPanelKey.currentState?.editObject(object);
     if (!mounted || edited == true) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Selected ${object.label}; no saved ingredient row matched it yet.')),
+      SnackBar(
+          content: Text(
+              'Selected ${object.label}; no saved ingredient row matched it yet.')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final unmeasured =
+        widget.objects.where((o) => !o.hasMeasuredVolume).toList();
+    final onlyUnmeasured =
+        unmeasured.isNotEmpty && unmeasured.length == widget.objects.length;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -130,6 +137,15 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
                 selectedObjectId: _selectedObjectId,
                 onFocusObject: (id) => _viewerController?.focus(id),
               ),
+            if (widget.scanId == null && unmeasured.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  '${l10n.scanUnmeasuredFoods(unmeasured.map((o) => o.label).join(', '))}\n'
+                  '${l10n.scanSideRecaptureGuidance}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
             // Explicit "log" confirmation. The scan is already saved to today's
             // diary on capture, but users expect a clear button to finish and
             // log it — this confirms and returns home.
@@ -141,15 +157,17 @@ class _Scan3DViewerScreenState extends State<Scan3DViewerScreen> {
               child: FilledButton.icon(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Logged to today\u2019s diary'),
-                      duration: Duration(seconds: 2),
+                    SnackBar(
+                      content: Text(onlyUnmeasured
+                          ? l10n.scanVolumeUnmeasured
+                          : l10n.scanMeasuredFoodsLogged),
+                      duration: const Duration(seconds: 2),
                     ),
                   );
                   Navigator.of(context).popUntil((route) => route.isFirst);
                 },
                 icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Log to today\u2019s diary'),
+                label: Text(onlyUnmeasured ? l10n.close : l10n.logFood),
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF22C55E),
                   foregroundColor: Colors.white,
@@ -190,7 +208,8 @@ class _DepthDebugButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.78),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.55)),
+              border:
+                  Border.all(color: Colors.tealAccent.withValues(alpha: 0.55)),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -248,7 +267,8 @@ class _DepthDebugButton extends StatelessWidget {
                 const SizedBox(height: 14),
                 Row(
                   children: [
-                    const Icon(Icons.bug_report, color: Colors.tealAccent, size: 18),
+                    const Icon(Icons.bug_report,
+                        color: Colors.tealAccent, size: 18),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
@@ -261,7 +281,8 @@ class _DepthDebugButton extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                      tooltip:
+                          MaterialLocalizations.of(context).closeButtonTooltip,
                       onPressed: () => Navigator.of(context).pop(),
                       icon: const Icon(Icons.close, color: Colors.white70),
                     ),
@@ -340,7 +361,7 @@ class _SelectedObjectBanner extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Selected ${object.label}',
+                object.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -349,10 +370,18 @@ class _SelectedObjectBanner extends StatelessWidget {
                 ),
               ),
             ),
-            TextButton(
-              onPressed: onEdit,
-              child: const Text('Edit'),
-            ),
+            if (object.hasMeasuredVolume)
+              TextButton(
+                onPressed: onEdit,
+                child: Text(AppLocalizations.of(context).editTooltip),
+              )
+            else
+              Flexible(
+                child: Text(
+                  AppLocalizations.of(context).scanVolumeUnmeasured,
+                  style: const TextStyle(color: Colors.amberAccent),
+                ),
+              ),
             IconButton(
               visualDensity: VisualDensity.compact,
               onPressed: onClear,
@@ -534,6 +563,7 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
   }
 
   _FoodRow? _rowForObject(Scan3DObject object) {
+    if (!object.hasMeasuredVolume) return null;
     final objectLabel = _normaliseIngredientName(object.label);
     for (final row in _rows) {
       if (_normaliseIngredientName(row.food.label) == objectLabel) return row;
@@ -544,6 +574,7 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
   Scan3DObject? _objectForFood(DetectedFood food) {
     final foodLabel = _normaliseIngredientName(food.label);
     for (final object in widget.objects) {
+      if (!object.hasMeasuredVolume) continue;
       if (_normaliseIngredientName(object.label) == foodLabel) return object;
     }
     return null;
@@ -565,6 +596,8 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final unmeasured =
+        widget.objects.where((o) => !o.hasMeasuredVolume).toList();
     final totalKcal = _rows.fold<double>(
       0,
       (sum, r) => sum + (r.food.caloriesMin + r.food.caloriesMax) / 2,
@@ -621,12 +654,21 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
               ],
             ),
           ),
+          if (unmeasured.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                l10n.scanUnmeasuredFoods(
+                    unmeasured.map((o) => o.label).join(', ')),
+                style: const TextStyle(color: Colors.amberAccent, fontSize: 12),
+              ),
+            ),
           if (_loading)
             const Padding(
               padding: EdgeInsets.all(20),
               child: CircularProgressIndicator(),
             )
-          else if (_rows.isEmpty)
+          else if (_rows.isEmpty && unmeasured.isEmpty)
             Padding(
               padding: const EdgeInsets.all(20),
               child: Text(
@@ -639,10 +681,36 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
             Flexible(
               child: ListView.separated(
                 padding: const EdgeInsets.only(bottom: 8),
-                itemCount: _rows.length,
+                itemCount: _rows.length +
+                    (unmeasured.isEmpty ? 0 : unmeasured.length + 1),
                 separatorBuilder: (_, __) =>
                     const Divider(height: 1, color: Colors.white10),
                 itemBuilder: (_, i) {
+                  if (i >= _rows.length) {
+                    final index = i - _rows.length;
+                    if (index == 0) {
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                        child: Text(
+                          '${_rows.isNotEmpty ? '${l10n.scanPartialNutrition}\n' : ''}'
+                          '${l10n.scanSideRecaptureGuidance}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      );
+                    }
+                    final object = unmeasured[index - 1];
+                    return ListTile(
+                      leading: const Icon(Icons.warning_amber,
+                          color: Colors.amberAccent),
+                      title: Text(object.label,
+                          style: const TextStyle(color: Colors.white)),
+                      subtitle: Text(
+                        l10n.scanUnmeasuredFoods(object.label),
+                        style: const TextStyle(color: Colors.amberAccent),
+                      ),
+                      onTap: () => widget.onFocusObject(object.id),
+                    );
+                  }
                   final r = _rows[i];
                   final kcal =
                       ((r.food.caloriesMin + r.food.caloriesMax) / 2).round();
@@ -718,10 +786,8 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
   }
 }
 
-String _normaliseIngredientName(String value) => value
-    .toLowerCase()
-    .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
-    .trim();
+String _normaliseIngredientName(String value) =>
+    value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
 
 /// Small chip shown next to a food name when the label was recognised from a
 /// correction the user previously made on this device (on-device learning).
@@ -757,4 +823,3 @@ class _LearnedBadge extends StatelessWidget {
     );
   }
 }
-

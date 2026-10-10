@@ -59,6 +59,8 @@ final class YOLOSegmentationService {
     private let modelLock = NSLock()
     private var model: VNCoreMLModel?
     private var labels: [Int: String] = [:]
+    private var hasMetadataLabels = false
+    private var liveLabelWarningIssued = false
     private var loadAttempted = false
     private(set) var loadedResource: String?
 
@@ -97,6 +99,10 @@ final class YOLOSegmentationService {
         config.computeUnits = .all // Neural Engine + GPU + CPU
         let mlModel = try MLModel(contentsOf: resource.url, configuration: config)
         labels = Self.loadLabels(from: mlModel)
+        if let creator = mlModel.modelDescription.metadata[.creatorDefinedKey] as? [String: String],
+           let names = creator["names"] {
+            hasMetadataLabels = !Self.parseNames(names).isEmpty
+        }
         model = try VNCoreMLModel(for: mlModel)
         loadedResource = resource.name
         print("[YOLOSeg] Loaded \(resource.name).mlmodelc with \(labels.count) labels")
@@ -156,11 +162,21 @@ final class YOLOSegmentationService {
     /// Returns instance masks rasterised at the input buffer's resolution
     /// (the pipeline feeds a square `modelInputWidth × modelInputHeight` frame).
     func segment(pixelBuffer: CVPixelBuffer) throws -> [SegmentedObject] {
+        try segment(pixelBuffer: pixelBuffer, livePreview: false)
+    }
+
+    /// Live-only gates run before NMS and mask assembly; saved capture keeps
+    /// its original thresholds, object limits and label fallback.
+    func segmentForLivePreview(pixelBuffer: CVPixelBuffer) throws -> [SegmentedObject] {
+        try segment(pixelBuffer: pixelBuffer, livePreview: true)
+    }
+
+    private func segment(pixelBuffer: CVPixelBuffer, livePreview: Bool) throws -> [SegmentedObject] {
         try ensureLoaded()
         guard let visionModel = model else { throw YOLOSegmentationError.modelNotFound }
 
-        let targetW = CVPixelBufferGetWidth(pixelBuffer)
-        let targetH = CVPixelBufferGetHeight(pixelBuffer)
+        let targetW = livePreview ? LiveFoodDetector.grid : CVPixelBufferGetWidth(pixelBuffer)
+        let targetH = livePreview ? LiveFoodDetector.grid : CVPixelBufferGetHeight(pixelBuffer)
 
         var detArray: MLMultiArray?
         var protoArray: MLMultiArray?
@@ -203,8 +219,8 @@ final class YOLOSegmentationService {
             throw YOLOSegmentationError.unexpectedOutput
         }
 
-        let detections = decode(det: det)
-        let kept = nonMaxSuppression(detections)
+        let detections = decode(det: det, livePreview: livePreview)
+        let kept = nonMaxSuppression(detections, limit: livePreview ? 8 : maxObjects)
         return rasterise(kept, proto: proto, targetW: targetW, targetH: targetH)
     }
 
@@ -220,7 +236,7 @@ final class YOLOSegmentationService {
         var coeffs: [Float]
     }
 
-    private func decode(det: MLMultiArray) -> [Detection] {
+    private func decode(det: MLMultiArray, livePreview: Bool) -> [Detection] {
         let shape = det.shape.map { $0.intValue } // [1, C, A]
         guard shape.count == 3 else { return [] }
         let strides = det.strides.map { $0.intValue }
@@ -228,6 +244,17 @@ final class YOLOSegmentationService {
         let anchors = shape[2]
         let numClasses = channels - 4 - protoCount
         guard numClasses > 0 else { return [] }
+        if livePreview {
+            guard hasMetadataLabels, labels.count == numClasses,
+                  (0..<numClasses).allSatisfy({ labels[$0] != nil })
+            else {
+                if !liveLabelWarningIssued {
+                    print("[LiveGlow] label_map_rejected resource=\(loadedResource ?? "-") classes=\(numClasses) metadataLabels=\(hasMetadataLabels) labels=\(labels.count)")
+                    liveLabelWarningIssued = true
+                }
+                return []
+            }
+        }
 
         let strideChannel = strides[1]
         let strideAnchor = strides[2]
@@ -250,6 +277,9 @@ final class YOLOSegmentationService {
                 }
             }
             if bestScore < confThreshold { continue }
+            if livePreview && !LiveFoodOverlayPolicy.accepts(
+                label: labels[bestClass] ?? "", confidence: bestScore
+            ) { continue }
 
             let cx = read(0 * strideChannel + anchorOffset)
             let cy = read(1 * strideChannel + anchorOffset)
@@ -268,23 +298,24 @@ final class YOLOSegmentationService {
             ))
         }
 
-        if detections.count > maxPreNMS {
+        let limit = livePreview ? 80 : maxPreNMS
+        if detections.count > limit {
             detections.sort { $0.score > $1.score }
-            detections.removeLast(detections.count - maxPreNMS)
+            detections.removeLast(detections.count - limit)
         }
         return detections
     }
 
     // MARK: – NMS
 
-    private func nonMaxSuppression(_ detections: [Detection]) -> [Detection] {
+    private func nonMaxSuppression(_ detections: [Detection], limit: Int) -> [Detection] {
         let sorted = detections.sorted { $0.score > $1.score }
         var removed = [Bool](repeating: false, count: sorted.count)
         var kept: [Detection] = []
         for i in 0..<sorted.count {
             if removed[i] { continue }
             kept.append(sorted[i])
-            if kept.count >= maxObjects { break }
+            if kept.count >= limit { break }
             for j in (i + 1)..<sorted.count where !removed[j] {
                 if sorted[j].classIndex == sorted[i].classIndex,
                     iou(sorted[i], sorted[j]) > iouThreshold {

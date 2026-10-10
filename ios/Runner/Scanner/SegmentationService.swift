@@ -250,6 +250,14 @@ final class SegmentationService {
     /// Run segmentation on a preprocessed pixel buffer.
     /// Returns one `SegmentedObject` per detected food class (background excluded).
     func segment(pixelBuffer: CVPixelBuffer) throws -> [SegmentedObject] {
+        try segment(pixelBuffer: pixelBuffer, livePreview: false)
+    }
+
+    func segmentForLivePreview(pixelBuffer: CVPixelBuffer) throws -> [SegmentedObject] {
+        try segment(pixelBuffer: pixelBuffer, livePreview: true)
+    }
+
+    private func segment(pixelBuffer: CVPixelBuffer, livePreview: Bool) throws -> [SegmentedObject] {
         if model == nil { try loadModel() }
 
         guard let visionModel = model else {
@@ -271,7 +279,7 @@ final class SegmentationService {
                 inferenceError = SegmentationError.unexpectedOutput
                 return
             }
-            results = self.parseSegmentationOutput(multiArray)
+            results = self.parseSegmentationOutput(multiArray, livePreview: livePreview)
         }
         request.imageCropAndScaleOption = .scaleFill
 
@@ -287,7 +295,7 @@ final class SegmentationService {
     /// Parse the MLMultiArray logits/probabilities into per-class binary masks.
     /// Supports channels-first [1, C, H, W], channels-last [1, H, W, C],
     /// [1, H, W] argmax, and [H, W] argmax outputs.
-    private func parseSegmentationOutput(_ output: MLMultiArray) -> [SegmentedObject] {
+    private func parseSegmentationOutput(_ output: MLMultiArray, livePreview: Bool) -> [SegmentedObject] {
         let shape = output.shape.map { $0.intValue }
 
         // Strides from the array's own metadata — avoids assuming contiguous layout.
@@ -338,6 +346,9 @@ final class SegmentationService {
             return []
         }
 
+        if livePreview && numClasses != Self.miniLabelMap.count
+            && numClasses != Self.buildLabelMap().count { return [] }
+
         // Build class-index grid + confidence grid (flat row-major: idx = r*width + c).
         var classGrid = [Int](repeating: 0, count: width * height)
         var confGrid  = [Float](repeating: 0, count: width * height)
@@ -381,6 +392,7 @@ final class SegmentationService {
                 return Float(ptr[idx])
             }
         @unknown default:
+            if livePreview { return [] }
             return parseSegmentationOutputSafe(output,
                 height: height, width: width, numClasses: numClasses)
         }
@@ -449,7 +461,7 @@ final class SegmentationService {
 
         return buildObjects(classGrid: classGrid, confGrid: confGrid,
                             height: height, width: width,
-                            totalClasses: numClasses)
+                            totalClasses: numClasses, livePreview: livePreview)
     }
 
     /// Safe fallback that uses `MLMultiArray`'s subscript (handles any data type).
@@ -494,7 +506,7 @@ final class SegmentationService {
 
         return buildObjects(classGrid: classGrid, confGrid: confGrid,
                             height: height, width: width,
-                            totalClasses: numClasses)
+                            totalClasses: numClasses, livePreview: false)
     }
 
     private func label(for classIndex: Int, totalClasses: Int) -> String {
@@ -509,7 +521,7 @@ final class SegmentationService {
     private func buildObjects(
         classGrid: [Int], confGrid: [Float],
         height: Int, width: Int,
-        totalClasses: Int
+        totalClasses: Int, livePreview: Bool
     ) -> [SegmentedObject] {
         // Group pixels by class
         var classPixels: [Int: [(row: Int, col: Int, conf: Float)]] = [:]
@@ -547,6 +559,8 @@ final class SegmentationService {
         // the mini model to reject valid out-of-vocabulary foods (e.g.
         // banana, tomato) before the ML Kit label-override can fix them.
         let minConfidence: Float = isMiniModel ? 0.33 : 0.36
+        let liveLabels = livePreview && totalClasses == Self.buildLabelMap().count
+            ? Self.buildLabelMap() : nil
         for (cls, pixels) in classPixels {
             var mask = [[UInt8]](repeating: [UInt8](repeating: 0, count: width), count: height)
             var sumR = 0, sumC = 0
@@ -562,7 +576,18 @@ final class SegmentationService {
             guard count >= minPixels, avgConfidence >= minConfidence else {
                 continue
             }
-            let label = label(for: cls, totalClasses: totalClasses)
+            // The bundled dense model has 104 classes including background;
+            // the adjacent 103-label JSON belongs to YOLO (no background).
+            // Correct that mapping only for live preview, not saved scans.
+            let label: String
+            if let liveLabels {
+                label = liveLabels[cls] ?? "others"
+            } else {
+                label = self.label(for: cls, totalClasses: totalClasses)
+            }
+            if livePreview && !LiveFoodOverlayPolicy.accepts(
+                label: label, confidence: avgConfidence
+            ) { continue }
             objects.append(SegmentedObject(
                 label: label,
                 classIndex: cls,

@@ -8,7 +8,7 @@ import 'user_prefs_provider.dart';
 
 /// One-time startup data load.
 ///
-/// This is triggered as early as the intro video (see `IntroVideoScreen`) so
+/// This is triggered as early as the native intro overlay (see AppDelegate) so
 /// the locale and user preferences are ready by the time the app gate is
 /// shown — the home screen then appears with no loading spinner.
 ///

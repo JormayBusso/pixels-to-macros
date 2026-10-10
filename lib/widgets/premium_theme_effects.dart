@@ -136,6 +136,7 @@ class PremiumSurface extends StatelessWidget {
   const PremiumSurface({
     super.key,
     required this.child,
+    this.header,
     this.padding = const EdgeInsets.all(16),
     this.margin = EdgeInsets.zero,
     this.borderRadius = const BorderRadius.all(Radius.circular(16)),
@@ -149,6 +150,9 @@ class PremiumSurface extends StatelessWidget {
   });
 
   final Widget child;
+
+  /// Full-width band above the padded body, clipped to the surface radius.
+  final Widget? header;
   final EdgeInsets padding;
   final EdgeInsets margin;
   final BorderRadius borderRadius;
@@ -164,12 +168,20 @@ class PremiumSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final visual = context.visualTheme;
     final radius = borderRadius;
-    final content = Padding(padding: padding, child: child);
+    final body = Padding(padding: padding, child: child);
+    final content = header == null
+        ? body
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [header!, body],
+          );
+    final effectiveClip = header == null ? clipBehavior : Clip.antiAlias;
 
     if (!enabled || !visual.premium) {
       final card = Card(
         margin: margin,
-        clipBehavior: clipBehavior,
+        clipBehavior: effectiveClip,
         shape: RoundedRectangleBorder(borderRadius: radius),
         child: onTap == null
             ? content
@@ -183,10 +195,10 @@ class PremiumSurface extends StatelessWidget {
     }
 
     Widget premiumChild = content;
-    if (clipBehavior != Clip.none) {
+    if (effectiveClip != Clip.none) {
       premiumChild = ClipRRect(
         borderRadius: radius.resolve(Directionality.of(context)),
-        clipBehavior: clipBehavior,
+        clipBehavior: effectiveClip,
         child: premiumChild,
       );
     }
