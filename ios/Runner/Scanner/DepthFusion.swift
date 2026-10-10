@@ -8,11 +8,14 @@ import simd
 ///
 /// Coordinate convention
 /// ─────────────────────
-/// Voxel keys use ARKit world-space coordinates divided by `voxelSizeM`.
+/// Voxel keys use ARKit world-space coordinates divided by `voxelSizeM`
+/// (world +Y is up, so the plate is the LOW end of each food column).
 /// Camera intrinsics follow the ARKit convention: (0,0) is top-left of the
 /// captured image, y increases downward — identical to CVPixelBuffer memory
-/// layout. This matches the coordinate system used by `PlateDetector` and
-/// `FramePreprocessor`, so no extra flipping is required.
+/// layout. ARKit camera space is +Y up and looks down −Z, so image ↔ camera
+/// conversions go through `integrate` / `projectToImage` (Apple's flipYZ).
+/// This matches the coordinate system used by `PlateDetector` and
+/// `FramePreprocessor`.
 final class DepthFusion {
 
     // MARK: – Configuration
@@ -73,19 +76,30 @@ final class DepthFusion {
                 // Accept 5 cm – 150 cm range (discard sky / very close noise).
                 guard d > 0.05 && d < 1.5 else { continue }
 
-                // Back-project to camera space.
-                // ARKit sceneDepth gives z-distance in metres.
+                // Back-project to ARKit camera space. sceneDepth is the
+                // positive distance along the viewing axis, but the ARKit
+                // camera looks down −Z with +Y up while image rows grow
+                // downward, so apply Apple's flipYZ (diag(1,−1,−1); see the
+                // "scene depth point cloud" sample: localToWorld =
+                // viewMatrixInverse × flipYZ). Without it every frame lands
+                // upside-down behind its camera, multi-frame fusion
+                // misaligns and the plate/top relief is inverted.
                 let xc = (Float(col) - cx) / fx * d
-                let yc = (Float(row) - cy) / fy * d
-                let zc = d
+                let yc = -(Float(row) - cy) / fy * d
+                let zc = -d
 
                 // Transform to world space.
                 let pw = cameraTransform * simd_float4(xc, yc, zc, 1)
 
-                // Convert to integer voxel key.
-                let vx = Int32((pw.x / voxelSizeM).rounded(.towardZero))
-                let vy = Int32((pw.y / voxelSizeM).rounded(.towardZero))
-                let vz = Int32((pw.z / voxelSizeM).rounded(.towardZero))
+                // Convert to integer voxel key. FLOOR (not truncation toward
+                // zero): voxel k spans [k, k+1)·voxelSizeM with its centre at
+                // (k + 0.5)·voxelSizeM, which assignLabels, the side-silhouette
+                // carve and SurfaceNets all assume. Truncation merged the two
+                // voxels either side of 0 and shifted every negative
+                // coordinate by one voxel.
+                let vx = Int32((pw.x / voxelSizeM).rounded(.down))
+                let vy = Int32((pw.y / voxelSizeM).rounded(.down))
+                let vz = Int32((pw.z / voxelSizeM).rounded(.down))
 
                 let key = VoxelKey(x: vx, y: vy, z: vz)
                 if grid[key] == nil {
@@ -186,13 +200,14 @@ final class DepthFusion {
             let wy = (Float(key.y) + 0.5) * voxelSizeM
             let wz = (Float(key.z) + 0.5) * voxelSizeM
 
-            // Transform to top-frame camera space.
-            let cam = camInv * simd_float4(wx, wy, wz, 1)
-            guard cam.z > 0 else { continue }   // behind camera
-
-            // Project to full-image pixel (top-left origin, y ↓).
-            let u_px = fx * cam.x / cam.z + cx
-            let v_px = fy * cam.y / cam.z + cy
+            // Project to full-image pixel (top-left origin, y ↓) using the
+            // same ARKit camera convention as `integrate`.
+            guard let projected = Self.projectToImage(
+                SIMD3<Float>(wx, wy, wz), worldToCamera: camInv,
+                fx: fx, fy: fy, cx: cx, cy: cy
+            ) else { continue }   // behind camera
+            let u_px = projected.u
+            let v_px = projected.v
 
             // Normalise to [0, 1].
             let u_n = u_px / Float(imageWidth)
@@ -216,7 +231,7 @@ final class DepthFusion {
                     let dv = min(max(Int(v_n * Float(topDepthHeight)), 0), topDepthHeight - 1)
                     let topDepth = topDepthPtr[dv * topDepthFloatsPerRow + du]
                     if topDepth > 0.05 && topDepth < 1.5 {
-                        let delta = cam.z - topDepth
+                        let delta = projected.depth - topDepth
                         guard delta >= -0.025 && delta <= 0.08 else { continue }
                     }
                 }
@@ -230,6 +245,116 @@ final class DepthFusion {
         }
         let labelledCount = grid.values.filter { $0 > 0 }.count
         print("[SCAN] assignLabels: pendingAssigned=\(pendingLabels.count), totalLabelled=\(labelledCount), totalGrid=\(grid.count), labelMap=\(labelMap)")
+    }
+
+    /// World → image projection with ARKit's camera convention (+X right,
+    /// +Y up, looking down −Z; image origin top-left, v grows downward).
+    /// Exact inverse of the back-projection in `integrate`. Returns nil for
+    /// points behind the camera; `depth` is the positive viewing distance,
+    /// directly comparable with `sceneDepth` values.
+    @inline(__always)
+    static func projectToImage(
+        _ world: SIMD3<Float>,
+        worldToCamera: simd_float4x4,
+        fx: Float, fy: Float, cx: Float, cy: Float
+    ) -> (u: Float, v: Float, depth: Float)? {
+        let cam = worldToCamera * simd_float4(world.x, world.y, world.z, 1)
+        let depth = -cam.z
+        guard depth > 0.001 else { return nil }
+        return (fx * cam.x / depth + cx, fy * -cam.y / depth + cy, depth)
+    }
+
+    // MARK: – Side-silhouette carving (LiDAR two-silhouette hull)
+
+    /// Food silhouette from the SIDE photo. AGENTS.md §9 requires the LiDAR
+    /// model to be constrained by the exact TOP and SIDE silhouettes too: the
+    /// top mask already gates labelling (`assignLabels`), and this mask carves
+    /// the solidified voxels (space carving, Kutulakos & Seitz 2000). Unlike
+    /// the monocular path no mirroring is needed — the side camera pose is
+    /// known from ARKit, so every voxel is projected through the REAL side
+    /// camera and removed when it falls outside the side food silhouette.
+    struct SideSilhouette {
+        /// Union of the side-view food masks over `cropRect` (`mask[row][col]`,
+        /// 1 = food), already constrained to the side rounded-rect ROI.
+        let mask: [[UInt8]]
+        /// Normalised region of the full side buffer the mask covers
+        /// (top-left origin, same convention as `FramePreprocessor`).
+        let cropRect: CGRect
+        let roiShape: ScanMaskGeometry.ROIShape
+        let cameraTransform: simd_float4x4
+        let cameraIntrinsics: simd_float3x3
+        let imageWidth: Int
+        let imageHeight: Int
+    }
+
+    private var sideSilhouette: SideSilhouette?
+
+    /// Enable (or clear with nil) side-silhouette carving in `voxelClusters`.
+    func setSideSilhouette(_ silhouette: SideSilhouette?) {
+        sideSilhouette = silhouette
+    }
+
+    /// Keep only voxels whose centre projects inside the side food silhouette
+    /// (and the side ROI). If carving would keep less than 10 % of the cluster
+    /// the side mask does not describe this food (pose mis-registration, food
+    /// outside the side ROI, segmentation miss): carving is skipped for this
+    /// cluster instead of failing the scan, and the reason is logged.
+    private func carveBySideSilhouette(_ solid: [VoxelKey], id: String) -> [VoxelKey] {
+        guard let side = sideSilhouette else { return solid }
+        let maskH = side.mask.count
+        let maskW = side.mask.first?.count ?? 0
+        let cropX = Float(side.cropRect.minX)
+        let cropY = Float(side.cropRect.minY)
+        let cropW = Float(side.cropRect.width)
+        let cropH = Float(side.cropRect.height)
+        guard maskH > 0, maskW > 0, side.imageWidth > 0, side.imageHeight > 0,
+              cropW > 0.001, cropH > 0.001 else {
+            print("[DUALHULL] path=lidar id=\(id) side carving skipped (invalid side silhouette \(maskW)x\(maskH))")
+            return solid
+        }
+        let k = side.cameraIntrinsics
+        let fx = k.columns.0.x, fy = k.columns.1.y
+        let cx = k.columns.2.x, cy = k.columns.2.y
+        guard abs(fx) > 0.0001, abs(fy) > 0.0001 else {
+            print("[DUALHULL] path=lidar id=\(id) side carving skipped (invalid side intrinsics)")
+            return solid
+        }
+        let worldToCamera = side.cameraTransform.inverse
+        let roi = ScanMaskGeometry.ROI(width: maskW, height: maskH, shape: side.roiShape)
+        let imgW = Float(side.imageWidth)
+        let imgH = Float(side.imageHeight)
+
+        var kept: [VoxelKey] = []
+        kept.reserveCapacity(solid.count)
+        var outsideView = 0
+        var outsideMask = 0
+        for key in solid {
+            let centre = SIMD3<Float>(
+                (Float(key.x) + 0.5) * voxelSizeM,
+                (Float(key.y) + 0.5) * voxelSizeM,
+                (Float(key.z) + 0.5) * voxelSizeM)
+            guard let p = Self.projectToImage(
+                centre, worldToCamera: worldToCamera, fx: fx, fy: fy, cx: cx, cy: cy
+            ) else { outsideView += 1; continue }
+            let pu = (p.u / imgW - cropX) / cropW
+            let pv = (p.v / imgH - cropY) / cropH
+            guard pu >= 0, pu < 1, pv >= 0, pv < 1 else { outsideView += 1; continue }
+            let mc = min(maskW - 1, Int(pu * Float(maskW)))
+            let mr = min(maskH - 1, Int(pv * Float(maskH)))
+            guard roi.contains(row: mr, column: mc),
+                  mc < side.mask[mr].count, side.mask[mr][mc] != 0 else {
+                outsideMask += 1
+                continue
+            }
+            kept.append(key)
+        }
+        let minimumKept = max(8, solid.count / 10)
+        guard kept.count >= minimumKept else {
+            print("[DUALHULL] path=lidar id=\(id) side carving skipped: kept=\(kept.count)/\(solid.count) < \(minimumKept) (outsideView=\(outsideView) outsideMask=\(outsideMask)) — side silhouette does not cover this food (mis-registration / outside side ROI); top-mask hull kept")
+            return solid
+        }
+        print("[DUALHULL] path=lidar id=\(id) carvedBySide=\(solid.count - kept.count)/\(solid.count) kept=\(kept.count) outsideView=\(outsideView) outsideMask=\(outsideMask) (top ∩ side visual hull)")
+        return kept
     }
 
     // MARK: – Volume queries
@@ -386,6 +511,9 @@ final class DepthFusion {
     ///   5. Solidify each surviving component: fill every (x,z) column from
     ///      the plate plane up to the measured surface so the cluster is a
     ///      true solid volume rather than a hollow depth shell.
+    ///   6. When a side silhouette is set (`setSideSilhouette`), carve away
+    ///      every solid voxel that projects outside the side food mask, so
+    ///      the result is the top ∩ side visual hull (AGENTS.md §9).
     ///
     /// The returned clusters are the ONLY input to mesh export and
     /// canonical volume math.
@@ -445,9 +573,12 @@ final class DepthFusion {
                 //    by integrating height per (x,z) column from the plate
                 //    plane up to the surface. This is the source of truth for
                 //    BOTH volume and the Surface-Nets mesh (contract rule #1).
-                let solid = solidifyColumns(comp, platePlaneY: platePlaneVoxelY)
-                guard !solid.isEmpty else { continue }
                 let id = "\(label)_\(instanceIndex)"
+                // 6. Side-silhouette carve (top ∩ side hull) AFTER the column
+                //    fill, so the filled interior is constrained as well.
+                let solid = carveBySideSilhouette(
+                    solidifyColumns(comp, platePlaneY: platePlaneVoxelY), id: id)
+                guard !solid.isEmpty else { continue }
                 clusters.append(FoodVoxelCluster(
                     id: id,
                     label: label,
@@ -488,6 +619,7 @@ final class DepthFusion {
         sideIntrinsics: simd_float3x3? = nil,
         sideImageWidth: Int = 0,
         sideImageHeight: Int = 0,
+        sideDepthBuffer: CVPixelBuffer? = nil,
         minVoxelCount: Int = defaultMinVoxelsPerCluster
     ) -> [Food3DObject] {
         // Single source of truth: clusters drive mesh output, and the final
@@ -540,6 +672,86 @@ final class DepthFusion {
         let hasSideAtlas = sidePixelBuffer != nil && sideCamInv != nil &&
             sideImageWidth > 0 && sideImageHeight > 0 &&
             abs(sideFx) > 0.0001 && abs(sideFy) > 0.0001
+
+        // Side-photo colour source for side-facing vertices (the SceneKit
+        // viewer renders per-vertex colours, not the USD atlas), mirroring the
+        // monocular path where side vertices take the side photo's pixel.
+        let sideColorBuffer = hasSideAtlas
+            ? sidePixelBuffer.flatMap { Food3DTextureBaker.bgraCopy(of: $0) }
+            : nil
+        var sideBase: UnsafePointer<UInt8>?
+        var sideBgraWidth = 0
+        var sideBgraHeight = 0
+        var sideRowBytes = 0
+        if let buffer = sideColorBuffer {
+            CVPixelBufferLockBaseAddress(buffer, .readOnly)
+            sideBgraWidth = CVPixelBufferGetWidth(buffer)
+            sideBgraHeight = CVPixelBufferGetHeight(buffer)
+            sideRowBytes = CVPixelBufferGetBytesPerRow(buffer)
+            if let base = CVPixelBufferGetBaseAddress(buffer) {
+                sideBase = UnsafePointer(base.assumingMemoryBound(to: UInt8.self))
+            }
+        }
+        defer {
+            if let buffer = sideColorBuffer {
+                CVPixelBufferUnlockBaseAddress(buffer, .readOnly)
+            }
+        }
+
+        // Optional side depth for an occlusion test: a vertex only takes the
+        // side photo's colour/UV when the side camera actually saw it (its
+        // viewing depth agrees with the measured depth at that pixel).
+        var sideDepthPtr: UnsafeMutablePointer<Float32>?
+        var sideDepthWidth = 0
+        var sideDepthHeight = 0
+        var sideDepthFloatsPerRow = 0
+        if hasSideAtlas, let sideDepthBuffer {
+            CVPixelBufferLockBaseAddress(sideDepthBuffer, .readOnly)
+            sideDepthWidth = CVPixelBufferGetWidth(sideDepthBuffer)
+            sideDepthHeight = CVPixelBufferGetHeight(sideDepthBuffer)
+            sideDepthFloatsPerRow = CVPixelBufferGetBytesPerRow(sideDepthBuffer) /
+                MemoryLayout<Float32>.stride
+            sideDepthPtr = CVPixelBufferGetBaseAddress(sideDepthBuffer)?
+                .assumingMemoryBound(to: Float32.self)
+        }
+        defer {
+            if hasSideAtlas, let sideDepthBuffer {
+                CVPixelBufferUnlockBaseAddress(sideDepthBuffer, .readOnly)
+            }
+        }
+
+        /// True when the side depth map is missing/invalid at this pixel or
+        /// agrees with the vertex depth (not hidden behind another surface).
+        func sideDepthAgrees(u: Float, v: Float, depth: Float) -> Bool {
+            guard let sideDepthPtr, sideDepthWidth > 0, sideDepthHeight > 0 else { return true }
+            let du = min(max(Int(u / Float(sideImageWidth) * Float(sideDepthWidth)), 0), sideDepthWidth - 1)
+            let dv = min(max(Int(v / Float(sideImageHeight) * Float(sideDepthHeight)), 0), sideDepthHeight - 1)
+            let measured = sideDepthPtr[dv * sideDepthFloatsPerRow + du]
+            guard measured > 0.05 && measured < 1.5 else { return true }
+            return depth - measured <= 0.025
+        }
+
+        /// 3×3 mean of the side photo around an image-space pixel → RGB.
+        func sideColor(u: Float, v: Float) -> SIMD3<Float>? {
+            guard let sideBase, sideBgraWidth > 0, sideBgraHeight > 0 else { return nil }
+            let px = Int(u / Float(sideImageWidth) * Float(sideBgraWidth))
+            let py = Int(v / Float(sideImageHeight) * Float(sideBgraHeight))
+            guard px >= 0, px < sideBgraWidth, py >= 0, py < sideBgraHeight else { return nil }
+            var sum = SIMD3<Float>(repeating: 0)
+            var n: Float = 0
+            for dy in -1...1 {
+                let y = py + dy
+                guard y >= 0, y < sideBgraHeight else { continue }
+                for dx in -1...1 {
+                    let x = px + dx
+                    guard x >= 0, x < sideBgraWidth else { continue }
+                    let off = y * sideRowBytes + x * 4
+                    sum += SIMD3<Float>(Float(sideBase[off + 2]), Float(sideBase[off + 1]), Float(sideBase[off]))
+                    n += 1
+                }
+            }
+            return n > 0 ? sum / n : nil
+        }
 
         @inline(__always) func clamp01(_ value: Float) -> Float {
             min(max(value, 0), 1)
@@ -600,11 +812,12 @@ final class DepthFusion {
             var colors = [UInt8](repeating: 200, count: mesh.vertices.count * 3)
             if canProject, let ptr = bgraBase {
                 for i in 0..<mesh.vertices.count {
-                    let v = mesh.vertices[i]
-                    let cam = camInv * simd_float4(v.x, v.y, v.z, 1)
-                    guard cam.z > 0.001 else { continue }
-                    let u = Int((fx * cam.x / cam.z + cx).rounded())
-                    let vpx = Int((fy * cam.y / cam.z + cy).rounded())
+                    guard let p = Self.projectToImage(
+                        mesh.vertices[i], worldToCamera: camInv,
+                        fx: fx, fy: fy, cx: cx, cy: cy
+                    ) else { continue }
+                    let u = Int(p.u.rounded())
+                    let vpx = Int(p.v.rounded())
                     guard u >= 0, u < bgraWidth, vpx >= 0, vpx < bgraHeight else { continue }
                     let off = vpx * bgraRowBytes + u * 4
                     // ARKit `capturedImage` is BGRA8.
@@ -616,10 +829,14 @@ final class DepthFusion {
 
             // Per-vertex UVs: top-facing vertices sample the top photo; side-
             // facing vertices that the side camera actually saw sample the
-            // side atlas tile. Unseen faces use the atlas fill colour instead
+            // side atlas tile AND take their vertex colour from that same
+            // side-photo pixel. Unseen faces use the atlas fill colour instead
             // of wrapping a photographed blemish around the hidden side.
             var uvs = [SIMD2<Float>](repeating: SIMD2(0.5, 0.5),
                                      count: mesh.vertices.count)
+            var sideFacingCount = 0
+            var sideColoredCount = 0
+            var sideColorSum = SIMD3<Float>(repeating: 0)
             if abs(fx) > 0.0001, abs(fy) > 0.0001, imageWidth > 0, imageHeight > 0 {
                 let iw = Float(imageWidth)
                 let ih = Float(imageHeight)
@@ -632,34 +849,43 @@ final class DepthFusion {
                        abs(normal.y) < 0.72,
                        let sideCamInv,
                        let sideCameraPosition {
+                        sideFacingCount += 1
                         let viewDirection = simd_normalize(sideCameraPosition - vertex)
                         let sideVisible = simd_dot(normal, viewDirection) > 0.12
-                        let sideCam = sideCamInv * simd_float4(vertex.x, vertex.y, vertex.z, 1)
-                        if sideVisible, sideCam.z > 0.001 {
-                            let sideU = sideFx * sideCam.x / sideCam.z + sideCx
-                            let sideV = sideFy * sideCam.y / sideCam.z + sideCy
-                            if sideU >= 0, sideU <= Float(sideImageWidth),
-                               sideV >= 0, sideV <= Float(sideImageHeight) {
-                                uvs[i] = atlasUV(
-                                    u0: Food3DTextureBaker.atlasSideU0,
-                                    u1: Food3DTextureBaker.atlasSideU1,
-                                    sourceU: sideU / Float(sideImageWidth),
-                                    sourceVTopOrigin: sideV / Float(sideImageHeight)
-                                )
-                                continue
+                        if sideVisible,
+                           let sp = Self.projectToImage(
+                               vertex, worldToCamera: sideCamInv,
+                               fx: sideFx, fy: sideFy, cx: sideCx, cy: sideCy
+                           ),
+                           sp.u >= 0, sp.u <= Float(sideImageWidth),
+                           sp.v >= 0, sp.v <= Float(sideImageHeight),
+                           sideDepthAgrees(u: sp.u, v: sp.v, depth: sp.depth) {
+                            uvs[i] = atlasUV(
+                                u0: Food3DTextureBaker.atlasSideU0,
+                                u1: Food3DTextureBaker.atlasSideU1,
+                                sourceU: sp.u / Float(sideImageWidth),
+                                sourceVTopOrigin: sp.v / Float(sideImageHeight)
+                            )
+                            if let rgb = sideColor(u: sp.u, v: sp.v) {
+                                colors[i * 3 + 0] = UInt8(min(max(rgb.x.rounded(), 0), 255))
+                                colors[i * 3 + 1] = UInt8(min(max(rgb.y.rounded(), 0), 255))
+                                colors[i * 3 + 2] = UInt8(min(max(rgb.z.rounded(), 0), 255))
+                                sideColoredCount += 1
+                                sideColorSum += rgb
                             }
+                            continue
                         }
                     }
 
-                    let topCam = camInv * simd_float4(vertex.x, vertex.y, vertex.z, 1)
-                    guard topCam.z > 0.001 else {
+                    guard let tp = Self.projectToImage(
+                        vertex, worldToCamera: camInv,
+                        fx: fx, fy: fy, cx: cx, cy: cy
+                    ) else {
                         uvs[i] = hasSideAtlas ? unknownAtlasUV() : SIMD2(0.5, 0.5)
                         continue
                     }
-                    let topU = fx * topCam.x / topCam.z + cx
-                    let topV = fy * topCam.y / topCam.z + cy
-                    let uu = clamp01(topU / iw)
-                    let vv = clamp01(topV / ih)
+                    let uu = clamp01(tp.u / iw)
+                    let vv = clamp01(tp.v / ih)
                     if hasSideAtlas {
                         uvs[i] = atlasUV(
                             u0: Food3DTextureBaker.atlasTopU0,
@@ -671,6 +897,21 @@ final class DepthFusion {
                         uvs[i] = SIMD2(uu, 1 - vv) // USD `st` origin is bottom-left
                     }
                 }
+            }
+
+            if hasSideAtlas {
+                let pct = { (n: Int) -> String in
+                    sideFacingCount > 0
+                        ? String(format: "%.0f", Double(n) / Double(sideFacingCount) * 100)
+                        : "0"
+                }
+                let avg = sideColoredCount > 0 ? sideColorSum / Float(sideColoredCount) : SIMD3<Float>(repeating: 0)
+                print("[SIDECOLOR] path=lidar object=\(cluster.id) sideVerts=\(sideFacingCount)/\(mesh.vertices.count) " +
+                      "inMask=n/a inView=\(pct(sideColoredCount))% fallbackTop=\(pct(sideFacingCount - sideColoredCount))% " +
+                      "avgSide=rgb(\(Int(avg.x)),\(Int(avg.y)),\(Int(avg.z))) sideDepthTest=\(sideDepthPtr != nil) " +
+                      "sideFrame=\(sideBgraWidth)x\(sideBgraHeight)")
+            } else {
+                print("[SIDECOLOR] path=lidar object=\(cluster.id) sideVerts=0 inMask=n/a fallbackTop=100% (no side frame) avgSide=rgb(0,0,0)")
             }
 
             objects.append(Food3DObject(
@@ -986,9 +1227,11 @@ enum SurfaceNets {
                     )
 
                     // Convert local-voxel coordinates → ARKit world (metres).
-                    let wx = (centerVox.x + Float(minX)) * voxelSizeM
-                    let wy = (centerVox.y + Float(minY)) * voxelSizeM
-                    let wz = (centerVox.z + Float(minZ)) * voxelSizeM
+                    // Lattice point i is voxel key (i + min); with floor keys
+                    // its world centre is (key + 0.5)·voxelSizeM.
+                    let wx = (centerVox.x + Float(minX) + 0.5) * voxelSizeM
+                    let wy = (centerVox.y + Float(minY) + 0.5) * voxelSizeM
+                    let wz = (centerVox.z + Float(minZ) + 0.5) * voxelSizeM
 
                     cellVertex[cellIdx(x, y, z)] = Int32(vertices.count)
                     vertices.append(SIMD3<Float>(wx, wy, wz))

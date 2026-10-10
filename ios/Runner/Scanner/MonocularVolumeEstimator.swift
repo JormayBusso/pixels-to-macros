@@ -57,6 +57,17 @@ final class MonocularVolumeEstimator {
         let textureHorizontalMax: Double
         let textureVerticalMin: Double
         let textureVerticalMax: Double
+        /// True when a LARGER vertical mask index is HIGHER above the table
+        /// (upside-down hold). Default false: portrait/landscape holds put the
+        /// table at the larger vertical index.
+        var verticalIndexIncreasesUp = false
+        /// The exact side-mask piece (mask grid = side preprocessed frame) this
+        /// profile was extracted from. Side colour is sampled ONLY inside it.
+        var sourceMask: [[UInt8]] = []
+        /// Index of the TOP segment this side silhouette was matched to
+        /// (`ScanMaskGeometry.matchSideSegments`); nil = legacy label matching.
+        var topSegmentIndex: Int? = nil
+        var matchScore = 0.0
 
         var meanNormalizedHeight: Double {
             guard !normalizedHeights.isEmpty else { return 0 }
@@ -96,14 +107,37 @@ final class MonocularVolumeEstimator {
             let verticalT = min(1.0, max(0.0, heightFraction))
             let horizontal = textureHorizontalMin +
                 (textureHorizontalMax - textureHorizontalMin) * horizontalT
-            // In image/mask coordinates, increasing vertical index points
-            // toward the visible bottom of the side silhouette.
-            let vertical = textureVerticalMax -
-                (textureVerticalMax - textureVerticalMin) * verticalT
+            // In image/mask coordinates the visible bottom of the side
+            // silhouette is the LARGER vertical index unless the hold flips it.
+            let vertical = verticalIndexIncreasesUp
+                ? textureVerticalMin + (textureVerticalMax - textureVerticalMin) * verticalT
+                : textureVerticalMax - (textureVerticalMax - textureVerticalMin) * verticalT
             if textureHorizontalUsesRows {
                 return SIMD2(Float(vertical), Float(horizontal))
             }
             return SIMD2(Float(horizontal), Float(vertical))
+        }
+
+        /// `sourceUV` snapped to the EXACT side-mask pixel it lands on, or to
+        /// the nearest in-mask pixel when it falls just outside (thin tips,
+        /// one-pixel boundary rounding). `uv` is (x = column, y = row)
+        /// normalised to the side mask/frame. Returns the pixel-centre UV.
+        func maskSnappedUV(
+            _ uv: SIMD2<Float>,
+            maxRadius: Int = 40
+        ) -> (uv: SIMD2<Float>, inMask: Bool, found: Bool) {
+            let h = sourceMask.count
+            let w = sourceMask.first?.count ?? 0
+            guard h > 0, w > 0 else { return (uv, false, false) }
+            let column = min(w - 1, max(0, Int(floor(Double(uv.x) * Double(w)))))
+            let row = min(h - 1, max(0, Int(floor(Double(uv.y) * Double(h)))))
+            guard let hit = ScanMaskGeometry.nearestSetPixel(
+                in: sourceMask, row: row, column: column, maxRadius: maxRadius
+            ) else { return (uv, false, false) }
+            let snapped = SIMD2<Float>(
+                Float((Double(hit.column) + 0.5) / Double(w)),
+                Float((Double(hit.row) + 0.5) / Double(h)))
+            return (snapped, hit.row == row && hit.column == column, true)
         }
     }
 
@@ -331,7 +365,7 @@ final class MonocularVolumeEstimator {
                 ? usableSideProfile(profileMatch?.profile, for: seg.label)
                 : nil
             if profile == nil, bowl == nil {
-                print("[MonocularEstimator] top-mask fallback food#\(idx) \(seg.label): sideProfile=none, pixels=\(seg.pixelCount), dominantPrimary=\(hasDominantPrimary)")
+                print("[MonocularEstimator] top-mask fallback food#\(idx) \(seg.label): sideProfile=none (matched=\(profileMatch != nil), sideProfiles=\(sideProfiles.count), matchedTops=\(sideProfiles.compactMap { $0.topSegmentIndex }.map(String.init).joined(separator: ","))), pixels=\(seg.pixelCount), dominantPrimary=\(hasDominantPrimary)")
             }
             if profile != nil, let profileMatch { usedSideProfileIndices.insert(profileMatch.index) }
             if let bowl {
@@ -408,7 +442,7 @@ final class MonocularVolumeEstimator {
                     profile.aspectRatio,
                     volumeCm3
                 )
-                print("[MonocularEstimator] visual-hull food#\(idx) \(seg.label): sideLabel=\(profile.label), axis=\(profile.topAxis.rawValue), reversed=\(profile.reversed), mesh=\(meshMode), ar=\(String(format: "%.2f", profile.aspectRatio)), height=\(String(format: "%.2f", heightCm))cm, fill=\(String(format: "%.2f", profile.meanNormalizedHeight)), vol=\(String(format: "%.1f", volumeCm3))cm3")
+                print("[MonocularEstimator] visual-hull food#\(idx) \(seg.label): sideLabel=\(profile.label), sideMatch=top#\(profile.topSegmentIndex.map(String.init) ?? "label") score=\(String(format: "%.2f", profile.matchScore)), rawH=\(String(format: "%.2f", rawHeightCm))cm, axisCm=\(String(format: "%.2f", topAxisCm)), axis=\(profile.topAxis.rawValue), reversed=\(profile.reversed), mesh=\(meshMode), ar=\(String(format: "%.2f", profile.aspectRatio)), height=\(String(format: "%.2f", heightCm))cm, fill=\(String(format: "%.2f", profile.meanNormalizedHeight)), vol=\(String(format: "%.1f", volumeCm3))cm3")
             } else {
                 // No side silhouette was captured, so the height was NOT
                 // measured. Do NOT inflate it with a tall class prior — a flat
@@ -675,13 +709,13 @@ final class MonocularVolumeEstimator {
         return any ? union : nil
     }
 
-    /// Reconstruct a food-vs-background coverage grid for the atlas SIDE tile, in
-    /// side-image (row-major, top-down) normalized space, from the side profiles.
+    /// Food-vs-background coverage grid for the atlas SIDE tile, in side-image
+    /// (row-major, top-down) normalized space.
     ///
-    /// LIMITATION: `SideProfile` does NOT carry a full 2-D side mask — it stores
-    /// per-sample silhouette bounds (`normalizedBottoms`/`normalizedTops`) plus
-    /// the food's texture bounding box in the side frame. So this rebuilds the
-    /// silhouette as the exact INVERSE of `InferencePipeline.makeSideProfile`:
+    /// Profiles from the pipeline carry the exact matched side-mask piece
+    /// (`sourceMask`), which is used directly. Legacy profiles without it fall
+    /// back to rebuilding the silhouette as the exact INVERSE of
+    /// `InferencePipeline.makeSideProfile`:
     /// for each grid pixel we map its normalized (col,row) into the profile's
     /// horizontal/vertical axes, and mark it food when it lies inside that
     /// column's [bottom,top] band. Gaps between per-sample columns are the only
@@ -703,6 +737,29 @@ final class MonocularVolumeEstimator {
         var grid = [[UInt8]](
             repeating: [UInt8](repeating: 0, count: gridW), count: gridH)
         var any = false
+
+        // Preferred: the EXACT matched side-mask pieces (same side-frame grid as
+        // the atlas side tile), resampled nearest-neighbour. No reconstruction.
+        let exactMasks = usable.map(\.sourceMask).filter { !$0.isEmpty && !($0.first?.isEmpty ?? true) }
+        if !exactMasks.isEmpty {
+            for mask in exactMasks {
+                let mh = mask.count
+                let mw = mask.first?.count ?? 0
+                for r in 0..<gridH {
+                    let mr = min(mh - 1, r * mh / gridH)
+                    let row = mask[mr]
+                    for c in 0..<gridW {
+                        let mc = min(mw - 1, c * mw / gridW)
+                        if mc < row.count, row[mc] != 0 {
+                            grid[r][c] = 1
+                            any = true
+                        }
+                    }
+                }
+            }
+            return any ? grid : nil
+        }
+
         for r in 0..<gridH {
             // Row 0 = top of the side image, matching `CIImage(cvPixelBuffer:)`.
             let vImg = (Double(r) + 0.5) / Double(gridH)
@@ -737,9 +794,13 @@ final class MonocularVolumeEstimator {
                     // normalized coordinate at the silhouette bottom, so map both
                     // edges back into image vertical space.
                     let vSpan = p.textureVerticalMax - p.textureVerticalMin
-                    let bottomEdge = p.textureVerticalMax - bottom * vSpan
-                    let topEdge = p.textureVerticalMax - top * vSpan
-                    if verticalNorm >= topEdge, verticalNorm <= bottomEdge {
+                    let bottomEdge = p.verticalIndexIncreasesUp
+                        ? p.textureVerticalMin + bottom * vSpan
+                        : p.textureVerticalMax - bottom * vSpan
+                    let topEdge = p.verticalIndexIncreasesUp
+                        ? p.textureVerticalMin + top * vSpan
+                        : p.textureVerticalMax - top * vSpan
+                    if verticalNorm >= min(topEdge, bottomEdge), verticalNorm <= max(topEdge, bottomEdge) {
                         grid[r][c] = 1
                         any = true
                         break
@@ -928,6 +989,16 @@ final class MonocularVolumeEstimator {
         excluding used: Set<Int>
     ) -> (index: Int, profile: SideProfile)? {
         guard !profiles.isEmpty else { return nil }
+        // Geometric matching from the pipeline (`ScanMaskGeometry
+        // .matchSideSegments`): each profile already names the TOP instance it
+        // belongs to, so labels — which differ between views and after
+        // refinement — are never needed.
+        if profiles.contains(where: { $0.topSegmentIndex != nil }) {
+            guard let matched = profiles.enumerated().first(where: {
+                !used.contains($0.offset) && $0.element.topSegmentIndex == index
+            }) else { return nil }
+            return (matched.offset, matched.element)
+        }
         let label = normalisedLabel(segment.label)
         if let exactLabel = profiles.enumerated().first(where: {
             !used.contains($0.offset) && normalisedLabel($0.element.label) == label
@@ -1055,8 +1126,10 @@ final class MonocularVolumeEstimator {
 
         if let envelope = physicalEnvelope(for: label),
            profile.aspectRatio * envelope.maxLateralCm > envelope.maxHeightCm * 1.35 {
-            print("[MonocularEstimator] side-profile rejected as too-tall for \(label): ar=\(String(format: "%.2f", profile.aspectRatio))")
-            return nil
+            // Keep the measured silhouette: dropping it collapsed the food to
+            // the flat unknown-height body (~2 cm apple). The height is still
+            // capped by `boundedHeightCm` / the physical envelope.
+            print("[MonocularEstimator] side-profile tall for \(label): ar=\(String(format: "%.2f", profile.aspectRatio)) — kept; height capped by boundedHeightCm (envelope max \(String(format: "%.1f", envelope.maxHeightCm))cm)")
         }
         return profile
     }
@@ -1617,6 +1690,28 @@ final class MonocularVolumeEstimator {
         // sampled acceleration structure, but it is built from these exact
         // captured silhouettes and the final vertices are snapped back to the
         // source top mask after smoothing.
+        /// Raw two-silhouette interval at a corner: the measured side interval
+        /// along the matched axis ∩ the SAME profile mirrored onto the
+        /// transverse axis. nil without a side profile (or for bowls). An
+        /// interval with `top <= bottom` is EMPTY: the corner is outside the
+        /// visual hull and holds no material.
+        @inline(__always) func sideIntersection(_ rr: Int, _ cc: Int) -> (bottom: Float, top: Float)? {
+            guard bowl == nil, let sideProfile, !sideProfile.normalizedHeights.isEmpty else { return nil }
+            let uMatched = sideProfile.topAxis == .columns
+                ? Double(cc) / Double(max(gc, 1))
+                : Double(rr) / Double(max(gr, 1))
+            let uTransverse = sideProfile.topAxis == .columns
+                ? Double(rr) / Double(max(gr, 1))
+                : Double(cc) / Double(max(gc, 1))
+            let a = sideProfile.sampleBounds(uMatched)
+            let b = sideProfile.sampleBounds(uTransverse)
+            return (Float(max(a.bottom, b.bottom)), Float(min(a.top, b.top)))
+        }
+        @inline(__always) func cornerOutsideHull(_ rr: Int, _ cc: Int) -> Bool {
+            guard let s = sideIntersection(rr, cc) else { return false }
+            return s.top <= s.bottom
+        }
+
         @inline(__always) func cornerBounds(_ rr: Int, _ cc: Int) -> (bottom: Float, top: Float) {
             if bowl != nil {
                 // Rounded bowl interior: a flat food surface on top (fraction 1)
@@ -1647,7 +1742,7 @@ final class MonocularVolumeEstimator {
                 let lo = max(0, bottom)
                 return (lo, min(1, max(lo + 0.001, t)))
             }
-            if let sideProfile, !sideProfile.normalizedHeights.isEmpty {
+            if let s = sideIntersection(rr, cc) {
                 // TWO-SILHOUETTE VISUAL HULL (space carving from the top + side
                 // views). The side view gives the EXACT height profile along its
                 // matched top axis; the perpendicular (unobserved) axis is that
@@ -1658,18 +1753,15 @@ final class MonocularVolumeEstimator {
                 // bottoms. Nothing is invented — only the measured side silhouette
                 // (mirrored) + the measured top footprint bound it, so it rounds
                 // to the true body instead of extruding a box/wall.
-                let uMatched = sideProfile.topAxis == .columns
-                    ? Double(cc) / Double(max(gc, 1))
-                    : Double(rr) / Double(max(gr, 1))
-                let uTransverse = sideProfile.topAxis == .columns
-                    ? Double(rr) / Double(max(gr, 1))
-                    : Double(cc) / Double(max(gc, 1))
-                let a = sideProfile.sampleBounds(uMatched)
-                let b = sideProfile.sampleBounds(uTransverse)
-                let bottom = Float(max(a.bottom, b.bottom))
-                let top = Float(min(a.top, b.top))
-                if top <= bottom { return (0, max(0.02, top)) }
-                return finish(bottom, top)
+                if s.top <= s.bottom {
+                    // EMPTY intersection: outside the hull. Collapse to zero
+                    // thickness (bottom == top) so NO material is created here;
+                    // cells whose four corners are all empty are carved out of
+                    // the loft entirely (see the carving pass below).
+                    let pinch = max(0, min(1, (s.bottom + s.top) * 0.5))
+                    return (pinch, pinch)
+                }
+                return finish(s.bottom, s.top)
             }
             // No side silhouette: the height PROFILE was never observed, so per
             // AGENTS.md §9 we invent no dome/analytic shape. Extrude the EXACT
@@ -1741,6 +1833,36 @@ final class MonocularVolumeEstimator {
                 if best != nil { return best }
             }
             return best
+        }
+
+        // ── Visual-hull carving ──────────────────────────────────────────
+        // A cell whose four corners ALL lie outside top ∩ side ∩ mirrored-side
+        // holds no material: remove it from the loft (no geometry there).
+        // Cells with only some empty corners pinch to zero thickness at those
+        // corners (exact linear sampling of the hull boundary).
+        if bowl == nil, let sideProfile, !sideProfile.normalizedHeights.isEmpty {
+            var emptyCorners = 0
+            for rr in 0...gr {
+                for cc in 0...gc where cornerOutsideHull(rr, cc) { emptyCorners += 1 }
+            }
+            let cellsBefore = on.reduce(0) { $0 + ($1 ? 1 : 0) }
+            var carved = on
+            var carvedCells = 0
+            for r in 0..<gr {
+                for c in 0..<gc where on[cell(r, c)] {
+                    if cornerOutsideHull(r, c), cornerOutsideHull(r, c + 1),
+                       cornerOutsideHull(r + 1, c), cornerOutsideHull(r + 1, c + 1) {
+                        carved[cell(r, c)] = false
+                        carvedCells += 1
+                    }
+                }
+            }
+            if carved.contains(true) {
+                on = carved
+                print("[DUALHULL] path=monocular food=\(label) emptyCorners=\(emptyCorners)/\((gr + 1) * (gc + 1)) carvedCells=\(carvedCells)/\(cellsBefore) (empty top∩side∩mirrored-side → no material)")
+            } else {
+                print("[DUALHULL] path=monocular food=\(label) emptyCorners=\(emptyCorners)/\((gr + 1) * (gc + 1)) carving would remove all \(cellsBefore) cells — side silhouette does not intersect the top footprint; cells kept with zero-thickness corners")
+            }
         }
 
         // ── Continuous contour loft ──────────────────────────────────────
@@ -1870,16 +1992,13 @@ final class MonocularVolumeEstimator {
             vertices[i] = p
         }
 
-        // Per-side realism self-check + repair. Runs after the vertices are
-        // snapped back to the exact silhouette, so it operates on the final
-        // shape the user will see. It (1) removes "shark fin" spikes — vertices
-        // that poke far above their 1-ring neighbours, the signature of a noisy
-        // side-mask column — by clamping them down to the neighbourhood, and
-        // (2) inspects the body from every canonical side (top/bottom/front/
-        // back/left/right) and reports whether each reads as a plausible food
-        // surface, so the log shows the realism decision for each face.
-        func repairMeshRealism(
-            vertices: inout [SIMD3<Float>],
+        // Per-side realism self-check — DIAGNOSTIC ONLY (AGENTS.md §9: nothing
+        // may be smoothed or added after the exact-silhouette snap). It reports
+        // "shark fin" candidates (vertices far above their 1-ring median) and
+        // non-finite vertices, and inspects the body from every canonical side,
+        // but it never moves a vertex: the measured silhouette is the shape.
+        func meshRealismReport(
+            vertices: [SIMD3<Float>],
             faces: [Int],
             label: String,
             heightM: Float
@@ -1900,34 +2019,26 @@ final class MonocularVolumeEstimator {
                 f += 3
             }
 
-            // Spike removal: a vertex whose height exceeds its neighbourhood
-            // median by more than a fraction of the object height is a fin.
+            // Spike detection only: a vertex whose height exceeds its
+            // neighbourhood median by more than a fraction of the object height.
             let spikeThreshold = max(0.0015, heightM * 0.16)
-            var repairedSpikes = 0
-            for _ in 0..<3 {
-                var newY = vertices.map { $0.y }
-                var pass = 0
-                for v in 0..<n {
-                    let neigh = adjacency[v]
-                    guard neigh.count >= 3 else { continue }
-                    var ys = neigh.map { vertices[$0].y }
-                    ys.sort()
-                    let median = ys[ys.count / 2]
-                    if vertices[v].y - median > spikeThreshold {
-                        newY[v] = median + spikeThreshold * 0.5
-                        pass += 1
-                    }
-                }
-                if pass == 0 { break }
-                for v in 0..<n { vertices[v].y = newY[v] }
-                repairedSpikes += pass
+            var detectedSpikes = 0
+            var nonFinite = 0
+            for v in 0..<n {
+                let p = vertices[v]
+                if !p.x.isFinite || !p.y.isFinite || !p.z.isFinite { nonFinite += 1; continue }
+                let neigh = adjacency[v]
+                guard neigh.count >= 3 else { continue }
+                var ys = neigh.map { vertices[$0].y }
+                ys.sort()
+                if p.y - ys[ys.count / 2] > spikeThreshold { detectedSpikes += 1 }
             }
 
-            // Per-side plausibility from the repaired extents.
+            // Per-side plausibility from the exact extents.
             var minX = Float.greatestFiniteMagnitude, maxX = -Float.greatestFiniteMagnitude
             var minY = Float.greatestFiniteMagnitude, maxY = -Float.greatestFiniteMagnitude
             var minZ = Float.greatestFiniteMagnitude, maxZ = -Float.greatestFiniteMagnitude
-            for p in vertices {
+            for p in vertices where p.x.isFinite && p.y.isFinite && p.z.isFinite {
                 minX = min(minX, p.x); maxX = max(maxX, p.x)
                 minY = min(minY, p.y); maxY = max(maxY, p.y)
                 minZ = min(minZ, p.z); maxZ = max(maxZ, p.z)
@@ -1946,13 +2057,13 @@ final class MonocularVolumeEstimator {
             let left = sideStatus(lateral: extentZ)
             let footprint = (extentX > 0.0001 && extentZ > 0.0001) ? "ok" : "degenerate"
             return String(
-                format: "label=%@ spikes_repaired=%d top=%@ bottom=%@ front=%@ back=%@ left=%@ right=%@ h/w=%.2f",
-                label, repairedSpikes, footprint, footprint, front, front, left, left,
+                format: "label=%@ spikes_detected=%d (diagnostic, not modified) nonFinite=%d top=%@ bottom=%@ front=%@ back=%@ left=%@ right=%@ h/w=%.2f",
+                label, detectedSpikes, nonFinite, footprint, footprint, front, front, left, left,
                 Double(extentY / max(extentX, extentZ)))
         }
 
-        let realismReport = repairMeshRealism(
-            vertices: &vertices, faces: faces, label: label, heightM: h)
+        let realismReport = meshRealismReport(
+            vertices: vertices, faces: faces, label: label, heightM: h)
         print("[REALISM] \(realismReport)")
 
         func vertexNormals(vertices: [SIMD3<Float>], faces: [Int]) -> [SIMD3<Float>] {
@@ -2082,15 +2193,25 @@ final class MonocularVolumeEstimator {
                 let sv = (Float(footprint.minRow) + rowNorm * Float(bboxH)) / Float(max(maskHeight, 1))
                 return SIMD2<Float>(clamp01(topU0 + su * (topU1 - topU0)), 1.0 - clamp01(sv))
             }
+            var atlasSideVerts = 0
+            var atlasSideInMask = 0
             @inline(__always) func sideUV(_ p: SIMD3<Float>) -> SIMD2<Float> {
                 guard let sp = sideProfile else { return topUV(p) }
                 let colNorm = clamp01(((p.x - offsetX) / max(0.0001, 2.0 * rx)) + 0.5)
                 let rowNorm = clamp01(((p.z - offsetZ) / max(0.0001, 2.0 * rz)) + 0.5)
                 let axisU = sp.topAxis == .columns ? Double(colNorm) : Double(rowNorm)
                 let hf = Double(clamp01(p.y / Float(max(h, 0.0001))))
-                let uv = sp.sourceUV(axisU: axisU, heightFraction: hf)
-                return SIMD2<Float>(clamp01(sideU0 + Float(uv.y) * (sideU1 - sideU0)),
-                                    1.0 - clamp01(Float(uv.x)))
+                // `sourceUV` is (x = side-frame column, y = side-frame row); the
+                // side tile is the side frame scaled WITHOUT rotation, exactly
+                // like the top tile, so u follows x and v = 1 − row (same as
+                // `topUV`). Snapped to the exact side-mask pixel when available.
+                let raw = sp.sourceUV(axisU: axisU, heightFraction: hf)
+                let snap = sp.sourceMask.isEmpty ? (uv: raw, inMask: false, found: false) : sp.maskSnappedUV(raw)
+                atlasSideVerts += 1
+                if snap.inMask { atlasSideInMask += 1 }
+                let uv = snap.found ? snap.uv : raw
+                return SIMD2<Float>(clamp01(sideU0 + clamp01(uv.x) * (sideU1 - sideU0)),
+                                    1.0 - clamp01(uv.y))
             }
             var nv = [SIMD3<Float>](); nv.reserveCapacity(faces.count)
             var nc = [UInt8](); nc.reserveCapacity(faces.count * colorStride)
@@ -2126,6 +2247,9 @@ final class MonocularVolumeEstimator {
                 outColors = nc
                 outUVs = nu
                 print("[MonocularEstimator] atlas seam-split \(label): welded=\(vertices.count)v/\(faces.count / 3)f -> unwelded=\(nv.count)v")
+                if sideProfile != nil {
+                    print("[SIDECOLOR] atlas food=\(label) sideVerts=\(atlasSideVerts) uvInMask=\(String(format: "%.0f", 100.0 * Double(atlasSideInMask) / Double(max(1, atlasSideVerts))))% sideTile=u[\(sideU0),\(sideU1)] uv=(col,1-row) unrotated")
+                }
             }
         }
 
@@ -2290,6 +2414,40 @@ final class MonocularVolumeEstimator {
             return (rr, gg, bb)
         }
 
+        // Exact side-photo colour at a side-frame UV (x = column, y = row,
+        // normalised). 3×3 denoise restricted to the side mask when present.
+        let sideMaskAvailable = !(sideProfile?.sourceMask.isEmpty ?? true)
+        @inline(__always) func sideSample(_ uv: SIMD2<Float>, mask: [[UInt8]]?) -> (Double, Double, Double)? {
+            guard let sidePtr, sideWidth > 0, sideHeight > 0 else { return nil }
+            let cx = min(max(Int(floor(Double(uv.x) * Double(sideWidth))), 0), sideWidth - 1)
+            let cy = min(max(Int(floor(Double(uv.y) * Double(sideHeight))), 0), sideHeight - 1)
+            let mh = mask?.count ?? 0
+            let mw = mask?.first?.count ?? 0
+            var rSum = 0.0, gSum = 0.0, bSum = 0.0, n = 0.0
+            for dy in -1...1 {
+                for dx in -1...1 {
+                    let x = min(max(cx + dx, 0), sideWidth - 1)
+                    let y = min(max(cy + dy, 0), sideHeight - 1)
+                    if let mask, mh > 0, mw > 0 {
+                        let mr = min(mh - 1, y * mh / sideHeight)
+                        let mc = min(mw - 1, x * mw / sideWidth)
+                        guard mc < mask[mr].count, mask[mr][mc] != 0 else { continue }
+                    }
+                    let off = y * sideRowBytes + x * 4
+                    rSum += Double(sidePtr[off + 2]); gSum += Double(sidePtr[off + 1]); bSum += Double(sidePtr[off]); n += 1
+                }
+            }
+            guard n > 0 else { return nil }
+            return (rSum / n, gSum / n, bSum / n)
+        }
+        let baseMax = max(baseR, max(baseG, baseB)), baseMin = min(baseR, min(baseG, baseB))
+        let baseIsNearWhite = baseMin > 175 && baseMax - baseMin < 40
+        var sideVertexCount = 0
+        var sideInMaskCount = 0
+        var sideFallbackTopCount = 0
+        var sideColoredCount = 0
+        var sideSumR = 0.0, sideSumG = 0.0, sideSumB = 0.0
+
         for i in 0..<positions.count {
             let pos = positions[i]
             let mr = Int(pos.row.rounded())
@@ -2299,7 +2457,7 @@ final class MonocularVolumeEstimator {
             if ny < 0.45,
                ny > -0.35,
                let sideProfile,
-               let sidePtr,
+               sidePtr != nil,
                sideWidth > 0,
                sideHeight > 0 {
                 let axisU: Double
@@ -2314,18 +2472,34 @@ final class MonocularVolumeEstimator {
                     axisU: axisU,
                     heightFraction: i < heightFractions.count ? heightFractions[i] : 0.5
                 )
-                let x = min(max(Int((Double(uv.y) * Double(sideWidth)).rounded()), 0), sideWidth - 1)
-                let y = min(max(Int((Double(uv.x) * Double(sideHeight)).rounded()), 0), sideHeight - 1)
-                let offset = y * sideRowBytes + x * 4
-                sr = Double(sidePtr[offset + 2])
-                sg = Double(sidePtr[offset + 1])
-                sb = Double(sidePtr[offset])
-                // If the side photo pixel is the white plate / background behind
-                // the food, fall back to the exact top-photo colour so a side
-                // face never picks up the table instead of the food.
-                let mxS = max(sr, max(sg, sb)), mnS = min(sr, min(sg, sb))
-                if mnS > 175, mxS - mnS < 40, let t = topPixel(mr, mc) {
-                    sr = t.0; sg = t.1; sb = t.2
+                sideVertexCount += 1
+                // `uv` is (x = column, y = row) in the side frame. Snap it to
+                // the exact side-mask pixel (or the nearest in-mask pixel) so a
+                // side face only ever takes the food's own side-photo colour.
+                let snap = sideMaskAvailable
+                    ? sideProfile.maskSnappedUV(uv)
+                    : (uv: uv, inMask: false, found: true)
+                if snap.inMask { sideInMaskCount += 1 }
+                var sidePixel: (Double, Double, Double)?
+                if snap.found {
+                    sidePixel = sideSample(snap.uv, mask: sideMaskAvailable ? sideProfile.sourceMask : nil)
+                }
+                if let px = sidePixel {
+                    sr = px.0; sg = px.1; sb = px.2
+                    // A near-white side pixel on a NON-white food is the plate /
+                    // background showing through a loose mask: use the exact
+                    // top-photo colour instead. White foods keep their side colour.
+                    let mxS = max(sr, max(sg, sb)), mnS = min(sr, min(sg, sb))
+                    if mnS > 175, mxS - mnS < 40, !baseIsNearWhite, let t = topPixel(mr, mc) {
+                        sr = t.0; sg = t.1; sb = t.2
+                        sideFallbackTopCount += 1
+                    } else {
+                        sideSumR += sr; sideSumG += sg; sideSumB += sb
+                        sideColoredCount += 1
+                    }
+                } else {
+                    sideFallbackTopCount += 1
+                    if let t = topPixel(mr, mc) { sr = t.0; sg = t.1; sb = t.2 }
                 }
             } else if let t = topPixel(mr, mc) {
                 sr = t.0; sg = t.1; sb = t.2
@@ -2340,6 +2514,15 @@ final class MonocularVolumeEstimator {
             out.append(UInt8(min(255.0, max(0.0, sr.rounded()))))
             out.append(UInt8(min(255.0, max(0.0, sg.rounded()))))
             out.append(UInt8(min(255.0, max(0.0, sb.rounded()))))
+        }
+        if sideProfile != nil {
+            let pct = { (n: Int) -> String in
+                String(format: "%.0f", 100.0 * Double(n) / Double(max(1, sideVertexCount)))
+            }
+            let avg = sideColoredCount > 0
+                ? "rgb(\(Int(sideSumR / Double(sideColoredCount))),\(Int(sideSumG / Double(sideColoredCount))),\(Int(sideSumB / Double(sideColoredCount))))"
+                : "none"
+            print("[SIDECOLOR] path=monocular food=\(label) sideVerts=\(sideVertexCount)/\(positions.count) inMask=\(pct(sideInMaskCount))% fallbackTop=\(pct(sideFallbackTopCount))% avgSide=\(avg) base=rgb(\(Int(baseR)),\(Int(baseG)),\(Int(baseB))) sideMask=\(sideMaskAvailable) sideFrame=\(sideWidth)x\(sideHeight) whiteFood=\(baseIsNearWhite)")
         }
         return out
     }

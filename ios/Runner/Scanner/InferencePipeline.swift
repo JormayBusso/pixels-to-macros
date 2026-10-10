@@ -225,13 +225,17 @@ final class InferencePipeline {
             print("[PIPELINE] file exists: false")
             throw PipelineError.model3DExportFailed("preprocessing_failed")
         }
-        guard let preprocessedRGB = captureCircleFrame(from: preprocessed) else {
+        guard let preprocessedRGB = captureROIFrame(from: preprocessed, shape: .circle) else {
             print("[PIPELINE] export success: false")
             print("[PIPELINE] model3dPath: nil")
             print("[PIPELINE] file exists: false")
             throw PipelineError.model3DExportFailed("capture_circle_mask_failed")
         }
-        print("[SCAN] capture circle: centre=0.50,0.50 radius=0.45; outside pixels ignored")
+        let topROI = ScanMaskGeometry.ROI(
+            width: CVPixelBufferGetWidth(preprocessedRGB),
+            height: CVPixelBufferGetHeight(preprocessedRGB),
+            shape: .circle)
+        print("[ROI] view=top \(topROI.logDescription) crop=\(plate.detected ? "plate_rect" : "centred_square") cropRect=\(String(format: "%.3f,%.3f,%.3f,%.3f", cropRect?.minX ?? 0, cropRect?.minY ?? 0, cropRect?.width ?? 1, cropRect?.height ?? 1)) buffer=\(CVPixelBufferGetWidth(topFrame.pixelBuffer))x\(CVPixelBufferGetHeight(topFrame.pixelBuffer)); outside pixels ignored")
 
         // ── 2b. ML Kit food labels (hint, not a hard gate) ──────────────
         // ML Kit's generic ~400-label model is weak on isolated produce: a
@@ -259,7 +263,14 @@ final class InferencePipeline {
             print("[SCAN] segmentation THREW: \(error)")
             throw PipelineError.segmentationFailed(error)
         }
-        segments = constrainToCaptureCircle(segments)
+        let rawTopInstanceCount = segments.count
+        segments = constrainToCaptureROI(segments, shape: .circle)
+        let inROITopInstanceCount = segments.count
+        // Mask-overlap NMS: duplicate / partial detections of ONE food (same
+        // class with high IoU or containment, or any class on the same region)
+        // collapse into one instance before anything counts them.
+        segments = mergeOverlappingInstances(segments, view: "top")
+        let mergedTopInstanceCount = segments.count
         print("[SCAN] segmentation: \(segments.count) objects — \(segments.map { "\($0.label)(\($0.pixelCount)px, conf \(String(format: "%.2f", $0.confidence)))" }.joined(separator: ", "))")
 
         guard !segments.isEmpty else {
@@ -269,15 +280,17 @@ final class InferencePipeline {
             throw PipelineError.noFoodDetected("segmentation_empty")
         }
 
-        // Split any segment whose mask is several DISCONNECTED blobs (a handful
-        // of separate peanuts the segmenter grouped into one instance) into one
-        // segment per blob, so each item gets its own silhouette, border and 3-D
-        // object. A single connected food stays one segment.
+        // Split any segment whose mask is several genuinely SEPARATE, substantial
+        // blobs (a handful of peanuts the segmenter grouped into one instance)
+        // into one segment per blob, so each item gets its own silhouette,
+        // border and 3-D object. Stem / highlight / shadow fragments of one food
+        // stay with it (see `ScanMaskGeometry.planSplit`).
         segments = splitDisconnectedInstances(
             segments,
             maskWidth: preprocessor.modelInputWidth,
             maskHeight: preprocessor.modelInputHeight
         )
+        print("[INSTANCES] view=top raw=\(rawTopInstanceCount) inROI=\(inROITopInstanceCount) afterMerge=\(mergedTopInstanceCount) split=\(segments.count) — \(segments.map { "\($0.label)(\($0.pixelCount)px)" }.joined(separator: ", "))")
 
         // ── 3a. Food-presence decision ──────────────────────────────────
         // Trust a confident, food-trained YOLO-seg detection over ML Kit's
@@ -382,6 +395,15 @@ final class InferencePipeline {
         // label_source → drives the "learned" UI marker).
         segments = stampLabelMetadata(segments)
 
+        // Second NMS pass on the REFINED labels: two overlapping instances the
+        // raw model named differently (apple vs peach) but the refiners agree
+        // on are one food. Disjoint split pieces never overlap, so they stay.
+        let beforeRefinedMerge = segments.count
+        segments = mergeOverlappingInstances(segments, view: "top_refined")
+        if segments.count != beforeRefinedMerge {
+            print("[INSTANCES] view=top refinedMerge before=\(beforeRefinedMerge) after=\(segments.count)")
+        }
+
         guard passesFoodPresenceGate(
             segments: segments,
             topFrame: topFrame,
@@ -410,16 +432,35 @@ final class InferencePipeline {
             var sideProfiles: [MonocularVolumeEstimator.SideProfile] = []
             var sidePreprocessedRGB: CVPixelBuffer?
             if let sideFrame = recorder.sideFrame {
+                // SIDE ROI: a centred rounded rectangle in the SAME normalisation
+                // as the TOP circle — the side buffer is cropped to its centred
+                // square (no aspect squash, like the top's no-plate crop) and the
+                // rectangle's long side follows the world-horizontal image axis.
+                let sideAxes = sideProfileAxes(sideFrame: sideFrame, topFrame: topFrame)
+                let sideBufferW = CVPixelBufferGetWidth(sideFrame.pixelBuffer)
+                let sideBufferH = CVPixelBufferGetHeight(sideFrame.pixelBuffer)
+                let sideCrop = ScanMaskGeometry.centredSquareCrop(width: sideBufferW, height: sideBufferH)
+                let sideShape = ScanMaskGeometry.ROIShape.roundedRect(
+                    longAxisAlongColumns: !sideAxes.verticalUsesColumns)
                 let sideCapture = autoreleasepool {
-                    preprocessor.preprocess(pixelBuffer: sideFrame.pixelBuffer, plateRect: nil)
-                        .flatMap { captureCircleFrame(from: $0) }
+                    preprocessor.preprocess(pixelBuffer: sideFrame.pixelBuffer, plateRect: sideCrop)
+                        .flatMap { captureROIFrame(from: $0, shape: sideShape) }
+                }
+                if let sideCapture {
+                    let sideROI = ScanMaskGeometry.ROI(
+                        width: CVPixelBufferGetWidth(sideCapture),
+                        height: CVPixelBufferGetHeight(sideCapture),
+                        shape: sideShape)
+                    print("[ROI] view=side \(sideROI.logDescription) crop=centred_square cropRect=\(String(format: "%.3f,%.3f,%.3f,%.3f", sideCrop.minX, sideCrop.minY, sideCrop.width, sideCrop.height)) buffer=\(sideBufferW)x\(sideBufferH) verticalAxis=\(sideAxes.verticalUsesColumns ? "columns" : "rows") verticalIndexIncreasesUp=\(sideAxes.verticalIndexIncreasesUp)")
                 }
                 sidePreprocessedRGB = sideCapture
                 let extractedProfiles = sideCapture.map {
                     extractSideProfiles(
-                        from: sideFrame,
-                        topFrame: topFrame,
-                        preprocessedRGB: $0
+                        preprocessedRGB: $0,
+                        topSegments: segments,
+                        axes: sideAxes,
+                        roiShape: sideShape,
+                        cropSidePx: min(sideBufferW, sideBufferH)
                     )
                 } ?? []
                 let check = monocularEstimator.validateDualSilhouette(
@@ -431,7 +472,7 @@ final class InferencePipeline {
                 print("[DUALHULL] \(debug)")
                 if check.valid {
                     sideProfiles = extractedProfiles
-                    print("[PIPELINE] camera fallback: accepted sideProfiles=\(sideProfiles.count)")
+                    print("[PIPELINE] camera fallback: accepted sideProfiles=\(sideProfiles.count) matchedTops=\(sideProfiles.compactMap { $0.topSegmentIndex }.map { "#\($0)" }.joined(separator: ","))")
                 } else {
                     print("[PIPELINE] camera fallback: side invalid (\(check.reason)); using top-mask fallback")
                 }
@@ -497,6 +538,7 @@ final class InferencePipeline {
         }
 
         // ── 4. Multi-frame depth fusion ─────────────────────────────────
+        print("[ROI] view=side path=lidar shape=roundedRect (side silhouette carves the fused voxels; side frame also colours side-facing vertices) top=circle")
         let fusion = DepthFusion()
 
         // Include top-frame depth first (if available).
@@ -565,6 +607,13 @@ final class InferencePipeline {
             throw PipelineError.model3DExportFailed("no_voxel_grid")
         }
 
+        // ── 5b. Side-silhouette carving (top ∩ side hull, AGENTS.md §9) ──
+        if let sideFrame = recorder.sideFrame {
+            fusion.setSideSilhouette(lidarSideSilhouette(sideFrame: sideFrame, topFrame: topFrame))
+        } else {
+            print("[DUALHULL] path=lidar side carving skipped (missing_side_view) — top-mask + depth hull only")
+        }
+
         let voxelClusters = fusion.voxelClusters()
         print("[PIPELINE] voxel clusters: \(voxelClusters.count) " +
               voxelClusters.map { "\($0.id)=\($0.voxelKeys.count)" }.joined(separator: ", "))
@@ -585,7 +634,8 @@ final class InferencePipeline {
             sideTransform: recorder.sideFrame?.cameraTransform,
             sideIntrinsics: recorder.sideFrame?.cameraIntrinsics,
             sideImageWidth: recorder.sideFrame.map { CVPixelBufferGetWidth($0.pixelBuffer) } ?? 0,
-            sideImageHeight: recorder.sideFrame.map { CVPixelBufferGetHeight($0.pixelBuffer) } ?? 0
+            sideImageHeight: recorder.sideFrame.map { CVPixelBufferGetHeight($0.pixelBuffer) } ?? 0,
+            sideDepthBuffer: recorder.sideFrame?.depthBuffer
         )
         print("[SCAN] exportFoodObjects: \(foodObjects.count) meshes — \(foodObjects.map { "\($0.id)(v=\($0.vertices.count),f=\($0.faces.count/3))" }.joined(separator: ", "))")
         guard !foodObjects.isEmpty else {
@@ -834,10 +884,19 @@ final class InferencePipeline {
     /// estimator. This is the important non-LiDAR shape path: the top frame
     /// supplies the plate footprint and this side frame supplies the vertical
     /// contour across the matching top-footprint axis.
+    ///
+    /// The side view ONLY provides profiles — it never adds or splits food
+    /// instances. Its segments are de-duplicated (mask-overlap NMS) and every
+    /// TOP instance is assigned its own side segment, or its own horizontal
+    /// slice of a shared one, by position / prominence / centredness
+    /// (`ScanMaskGeometry.matchSideSegments`). The returned profiles carry the
+    /// matched `topSegmentIndex`, so the estimator never guesses by label.
     private func extractSideProfiles(
-        from sideFrame: FrameCaptureService.CapturedFrame,
-        topFrame: FrameCaptureService.CapturedFrame,
-        preprocessedRGB: CVPixelBuffer
+        preprocessedRGB: CVPixelBuffer,
+        topSegments: [SegmentationService.SegmentedObject],
+        axes: SideProfileAxes,
+        roiShape: ScanMaskGeometry.ROIShape,
+        cropSidePx: Int
     ) -> [MonocularVolumeEstimator.SideProfile] {
         var sideSegments: [SegmentationService.SegmentedObject]
         do {
@@ -848,33 +907,216 @@ final class InferencePipeline {
             print("[PIPELINE] side-profile: segmentation failed: \(error)")
             return []
         }
-        sideSegments = constrainToCaptureCircle(sideSegments)
+        let rawSideCount = sideSegments.count
+        sideSegments = constrainToCaptureROI(sideSegments, shape: roiShape)
+        let inROISideCount = sideSegments.count
+        sideSegments = mergeOverlappingInstances(sideSegments, view: "side")
+        print("[INSTANCES] view=side raw=\(rawSideCount) inROI=\(inROISideCount) afterMerge=\(sideSegments.count) (profiles only — the side view never adds instances)")
         guard !sideSegments.isEmpty else {
             print("[PIPELINE] side-profile: no side segments")
             return []
         }
+        guard !topSegments.isEmpty else { return [] }
 
-        let axes = sideProfileAxes(sideFrame: sideFrame, topFrame: topFrame)
-        let imageWidth = CVPixelBufferGetWidth(sideFrame.pixelBuffer)
-        let imageHeight = CVPixelBufferGetHeight(sideFrame.pixelBuffer)
-        let profiles = sideSegments.prefix(4).compactMap { segment in
-            makeSideProfile(
-                segment: segment,
-                axes: axes,
-                imageWidth: imageWidth,
-                imageHeight: imageHeight
+        // TOP footprints along the matched top axis, oriented into the side
+        // view's horizontal direction (flipped when `reversed`).
+        let tops: [ScanMaskGeometry.SideMatchTop] = topSegments.map { segment in
+            let mask = segment.mask
+            let h = mask.count
+            let w = mask.first?.count ?? 0
+            let dim = max(1, axes.topAxis == .columns ? w : h)
+            var minIdx = Int.max
+            var maxIdx = -1
+            for r in 0..<h {
+                let row = mask[r]
+                for c in 0..<min(w, row.count) where row[c] != 0 {
+                    let idx = axes.topAxis == .columns ? c : r
+                    if idx < minIdx { minIdx = idx }
+                    if idx > maxIdx { maxIdx = idx }
+                }
+            }
+            var lo = maxIdx >= minIdx ? Double(minIdx) / Double(dim) : 0
+            var hi = maxIdx >= minIdx ? Double(maxIdx + 1) / Double(dim) : 0
+            if axes.reversed { (lo, hi) = (1.0 - hi, 1.0 - lo) }
+            return ScanMaskGeometry.SideMatchTop(
+                lo: lo, hi: hi, area: segment.pixelCount,
+                label: segment.label, classIndex: segment.classIndex)
+        }
+
+        // SIDE segments along the side horizontal axis (rows when the side
+        // vertical runs along columns, as in a portrait hold).
+        let sideMaskH = sideSegments[0].mask.count
+        let sideMaskW = sideSegments[0].mask.first?.count ?? 0
+        let horizontalDim = axes.verticalUsesColumns ? sideMaskH : sideMaskW
+        let sideROI = ScanMaskGeometry.ROI(width: sideMaskW, height: sideMaskH, shape: roiShape)
+        let sides: [ScanMaskGeometry.SideMatchSide] = sideSegments.map { segment in
+            var minV = [Int](repeating: Int.max, count: max(1, horizontalDim))
+            var maxV = [Int](repeating: -1, count: max(1, horizontalDim))
+            var lo = Int.max
+            var hi = -1
+            let mask = segment.mask
+            for r in 0..<mask.count {
+                let row = mask[r]
+                for c in 0..<row.count where row[c] != 0 {
+                    let horizontal = axes.verticalUsesColumns ? r : c
+                    let vertical = axes.verticalUsesColumns ? c : r
+                    guard horizontal < minV.count else { continue }
+                    lo = min(lo, horizontal)
+                    hi = max(hi, horizontal)
+                    minV[horizontal] = min(minV[horizontal], vertical)
+                    maxV[horizontal] = max(maxV[horizontal], vertical)
+                }
+            }
+            let extent = zip(minV, maxV).map { $1 >= $0 ? $1 - $0 + 1 : 0 }
+            return ScanMaskGeometry.SideMatchSide(
+                lo: hi >= lo ? lo : 0,
+                hi: hi >= lo ? hi : -1,
+                area: segment.pixelCount,
+                label: segment.label,
+                classIndex: segment.classIndex,
+                centredness: sideROI.centredness(
+                    row: Double(segment.centroid.row), column: Double(segment.centroid.col)),
+                verticalExtent: extent)
+        }
+
+        let assignments = ScanMaskGeometry.matchSideSegments(
+            tops: tops, sides: sides, horizontalDim: horizontalDim)
+        var profiles: [MonocularVolumeEstimator.SideProfile] = []
+        for (topIndex, top) in topSegments.enumerated() {
+            guard let a = assignments.first(where: { $0.topIndex == topIndex }) else {
+                print("[SIDEMATCH] top#\(topIndex)(\(top.label)) ← none (no side segment overlaps its footprint; top-mask fallback for this food)")
+                continue
+            }
+            let side = sideSegments[a.sideIndex]
+            // The matched piece: the side mask restricted to the assigned
+            // horizontal range (the whole segment unless it was shared).
+            var pieceMask = side.mask
+            var count = 0
+            var rowTotal = 0
+            var columnTotal = 0
+            for r in 0..<pieceMask.count {
+                for c in 0..<pieceMask[r].count where pieceMask[r][c] != 0 {
+                    let horizontal = axes.verticalUsesColumns ? r : c
+                    if horizontal < a.from || horizontal > a.to {
+                        pieceMask[r][c] = 0
+                    } else {
+                        count += 1
+                        rowTotal += r
+                        columnTotal += c
+                    }
+                }
+            }
+            guard count > 0 else {
+                print("[SIDEMATCH] top#\(topIndex)(\(top.label)) ← side seg \(a.sideIndex)(\(side.label)) empty range=[\(a.from),\(a.to)]")
+                continue
+            }
+            var piece = SegmentationService.SegmentedObject(
+                label: side.label,
+                classIndex: side.classIndex,
+                mask: pieceMask,
+                pixelCount: count,
+                centroid: (rowTotal / count, columnTotal / count),
+                confidence: side.confidence
             )
+            piece.candidateLabels = side.candidateLabels
+            guard var profile = makeSideProfile(
+                segment: piece,
+                axes: axes,
+                imageWidth: cropSidePx,
+                imageHeight: cropSidePx
+            ) else {
+                print("[SIDEMATCH] top#\(topIndex)(\(top.label)) ← side seg \(a.sideIndex)(\(side.label)) rejected by profile bounds range=[\(a.from),\(a.to)] px=\(count)")
+                continue
+            }
+            profile.topSegmentIndex = topIndex
+            profile.matchScore = a.score
+            profile.sourceMask = pieceMask
+            profile.verticalIndexIncreasesUp = axes.verticalIndexIncreasesUp
+            print("[SIDEMATCH] top#\(topIndex)(\(top.label)) ← side seg \(a.sideIndex)(\(side.label)) score=\(String(format: "%.2f", a.score)) range=[\(a.from),\(a.to)]\(a.isSplit ? " split" : "") sidePx=\(count) ar=\(String(format: "%.2f", profile.aspectRatio)) topSpan=\(String(format: "%.2f-%.2f", tops[topIndex].lo, tops[topIndex].hi))")
+            profiles.append(profile)
         }
         print("[PIPELINE] side-profile: profiles=\(profiles.count), " +
-              profiles.map { "\($0.label)(axis=\($0.topAxis.rawValue)\($0.reversed ? "R" : ""), ar=\(String(format: "%.2f", $0.aspectRatio)), fill=\(String(format: "%.2f", $0.meanNormalizedHeight)))" }.joined(separator: ", "))
+              profiles.map { "\($0.label)→top#\($0.topSegmentIndex ?? -1)(axis=\($0.topAxis.rawValue)\($0.reversed ? "R" : ""), ar=\(String(format: "%.2f", $0.aspectRatio)), fill=\(String(format: "%.2f", $0.meanNormalizedHeight)))" }.joined(separator: ", "))
         return profiles
     }
 
-    /// The visual circle is also an inference boundary. Blackening the outside
-    /// of the same centred 90%-diameter circle prevents global classifiers from
+    /// LiDAR side silhouette for `DepthFusion` carving. Segments the side
+    /// photo exactly like the monocular path (centred square crop, side
+    /// rounded-rect ROI, ROI clip + mask NMS) and returns the UNION of the side
+    /// food masks with the real side camera pose. Returns nil — and logs why —
+    /// when the side mask is unusable, so the scan never fails on it.
+    private func lidarSideSilhouette(
+        sideFrame: FrameCaptureService.CapturedFrame,
+        topFrame: FrameCaptureService.CapturedFrame
+    ) -> DepthFusion.SideSilhouette? {
+        let sideAxes = sideProfileAxes(sideFrame: sideFrame, topFrame: topFrame)
+        let bufferW = CVPixelBufferGetWidth(sideFrame.pixelBuffer)
+        let bufferH = CVPixelBufferGetHeight(sideFrame.pixelBuffer)
+        let crop = ScanMaskGeometry.centredSquareCrop(width: bufferW, height: bufferH)
+        let shape = ScanMaskGeometry.ROIShape.roundedRect(
+            longAxisAlongColumns: !sideAxes.verticalUsesColumns)
+        guard let capture = autoreleasepool(invoking: {
+            preprocessor.preprocess(pixelBuffer: sideFrame.pixelBuffer, plateRect: crop)
+                .flatMap { captureROIFrame(from: $0, shape: shape) }
+        }) else {
+            print("[DUALHULL] path=lidar side carving skipped (side_preprocess_failed)")
+            return nil
+        }
+        var sideSegments: [SegmentationService.SegmentedObject]
+        do {
+            sideSegments = yoloSegmentationService.isAvailable
+                ? try yoloSegmentationService.segment(pixelBuffer: capture)
+                : try segmentationService.segment(pixelBuffer: capture)
+        } catch {
+            print("[DUALHULL] path=lidar side carving skipped (side_segmentation_failed: \(error))")
+            return nil
+        }
+        let raw = sideSegments.count
+        sideSegments = constrainToCaptureROI(sideSegments, shape: shape)
+        sideSegments = mergeOverlappingInstances(sideSegments, view: "side_lidar")
+        print("[INSTANCES] view=side path=lidar raw=\(raw) afterMerge=\(sideSegments.count) (silhouette only — the side view never adds instances)")
+        guard let first = sideSegments.first?.mask, !first.isEmpty,
+              let maskW = first.first?.count, maskW > 0 else {
+            print("[DUALHULL] path=lidar side carving skipped (no_side_food_mask)")
+            return nil
+        }
+        let maskH = first.count
+        var union = [[UInt8]](repeating: [UInt8](repeating: 0, count: maskW), count: maskH)
+        var onPixels = 0
+        for segment in sideSegments where segment.mask.count == maskH {
+            for r in 0..<maskH {
+                let row = segment.mask[r]
+                for c in 0..<min(maskW, row.count) where row[c] != 0 && union[r][c] == 0 {
+                    union[r][c] = 1
+                    onPixels += 1
+                }
+            }
+        }
+        let coverage = Double(onPixels) / Double(maskW * maskH)
+        guard coverage >= 0.002 else {
+            print("[DUALHULL] path=lidar side carving skipped (side_mask_too_small coverage=\(String(format: "%.4f", coverage)))")
+            return nil
+        }
+        print("[ROI] view=side path=lidar \(ScanMaskGeometry.ROI(width: maskW, height: maskH, shape: shape).logDescription) crop=centred_square buffer=\(bufferW)x\(bufferH) sideMaskCoverage=\(String(format: "%.3f", coverage))")
+        return DepthFusion.SideSilhouette(
+            mask: union,
+            cropRect: crop,
+            roiShape: shape,
+            cameraTransform: sideFrame.cameraTransform,
+            cameraIntrinsics: sideFrame.cameraIntrinsics,
+            imageWidth: bufferW,
+            imageHeight: bufferH)
+    }
+
+    /// The visual guide is also an inference boundary. Blackening everything
+    /// outside the capture ROI (TOP: centred circle; SIDE: centred rounded
+    /// rectangle, see `ScanMaskGeometry.ROI`) prevents global classifiers from
     /// naming food outside the guide; clipping masks afterwards is a second
     /// guard against a model prediction crossing that boundary.
-    private func captureCircleFrame(from input: CVPixelBuffer) -> CVPixelBuffer? {
+    private func captureROIFrame(
+        from input: CVPixelBuffer,
+        shape: ScanMaskGeometry.ROIShape
+    ) -> CVPixelBuffer? {
         let width = CVPixelBufferGetWidth(input)
         let height = CVPixelBufferGetHeight(input)
         guard width > 0, height > 0 else { return nil }
@@ -910,15 +1152,9 @@ final class InferencePipeline {
         }
 
         let pixels = destination.assumingMemoryBound(to: UInt8.self)
-        let centreX = Double(width - 1) * 0.5
-        let centreY = Double(height - 1) * 0.5
-        let radius = Double(min(width, height)) * 0.485
-        let radiusSquared = radius * radius
+        let roi = ScanMaskGeometry.ROI(width: width, height: height, shape: shape)
         for row in 0..<height {
-            let dy = Double(row) - centreY
-            for column in 0..<width {
-                let dx = Double(column) - centreX
-                guard dx * dx + dy * dy > radiusSquared else { continue }
+            for column in 0..<width where !roi.contains(row: row, column: column) {
                 let offset = row * destinationStride + column * 4
                 pixels[offset] = 0
                 pixels[offset + 1] = 0
@@ -929,53 +1165,105 @@ final class InferencePipeline {
         return output
     }
 
-    private func constrainToCaptureCircle(
-        _ segments: [SegmentationService.SegmentedObject]
+    /// Copy of `segment` with a new mask (pixel count / centroid recomputed),
+    /// keeping every label/refinement field.
+    private func rebuiltSegment(
+        _ segment: SegmentationService.SegmentedObject,
+        withMask mask: [[UInt8]],
+        confidence: Float? = nil
+    ) -> SegmentationService.SegmentedObject? {
+        var count = 0
+        var rowTotal = 0
+        var columnTotal = 0
+        for r in 0..<mask.count {
+            for c in 0..<mask[r].count where mask[r][c] != 0 {
+                count += 1
+                rowTotal += r
+                columnTotal += c
+            }
+        }
+        guard count > 0 else { return nil }
+        var out = SegmentationService.SegmentedObject(
+            label: segment.label,
+            classIndex: segment.classIndex,
+            mask: mask,
+            pixelCount: count,
+            centroid: (rowTotal / count, columnTotal / count),
+            confidence: confidence ?? segment.confidence
+        )
+        out.needsUserLabel = segment.needsUserLabel
+        out.candidateLabels = segment.candidateLabels
+        out.embedding = segment.embedding
+        out.labelSource = segment.labelSource
+        return out
+    }
+
+    private func constrainToCaptureROI(
+        _ segments: [SegmentationService.SegmentedObject],
+        shape: ScanMaskGeometry.ROIShape
     ) -> [SegmentationService.SegmentedObject] {
         segments.compactMap { segment in
             let height = segment.mask.count
             let width = segment.mask.first?.count ?? 0
             guard height > 0, width > 0 else { return nil }
-            let centreX = Double(width - 1) * 0.5
-            let centreY = Double(height - 1) * 0.5
-            let radius = Double(min(width, height)) * 0.485
-            let radiusSquared = radius * radius
+            let roi = ScanMaskGeometry.ROI(width: width, height: height, shape: shape)
             var mask = segment.mask
-            var count = 0
-            var rowTotal = 0
-            var columnTotal = 0
             for row in 0..<height {
-                let dy = Double(row) - centreY
-                for column in 0..<width where mask[row][column] == 1 {
-                    let dx = Double(column) - centreX
-                    if dx * dx + dy * dy > radiusSquared {
+                for column in 0..<mask[row].count where mask[row][column] == 1 {
+                    if !roi.contains(row: row, column: column) {
                         mask[row][column] = 0
-                    } else {
-                        count += 1
-                        rowTotal += row
-                        columnTotal += column
                     }
                 }
             }
-            guard count > 0 else {
-                print("[SCAN] capture circle rejected outside segment \(segment.label)")
+            guard let constrained = rebuiltSegment(segment, withMask: mask) else {
+                print("[ROI] rejected segment outside capture \(shape == .circle ? "circle" : "roundedRect"): \(segment.label)")
                 return nil
             }
-            return SegmentationService.SegmentedObject(
-                label: segment.label,
-                classIndex: segment.classIndex,
-                mask: mask,
-                pixelCount: count,
-                centroid: (rowTotal / count, columnTotal / count),
-                confidence: segment.confidence
-            )
+            return constrained
         }
+    }
+
+    /// Mask-overlap NMS (instance de-duplication). YOLO-seg can emit several
+    /// instances for ONE food (duplicate boxes, a partial box on half of it,
+    /// a second class guess for the same region). Same-food instances merge on
+    /// IoU ≥ 0.5 or containment IoMin ≥ 0.7; different classes merge only on
+    /// IoU ≥ 0.7 (the same region), so a garnish on a different food stays.
+    /// The merged instance is the mask UNION with the largest member's label.
+    private func mergeOverlappingInstances(
+        _ segments: [SegmentationService.SegmentedObject],
+        view: String
+    ) -> [SegmentationService.SegmentedObject] {
+        guard segments.count > 1 else { return segments }
+        let masks = segments.map { ScanMaskGeometry.BinaryMask(rows: $0.mask) }
+        let groups = ScanMaskGeometry.mergeGroups(masks: masks) { i, j in
+            ScanMaskGeometry.sameFood(
+                segments[i].label, segments[i].classIndex,
+                segments[j].label, segments[j].classIndex)
+        }
+        guard groups.contains(where: { $0.count > 1 }) else { return segments }
+        var merged: [(order: Int, segment: SegmentationService.SegmentedObject)] = []
+        for group in groups {
+            let representative = segments[group[0]]
+            guard group.count > 1 else {
+                merged.append((group[0], representative))
+                continue
+            }
+            var union = masks[group[0]]
+            for j in group.dropFirst() { union = union.union(masks[j]) }
+            let confidence = group.map { segments[$0].confidence }.max() ?? representative.confidence
+            print("[INSTANCES] view=\(view) merged \(group.map { "\(segments[$0].label)#\($0)(\(segments[$0].pixelCount)px)" }.joined(separator: " + ")) → \(representative.label)(\(union.count)px)")
+            if let combined = rebuiltSegment(representative, withMask: union.rows, confidence: confidence) {
+                merged.append((group.min() ?? group[0], combined))
+            }
+        }
+        return merged.sorted { $0.order < $1.order }.map(\.segment)
     }
 
     private typealias SideProfileAxes = (
         verticalUsesColumns: Bool,
         topAxis: MonocularVolumeEstimator.SideProfile.TopAxis,
-        reversed: Bool
+        reversed: Bool,
+        verticalIndexIncreasesUp: Bool
     )
 
     private func sideProfileAxes(
@@ -1001,6 +1289,14 @@ final class InferencePipeline {
         // is the side-mask vertical axis. The other is the side horizontal axis.
         let verticalUsesColumns = abs(simd_dot(sideRight, worldUp)) >= abs(simd_dot(sideUp, worldUp))
         let sideHorizontal = verticalUsesColumns ? -sideUp : sideRight
+        // Direction of increasing vertical index in WORLD terms. A normal
+        // portrait hold (sensor is landscape-right: columns follow camera-right
+        // which points DOWN) and a normal landscape hold (rows grow downward)
+        // both give `false` — larger index = closer to the table. An upside-down
+        // hold flips it; profiles and side UVs honour this sign.
+        let verticalIndexIncreasesUp = verticalUsesColumns
+            ? simd_dot(sideRight, worldUp) > 0
+            : simd_dot(sideUp, worldUp) < 0
 
         let topT = topFrame.cameraTransform
         let topCols = tableProjected(simd_float3(topT.columns.0.x, topT.columns.0.y, topT.columns.0.z)) ?? simd_float3(1, 0, 0)
@@ -1010,9 +1306,9 @@ final class InferencePipeline {
         let dotCols = simd_dot(sideHorizontalProjected, topCols)
         let dotRows = simd_dot(sideHorizontalProjected, topRows)
         if abs(dotCols) >= abs(dotRows) {
-            return (verticalUsesColumns, .columns, dotCols < 0)
+            return (verticalUsesColumns, .columns, dotCols < 0, verticalIndexIncreasesUp)
         }
-        return (verticalUsesColumns, .rows, dotRows < 0)
+        return (verticalUsesColumns, .rows, dotRows < 0, verticalIndexIncreasesUp)
     }
 
     private func makeSideProfile(
@@ -1079,10 +1375,18 @@ final class InferencePipeline {
             if localMaxV >= localMinV {
                 heights[sampleIndex] = Double(localMaxV - localMinV + 1) / Double(max(1, verticalExtent))
                 // Image vertical axis can be rows or columns depending on how
-                // the phone is held in landscape. Normalize from bottom-up:
-                // 0 = visible side-mask bottom, 1 = visible side-mask top.
-                let bottomOffset = Double(maxVertical - localMaxV) / Double(max(1, verticalExtent))
-                let topOffset = Double(maxVertical - localMinV + 1) / Double(max(1, verticalExtent))
+                // the phone is held. Normalize from bottom-up: 0 = visible
+                // side-mask bottom, 1 = visible side-mask top. The bottom is the
+                // LARGER vertical index unless the hold flips it.
+                let bottomOffset: Double
+                let topOffset: Double
+                if axes.verticalIndexIncreasesUp {
+                    bottomOffset = Double(localMinV - minVertical) / Double(max(1, verticalExtent))
+                    topOffset = Double(localMaxV - minVertical + 1) / Double(max(1, verticalExtent))
+                } else {
+                    bottomOffset = Double(maxVertical - localMaxV) / Double(max(1, verticalExtent))
+                    topOffset = Double(maxVertical - localMinV + 1) / Double(max(1, verticalExtent))
+                }
                 bottoms[sampleIndex] = min(1.0, max(0.0, bottomOffset))
                 tops[sampleIndex] = min(1.0, max(0.0, topOffset))
                 hasSample[sampleIndex] = true
@@ -1387,11 +1691,13 @@ final class InferencePipeline {
         return updated
     }
 
-    /// Split a segment whose mask is several DISCONNECTED blobs into one segment
-    /// per blob (8-connectivity). Only fires when ≥2 components clear a minimum
-    /// area, so a single connected food (one tomato) is returned unchanged and a
-    /// real food is never merged, rounded, or dropped — it only ever separates
-    /// genuinely separate items so each gets its own silhouette and 3-D object.
+    /// Split a segment whose mask is several genuinely SEPARATE blobs into one
+    /// segment per blob. Components are grouped after a morphological close +
+    /// hole fill (a stem, specular highlight or shadow fringe across a thin gap
+    /// stays with its food) and a split needs ≥2 substantial pieces (each
+    /// ≥150 px and ≥20% of the largest) — see `ScanMaskGeometry.planSplit`.
+    /// Pieces keep their original pixels: a real food is never rounded or
+    /// dropped, and a single food (one apple) is returned unchanged.
     private func splitDisconnectedInstances(
         _ segments: [SegmentationService.SegmentedObject],
         maskWidth: Int,
@@ -1403,50 +1709,16 @@ final class InferencePipeline {
             let h = seg.mask.count
             let w = seg.mask.first?.count ?? 0
             guard h > 0, w > 0 else { out.append(seg); continue }
-            var comp = [Int](repeating: -1, count: w * h)
-            var components: [[(Int, Int)]] = []
-            for sr in 0..<h {
-                for sc in 0..<w where seg.mask[sr][sc] == 1 && comp[sr * w + sc] == -1 {
-                    let id = components.count
-                    var pixels: [(Int, Int)] = []
-                    var stack: [(Int, Int)] = [(sr, sc)]
-                    comp[sr * w + sc] = id
-                    while let (r, c) = stack.popLast() {
-                        pixels.append((r, c))
-                        for dr in -1...1 {
-                            for dc in -1...1 where !(dr == 0 && dc == 0) {
-                                let nr = r + dr, nc = c + dc
-                                if nr >= 0, nr < h, nc >= 0, nc < w,
-                                   seg.mask[nr][nc] == 1, comp[nr * w + nc] == -1 {
-                                    comp[nr * w + nc] = id
-                                    stack.append((nr, nc))
-                                }
-                            }
-                        }
-                    }
-                    components.append(pixels)
+            let plan = ScanMaskGeometry.planSplit(ScanMaskGeometry.BinaryMask(rows: seg.mask))
+            if plan.rawComponents >= 2 {
+                print("[SPLIT] \(seg.label): rawComponents=\(plan.rawComponents) grouped=\(plan.groupedComponents) closeRadius=\(plan.closingRadius) areas=\(Array(plan.componentAreas.prefix(8))) → \(plan.shouldSplit ? "\(plan.pieces.count) instances" : "kept as 1") (\(plan.reason))")
+            }
+            guard plan.shouldSplit else { out.append(seg); continue }
+            for piece in plan.pieces {
+                if let pieceSegment = rebuiltSegment(seg, withMask: piece.rows) {
+                    out.append(pieceSegment)
                 }
             }
-            let total = components.reduce(0) { $0 + $1.count }
-            // A real item is ≥3% of the parent blob and ≥16 px; smaller specks are
-            // segmentation noise and are left with the largest piece.
-            let minArea = max(16, Int(Double(total) * 0.03))
-            let real = components.filter { $0.count >= minArea }
-            guard real.count >= 2, real.count <= 16 else { out.append(seg); continue }
-            for pixels in real.sorted(by: { $0.count > $1.count }) {
-                var mask = [[UInt8]](repeating: [UInt8](repeating: 0, count: w), count: h)
-                var sumR = 0, sumC = 0
-                for (r, c) in pixels { mask[r][c] = 1; sumR += r; sumC += c }
-                out.append(SegmentationService.SegmentedObject(
-                    label: seg.label,
-                    classIndex: seg.classIndex,
-                    mask: mask,
-                    pixelCount: pixels.count,
-                    centroid: (row: sumR / pixels.count, col: sumC / pixels.count),
-                    confidence: seg.confidence
-                ))
-            }
-            print("[SPLIT] \(seg.label): 1 mask -> \(real.count) instances (px=\(real.map { $0.count }.sorted(by: >).prefix(8)))")
         }
         return out
     }
@@ -2156,4 +2428,689 @@ final class InferencePipeline {
         return min(8.0, max(0.8, heightCm))
     }
 
+}
+
+// MARK: - ScanMaskGeometry (pure, unit-testable)
+
+/// Pure mask geometry for the scan pipeline. It has no CoreVideo/ARKit state,
+/// so every rule can be tested on its own:
+///  • the capture ROI: TOP keeps the centred circle, SIDE uses a centred
+///    rounded rectangle with the same normalisation (fraction of the square
+///    crop side);
+///  • instance de-duplication by mask overlap (mask-IoU / IoMin NMS);
+///  • connected-component splitting AFTER a morphological close and hole fill,
+///    so a stem / highlight / shadow fragment never becomes a second food;
+///  • nearest in-mask pixel lookup (exact side-photo colour sampling);
+///  • side-silhouette ↔ top-instance matching.
+enum ScanMaskGeometry {
+
+    // MARK: Capture ROI
+
+    /// Capture-guide radius as a fraction of the square crop side (the crop is
+    /// resized to the square model input). The TOP circle radius and the SIDE
+    /// rounded rectangle's half-width share this value.
+    static let roiRadiusFraction = 0.485
+    /// SIDE rounded rectangle: half-height = this × half-width.
+    static let sideRectHeightRatio = 0.55
+    /// SIDE rounded rectangle corner radius as a fraction of the FULL rect height.
+    static let sideRectCornerFraction = 0.18
+
+    enum ROIShape: Equatable {
+        case circle
+        /// The rectangle's long side runs along image columns (x) when
+        /// `longAxisAlongColumns` is true, along image rows otherwise.
+        case roundedRect(longAxisAlongColumns: Bool)
+    }
+
+    struct ROI {
+        let width: Int
+        let height: Int
+        let shape: ROIShape
+        let centreX: Double
+        let centreY: Double
+        let halfX: Double
+        let halfY: Double
+        let cornerRadius: Double
+
+        init(width: Int, height: Int, shape: ROIShape) {
+            self.width = width
+            self.height = height
+            self.shape = shape
+            centreX = Double(width - 1) * 0.5
+            centreY = Double(height - 1) * 0.5
+            let radius = Double(min(width, height)) * ScanMaskGeometry.roiRadiusFraction
+            switch shape {
+            case .circle:
+                halfX = radius
+                halfY = radius
+                cornerRadius = radius
+            case .roundedRect(let longAxisAlongColumns):
+                let halfShort = radius * ScanMaskGeometry.sideRectHeightRatio
+                halfX = longAxisAlongColumns ? radius : halfShort
+                halfY = longAxisAlongColumns ? halfShort : radius
+                cornerRadius = ScanMaskGeometry.sideRectCornerFraction * 2.0 * halfShort
+            }
+        }
+
+        func contains(row: Int, column: Int) -> Bool {
+            let dx = abs(Double(column) - centreX)
+            let dy = abs(Double(row) - centreY)
+            switch shape {
+            case .circle:
+                return dx * dx + dy * dy <= halfX * halfX
+            case .roundedRect:
+                guard dx <= halfX, dy <= halfY else { return false }
+                let qx = dx - (halfX - cornerRadius)
+                let qy = dy - (halfY - cornerRadius)
+                guard qx > 0, qy > 0 else { return true }
+                return qx * qx + qy * qy <= cornerRadius * cornerRadius
+            }
+        }
+
+        /// 0…1 score of how close a point is to the ROI centre (1 = centre,
+        /// 0 = on/after the ROI boundary along that direction).
+        func centredness(row: Double, column: Double) -> Double {
+            let nx = (column - centreX) / max(halfX, 1e-6)
+            let ny = (row - centreY) / max(halfY, 1e-6)
+            return max(0.0, 1.0 - (nx * nx + ny * ny).squareRoot())
+        }
+
+        /// Geometry normalised to the square crop side, for the `[ROI]` log.
+        var logDescription: String {
+            let side = Double(max(1, min(width, height)))
+            switch shape {
+            case .circle:
+                return String(format: "shape=circle centre=0.50,0.50 radius=%.3f", halfX / side)
+            case .roundedRect(let longAxisAlongColumns):
+                let halfLong = max(halfX, halfY) / side
+                let halfShort = min(halfX, halfY) / side
+                let geometry = String(
+                    format: "shape=roundedRect centre=0.50,0.50 halfW=%.3f halfH=%.3f corner=%.3f",
+                    halfLong, halfShort, cornerRadius / side)
+                return geometry + " longAxis=\(longAxisAlongColumns ? "columns" : "rows")"
+            }
+        }
+    }
+
+    /// Normalised (top-left origin) centred square of the buffer's short side —
+    /// the same crop `PlateDetector` falls back to when no plate is found, so
+    /// the SIDE ROI shares the TOP circle's normalisation (no aspect squash).
+    static func centredSquareCrop(width: Int, height: Int) -> CGRect {
+        guard width > 0, height > 0 else { return CGRect(x: 0, y: 0, width: 1, height: 1) }
+        let side = Double(min(width, height))
+        let w = side / Double(width)
+        let h = side / Double(height)
+        return CGRect(x: (1.0 - w) / 2.0, y: (1.0 - h) / 2.0, width: w, height: h)
+    }
+
+    // MARK: Binary masks
+
+    struct BinaryMask: Equatable {
+        let width: Int
+        let height: Int
+        var bits: [Bool]
+
+        init(width: Int, height: Int, bits: [Bool]? = nil) {
+            let w = max(0, width)
+            let h = max(0, height)
+            self.width = w
+            self.height = h
+            if let bits, bits.count == w * h {
+                self.bits = bits
+            } else {
+                self.bits = [Bool](repeating: false, count: w * h)
+            }
+        }
+
+        init(rows: [[UInt8]]) {
+            let h = rows.count
+            let w = rows.first?.count ?? 0
+            var bits = [Bool](repeating: false, count: w * h)
+            for r in 0..<h {
+                let row = rows[r]
+                for c in 0..<min(w, row.count) where row[c] != 0 {
+                    bits[r * w + c] = true
+                }
+            }
+            self.init(width: w, height: h, bits: bits)
+        }
+
+        subscript(row: Int, column: Int) -> Bool {
+            get { bits[row * width + column] }
+            set { bits[row * width + column] = newValue }
+        }
+
+        var count: Int { bits.reduce(0) { $1 ? $0 + 1 : $0 } }
+
+        var rows: [[UInt8]] {
+            var out = [[UInt8]](
+                repeating: [UInt8](repeating: 0, count: width), count: height)
+            for r in 0..<height {
+                for c in 0..<width where bits[r * width + c] { out[r][c] = 1 }
+            }
+            return out
+        }
+
+        /// Integer centroid (row, col), matching `SegmentedObject.centroid`.
+        var centroid: (row: Int, col: Int)? {
+            var n = 0, sumR = 0, sumC = 0
+            for i in 0..<bits.count where bits[i] {
+                n += 1
+                sumR += i / max(1, width)
+                sumC += i % max(1, width)
+            }
+            guard n > 0 else { return nil }
+            return (sumR / n, sumC / n)
+        }
+
+        func intersectionCount(_ other: BinaryMask) -> Int {
+            guard width == other.width, height == other.height else { return 0 }
+            var n = 0
+            for i in 0..<bits.count where bits[i] && other.bits[i] { n += 1 }
+            return n
+        }
+
+        func union(_ other: BinaryMask) -> BinaryMask {
+            guard width == other.width, height == other.height else { return self }
+            var out = self
+            for i in 0..<bits.count where other.bits[i] { out.bits[i] = true }
+            return out
+        }
+
+        func inverted() -> BinaryMask {
+            BinaryMask(width: width, height: height, bits: bits.map { !$0 })
+        }
+    }
+
+    /// Square (box) dilation by `radius` using separable prefix sums. Pixels
+    /// outside the image count as unset.
+    static func dilated(_ m: BinaryMask, radius: Int) -> BinaryMask {
+        guard radius > 0, m.width > 0, m.height > 0 else { return m }
+        let w = m.width, h = m.height
+        var horizontal = [Bool](repeating: false, count: w * h)
+        var rowPrefix = [Int](repeating: 0, count: w + 1)
+        for r in 0..<h {
+            let base = r * w
+            for c in 0..<w { rowPrefix[c + 1] = rowPrefix[c] + (m.bits[base + c] ? 1 : 0) }
+            for c in 0..<w {
+                let lo = max(0, c - radius), hi = min(w - 1, c + radius)
+                horizontal[base + c] = rowPrefix[hi + 1] - rowPrefix[lo] > 0
+            }
+        }
+        var out = [Bool](repeating: false, count: w * h)
+        var columnPrefix = [Int](repeating: 0, count: h + 1)
+        for c in 0..<w {
+            for r in 0..<h { columnPrefix[r + 1] = columnPrefix[r] + (horizontal[r * w + c] ? 1 : 0) }
+            for r in 0..<h {
+                let lo = max(0, r - radius), hi = min(h - 1, r + radius)
+                out[r * w + c] = columnPrefix[hi + 1] - columnPrefix[lo] > 0
+            }
+        }
+        return BinaryMask(width: w, height: h, bits: out)
+    }
+
+    /// Square (box) erosion. Pixels outside the image count as SET, so a
+    /// closing never eats a food that touches the frame edge.
+    static func eroded(_ m: BinaryMask, radius: Int) -> BinaryMask {
+        guard radius > 0 else { return m }
+        return dilated(m.inverted(), radius: radius).inverted()
+    }
+
+    /// Morphological closing (dilate then erode), always a superset of `m`.
+    static func closed(_ m: BinaryMask, radius: Int) -> BinaryMask {
+        guard radius > 0 else { return m }
+        return eroded(dilated(m, radius: radius), radius: radius).union(m)
+    }
+
+    /// Fill every background region not 4-connected to the image border.
+    static func filledHoles(_ m: BinaryMask) -> BinaryMask {
+        let w = m.width, h = m.height
+        guard w > 0, h > 0 else { return m }
+        var outside = [Bool](repeating: false, count: w * h)
+        var stack: [Int] = []
+        func seed(_ i: Int) {
+            if !m.bits[i] && !outside[i] {
+                outside[i] = true
+                stack.append(i)
+            }
+        }
+        for c in 0..<w {
+            seed(c)
+            seed((h - 1) * w + c)
+        }
+        for r in 0..<h {
+            seed(r * w)
+            seed(r * w + w - 1)
+        }
+        while let i = stack.popLast() {
+            let r = i / w, c = i % w
+            if r > 0 { seed(i - w) }
+            if r < h - 1 { seed(i + w) }
+            if c > 0 { seed(i - 1) }
+            if c < w - 1 { seed(i + 1) }
+        }
+        var out = m
+        for i in 0..<out.bits.count where !outside[i] { out.bits[i] = true }
+        return out
+    }
+
+    /// 8-connected component labelling: `labels[i]` is the component id of
+    /// pixel `i` (-1 for background) and `areas[id]` its pixel count.
+    static func labelComponents(_ m: BinaryMask) -> (labels: [Int], areas: [Int]) {
+        let w = m.width, h = m.height
+        var labels = [Int](repeating: -1, count: w * h)
+        var areas: [Int] = []
+        var stack: [Int] = []
+        for start in 0..<(w * h) where m.bits[start] && labels[start] < 0 {
+            let id = areas.count
+            labels[start] = id
+            stack.append(start)
+            var area = 0
+            while let i = stack.popLast() {
+                area += 1
+                let r = i / w, c = i % w
+                for dr in -1...1 {
+                    let nr = r + dr
+                    guard nr >= 0, nr < h else { continue }
+                    for dc in -1...1 where dr != 0 || dc != 0 {
+                        let nc = c + dc
+                        guard nc >= 0, nc < w else { continue }
+                        let j = nr * w + nc
+                        if m.bits[j] && labels[j] < 0 {
+                            labels[j] = id
+                            stack.append(j)
+                        }
+                    }
+                }
+            }
+            areas.append(area)
+        }
+        return (labels, areas)
+    }
+
+    // MARK: Instance split
+
+    struct SplitPlan {
+        let rawComponents: Int
+        let groupedComponents: Int
+        let closingRadius: Int
+        /// Original-pixel area of each grouped component, largest first.
+        let componentAreas: [Int]
+        /// One mask per real piece (original pixels; sub-threshold fragments are
+        /// attached to the nearest piece), largest first. Empty = keep as one.
+        let pieces: [BinaryMask]
+        let reason: String
+        var shouldSplit: Bool { pieces.count >= 2 }
+    }
+
+    /// Decide whether one instance mask really holds several separate foods.
+    /// Components are grouped on a closed + hole-filled copy of the mask (so a
+    /// stem, a specular highlight or a shadow fringe separated by a thin gap
+    /// stays with its food), and a split only happens when ≥2 grouped pieces are
+    /// each substantial (≥ `minPieceFractionOfLargest` of the largest and
+    /// ≥ `minPiecePixels`). Pieces keep their ORIGINAL pixels, so the exact
+    /// silhouette is never altered.
+    static func planSplit(
+        _ mask: BinaryMask,
+        minPiecePixels: Int = 150,
+        minPieceFractionOfLargest: Double = 0.2,
+        maxPieces: Int = 16
+    ) -> SplitPlan {
+        let raw = labelComponents(mask)
+        guard raw.areas.count >= 2 else {
+            return SplitPlan(rawComponents: raw.areas.count, groupedComponents: raw.areas.count,
+                             closingRadius: 0, componentAreas: raw.areas, pieces: [],
+                             reason: "single_component")
+        }
+        let w = mask.width
+        let largestRaw = raw.areas.max() ?? 0
+        let radius = min(8, max(2, Int((0.05 * Double(largestRaw).squareRoot()).rounded())))
+        let grouped = labelComponents(filledHoles(closed(mask, radius: radius)))
+        var areas = [Int](repeating: 0, count: grouped.areas.count)
+        var sumR = [Double](repeating: 0, count: grouped.areas.count)
+        var sumC = [Double](repeating: 0, count: grouped.areas.count)
+        for i in 0..<mask.bits.count where mask.bits[i] {
+            let g = grouped.labels[i]
+            guard g >= 0 else { continue }
+            areas[g] += 1
+            sumR[g] += Double(i / w)
+            sumC[g] += Double(i % w)
+        }
+        let order = areas.indices.filter { areas[$0] > 0 }.sorted { areas[$0] > areas[$1] }
+        let sortedAreas = order.map { areas[$0] }
+        guard order.count >= 2, let largest = sortedAreas.first else {
+            return SplitPlan(rawComponents: raw.areas.count, groupedComponents: order.count,
+                             closingRadius: radius, componentAreas: sortedAreas, pieces: [],
+                             reason: "fragments_bridged")
+        }
+        let threshold = max(minPiecePixels,
+                            Int((Double(largest) * minPieceFractionOfLargest).rounded(.up)))
+        let real = order.filter { areas[$0] >= threshold }
+        guard real.count >= 2 else {
+            return SplitPlan(rawComponents: raw.areas.count, groupedComponents: order.count,
+                             closingRadius: radius, componentAreas: sortedAreas, pieces: [],
+                             reason: "fragments_below_threshold(\(threshold)px)")
+        }
+        guard real.count <= maxPieces else {
+            return SplitPlan(rawComponents: raw.areas.count, groupedComponents: order.count,
+                             closingRadius: radius, componentAreas: sortedAreas, pieces: [],
+                             reason: "too_many_pieces")
+        }
+        var owner = [Int](repeating: -1, count: grouped.areas.count)
+        for (k, g) in real.enumerated() { owner[g] = k }
+        for g in order where owner[g] < 0 {
+            let cr = sumR[g] / Double(areas[g]), cc = sumC[g] / Double(areas[g])
+            var best = 0
+            var bestD = Double.greatestFiniteMagnitude
+            for (k, rg) in real.enumerated() {
+                let dr = cr - sumR[rg] / Double(areas[rg])
+                let dc = cc - sumC[rg] / Double(areas[rg])
+                let d = dr * dr + dc * dc
+                if d < bestD { bestD = d; best = k }
+            }
+            owner[g] = best
+        }
+        var pieces = real.map { _ in BinaryMask(width: mask.width, height: mask.height) }
+        for i in 0..<mask.bits.count where mask.bits[i] {
+            let g = grouped.labels[i]
+            guard g >= 0, owner[g] >= 0 else { continue }
+            pieces[owner[g]].bits[i] = true
+        }
+        return SplitPlan(rawComponents: raw.areas.count, groupedComponents: order.count,
+                         closingRadius: radius, componentAreas: sortedAreas, pieces: pieces,
+                         reason: "separated")
+    }
+
+    // MARK: Instance merge (mask NMS)
+
+    static func normalisedFoodLabel(_ label: String) -> String {
+        label.lowercased()
+            .replacingOccurrences(of: "_", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func sameFood(_ aLabel: String, _ aClass: Int, _ bLabel: String, _ bClass: Int) -> Bool {
+        aClass == bClass || normalisedFoodLabel(aLabel) == normalisedFoodLabel(bLabel)
+    }
+
+    /// Merge rule: the same food merges on IoU ≥ 0.5 or containment
+    /// (IoMin ≥ 0.7, a partial duplicate / highlight / stem detection);
+    /// different foods merge only when they are the same region (IoU ≥ 0.7),
+    /// so a garnish sitting on another food is never swallowed.
+    static func shouldMerge(iou: Double, ioMin: Double, sameFood: Bool) -> Bool {
+        if sameFood { return iou >= 0.5 || ioMin >= 0.7 }
+        return iou >= 0.7
+    }
+
+    /// Overlap-based instance de-duplication. Masks are visited largest first;
+    /// each later mask joins the current group when it overlaps the group's
+    /// accumulated union per `shouldMerge`. Returns groups of input indices,
+    /// the representative (largest) first.
+    static func mergeGroups(
+        masks: [BinaryMask],
+        sameFood: (Int, Int) -> Bool
+    ) -> [[Int]] {
+        let areas = masks.map { $0.count }
+        let order = masks.indices.sorted {
+            areas[$0] != areas[$1] ? areas[$0] > areas[$1] : $0 < $1
+        }
+        var assigned = [Bool](repeating: false, count: masks.count)
+        var groups: [[Int]] = []
+        for (pos, i) in order.enumerated() where !assigned[i] {
+            assigned[i] = true
+            var group = [i]
+            var union = masks[i]
+            var unionArea = areas[i]
+            for j in order[(pos + 1)...] where !assigned[j] {
+                let inter = union.intersectionCount(masks[j])
+                guard inter > 0 else { continue }
+                let unionCount = unionArea + areas[j] - inter
+                let iou = Double(inter) / Double(max(1, unionCount))
+                let ioMin = Double(inter) / Double(max(1, min(unionArea, areas[j])))
+                if shouldMerge(iou: iou, ioMin: ioMin, sameFood: sameFood(i, j)) {
+                    assigned[j] = true
+                    group.append(j)
+                    union = union.union(masks[j])
+                    unionArea = unionCount
+                }
+            }
+            groups.append(group)
+        }
+        return groups
+    }
+
+    // MARK: Nearest in-mask pixel
+
+    /// Euclidean-nearest set pixel to (row, column) in a row-major 0/1 grid,
+    /// searching square rings out to `maxRadius`.
+    static func nearestSetPixel(
+        in grid: [[UInt8]],
+        row: Int,
+        column: Int,
+        maxRadius: Int
+    ) -> (row: Int, column: Int)? {
+        let h = grid.count
+        let w = grid.first?.count ?? 0
+        guard h > 0, w > 0 else { return nil }
+        func isSet(_ r: Int, _ c: Int) -> Bool {
+            r >= 0 && r < h && c >= 0 && c < grid[r].count && grid[r][c] != 0
+        }
+        if isSet(row, column) { return (row, column) }
+        var best: (row: Int, column: Int)?
+        var bestD = Int.max
+        func consider(_ r: Int, _ c: Int) {
+            guard isSet(r, c) else { return }
+            let d = (r - row) * (r - row) + (c - column) * (c - column)
+            if d < bestD {
+                bestD = d
+                best = (r, c)
+            }
+        }
+        var limit = max(0, maxRadius)
+        var tightened = false
+        var radius = 1
+        while radius <= limit {
+            for dr in -radius...radius {
+                let r = row + dr
+                guard r >= 0, r < h else { continue }
+                if abs(dr) == radius {
+                    for dc in -radius...radius { consider(r, column + dc) }
+                } else {
+                    consider(r, column - radius)
+                    consider(r, column + radius)
+                }
+            }
+            if best != nil, !tightened {
+                // A hit at ring r is ≤ r·√2 away; nothing beyond that ring can win.
+                limit = min(limit, Int((Double(radius) * 2.0.squareRoot()).rounded(.up)))
+                tightened = true
+            }
+            radius += 1
+        }
+        return best
+    }
+
+    // MARK: Side silhouette ↔ top instance matching
+
+    struct SideMatchTop {
+        /// Footprint interval along the side camera's horizontal image axis,
+        /// normalised 0…1 in TOP-mask space and already oriented (flipped when
+        /// the side horizontal runs opposite to the matched top axis).
+        let lo: Double
+        let hi: Double
+        let area: Int
+        let label: String
+        let classIndex: Int
+        var centre: Double { (lo + hi) * 0.5 }
+    }
+
+    struct SideMatchSide {
+        /// Inclusive horizontal pixel span along the side horizontal axis.
+        let lo: Int
+        let hi: Int
+        let area: Int
+        let label: String
+        let classIndex: Int
+        /// 0…1, 1 = segment centroid at the side ROI centre.
+        let centredness: Double
+        /// Vertical mask extent (pixels) per horizontal pixel index.
+        let verticalExtent: [Int]
+    }
+
+    struct SideMatchAssignment: Equatable {
+        let topIndex: Int
+        let sideIndex: Int
+        /// Inclusive horizontal pixel range of the side mask used for this top.
+        let from: Int
+        let to: Int
+        let score: Double
+        let isSplit: Bool
+    }
+
+    /// Assign each top instance its own side-silhouette segment (or a slice of
+    /// one). The side view only ever provides PROFILES — it never adds
+    /// instances. Single food: the most prominent, best-centred side segment
+    /// (label agreement is a small bonus because labels are view-dependent).
+    /// Several foods: top footprints are mapped linearly onto the side view's
+    /// horizontal span and matched by interval containment; when two foods
+    /// share one side segment (they touch in the side view) it is cut at the
+    /// narrowest point (waist) between their predicted positions.
+    static func matchSideSegments(
+        tops: [SideMatchTop],
+        sides: [SideMatchSide],
+        horizontalDim: Int
+    ) -> [SideMatchAssignment] {
+        guard !tops.isEmpty, !sides.isEmpty, horizontalDim > 0 else { return [] }
+        let maxSideArea = sides.map(\.area).max() ?? 0
+        let candidates = sides.indices.filter {
+            sides[$0].area > 0 && sides[$0].hi >= sides[$0].lo &&
+            Double(sides[$0].area) >= 0.15 * Double(maxSideArea)
+        }
+        guard !candidates.isEmpty else { return [] }
+        func label(_ t: Int, _ s: Int) -> Double {
+            sameFood(tops[t].label, tops[t].classIndex, sides[s].label, sides[s].classIndex) ? 1 : 0
+        }
+
+        if tops.count == 1 {
+            var best: (side: Int, score: Double)?
+            for s in candidates {
+                let prominence = Double(sides[s].area) / Double(max(1, maxSideArea))
+                let centred = min(1.0, max(0.0, sides[s].centredness))
+                let score = 0.45 * prominence + 0.35 * centred + 0.20 * label(0, s)
+                if best == nil || score > best!.score { best = (s, score) }
+            }
+            guard let best else { return [] }
+            return [SideMatchAssignment(topIndex: 0, sideIndex: best.side,
+                                        from: sides[best.side].lo, to: sides[best.side].hi,
+                                        score: best.score, isSplit: false)]
+        }
+
+        let maxTopArea = tops.map(\.area).max() ?? 0
+        let substantial = Set(tops.indices.filter {
+            Double(tops[$0].area) >= 0.15 * Double(maxTopArea)
+        })
+        let anchor = substantial.count >= 2 ? Array(substantial) : Array(tops.indices)
+        let a = anchor.map { tops[$0].lo }.min() ?? 0
+        let b = anchor.map { tops[$0].hi }.max() ?? 1
+        let h0 = Double(candidates.map { sides[$0].lo }.min() ?? 0)
+        let h1 = Double((candidates.map { sides[$0].hi }.max() ?? 0) + 1)
+        let topSpan = max(1e-6, b - a)
+        func predict(_ x: Double) -> Double { h0 + (x - a) / topSpan * (h1 - h0) }
+        func predicted(_ t: Int) -> (lo: Double, hi: Double) {
+            (predict(tops[t].lo), predict(tops[t].hi))
+        }
+        func score(_ t: Int, _ s: Int) -> Double {
+            let p = predicted(t)
+            let sLo = Double(sides[s].lo), sHi = Double(sides[s].hi + 1)
+            let inter = max(0, min(p.hi, sHi) - max(p.lo, sLo))
+            let contain = inter / max(1e-6, p.hi - p.lo)
+            let iou = inter / max(1e-6, max(p.hi, sHi) - min(p.lo, sLo))
+            return 0.6 * contain + 0.25 * iou + 0.15 * label(t, s)
+        }
+
+        var users: [Int: [Int]] = [:]
+        var chosenScore: [Int: Double] = [:]
+        let order = tops.indices.sorted {
+            tops[$0].area != tops[$1].area ? tops[$0].area > tops[$1].area : $0 < $1
+        }
+        for t in order {
+            let small = !substantial.contains(t)
+            var best: (side: Int, score: Double)?
+            for s in candidates {
+                // A small top may only take a side segment nobody uses, so a
+                // crumb never steals or slices a main food's silhouette.
+                if small, users[s] != nil { continue }
+                let sc = score(t, s)
+                guard sc >= 0.35 else { continue }
+                if best == nil || sc > best!.score { best = (s, sc) }
+            }
+            guard let best else { continue }
+            chosenScore[t] = best.score
+            users[best.side, default: []].append(t)
+        }
+
+        var result: [SideMatchAssignment] = []
+        for (s, members) in users {
+            let side = sides[s]
+            if members.count == 1 {
+                let t = members[0]
+                result.append(SideMatchAssignment(topIndex: t, sideIndex: s, from: side.lo, to: side.hi,
+                                                  score: chosenScore[t] ?? 0, isSplit: false))
+                continue
+            }
+            let sorted = members.sorted {
+                predict(tops[$0].centre) < predict(tops[$1].centre)
+            }
+            // Foods whose predicted spans overlap heavily are one behind the
+            // other in the side view (occlusion) and share the same slice.
+            var clusters: [[Int]] = [[sorted[0]]]
+            for k in 1..<sorted.count {
+                let prev = predicted(sorted[k - 1])
+                let cur = predicted(sorted[k])
+                let overlap = max(0, min(prev.hi, cur.hi) - max(prev.lo, cur.lo))
+                let minWidth = min(prev.hi - prev.lo, cur.hi - cur.lo)
+                if overlap >= 0.5 * minWidth {
+                    clusters[clusters.count - 1].append(sorted[k])
+                } else {
+                    clusters.append([sorted[k]])
+                }
+            }
+            var bounds = [(lo: Int, hi: Int)](repeating: (side.lo, side.hi), count: clusters.count)
+            if clusters.count > 1 {
+                for k in 0..<(clusters.count - 1) {
+                    let c0 = clusters[k].map { predict(tops[$0].centre) }.reduce(0, +) / Double(clusters[k].count)
+                    let c1 = clusters[k + 1].map { predict(tops[$0].centre) }.reduce(0, +) / Double(clusters[k + 1].count)
+                    let delta = c1 - c0
+                    let mid = (c0 + c1) * 0.5
+                    let lo = max(side.lo, Int((c0 + 0.25 * delta).rounded(.up)))
+                    let hi = min(side.hi - 1, Int((c1 - 0.25 * delta).rounded(.down)))
+                    var cut = min(max(Int(mid.rounded()), side.lo), max(side.lo, side.hi - 1))
+                    if lo <= hi {
+                        var bestExtent = Int.max
+                        var bestDistance = Double.greatestFiniteMagnitude
+                        for x in lo...hi {
+                            let extent = x >= 0 && x < side.verticalExtent.count ? side.verticalExtent[x] : 0
+                            let distance = abs(Double(x) - mid)
+                            if extent < bestExtent || (extent == bestExtent && distance < bestDistance) {
+                                bestExtent = extent
+                                bestDistance = distance
+                                cut = x
+                            }
+                        }
+                    }
+                    bounds[k].hi = min(bounds[k].hi, cut)
+                    bounds[k + 1].lo = max(bounds[k + 1].lo, cut + 1)
+                }
+            }
+            for (k, cluster) in clusters.enumerated() where bounds[k].lo <= bounds[k].hi {
+                for t in cluster {
+                    result.append(SideMatchAssignment(topIndex: t, sideIndex: s,
+                                                      from: bounds[k].lo, to: bounds[k].hi,
+                                                      score: chosenScore[t] ?? 0,
+                                                      isSplit: clusters.count > 1))
+                }
+            }
+        }
+        return result.sorted { $0.topIndex < $1.topIndex }
+    }
 }
