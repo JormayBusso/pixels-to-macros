@@ -22,6 +22,7 @@ import '../services/recipe_repository.dart';
 import '../services/recipe_swap_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/premium_theme_effects.dart';
+import '../widgets/translated_recipe_name.dart';
 import 'recipes_screen.dart';
 
 /// Converts a [CustomMeal] to a [Recipe] for use in the meal planner UI.
@@ -200,12 +201,9 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: context.isPremiumTheme
-                        ? context.primary50
-                        : selectedGoal.lightColor,
+                    color: context.primary50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: selectedGoal.color.withValues(alpha: 0.3)),
+                    border: Border.all(color: context.primary200),
                   ),
                   child: Row(
                     children: [
@@ -225,7 +223,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: selectedGoal.color,
+                                color: context.primaryOnTint,
                               ),
                             ),
                             Text(
@@ -1099,8 +1097,8 @@ class _MealSlotRow extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                recipe.name,
+                              TranslatedRecipeName(
+                                recipe,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(

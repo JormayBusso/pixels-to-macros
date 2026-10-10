@@ -70,7 +70,7 @@
 	</array>
 	<!-- Minimum deployment target -->
 	<key>MinimumOSVersion</key>
-	<string>17.0</string>
+	<string>18.0</string>
 	<!-- Allow HTTPS requests to OpenFoodFacts -->
 	<key>NSAppTransportSecurity</key>
 	<dict>

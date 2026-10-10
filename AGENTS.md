@@ -51,7 +51,7 @@ outdated, update this file in the same change.
 
 - **Offline-first multi-food calorie scanner** (thesis project). On-device AR + ML
   estimates food volume → calories/macros. No cloud dependency for core features.
-- **Flutter** (Dart SDK `>=3.3.0 <4.0.0`) + **native Swift iOS 17+** for the scanner.
+- **Flutter** (Dart SDK `>=3.3.0 <4.0.0`) + **native Swift iOS 18+** for the scanner.
 - **State:** `flutter_riverpod` ^2.5.1 (+ `riverpod_annotation`/`riverpod_generator`).
 - **Persistence:** SQLite via `sqflite` (offline, on-device).
 - **Native bridge:** `MethodChannel("com.pixelstomacros/scanner")`.
@@ -84,7 +84,8 @@ ios/Runner/
   Scanner/     native scan pipeline (*.swift) — see §8
   *.mlmodelc   bundled CoreML models (gitignored; pbxproj refs are committed)
 training/      python export/train scripts (export_coreml, export_mobileclip, food_vocab.txt, …)
-scripts/       ruby project mutators + python data tools (add_scanner_files.rb, add_yolo_model.rb, …)
+scripts/       ruby project mutators + python data tools (add_scanner_files.rb, add_yolo_model.rb, …);
+               scripts/data/ holds scraper inputs (recipe_urls*.txt). Keep the repo root free of data/notebook files.
 test/          flutter tests
 docs/          ios-setup.md, scanner-validation.md
 ```

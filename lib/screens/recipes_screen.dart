@@ -21,9 +21,11 @@ import '../services/barcode_lookup_service.dart';
 import '../services/database_service.dart';
 import '../services/ingredient_localizer.dart';
 import '../services/recipe_repository.dart';
+import '../services/recipe_translation_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/calc_info_button.dart';
 import '../widgets/tour_keys.dart';
+import '../widgets/translated_recipe_name.dart';
 import 'create_meal_screen.dart';
 
 /// Localizes the ingredient words inside a recipe name to the app language
@@ -1103,8 +1105,9 @@ class _RecipeCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _localizeRecipeName(context, recipe),
+                    TranslatedRecipeName(
+                      recipe,
+                      fallback: _localizeRecipeName(context, recipe),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -1144,7 +1147,7 @@ class _RecipeCard extends StatelessWidget {
                           .take(3)
                           .map((g) => _RecipeBadge(
                                 label: AppLocalizations.of(context).nutritionGoalLabel(g.name),
-                                color: g.color,
+                                color: context.primaryOnTint,
                                 compact: true,
                               ))
                           .toList(),
@@ -1335,6 +1338,50 @@ class _HealthScorePanel extends StatelessWidget {
   }
 }
 
+class _RecipeTranslationBanner extends StatelessWidget {
+  const _RecipeTranslationBanner({
+    required this.sourceLang,
+    required this.translating,
+    required this.showingOriginal,
+    required this.onToggle,
+  });
+
+  final String sourceLang;
+  final bool translating;
+  final bool showingOriginal;
+  final VoidCallback? onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final muted = context.appMutedTextColor;
+    return Row(
+      children: [
+        Icon(Icons.translate, size: 16, color: muted),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            translating
+                ? l10n.recipeTranslating
+                : l10n.recipeTranslatedFrom(sourceLang),
+            style: TextStyle(fontSize: 12, color: muted),
+          ),
+        ),
+        if (onToggle != null)
+          TextButton(
+            onPressed: onToggle,
+            child: Text(
+              showingOriginal
+                  ? l10n.recipeShowTranslation
+                  : l10n.recipeShowOriginal,
+              style: TextStyle(fontSize: 12, color: context.primary600),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   const RecipeDetailScreen({super.key, required this.recipe});
   final Recipe recipe;
@@ -1385,10 +1432,18 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     return amount; // non-numeric like "to taste", "pinch"
   }
 
+  bool _showOriginal = false;
+
   @override
   void initState() {
     super.initState();
     _selectedServings = 1;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref
+          .read(recipeTranslationProvider.notifier)
+          .requestDetails(widget.recipe);
+    });
   }
 
   // Nutrition always shows 1 person's portion (recipe base serving)
@@ -1399,6 +1454,18 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   Widget build(BuildContext context) {
     final r = widget.recipe;
     final ingredientLang = AppLocalizations.of(context).locale.languageCode;
+    final translation = ref.watch(
+        recipeTranslationProvider.select((s) => s.byId[r.id]));
+    final translatingDetails = ref.watch(recipeTranslationProvider
+        .select((s) => s.translatingDetails.contains(r.id)));
+    final hasTranslation = translation?.steps != null ||
+        translation?.ingredients != null;
+    final useTranslation = !_showOriginal;
+    final translatedIngredients =
+        useTranslation ? translation?.ingredients : null;
+    final translatedSteps = useTranslation ? translation?.steps : null;
+    final displayIngredients = translatedIngredients ?? r.ingredients;
+    final displaySteps = translatedSteps ?? r.steps;
     final prefs = ref.watch(userPrefsProvider);
     final insulin = ref.watch(insulinSettingsProvider);
     final isDiabetic = prefs.nutritionGoal == NutritionGoalType.diabetes;
@@ -1427,13 +1494,27 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     background: _RecipeImage(path: r.image!, overlay: true),
                   )
                 : null,
-            title: Text(_localizeRecipeName(context, r),
+            title: Text(
+                _showOriginal
+                    ? r.name
+                    : (translation?.name ?? _localizeRecipeName(context, r)),
                 style: const TextStyle(fontSize: 15)),
           ),
           SliverPadding(
             padding: const EdgeInsets.all(20),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                if (hasTranslation || translatingDetails) ...[
+                  _RecipeTranslationBanner(
+                    sourceLang: r.language,
+                    translating: translatingDetails && !hasTranslation,
+                    showingOriginal: _showOriginal,
+                    onToggle: hasTranslation
+                        ? () => setState(() => _showOriginal = !_showOriginal)
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 // ── Serving selector ──
                 _ServingSelector(
                   servings: _selectedServings,
@@ -1521,7 +1602,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         fontWeight: FontWeight.w700,
                         color: context.appTextColor)),
                 const SizedBox(height: 10),
-                ...r.ingredients.map((i) => Padding(
+                ...displayIngredients.map((i) => Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1539,11 +1620,14 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             child: Text.rich(
                               TextSpan(children: [
                                 TextSpan(
-                                  text: IngredientLocalizer.localize(
-                                    i.name,
-                                    targetLang: ingredientLang,
-                                    sourceLang: r.language,
-                                  ),
+                                  text: translatedIngredients != null ||
+                                          _showOriginal
+                                      ? i.name
+                                      : IngredientLocalizer.localize(
+                                          i.name,
+                                          targetLang: ingredientLang,
+                                          sourceLang: r.language,
+                                        ),
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
@@ -1573,7 +1657,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         fontWeight: FontWeight.w700,
                         color: context.appTextColor)),
                 const SizedBox(height: 10),
-                ...r.steps.asMap().entries.map(
+                ...displaySteps.asMap().entries.map(
                       (e) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: Row(
@@ -1602,11 +1686,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             ),
                             Expanded(
                               child: Text(
-                                IngredientLocalizer.localize(
-                                  e.value,
-                                  targetLang: ingredientLang,
-                                  sourceLang: r.language,
-                                ),
+                                translatedSteps != null || _showOriginal
+                                    ? e.value
+                                    : IngredientLocalizer.localize(
+                                        e.value,
+                                        targetLang: ingredientLang,
+                                        sourceLang: r.language,
+                                      ),
                                 style: TextStyle(
                                   fontSize: 14,
                                   height: 1.55,
@@ -2973,7 +3059,8 @@ class _CurrentRecipeMini extends StatelessWidget {
                         fontSize: 10,
                         color: context.appMutedTextColor,
                         fontWeight: FontWeight.w600)),
-                Text(_localizeRecipeName(context, recipe),
+                TranslatedRecipeName(recipe,
+                    fallback: _localizeRecipeName(context, recipe),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -3049,8 +3136,9 @@ class _SwapCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _localizeRecipeName(context, r),
+                    TranslatedRecipeName(
+                      r,
+                      fallback: _localizeRecipeName(context, r),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(

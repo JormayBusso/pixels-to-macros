@@ -6579,6 +6579,35 @@ class AppLocalizations {
         'de': 'Die Spracherkennung ist auf diesem Gerät nicht verfügbar.',
       });
 
+  String get voiceMicPermissionTitle => _t({
+        'en': 'Allow microphone',
+        'pl': 'Zezwól na mikrofon',
+        'nl': 'Microfoon toestaan',
+        'es': 'Permitir micrófono',
+        'de': 'Mikrofon erlauben',
+      });
+
+  String get voiceMicPermissionBody => _t({
+        'en':
+            'To log food by voice, allow Microphone and Speech Recognition for Pixels to Macros in Settings.',
+        'pl':
+            'Aby zapisywać jedzenie głosem, zezwól aplikacji Pixels to Macros na Mikrofon i Rozpoznawanie mowy w Ustawieniach.',
+        'nl':
+            'Om eten met je stem te loggen, sta Microfoon en Spraakherkenning toe voor Pixels to Macros in Instellingen.',
+        'es':
+            'Para registrar comida por voz, permite Micrófono y Reconocimiento de voz para Pixels to Macros en Ajustes.',
+        'de':
+            'Um Essen per Sprache zu erfassen, erlaube Mikrofon und Spracherkennung für Pixels to Macros in den Einstellungen.',
+      });
+
+  String get voiceTapToAllowMic => _t({
+        'en': 'Tap the mic to allow voice logging',
+        'pl': 'Dotknij mikrofonu, aby zezwolić na logowanie głosowe',
+        'nl': 'Tik op de microfoon om spraakloggen toe te staan',
+        'es': 'Toca el micrófono para permitir el registro por voz',
+        'de': 'Tippe auf das Mikrofon, um die Spracheingabe zu erlauben',
+      });
+
   String get voiceEnableInSettings => _t({
         'en':
             'Microphone or Speech Recognition permission is off. Enable both for Pixels to Macros in Settings → Privacy.',
@@ -8566,6 +8595,320 @@ class AppLocalizations {
         return key;
     }
   }
+
+  // --- recipe translation ---
+  String recipeLanguageName(String code) {
+    const names = {
+      'en': {
+        'en': 'English',
+        'pl': 'angielskiego',
+        'nl': 'het Engels',
+        'es': 'inglés',
+        'de': 'Englischen',
+      },
+      'nl': {
+        'en': 'Dutch',
+        'pl': 'niderlandzkiego',
+        'nl': 'het Nederlands',
+        'es': 'neerlandés',
+        'de': 'Niederländischen',
+      },
+      'de': {
+        'en': 'German',
+        'pl': 'niemieckiego',
+        'nl': 'het Duits',
+        'es': 'alemán',
+        'de': 'Deutschen',
+      },
+      'pl': {
+        'en': 'Polish',
+        'pl': 'polskiego',
+        'nl': 'het Pools',
+        'es': 'polaco',
+        'de': 'Polnischen',
+      },
+      'es': {
+        'en': 'Spanish',
+        'pl': 'hiszpańskiego',
+        'nl': 'het Spaans',
+        'es': 'español',
+        'de': 'Spanischen',
+      },
+    };
+    final byLang = names[code.toLowerCase()];
+    if (byLang == null) return code.toUpperCase();
+    return byLang[locale.languageCode] ?? byLang['en']!;
+  }
+
+  String recipeTranslatedFrom(String code) {
+    final language = recipeLanguageName(code);
+    return _t({
+      'en': 'Translated on-device from $language',
+      'pl': 'Przetłumaczono na urządzeniu z języka $language',
+      'nl': 'Op het apparaat vertaald uit $language',
+      'es': 'Traducido en el dispositivo del $language',
+      'de': 'Auf dem Gerät aus dem $language übersetzt',
+    });
+  }
+
+  String get recipeTranslating => _t({
+        'en': 'Translating…',
+        'pl': 'Tłumaczenie…',
+        'nl': 'Vertalen…',
+        'es': 'Traduciendo…',
+        'de': 'Wird übersetzt…',
+      });
+
+  String get recipeShowOriginal => _t({
+        'en': 'Show original',
+        'pl': 'Pokaż oryginał',
+        'nl': 'Origineel tonen',
+        'es': 'Ver original',
+        'de': 'Original anzeigen',
+      });
+
+  String get recipeShowTranslation => _t({
+        'en': 'Show translation',
+        'pl': 'Pokaż tłumaczenie',
+        'nl': 'Vertaling tonen',
+        'es': 'Ver traducción',
+        'de': 'Übersetzung anzeigen',
+      });
+
+  // --- scan ui ---
+
+  String get scanTopView => _t({
+        'en': 'Top view',
+        'pl': 'Widok z góry',
+        'nl': 'Bovenaanzicht',
+        'es': 'Vista superior',
+        'de': 'Draufsicht',
+      });
+
+  String get scanSideView => _t({
+        'en': 'Side view',
+        'pl': 'Widok z boku',
+        'nl': 'Zijaanzicht',
+        'es': 'Vista lateral',
+        'de': 'Seitenansicht',
+      });
+
+  String get scanStepAnalyse => _t({
+        'en': 'Analyse',
+        'pl': 'Analiza',
+        'nl': 'Analyse',
+        'es': 'Análisis',
+        'de': 'Analyse',
+      });
+
+  String get scanAlignment => _t({
+        'en': 'Alignment',
+        'pl': 'Wyrównanie',
+        'nl': 'Uitlijning',
+        'es': 'Alineación',
+        'de': 'Ausrichtung',
+      });
+
+  String get scanAimStraightDown => _t({
+        'en': 'Aim straight down',
+        'pl': 'Skieruj prosto w dół',
+        'nl': 'Richt recht naar beneden',
+        'es': 'Apunta hacia abajo',
+        'de': 'Gerade nach unten richten',
+      });
+
+  String get scanTiltUp => _t({
+        'en': 'Tilt up',
+        'pl': 'Przechyl w górę',
+        'nl': 'Kantel omhoog',
+        'es': 'Inclina hacia arriba',
+        'de': 'Nach oben kippen',
+      });
+
+  String get scanTiltDown => _t({
+        'en': 'Tilt down',
+        'pl': 'Przechyl w dół',
+        'nl': 'Kantel omlaag',
+        'es': 'Inclina hacia abajo',
+        'de': 'Nach unten kippen',
+      });
+
+  String get scanHoldSteady => _t({
+        'en': 'Hold steady…',
+        'pl': 'Trzymaj nieruchomo…',
+        'nl': 'Stil houden…',
+        'es': 'Mantén firme…',
+        'de': 'Ruhig halten…',
+      });
+
+  String get scanAlmostThere => _t({
+        'en': 'Almost there',
+        'pl': 'Prawie gotowe',
+        'nl': 'Bijna',
+        'es': 'Casi listo',
+        'de': 'Fast geschafft',
+      });
+
+  String get scanCaptured => _t({
+        'en': 'Captured',
+        'pl': 'Zrobione',
+        'nl': 'Vastgelegd',
+        'es': 'Capturada',
+        'de': 'Aufgenommen',
+      });
+
+  String get scanTopHint => _t({
+        'en': 'Hold the phone flat above the plate',
+        'pl': 'Trzymaj telefon płasko nad talerzem',
+        'nl': 'Houd de telefoon plat boven het bord',
+        'es': 'Sostén el teléfono en horizontal sobre el plato',
+        'de': 'Halte das Handy flach über den Teller',
+      });
+
+  String get scanSideHint => _t({
+        'en': 'Hold the phone upright at plate height',
+        'pl': 'Trzymaj telefon pionowo na wysokości talerza',
+        'nl': 'Houd de telefoon rechtop op bordhoogte',
+        'es': 'Sostén el teléfono vertical a la altura del plato',
+        'de': 'Halte das Handy aufrecht auf Tellerhöhe',
+      });
+
+  String get scanFrameInstruction => _t({
+        'en': 'Only food inside the frame is recognised and used for the 3D model.',
+        'pl': 'Rozpoznawane i używane do modelu 3D jest tylko jedzenie wewnątrz ramki.',
+        'nl': 'Alleen eten binnen het kader wordt herkend en gebruikt voor het 3D-model.',
+        'es': 'Solo se reconoce y usa para el modelo 3D la comida dentro del marco.',
+        'de': 'Nur Essen innerhalb des Rahmens wird erkannt und für das 3D-Modell verwendet.',
+      });
+
+  String get scanFoodDetected => _t({
+        'en': 'Food detected',
+        'pl': 'Wykryto jedzenie',
+        'nl': 'Eten herkend',
+        'es': 'Comida detectada',
+        'de': 'Essen erkannt',
+      });
+
+  String get scanLookingForFood => _t({
+        'en': 'Looking for food…',
+        'pl': 'Szukam jedzenia…',
+        'nl': 'Zoeken naar eten…',
+        'es': 'Buscando comida…',
+        'de': 'Suche nach Essen…',
+      });
+
+  String get scanTakePhoto => _t({
+        'en': 'Take photo',
+        'pl': 'Zrób zdjęcie',
+        'nl': 'Foto maken',
+        'es': 'Tomar foto',
+        'de': 'Foto aufnehmen',
+      });
+
+  String get scanStageSegmenting => _t({
+        'en': 'Segmenting',
+        'pl': 'Segmentacja',
+        'nl': 'Segmenteren',
+        'es': 'Segmentando',
+        'de': 'Segmentieren',
+      });
+
+  String get scanStageMeasuring => _t({
+        'en': 'Measuring',
+        'pl': 'Pomiar',
+        'nl': 'Meten',
+        'es': 'Midiendo',
+        'de': 'Messen',
+      });
+
+  String get scanStageBuilding3d => _t({
+        'en': 'Building 3D model',
+        'pl': 'Budowanie modelu 3D',
+        'nl': '3D-model bouwen',
+        'es': 'Creando modelo 3D',
+        'de': '3D-Modell erstellen',
+      });
+
+  String get scanTutorialTitle => _t({
+        'en': 'How to scan',
+        'pl': 'Jak skanować',
+        'nl': 'Zo scan je',
+        'es': 'Cómo escanear',
+        'de': 'So scannst du',
+      });
+
+  String get scanTutorialSubtitle => _t({
+        'en': 'Quick guide — shown only once',
+        'pl': 'Krótki poradnik — wyświetlany tylko raz',
+        'nl': 'Korte uitleg — wordt maar één keer getoond',
+        'es': 'Guía rápida: solo se muestra una vez',
+        'de': 'Kurze Anleitung – wird nur einmal angezeigt',
+      });
+
+  String scanTutorialStep(int n) => _t({
+        'en': 'Step $n',
+        'pl': 'Krok $n',
+        'nl': 'Stap $n',
+        'es': 'Paso $n',
+        'de': 'Schritt $n',
+      });
+
+  String get scanTutorialResults => _t({
+        'en': 'Results',
+        'pl': 'Wyniki',
+        'nl': 'Resultaat',
+        'es': 'Resultados',
+        'de': 'Ergebnis',
+      });
+
+  String get scanTutorialTopBody => _t({
+        'en': 'Hold the phone flat, about 30 cm above the plate, and keep all '
+            'food inside the circle. The photo is taken automatically once '
+            'the phone is level and steady.',
+        'pl': 'Trzymaj telefon płasko, ok. 30 cm nad talerzem, a całe jedzenie '
+            'w kole. Zdjęcie zrobi się automatycznie, gdy telefon będzie '
+            'poziomo i nieruchomo.',
+        'nl': 'Houd de telefoon plat, ongeveer 30 cm boven het bord, en houd al '
+            'het eten binnen de cirkel. De foto wordt automatisch gemaakt '
+            'zodra de telefoon recht en stil is.',
+        'es': 'Sostén el teléfono en horizontal, a unos 30 cm sobre el plato, y '
+            'mantén toda la comida dentro del círculo. La foto se toma '
+            'automáticamente cuando el teléfono esté nivelado y quieto.',
+        'de': 'Halte das Handy flach, etwa 30 cm über dem Teller, und behalte '
+            'das ganze Essen im Kreis. Das Foto wird automatisch aufgenommen, '
+            'sobald das Handy gerade und ruhig ist.',
+      });
+
+  String get scanTutorialSideBody => _t({
+        'en': 'Lower the phone to plate height and hold it upright, facing the '
+            'food straight on, with the food inside the frame. A level side '
+            'photo gives the most accurate height.',
+        'pl': 'Opuść telefon na wysokość talerza i trzymaj go pionowo, na wprost '
+            'jedzenia, z jedzeniem w ramce. Prosto zrobione zdjęcie z boku '
+            'daje najdokładniejszą wysokość.',
+        'nl': 'Laat de telefoon zakken tot bordhoogte en houd hem rechtop, recht '
+            'voor het eten, met het eten binnen het kader. Een rechte zijfoto '
+            'geeft de meest nauwkeurige hoogte.',
+        'es': 'Baja el teléfono a la altura del plato y sostenlo vertical, de '
+            'frente a la comida, con la comida dentro del marco. Una foto '
+            'lateral nivelada da la altura más precisa.',
+        'de': 'Senke das Handy auf Tellerhöhe und halte es aufrecht, direkt vor '
+            'dem Essen, mit dem Essen im Rahmen. Ein gerades Seitenfoto '
+            'liefert die genaueste Höhe.',
+      });
+
+  String get scanTutorialResultsBody => _t({
+        'en': 'The AI builds a 3D model of your food and estimates its calories '
+            'and macros. You can edit every item afterwards.',
+        'pl': 'AI tworzy model 3D jedzenia i szacuje kalorie oraz '
+            'makroskładniki. Każdą pozycję możesz potem edytować.',
+        'nl': 'De AI bouwt een 3D-model van je eten en schat de calorieën en '
+            "macro's. Je kunt elk item daarna aanpassen.",
+        'es': 'La IA crea un modelo 3D de tu comida y estima sus calorías y '
+            'macros. Después puedes editar cada elemento.',
+        'de': 'Die KI erstellt ein 3D-Modell deines Essens und schätzt Kalorien '
+            'und Makros. Du kannst jeden Eintrag danach bearbeiten.',
+      });
 }
 
 class _AppLocalizationsDelegate

@@ -1,6 +1,6 @@
-# Pixels to Macros — iOS 17+ only; scanner behavior is capability-based for
+# Pixels to Macros — iOS 18+ only; scanner behavior is capability-based for
 # iPhone 15/16/17 and future models, not hard-coded to marketing names.
-platform :ios, '17.0'
+platform :ios, '18.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -48,11 +48,17 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
-      # Enforce iOS 17 minimum across all pods so no pod downgrades the target.
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '17.0'
+      # Enforce iOS 18 minimum across all pods so no pod downgrades the target.
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '18.0'
 
-      # Enable camera permission for permission_handler package
-      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)', 'PERMISSION_CAMERA=1']
+      # permission_handler only compiles the iOS permissions whose macro is set;
+      # without these, request() returns denied without ever showing the prompt.
+      defs = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || ['$(inherited)']
+      defs = [defs] if defs.is_a?(String)
+      %w[PERMISSION_CAMERA=1 PERMISSION_MICROPHONE=1 PERMISSION_SPEECH_RECOGNIZER=1].each do |d|
+        defs << d unless defs.include?(d)
+      end
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = defs
     end
   end
 end
