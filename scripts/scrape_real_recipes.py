@@ -61,7 +61,7 @@ except ModuleNotFoundError:  # pragma: no cover - handled at runtime
     scrape_me = None
 
 ROOT = Path(__file__).resolve().parents[1]
-URLS_FILE = ROOT / "recipe_urls.txt"
+URLS_FILE = ROOT / "scripts" / "data" / "recipe_urls.txt"
 OUTPUT_JSON = ROOT / "assets" / "bundled_recipes.json"
 IMAGE_DIR = ROOT / "assets" / "images" / "recipes"
 
@@ -1669,7 +1669,7 @@ def parse_host_filter(raw: str) -> tuple[str, ...]:
 # infer_meal_type() is unreliable and defaults to "dinner", so to reliably ADD
 # breakfast and lunch recipes we harvest URLs straight from each site's
 # breakfast/lunch listing or search pages and LOCK the meal_type when scraping.
-MEAL_URLS_FILE = ROOT / "recipe_urls_meal.txt"
+MEAL_URLS_FILE = ROOT / "scripts" / "data" / "recipe_urls_meal.txt"
 
 # (meal, language, listing_url, render)
 #   render="js"       -> Playwright + infinite-scroll (Albert Heijn search)

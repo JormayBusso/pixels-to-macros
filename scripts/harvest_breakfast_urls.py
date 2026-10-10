@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Harvest breakfast/brunch recipe URLs from bbcgoodfood collection pages and
-append the new ones to recipe_urls.txt (EN). bbcgoodfood publishes real
+append the new ones to scripts/data/recipe_urls.txt (EN). bbcgoodfood publishes real
 nutrition, so these stay real-nutrition recipes (no estimation).
 
 Usage:
@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-URLS_FILE = ROOT / "recipe_urls.txt"
+URLS_FILE = ROOT / "scripts" / "data" / "recipe_urls.txt"
 BASE = "https://www.bbcgoodfood.com"
 UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 "
