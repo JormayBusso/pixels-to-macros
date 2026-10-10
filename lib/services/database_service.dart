@@ -51,7 +51,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 47,
+      version: 48,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -259,6 +259,9 @@ class DatabaseService {
 
     // On-device learned food-label exemplars (few-shot label learning).
     await _createFoodExemplarTable(db);
+
+    // Cached on-device recipe translations.
+    await _createRecipeTranslationTable(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -759,6 +762,88 @@ class DatabaseService {
     if (oldVersion < 47) {
       // On-device learned food-label exemplars. Local-only; never synced.
       await _createFoodExemplarTable(db);
+    }
+    if (oldVersion < 48) {
+      // Cached on-device (Apple Translation) recipe translations.
+      await _createRecipeTranslationTable(db);
+    }
+  }
+
+  /// Cache of on-device recipe translations, one row per (recipe_id, lang).
+  /// [name] is filled when list cards are translated; [ingredients] (JSON list
+  /// of `{name, amount}`) and [steps] (JSON list of strings) when the detail
+  /// screen is opened. The *_sig columns hold a hash of the source text so a
+  /// changed bundled recipe is re-translated instead of showing stale text.
+  Future<void> _createRecipeTranslationTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS recipe_translations (
+        recipe_id    TEXT    NOT NULL,
+        lang         TEXT    NOT NULL,
+        name         TEXT,
+        name_sig     TEXT,
+        ingredients  TEXT,
+        steps        TEXT,
+        details_sig  TEXT,
+        updated_at   TEXT    NOT NULL,
+        PRIMARY KEY (recipe_id, lang)
+      )
+    ''');
+  }
+
+  Future<Map<String, Map<String, dynamic>>> getRecipeTranslations(
+    String lang,
+    Iterable<String> recipeIds,
+  ) async {
+    final ids = recipeIds.toSet().toList();
+    if (ids.isEmpty) return const {};
+    final db = await database;
+    final out = <String, Map<String, dynamic>>{};
+    for (var i = 0; i < ids.length; i += 500) {
+      final chunk = ids.sublist(i, (i + 500).clamp(0, ids.length));
+      final rows = await db.query(
+        'recipe_translations',
+        where: 'lang = ? AND recipe_id IN (${List.filled(chunk.length, '?').join(',')})',
+        whereArgs: [lang, ...chunk],
+      );
+      for (final row in rows) {
+        out[row['recipe_id'] as String] = row;
+      }
+    }
+    return out;
+  }
+
+  /// Upserts only the provided columns so a later detail translation does not
+  /// wipe an earlier name translation (and vice versa).
+  Future<void> upsertRecipeTranslation({
+    required String recipeId,
+    required String lang,
+    String? name,
+    String? nameSig,
+    String? ingredientsJson,
+    String? stepsJson,
+    String? detailsSig,
+  }) async {
+    final db = await database;
+    final values = <String, Object?>{
+      if (name != null) 'name': name,
+      if (nameSig != null) 'name_sig': nameSig,
+      if (ingredientsJson != null) 'ingredients': ingredientsJson,
+      if (stepsJson != null) 'steps': stepsJson,
+      if (detailsSig != null) 'details_sig': detailsSig,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    final updated = await db.update(
+      'recipe_translations',
+      values,
+      where: 'recipe_id = ? AND lang = ?',
+      whereArgs: [recipeId, lang],
+    );
+    if (updated == 0) {
+      await db.insert(
+        'recipe_translations',
+        {'recipe_id': recipeId, 'lang': lang, ...values},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     }
   }
 

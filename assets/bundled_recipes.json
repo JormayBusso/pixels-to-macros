@@ -375,7 +375,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -486,7 +485,6 @@
       "lunch",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -1906,7 +1904,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -1988,7 +1985,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -2631,7 +2627,6 @@
     "image": "assets/images/recipes/en_spicy_miso_salmon_kale_salad_86ff375d68.webp",
     "meal_type": "lunch",
     "goals": [
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -2755,7 +2750,6 @@
     "insulin_units": 3.2,
     "tags": [
       "en",
-      "keto",
       "lunch",
       "maintain",
       "muscle"
@@ -3040,7 +3034,6 @@
     "image": "assets/images/recipes/en_celeriac_roast_dinner_trimmings_da637a80eb.webp",
     "meal_type": "dinner",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -3177,7 +3170,6 @@
     "tags": [
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -3414,7 +3406,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -3495,7 +3486,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegan",
@@ -4685,7 +4675,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -4785,7 +4774,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -4816,7 +4804,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -4900,7 +4887,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -4932,7 +4918,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -4989,7 +4974,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -5493,7 +5477,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -5564,7 +5547,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -6794,7 +6776,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 25,
@@ -6883,7 +6864,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl"
     ],
@@ -8577,7 +8557,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -8654,7 +8633,6 @@
       "dessert",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -8685,7 +8663,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -8754,7 +8731,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -8786,7 +8762,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -8855,7 +8830,6 @@
     "insulin_units": 15.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -9420,7 +9394,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -9519,7 +9492,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -9752,7 +9724,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 125,
@@ -9876,7 +9847,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -9906,7 +9876,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -9976,7 +9945,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -10492,7 +10460,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -10560,7 +10527,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -12331,7 +12297,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -12407,7 +12372,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegetarian",
@@ -12544,7 +12508,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -12648,7 +12611,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -13099,7 +13061,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -13179,7 +13140,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -14160,7 +14120,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -14227,7 +14186,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -15514,7 +15472,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -15585,7 +15542,6 @@
       "dessert",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -16833,7 +16789,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 180,
@@ -16918,7 +16873,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 82,
@@ -17492,7 +17446,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -17552,7 +17505,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -20954,7 +20906,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 40,
@@ -21048,7 +20999,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -21605,7 +21555,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -21686,7 +21635,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -22385,7 +22333,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -22460,7 +22407,6 @@
       "dessert",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -22491,7 +22437,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -22564,7 +22509,6 @@
     "tags": [
       "dessert",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -22597,7 +22541,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -22711,7 +22654,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -25645,7 +25587,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -25725,7 +25666,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -26484,7 +26424,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -26587,7 +26526,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -26865,7 +26803,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -26962,7 +26899,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -28727,7 +28663,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -28852,7 +28787,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -29153,7 +29087,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -29271,7 +29204,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -29303,7 +29235,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian",
@@ -29402,7 +29333,6 @@
     "insulin_units": 6.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "muscle",
@@ -29780,7 +29710,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -29861,7 +29790,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -31342,7 +31270,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 55,
@@ -31416,7 +31343,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -32908,7 +32834,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -32999,7 +32924,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -33220,7 +33144,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -33294,7 +33217,6 @@
     "tags": [
       "dessert",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -34241,7 +34163,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -34311,7 +34232,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -35008,7 +34928,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -35074,7 +34993,6 @@
       "lunch",
       "de",
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -35225,7 +35143,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -35295,7 +35212,6 @@
       "dinner",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -35642,7 +35558,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -35744,7 +35659,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -36525,7 +36439,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -36613,7 +36526,6 @@
     "insulin_units": 4.4,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -37258,7 +37170,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 30,
@@ -37347,7 +37258,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -37377,7 +37287,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -37495,7 +37404,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -37651,7 +37559,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -37738,7 +37645,6 @@
       "dessert",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -43829,7 +43735,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -43915,7 +43820,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -45030,7 +44934,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -45111,7 +45014,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -46065,7 +45967,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -46135,7 +46036,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegan",
@@ -50416,7 +50316,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 35,
@@ -50505,7 +50404,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -50978,7 +50876,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -51049,7 +50946,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -51857,7 +51753,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -51939,7 +51834,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -52444,7 +52338,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -52541,7 +52434,6 @@
       "dessert",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -54333,7 +54225,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -54414,7 +54305,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -54703,7 +54593,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegan",
@@ -54808,7 +54697,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "muscle",
       "vegan",
@@ -55188,7 +55076,7 @@
     "title": "Avocado en hummus op brood",
     "name": "Avocado en hummus op brood",
     "image": "assets/images/recipes/nl_avocado_en_hummus_op_brood_cf5ba1525d.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegan",
@@ -55243,7 +55131,7 @@
     "tags": [
       "maintain",
       "nl",
-      "snack",
+      "lunch",
       "vegan",
       "vegetarian"
     ],
@@ -56241,7 +56129,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -56322,7 +56209,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -57077,7 +56963,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -57147,7 +57032,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -58199,7 +58083,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -58267,7 +58150,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "weight_loss"
@@ -59146,7 +59028,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -59230,7 +59111,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -60674,7 +60554,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 105,
@@ -60789,7 +60668,6 @@
       "lunch",
       "diabetes",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -62161,7 +62039,6 @@
     "image": "assets/images/recipes/en_caramel_souffl_s_with_caramel_sauce_8f1efaa67e.webp",
     "meal_type": "lunch",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -62230,7 +62107,6 @@
     "tags": [
       "lunch",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -62583,7 +62459,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -62652,7 +62527,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -65003,7 +64877,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -65061,7 +64934,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -65094,7 +64966,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -65169,7 +65040,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -65691,7 +65561,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -65752,7 +65621,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -66713,7 +66581,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -66797,7 +66664,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -68377,7 +68243,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -68468,7 +68333,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -69068,7 +68932,7 @@
     "title": "Donker meergranenbrood met hummus en kiemgroenten",
     "name": "Donker meergranenbrood met hummus en kiemgroenten",
     "image": "assets/images/recipes/nl_donker_meergranenbrood_met_hummus_en_kiemgroenten_dbb5c98ee3.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegan",
@@ -69123,7 +68987,7 @@
     "tags": [
       "maintain",
       "nl",
-      "snack",
+      "lunch",
       "vegan",
       "vegetarian"
     ],
@@ -71591,7 +71455,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -71684,7 +71547,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -71716,7 +71578,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -71785,7 +71646,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -72235,7 +72095,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -72321,7 +72180,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian",
@@ -72793,7 +72651,6 @@
     "image": "assets/images/recipes/en_bigos_polish_hunter_s_stew_2888706fdb.webp",
     "meal_type": "dinner",
     "goals": [
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -72908,7 +72765,6 @@
     "tags": [
       "dinner",
       "en",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -73141,7 +72997,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -73212,7 +73067,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -73362,7 +73216,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -73449,7 +73302,6 @@
       "dessert",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -76937,7 +76789,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 40,
@@ -77001,7 +76852,6 @@
       "de",
       "dessert",
       "diabetes",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -77608,7 +77458,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -77681,7 +77530,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -79857,7 +79705,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -79938,7 +79785,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -80288,7 +80134,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -80347,7 +80192,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -80839,7 +80683,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -80926,7 +80769,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -81593,7 +81435,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 55,
@@ -81673,7 +81514,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 78,
@@ -82035,7 +81875,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -82100,7 +81939,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -82541,7 +82379,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian",
@@ -82653,7 +82490,6 @@
       "breakfast",
       "de",
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian",
@@ -85052,7 +84888,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -85133,7 +84968,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -85287,7 +85121,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -85395,7 +85228,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -85533,7 +85365,6 @@
     "image": "assets/images/recipes/en_venison_with_quince_1aad8156dc.webp",
     "meal_type": "dinner",
     "goals": [
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -85623,7 +85454,6 @@
     "tags": [
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -86637,7 +86467,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "weight_loss"
@@ -86714,7 +86543,6 @@
       "lunch",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "muscle",
       "weight_loss"
@@ -86841,7 +86669,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 25,
@@ -86913,7 +86740,6 @@
     "tags": [
       "dessert",
       "diabetes",
-      "keto",
       "maintain",
       "nl"
     ],
@@ -87067,7 +86893,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -87152,7 +86977,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -87300,7 +87124,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -87411,7 +87234,6 @@
       "lunch",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -88648,7 +88470,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -88736,7 +88557,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -90217,7 +90037,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -90308,7 +90127,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -90426,7 +90244,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 20,
@@ -90485,7 +90302,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 78,
@@ -90625,7 +90441,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -90703,7 +90518,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "weight_loss"
@@ -91270,7 +91084,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 80,
@@ -91334,7 +91147,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -91364,7 +91176,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -91494,7 +91305,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -93684,7 +93494,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -93766,7 +93575,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -94398,7 +94206,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -94489,7 +94296,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -94631,7 +94437,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -94724,7 +94529,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -94983,7 +94787,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -95086,7 +94889,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegetarian",
@@ -95703,7 +95505,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -95777,7 +95578,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -96670,7 +96470,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -96790,7 +96589,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -97452,7 +97250,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegan",
@@ -97595,7 +97392,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "muscle",
       "vegan",
@@ -97876,7 +97672,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 115,
@@ -97978,7 +97773,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -100378,7 +100172,6 @@
     "image": "assets/images/recipes/en_chetna_s_end_of_summer_veg_curry_8fa79a0aab.webp",
     "meal_type": "dinner",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -100514,7 +100307,6 @@
     "tags": [
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -101163,7 +100955,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -101253,7 +101044,6 @@
       "dessert",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -101724,7 +101514,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -101787,7 +101576,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -101919,7 +101707,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 95,
@@ -102004,7 +101791,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -102240,7 +102026,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -102325,7 +102110,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -103809,7 +103593,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -103895,7 +103678,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -104812,7 +104594,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -104903,7 +104684,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "weight_loss"
@@ -105357,7 +105137,6 @@
     "image": "assets/images/recipes/en_microwave_brownies_a7d2a04720.webp",
     "meal_type": "dessert",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -105426,7 +105205,6 @@
     "tags": [
       "dessert",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -105877,7 +105655,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -105974,7 +105751,6 @@
       "dessert",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -106108,7 +105884,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -106187,7 +105962,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -106450,7 +106224,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -106527,7 +106300,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -107511,7 +107283,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -107581,7 +107352,6 @@
       "breakfast",
       "de",
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -108834,7 +108604,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -108968,7 +108737,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -111313,7 +111081,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -111373,7 +111140,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -111406,7 +111172,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 270,
@@ -111467,7 +111232,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl"
     ],
@@ -111498,7 +111262,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -111593,7 +111356,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "muscle",
       "nl",
@@ -112151,7 +111913,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -112227,7 +111988,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -113873,7 +113633,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -114004,7 +113763,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -114035,7 +113793,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -114114,7 +113871,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -115527,7 +115283,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -115628,7 +115383,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -118444,7 +118198,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 70,
@@ -118560,7 +118313,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain"
     ],
     "health_score": 77,
@@ -119176,7 +118928,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -119230,7 +118981,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -119585,7 +119335,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -119672,7 +119421,6 @@
       "dessert",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -121687,7 +121435,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -121774,7 +121521,6 @@
       "dessert",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -121805,7 +121551,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -121860,7 +121605,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -123686,7 +123430,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -123758,7 +123501,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -124950,7 +124692,6 @@
     "image": "assets/images/recipes/en_salted_caramel_slices_aa8244ce42.webp",
     "meal_type": "dinner",
     "goals": [
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -125051,7 +124792,6 @@
     "tags": [
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -126184,7 +125924,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -126250,7 +125989,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -126616,7 +126354,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -126703,7 +126440,6 @@
       "lunch",
       "de",
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -127040,7 +126776,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -127112,7 +126847,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "weight_loss"
@@ -127296,7 +127030,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -127387,7 +127120,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -127418,7 +127150,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -127482,7 +127213,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -127754,7 +127484,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 60,
@@ -127845,7 +127574,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 92,
@@ -128901,7 +128629,6 @@
     "image": "assets/images/recipes/en_chocolate_crumpets_65235911a5.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -128967,7 +128694,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -129996,7 +129722,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -130077,7 +129802,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -130419,7 +130143,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -130509,7 +130232,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "weight_loss"
@@ -130541,7 +130263,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -130671,7 +130392,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -131396,7 +131116,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -131457,7 +131176,6 @@
     "tags": [
       "lunch",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -132099,7 +131817,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -132173,7 +131890,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -133175,7 +132891,7 @@
     "title": "Gevulde flatbreads met hummus, witte kaas en ei",
     "name": "Gevulde flatbreads met hummus, witte kaas en ei",
     "image": "assets/images/recipes/nl_gevulde_flatbreads_met_hummus_witte_kaas_en_ei_d553a4f490.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -133243,7 +132959,7 @@
       "diabetes",
       "maintain",
       "nl",
-      "snack",
+      "lunch",
       "vegetarian",
       "weight_loss"
     ],
@@ -133620,7 +133336,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -133710,7 +133425,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -134086,7 +133800,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -134165,7 +133878,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -135169,7 +134881,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -135257,7 +134968,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -136450,7 +136160,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -136549,7 +136258,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -136581,7 +136289,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -136684,7 +136391,6 @@
       "breakfast",
       "de",
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -136810,7 +136516,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -136907,7 +136612,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -137406,7 +137110,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -137507,7 +137210,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -137679,7 +137381,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -137749,7 +137450,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -138662,7 +138362,6 @@
     "image": "assets/images/recipes/en_black_beans_avocado_on_toast_bdf195ff11.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -138752,7 +138451,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -138880,7 +138578,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -138934,7 +138631,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -139176,7 +138872,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 40,
@@ -139279,7 +138974,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain"
     ],
@@ -140760,7 +140454,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -140877,7 +140570,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -141423,7 +141115,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -141492,7 +141183,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -141523,7 +141213,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -141611,7 +141300,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -141815,7 +141503,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 40,
@@ -141891,7 +141578,6 @@
     "tags": [
       "dessert",
       "diabetes",
-      "keto",
       "maintain",
       "nl"
     ],
@@ -142689,7 +142375,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -142771,7 +142456,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -144238,7 +143922,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -144313,7 +143996,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -144344,7 +144026,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -144449,7 +144130,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -145818,7 +145498,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -145909,7 +145588,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -146406,7 +146084,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -146502,7 +146179,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -148012,7 +147688,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -148113,7 +147788,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -149102,7 +148776,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -149239,7 +148912,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -150846,7 +150518,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 120,
@@ -150931,7 +150602,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 92,
@@ -151229,7 +150899,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -151361,7 +151030,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -151724,7 +151392,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -151811,7 +151478,6 @@
       "lunch",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -152513,7 +152179,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 70,
@@ -152618,7 +152283,6 @@
       "de",
       "diabetes",
       "dinner",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -154032,7 +153696,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 280,
@@ -154118,7 +153781,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl"
     ],
@@ -155252,7 +154914,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 210,
@@ -155332,7 +154993,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -155694,7 +155354,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -155759,7 +155418,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -156120,7 +155778,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -156197,7 +155854,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -156668,7 +156324,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -156750,7 +156405,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegetarian",
@@ -158238,7 +157892,7 @@
     "title": "Burrata dip",
     "name": "Burrata dip",
     "image": "assets/images/recipes/nl_burrata_dip_fa584d0401.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -158310,7 +157964,7 @@
       "keto",
       "maintain",
       "nl",
-      "snack",
+      "lunch",
       "vegan",
       "vegetarian"
     ],
@@ -159486,7 +159140,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -159553,7 +159206,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -161045,7 +160697,6 @@
     "image": "assets/images/recipes/en_dairy_ice_cream_8656b65518.webp",
     "meal_type": "dessert",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -161103,7 +160754,6 @@
     "tags": [
       "dessert",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -161994,7 +161644,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -162101,7 +161750,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -162132,7 +161780,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -162241,7 +161888,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -164024,7 +163670,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -164099,7 +163744,6 @@
     "insulin_units": 5.2,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -164484,7 +164128,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -164579,7 +164222,6 @@
     "tags": [
       "dessert",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -164611,7 +164253,6 @@
     "image": "assets/images/recipes/en_roast_easter_duck_with_raisin_salad_c010aabee1.webp",
     "meal_type": "lunch",
     "goals": [
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -164720,7 +164361,6 @@
     "insulin_units": 5.6,
     "tags": [
       "en",
-      "keto",
       "lunch",
       "maintain",
       "muscle"
@@ -164752,7 +164392,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 70,
@@ -164850,7 +164489,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -164987,7 +164625,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -165041,7 +164678,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -166025,7 +165661,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -166092,7 +165727,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -166509,7 +166143,6 @@
     "meal_type": "dessert",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 45,
@@ -166581,7 +166214,6 @@
       "de",
       "dessert",
       "diabetes",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -166944,7 +166576,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -167011,7 +166642,6 @@
     "tags": [
       "diabetes",
       "dinner",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -167044,7 +166674,6 @@
     "meal_type": "dinner",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -167130,7 +166759,6 @@
       "diabetes",
       "dinner",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -167388,7 +167016,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -167469,7 +167096,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian",
@@ -167947,7 +167573,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "weight_loss"
@@ -168006,7 +167631,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "muscle",
@@ -168483,7 +168107,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -168553,7 +168176,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -168678,7 +168300,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -168743,7 +168364,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -168775,7 +168395,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 18,
@@ -168844,7 +168463,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl"
     ],
@@ -169393,7 +169011,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -169448,7 +169065,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -169609,7 +169225,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -169672,7 +169287,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -170670,7 +170284,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -170740,7 +170353,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian",
@@ -170902,7 +170514,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -170977,7 +170588,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -171333,7 +170943,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "weight_loss"
@@ -171404,7 +171013,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "muscle",
       "weight_loss"
@@ -172585,7 +172193,6 @@
     "image": "assets/images/recipes/en_healthy_banana_muffins_ec026fdd3c.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -172689,7 +172296,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -173645,7 +173251,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -173730,7 +173335,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -173988,7 +173592,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -174069,7 +173672,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -175903,7 +175505,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -175988,7 +175589,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian",
@@ -177707,7 +177307,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -177808,7 +177407,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -178071,7 +177669,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 30,
@@ -178150,7 +177747,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -178484,7 +178080,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 15,
@@ -178582,7 +178177,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain"
     ],
@@ -178939,7 +178533,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -179033,7 +178626,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -179553,7 +179145,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -179637,7 +179228,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -180080,7 +179670,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 15,
@@ -180173,7 +179762,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain"
     ],
@@ -180666,7 +180254,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -180756,7 +180343,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian",
@@ -180893,7 +180479,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -180985,7 +180570,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian",
@@ -182331,7 +181915,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -182427,7 +182010,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -182582,7 +182164,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -182651,7 +182232,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -182683,7 +182263,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -182757,7 +182336,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian",
@@ -183449,7 +183027,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -183523,7 +183100,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -184259,7 +183835,6 @@
     "image": "assets/images/recipes/en_roasted_beetroot_raw_honey_salad_bf2f93550d.webp",
     "meal_type": "lunch",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -184337,7 +183912,6 @@
     "insulin_units": 4.0,
     "tags": [
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -184368,7 +183942,6 @@
     "image": "assets/images/recipes/en_roasted_squash_salad_with_creamy_homemade_labneh_2d220b66a1.webp",
     "meal_type": "lunch",
     "goals": [
-      "keto",
       "maintain"
     ],
     "time": 60,
@@ -184446,7 +184019,6 @@
     "insulin_units": 11.4,
     "tags": [
       "en",
-      "keto",
       "lunch",
       "maintain"
     ],
@@ -184599,7 +184171,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -184685,7 +184256,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegan",
@@ -184718,7 +184288,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -184813,7 +184382,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -184845,7 +184413,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -184931,7 +184498,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -185486,7 +185052,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -185575,7 +185140,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -185927,7 +185491,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -186001,7 +185564,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -186618,7 +186180,6 @@
     "image": "assets/images/recipes/en_sticky_aubergine_tomato_salad_e259b6973c.webp",
     "meal_type": "lunch",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -186709,7 +186270,6 @@
     "insulin_units": 6.8,
     "tags": [
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -187101,7 +186661,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -187180,7 +186739,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -187212,7 +186770,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 25,
@@ -187290,7 +186847,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain"
     ],
@@ -187321,7 +186877,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 40,
@@ -187405,7 +186960,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain"
     ],
@@ -188106,7 +187660,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian",
@@ -188201,7 +187754,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "nl",
@@ -188712,7 +188264,6 @@
     "image": "assets/images/recipes/en_green_rainbow_smoothie_bowl_76a71e9050.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -188781,7 +188332,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -188812,7 +188362,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "weight_loss"
@@ -188906,7 +188455,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "muscle",
       "weight_loss"
@@ -188938,7 +188486,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -189047,7 +188594,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -189975,7 +189521,6 @@
     "image": "assets/images/recipes/en_roasted_root_chickpea_salad_c9e77dc95f.webp",
     "meal_type": "lunch",
     "goals": [
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -190091,7 +189636,6 @@
     "insulin_units": 8.0,
     "tags": [
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegan",
@@ -190612,7 +190156,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -190691,7 +190234,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -190723,7 +190265,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -190814,7 +190355,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegan",
@@ -191127,7 +190667,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -191209,7 +190748,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -191937,7 +191475,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -192051,7 +191588,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegan",
@@ -193673,7 +193209,6 @@
     "image": "assets/images/recipes/en_breakfast_muffins_8133abd31b.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -193777,7 +193312,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -194659,7 +194193,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -194736,7 +194269,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -194767,7 +194299,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -194822,7 +194353,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -195287,7 +194817,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -195380,7 +194909,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -195412,7 +194940,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -195503,7 +195030,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -196190,7 +195716,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -196281,7 +195806,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -196424,7 +195948,6 @@
     "image": "assets/images/recipes/en_sweet_potato_pancakes_with_orange_grapefruit_1621ba3a35.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -196505,7 +196028,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -196536,7 +196058,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -196611,7 +196132,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -196642,7 +196162,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -196728,7 +196247,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -198766,7 +198284,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 30,
@@ -198855,7 +198372,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain"
     ],
@@ -200412,7 +199928,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -200482,7 +199997,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegan",
@@ -202166,7 +201680,6 @@
     "image": "assets/images/recipes/en_goat_s_cheese_pear_candied_pecan_salad_170575c363.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain"
     ],
     "time": 30,
@@ -202245,7 +201758,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 56,
@@ -205131,7 +204643,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -205198,7 +204709,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegan",
@@ -205756,7 +205266,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -205854,7 +205363,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegan",
@@ -206186,7 +205694,6 @@
     "image": "assets/images/recipes/en_pomegranate_salad_c75dac7973.webp",
     "meal_type": "lunch",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -206269,7 +205776,6 @@
     "insulin_units": 2.2,
     "tags": [
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -206301,7 +205807,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -206367,7 +205872,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegan",
@@ -206614,7 +206118,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 50,
@@ -206724,7 +206227,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain"
     ],
@@ -207376,7 +206878,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -207462,7 +206963,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian",
@@ -207709,7 +207209,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 20,
@@ -207774,7 +207273,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain"
     ],
@@ -209237,7 +208735,6 @@
     "image": "assets/images/recipes/en_slice_of_frittata_with_nutty_green_salad_balsamic_dressi_19d27ce627.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -209307,7 +208804,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -209653,7 +209149,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -209744,7 +209239,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -209776,7 +209270,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -209861,7 +209354,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -210579,7 +210071,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -210653,7 +210144,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "muscle"
@@ -210798,7 +210288,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -210878,7 +210367,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -211077,7 +210565,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -211151,7 +210638,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -211779,7 +211265,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -211890,7 +211375,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian",
@@ -213495,7 +212979,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -213570,7 +213053,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -214216,7 +213698,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -214281,7 +213762,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -215062,7 +214542,6 @@
     "image": "assets/images/recipes/en_bruschetta_grilled_chicken_zoodle_bowl_7af2da59de.webp",
     "meal_type": "lunch",
     "goals": [
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -215185,7 +214664,6 @@
     "insulin_units": 3.6,
     "tags": [
       "en",
-      "keto",
       "lunch",
       "maintain",
       "muscle"
@@ -216102,7 +215580,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 10,
@@ -216169,7 +215646,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain"
     ],
@@ -216605,7 +216081,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -216669,7 +216144,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -216825,7 +216299,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -216975,7 +216448,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian",
@@ -217008,7 +216480,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -217094,7 +216565,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -217238,7 +216708,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -217332,7 +216801,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian",
@@ -218063,7 +217531,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -218125,7 +217592,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "muscle"
@@ -218308,7 +217774,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -218389,7 +217854,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -218613,7 +218077,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -218723,7 +218186,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -219186,7 +218648,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -219261,7 +218722,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegetarian"
@@ -219293,7 +218753,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -219351,7 +218810,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "weight_loss"
@@ -219383,7 +218841,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -219467,7 +218924,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "lunch",
       "maintain",
       "vegan",
@@ -221218,7 +220674,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -221278,7 +220733,6 @@
     "insulin_units": 6.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -221540,7 +220994,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -221624,7 +221077,6 @@
     "insulin_units": 5.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -224655,7 +224107,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -224740,7 +224191,6 @@
     "insulin_units": 12.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -225481,7 +224931,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -225545,7 +224994,6 @@
     "insulin_units": 6.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -228406,7 +227854,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -228509,7 +227956,6 @@
     "insulin_units": 4.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -230187,7 +229633,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -230278,7 +229723,6 @@
     "insulin_units": 6.4,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -230311,7 +229755,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -230402,7 +229845,6 @@
     "insulin_units": 3.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -231297,7 +230739,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -231379,7 +230820,6 @@
     "insulin_units": 5.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -232368,7 +231808,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -232435,7 +231874,6 @@
     "insulin_units": 2.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -235683,7 +235121,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -235758,7 +235195,6 @@
     "insulin_units": 6.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -236087,7 +235523,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -236162,7 +235597,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -236193,7 +235627,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -236264,7 +235697,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -236394,7 +235826,6 @@
     "image": "assets/images/recipes/en_vanilla_milkshake_bar_61df5168df.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -236473,7 +235904,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -237128,7 +236558,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -237192,7 +236621,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -237693,7 +237121,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -237818,7 +237245,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -238524,7 +237950,6 @@
     "image": "assets/images/recipes/en_two_minute_breakfast_smoothie_c227b309e9.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -238588,7 +238013,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -242114,7 +241538,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -242170,7 +241593,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -242707,7 +242129,6 @@
     "image": "assets/images/recipes/en_maple_granola_crunch_porridge_topping_36791a0c3d.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -242787,7 +242208,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -242819,7 +242239,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -242897,7 +242316,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -242928,7 +242346,6 @@
     "image": "assets/images/recipes/en_nuts_seeds_granola_ba5532a392.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -243013,7 +242430,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -243265,7 +242681,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -243341,7 +242756,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -243999,7 +243413,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -244065,7 +243478,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -244468,7 +243880,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -244564,7 +243975,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -244595,7 +244005,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -244680,7 +244089,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -244803,7 +244211,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -244893,7 +244300,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -245044,7 +244450,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -245119,7 +244524,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -245896,7 +245300,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -245982,7 +245385,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -246012,7 +245414,6 @@
     "image": "assets/images/recipes/en_vanilla_poached_pears_with_almond_butter_porridge_toppin_3a2bd9979c.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -246077,7 +245478,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -246107,7 +245507,6 @@
     "image": "assets/images/recipes/en_fried_egg_florentine_toastie_21f47a58ad.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -246183,7 +245582,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -246404,7 +245802,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -246469,7 +245866,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -246670,7 +246066,6 @@
     "image": "assets/images/recipes/en_blueberry_smoothie_recipe_3c2ddb58df.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -246729,7 +246124,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -246759,7 +246153,6 @@
     "image": "assets/images/recipes/en_avocado_smoothie_ff7ce5004b.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -246824,7 +246217,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -247044,7 +246436,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -247119,7 +246510,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -247689,7 +247079,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -247753,7 +247142,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -247886,7 +247274,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -247947,7 +247334,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -248239,7 +247625,6 @@
     "image": "assets/images/recipes/en_indian_chickpeas_with_poached_eggs_56cd7fb0e5.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -248340,7 +247725,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -248462,7 +247846,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -248548,7 +247931,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -248579,7 +247961,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -248640,7 +248021,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -249697,7 +249077,6 @@
     "image": "assets/images/recipes/en_baked_polenta_with_spinach_goat_s_cheese_3d36a6e33c.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain"
     ],
     "time": 40,
@@ -249760,7 +249139,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 78,
@@ -251152,7 +250530,6 @@
     "image": "assets/images/recipes/en_chia_pudding_e56d7abcc9.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -251206,7 +250583,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -251571,7 +250947,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -251637,7 +251012,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -253475,7 +252849,6 @@
     "image": "assets/images/recipes/en_easy_huevos_rancheros_3252829f8c.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -253551,7 +252924,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -253806,7 +253178,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "weight_loss"
@@ -253893,7 +253264,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "muscle",
       "weight_loss"
@@ -254879,7 +254249,6 @@
     "image": "assets/images/recipes/en_full_english_shakshuka_eee4ae6d84.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "muscle",
       "weight_loss"
@@ -254974,7 +254343,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "muscle",
       "weight_loss"
@@ -255422,7 +254790,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -255524,7 +254891,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -255556,7 +254922,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -255607,7 +254972,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -256397,7 +255761,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -256474,7 +255837,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -257043,7 +256405,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -257108,7 +256469,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -257437,7 +256797,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -257514,7 +256873,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -258322,7 +257680,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -258429,7 +257786,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -259356,7 +258712,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -259421,7 +258776,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -259848,7 +259202,6 @@
     "image": "assets/images/recipes/en_raspberry_ripple_chia_pudding_3bc6765ed9.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -259917,7 +259270,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -259947,7 +259299,6 @@
     "image": "assets/images/recipes/en_real_spanish_omelette_4ba8bca330.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -260010,7 +259361,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -260041,7 +259391,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -260098,7 +259447,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -260441,7 +259789,6 @@
     "image": "assets/images/recipes/en_sage_celeriac_hash_browns_393810a498.webp",
     "meal_type": "breakfast",
     "goals": [
-      "keto",
       "maintain"
     ],
     "time": 30,
@@ -260520,7 +259867,6 @@
     "tags": [
       "breakfast",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 78,
@@ -262100,7 +261446,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 30,
@@ -262189,7 +261534,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain"
     ],
     "health_score": 68,
@@ -262450,7 +261794,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -262505,7 +261848,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -262536,7 +261878,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -262596,7 +261937,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -263466,7 +262806,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -263552,7 +262891,6 @@
       "breakfast",
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -298999,7 +298337,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -299050,7 +298387,6 @@
     "insulin_units": 2.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -299415,7 +298751,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -299472,7 +298807,6 @@
     "insulin_units": 5.2,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -300217,7 +299551,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -300299,7 +299632,6 @@
     "insulin_units": 5.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -301640,7 +300972,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -301688,7 +301019,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -301721,7 +301051,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -301820,7 +301149,6 @@
     "insulin_units": 16.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -302181,7 +301509,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -302252,7 +301579,6 @@
     "insulin_units": 8.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -302592,7 +301918,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -302645,7 +301970,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -302883,7 +302207,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -302983,7 +302306,6 @@
     "insulin_units": 7.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -303105,7 +302427,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -303164,7 +302485,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -303198,7 +302518,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -303269,7 +302588,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian",
@@ -303303,7 +302621,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -303368,7 +302685,6 @@
     "insulin_units": 15.4,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -304579,7 +303895,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -304642,7 +303957,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -306211,7 +305525,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -306282,7 +305595,6 @@
     "insulin_units": 7.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -307323,7 +306635,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -307379,7 +306690,6 @@
     "insulin_units": 4.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -307508,7 +306818,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -307562,7 +306871,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -308028,7 +307336,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -308092,7 +307399,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "weight_loss"
@@ -308634,7 +307940,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -308717,7 +308022,6 @@
     "insulin_units": 6.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -308752,7 +308056,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 25,
@@ -308847,7 +308150,6 @@
     "insulin_units": 9.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl"
@@ -308960,7 +308262,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -309020,7 +308321,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -309054,7 +308354,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -309115,7 +308414,6 @@
     "insulin_units": 7.2,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -309883,7 +309181,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -309956,7 +309253,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -310124,7 +309420,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -310238,7 +309533,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "weight_loss"
@@ -310367,7 +309661,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 15,
@@ -310447,7 +309740,6 @@
     "insulin_units": 4.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl"
@@ -310780,7 +310072,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -310866,7 +310157,6 @@
     "insulin_units": 6.4,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -311100,7 +310390,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -311153,7 +310442,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -311374,7 +310662,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -311467,7 +310754,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -311693,7 +310979,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegetarian"
@@ -311805,7 +311090,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "nl",
@@ -314346,7 +313630,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -314407,7 +313690,6 @@
     "insulin_units": 11.2,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -315407,7 +314689,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle"
     ],
@@ -315489,7 +314770,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "nl"
@@ -316557,7 +315837,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -316653,7 +315932,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -317219,7 +316497,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -317295,7 +316572,6 @@
     "insulin_units": 4.4,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -317864,7 +317140,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -317942,7 +317217,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -318692,7 +317966,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -318744,7 +318017,6 @@
     "insulin_units": 6.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -319329,7 +318601,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -319420,7 +318691,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -320104,7 +319374,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -320172,7 +319441,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -320320,7 +319588,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -320385,7 +319652,6 @@
     "insulin_units": 4.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -321384,7 +320650,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -321506,7 +320771,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "weight_loss"
@@ -323632,7 +322896,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -323684,7 +322947,6 @@
     "insulin_units": 7.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -325148,7 +324410,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -325219,7 +324480,6 @@
     "insulin_units": 22.4,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -326551,7 +325811,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -326610,7 +325869,6 @@
     "insulin_units": 4.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -327364,7 +326622,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -327429,7 +326686,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -328341,7 +327597,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -328403,7 +327658,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -328746,7 +328000,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -328803,7 +328056,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -329020,7 +328272,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -329081,7 +328332,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -329836,7 +329086,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -329889,7 +329138,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -330025,7 +329273,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -330081,7 +329328,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -330324,7 +329570,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -330378,7 +329623,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -330521,7 +329765,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -330591,7 +329834,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -331309,7 +330551,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -331398,7 +330639,6 @@
     "insulin_units": 5.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -332387,7 +331627,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -332473,7 +331712,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -333410,7 +332648,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -333468,7 +332705,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -333584,7 +332820,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -333683,7 +332918,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -334047,7 +333281,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -334114,7 +333347,6 @@
     "insulin_units": 7.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -334150,7 +333382,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -334208,7 +333439,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -334929,7 +334159,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 10,
@@ -334985,7 +334214,6 @@
     "insulin_units": 7.2,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl"
@@ -335018,7 +334246,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -335088,7 +334315,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -335854,7 +335080,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "vegan",
@@ -335950,7 +335175,6 @@
     "insulin_units": 1.4,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "muscle",
@@ -338504,7 +337728,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -338592,7 +337815,6 @@
     "insulin_units": 6.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -340116,7 +339338,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -340169,7 +339390,6 @@
     "insulin_units": 12.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -340334,7 +339554,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -340404,7 +339623,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -340747,7 +339965,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -340826,7 +340043,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian",
@@ -341510,7 +340726,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -341578,7 +340793,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -341714,7 +340928,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -341797,7 +341010,6 @@
     "insulin_units": 4.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -342521,7 +341733,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -342600,7 +341811,6 @@
     "insulin_units": 7.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -342773,7 +341983,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -342833,7 +342042,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -343709,7 +342917,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -343765,7 +342972,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -345917,7 +345123,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -345990,7 +345195,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -346531,7 +345735,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -346587,7 +345790,6 @@
     "insulin_units": 8.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -348286,7 +347488,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -348353,7 +347554,6 @@
     "insulin_units": 7.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -348861,7 +348061,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -348922,7 +348121,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -349732,7 +348930,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -349796,7 +348993,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "weight_loss"
@@ -349829,7 +349025,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -349883,7 +349078,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -350126,7 +349320,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -350209,7 +349402,6 @@
     "insulin_units": 4.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -350245,7 +349437,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -350308,7 +349499,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -350495,7 +349685,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -350572,7 +349761,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -350606,7 +349794,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -350692,7 +349879,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -351198,7 +350384,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -351250,7 +350435,6 @@
     "insulin_units": 6.4,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -351916,7 +351100,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -351994,7 +351177,6 @@
     "insulin_units": 5.2,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -352028,7 +351210,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -352099,7 +351280,6 @@
     "insulin_units": 7.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -352325,7 +351505,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -352377,7 +351556,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -352890,7 +352068,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -352964,7 +352141,6 @@
     "insulin_units": 6.4,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -353393,7 +352569,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -353452,7 +352627,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian",
@@ -354443,7 +353617,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -354543,7 +353716,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -355037,7 +354209,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -355125,7 +354296,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -355159,7 +354329,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -355223,7 +354392,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -355801,7 +354969,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -355875,7 +355042,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -357316,7 +356482,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "muscle",
       "weight_loss"
@@ -357401,7 +356566,6 @@
     "insulin_units": 6.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "muscle",
@@ -357932,7 +357096,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -358020,7 +357183,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -359978,7 +359140,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -360052,7 +359213,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -360275,7 +359435,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 25,
@@ -360355,7 +359514,6 @@
     "insulin_units": 5.2,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl"
@@ -362520,7 +361678,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 33,
@@ -362576,7 +361733,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl"
     ],
@@ -362724,7 +361880,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -362776,7 +361931,6 @@
     "insulin_units": 6.4,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -363006,7 +362160,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -363060,7 +362213,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -363550,7 +362702,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -363609,7 +362760,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -364138,7 +363288,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -364204,7 +363353,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -369925,7 +369073,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -369997,7 +369144,6 @@
     "insulin_units": 7.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -370744,7 +369890,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -370830,7 +369975,6 @@
     "insulin_units": 19.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -370865,7 +370009,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -370931,7 +370074,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "weight_loss"
@@ -372681,7 +371823,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -372747,7 +371888,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -374367,7 +373507,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -374446,7 +373585,6 @@
     "insulin_units": 6.4,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -376147,7 +375285,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 60,
@@ -376278,7 +375415,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl"
     ],
@@ -376427,7 +375563,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -376493,7 +375628,6 @@
     "insulin_units": 6.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -376920,7 +376054,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 20,
@@ -377011,7 +376144,6 @@
     "insulin_units": 5.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl"
@@ -377044,7 +376176,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -377111,7 +376242,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "weight_loss"
@@ -378398,7 +377528,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -378472,7 +377601,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -379779,7 +378907,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -379856,7 +378983,6 @@
     "insulin_units": 2.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -380786,7 +379912,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -380859,7 +379984,6 @@
     "insulin_units": 7.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -381486,7 +380610,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -381546,7 +380669,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -382228,7 +381350,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -382307,7 +381428,6 @@
     "insulin_units": 3.8,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -382536,7 +381656,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -382628,7 +381747,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -382759,7 +381877,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -382806,7 +381923,6 @@
     "insulin_units": 12.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -383613,7 +382729,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -383690,7 +382805,6 @@
     "insulin_units": 5.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -383907,7 +383021,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -383987,7 +383100,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -386775,7 +385887,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -386853,7 +385964,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegan",
@@ -387666,7 +386776,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -387736,7 +386845,6 @@
     "insulin_units": 6.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -387855,7 +386963,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 15,
@@ -387926,7 +387033,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl"
     ],
@@ -391665,7 +390771,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -391712,7 +390817,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -392796,7 +391900,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -392877,7 +391980,6 @@
     "insulin_units": 5.2,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -394048,7 +393150,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -394114,7 +393215,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "weight_loss"
@@ -394564,7 +393664,6 @@
     "meal_type": "breakfast",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -394616,7 +393715,6 @@
     "tags": [
       "breakfast",
       "diabetes",
-      "keto",
       "maintain",
       "nl",
       "vegetarian"
@@ -396449,7 +395547,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 152,
@@ -396554,7 +395651,6 @@
     "insulin_units": 17.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl"
@@ -396907,7 +396003,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -396986,7 +396081,6 @@
     "insulin_units": 5.2,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -398640,7 +397734,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -398722,7 +397815,6 @@
     "insulin_units": 2.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -398757,7 +397849,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -398824,7 +397915,6 @@
     "insulin_units": 8.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -399520,7 +398610,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain"
     ],
     "time": 15,
@@ -399593,7 +398682,6 @@
     "insulin_units": 7.2,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl"
@@ -399626,7 +398714,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -399701,7 +398788,6 @@
     "insulin_units": 7.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -400207,7 +399293,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -400273,7 +399358,6 @@
     "insulin_units": 16.0,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -400413,7 +399497,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian",
@@ -400512,7 +399595,6 @@
     "insulin_units": 3.2,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -400976,7 +400058,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -401028,7 +400109,6 @@
     "insulin_units": 5.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -402505,7 +401585,6 @@
     "meal_type": "lunch",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "weight_loss"
     ],
@@ -402595,7 +401674,6 @@
     "insulin_units": 7.6,
     "tags": [
       "diabetes",
-      "keto",
       "lunch",
       "maintain",
       "nl",
@@ -402741,7 +401819,7 @@
     "title": "Lunchbox Hummus Vegetable Sandwich",
     "name": "Lunchbox Hummus Vegetable Sandwich",
     "image": "assets/images/recipes/en_lunchbox_hummus_vegetable_sandwich_613483e3ce.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegan",
@@ -402805,7 +401883,7 @@
     "tags": [
       "en",
       "maintain",
-      "snack",
+      "lunch",
       "vegan",
       "vegetarian",
       "weight_loss"
@@ -402825,7 +401903,6 @@
     "meal_type": "snack",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -402874,7 +401951,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "snack",
       "vegetarian"
@@ -402986,7 +402062,6 @@
     "meal_type": "snack",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian"
     ],
@@ -403045,7 +402120,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "snack",
       "vegetarian"
@@ -403147,7 +402221,6 @@
     "meal_type": "snack",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -403203,7 +402276,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "snack",
       "vegan",
@@ -403313,7 +402385,7 @@
     "title": "Hummus Pizza",
     "name": "Hummus Pizza",
     "image": "assets/images/recipes/en_hummus_pizza_7041b3897a.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "maintain",
       "vegan",
@@ -403378,7 +402450,7 @@
     "tags": [
       "en",
       "maintain",
-      "snack",
+      "lunch",
       "vegan",
       "vegetarian",
       "weight_loss"
@@ -403398,7 +402470,6 @@
     "meal_type": "snack",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegetarian",
       "weight_loss"
@@ -403458,7 +402529,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "snack",
       "vegetarian",
@@ -403646,7 +402716,7 @@
     "title": "Artichoke & olive dip",
     "name": "Artichoke & olive dip",
     "image": "assets/images/recipes/en_artichoke_olive_dip_0ea78001a7.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "keto",
@@ -403712,7 +402782,7 @@
       "en",
       "keto",
       "maintain",
-      "snack",
+      "lunch",
       "vegetarian"
     ],
     "health_score": 68,
@@ -403817,7 +402887,6 @@
     "meal_type": "snack",
     "goals": [
       "diabetes",
-      "keto",
       "maintain",
       "vegan",
       "vegetarian"
@@ -403871,7 +402940,6 @@
     "tags": [
       "diabetes",
       "en",
-      "keto",
       "maintain",
       "snack",
       "vegan",
@@ -404058,7 +403126,7 @@
     "title": "Dainty Egg and Chive Tea Sandwiches for Tea-Time",
     "name": "Dainty Egg and Chive Tea Sandwiches for Tea-Time",
     "image": "assets/images/recipes/en_dainty_egg_and_chive_tea_sandwiches_for_tea_time_e57e1eb41b.webp",
-    "meal_type": "snack",
+    "meal_type": "lunch",
     "goals": [
       "diabetes",
       "maintain",
@@ -404135,7 +403203,7 @@
       "diabetes",
       "en",
       "maintain",
-      "snack",
+      "lunch",
       "vegetarian"
     ],
     "health_score": 68,

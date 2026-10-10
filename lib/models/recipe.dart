@@ -176,6 +176,15 @@ class Recipe {
 
   bool get hasMacros => calories > 0;
 
+  /// Keto rule (user decision): TOTAL carbs per serving must be ≤ 10 g.
+  static const double ketoMaxCarbsPerServingG = 10;
+
+  static bool isKetoCarbsPerServing(double carbsPerServingG) =>
+      carbsPerServingG <= ketoMaxCarbsPerServingG;
+
+  bool get isKetoEligible =>
+      isKetoCarbsPerServing(carbsPerServing(servings > 0 ? servings : 1));
+
   /// Per-serving values.
   int caloriesPerServing(int s) => (calories / s).round();
   double proteinPerServing(int s) => proteinG / s;
@@ -248,8 +257,12 @@ class Recipe {
     final computedCalories = (proteinG * 4 + carbsG * 4 + fatG * 9).round();
     final rawCalories =
         ((j['calories'] ?? macros['calories']) as num?)?.toInt();
+    final servings = (j['servings'] as num?)?.toInt() ?? 1;
     final parsedGoals =
         goalsRaw.map(_goalFromKey).whereType<NutritionGoalType>().toSet();
+    if (!isKetoCarbsPerServing(carbsG / (servings > 0 ? servings : 1))) {
+      parsedGoals.remove(NutritionGoalType.keto);
+    }
     final rawIngredients = (j['ingredients'] as List?) ?? const [];
     final parsedIngredients = rawIngredients
         .map((e) {
@@ -278,7 +291,7 @@ class Recipe {
       mealType: RecipeMealTypeX.fromJson(j['meal_type'] as String?),
       goals: parsedGoals.isEmpty ? {NutritionGoalType.maintain} : parsedGoals,
       minutes: ((j['minutes'] ?? j['time']) as num?)?.toInt() ?? 30,
-      servings: (j['servings'] as num?)?.toInt() ?? 1,
+      servings: servings,
       calories: rawCalories ?? computedCalories,
       proteinG: proteinG,
       carbsG: carbsG,

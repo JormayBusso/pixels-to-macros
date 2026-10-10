@@ -105,11 +105,27 @@ class MealPlanNotifier extends StateNotifier<MealPlanState> {
     final portionMultipliers = <String, double>{};
     for (final row in rows) {
       final mealType = RecipeMealTypeX.fromJson(row['meal_type'] as String?);
-      final key = MealPlanState.slotKey(row['day_of_week'] as int, mealType);
+      final dayOfWeek = row['day_of_week'] as int;
+      final key = MealPlanState.slotKey(dayOfWeek, mealType);
+      final id = row['recipe_id'] as String;
+      final bundled = recipeById[id];
+      // Plans saved before a recipe was re-categorised (e.g. a sauce that used
+      // to be tagged as a snack) must not keep it in a snack slot.
+      if (mealType == RecipeMealType.snack &&
+          bundled != null &&
+          (bundled.mealType != RecipeMealType.snack ||
+              !RecipeRepository.isRealSnack(bundled))) {
+        await DatabaseService.instance.deleteMealPlanEntry(
+          weekNumber: state.weekNumber,
+          year: state.year,
+          dayOfWeek: dayOfWeek,
+          mealType: mealType.jsonKey,
+        );
+        continue;
+      }
       enabled.add(key);
       portionMultipliers[key] = 1.0;
-      final id = row['recipe_id'] as String;
-      final recipe = recipeById[id] ?? customById[id];
+      final recipe = bundled ?? customById[id];
       if (recipe != null) assignments[key] = recipe;
     }
 

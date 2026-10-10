@@ -257,12 +257,8 @@ class RecipeRepository {
         return true;
 
       case NutritionGoalType.keto:
-        // Keto is governed by NET carbs (total carbs minus fibre), which is the
-        // standard way ketogenic diets are counted. A high-fibre dish with 25g
-        // total but 8g fibre is 17g net and legitimately keto-eligible.
-        final netCarbsPerServing =
-            carbsPerServing - recipe.fiberPerServing(recipe.servings);
-        return netCarbsPerServing <= 20;
+        // Keto = TOTAL carbs per serving ≤ 10 g (not net carbs).
+        return Recipe.isKetoCarbsPerServing(carbsPerServing);
 
       case NutritionGoalType.weightLoss:
         return caloriesPerServing <= 600 && proteinPerServing >= 15;
@@ -365,12 +361,191 @@ class RecipeRepository {
           return false;
         }
         return true;
-      case RecipeMealType.dinner:
       case RecipeMealType.snack:
+        return isRealSnack(recipe);
+      case RecipeMealType.dinner:
       case RecipeMealType.dessert:
         return true;
     }
   }
+
+  /// Only small between-meal items may fill a snack slot. Sauces, dressings
+  /// and other condiments/components, and bread/pizza-style meals never do;
+  /// dips only count when the recipe also provides something to dip.
+  static bool isRealSnack(Recipe recipe) {
+    final name = recipe.name.toLowerCase();
+    if (_containsAnyWord(name, _snackCondimentNameTerms)) return false;
+    if (_containsAnyWord(name, _snackMealNameTerms)) return false;
+    if (_containsAnyWord(name, _snackDipNameTerms)) {
+      final text = [
+        name,
+        ...recipe.ingredients.map((i) => i.name.toLowerCase()),
+        ...recipe.steps.map((s) => s.toLowerCase()),
+      ].join(' ');
+      return _containsAnyWord(text, _snackDipperTerms);
+    }
+    return true;
+  }
+
+  static bool _containsAnyWord(String text, List<String> terms) {
+    for (final term in terms) {
+      if (RegExp('(^|[^\\p{L}])${RegExp.escape(term)}(\$|[^\\p{L}])',
+              unicode: true)
+          .hasMatch(text)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static const _snackCondimentNameTerms = [
+    'sauce',
+    'sauces',
+    'saus',
+    'sausje',
+    'soße',
+    'sosse',
+    'salsa verde',
+    'sos',
+    'gravy',
+    'jus',
+    'dressing',
+    'vinaigrette',
+    'marinade',
+    'marynata',
+    'condiment',
+    'relish',
+    'chutney',
+    'pesto',
+    'mayonnaise',
+    'mayo',
+    'aioli',
+    'ketchup',
+    'stock',
+    'broth',
+    'bouillon',
+    'fond',
+    'brühe',
+    'bulion',
+    'rub',
+    'seasoning',
+    'kruidenmix',
+    'glaze',
+    'syrup',
+    'siroop',
+    'sirup',
+    'jam',
+    'jelly',
+    'confiture',
+    'compote',
+    'curd',
+  ];
+
+  static const _snackMealNameTerms = [
+    'sandwich',
+    'sandwiches',
+    'broodje',
+    'broodjes',
+    'brood',
+    'tosti',
+    'pizza',
+    'flatbread',
+    'flatbreads',
+    'wrap',
+    'wraps',
+    'burger',
+    'burgers',
+    'burrito',
+    'panini',
+    'kanapka',
+    'kanapki',
+    'brot',
+    'brötchen',
+    'stulle',
+    'bocadillo',
+    'stew',
+    'stamppot',
+    'curry',
+    'lasagne',
+    'lasagna',
+    'pasta',
+    'risotto',
+    'soup',
+    'soep',
+    'suppe',
+    'zupa',
+    'casserole',
+    'ovenschotel',
+  ];
+
+  static const _snackDipNameTerms = [
+    'dip',
+    'dips',
+    'hummus',
+    'houmous',
+    'humus',
+    'hoummus',
+    'tzatziki',
+    'guacamole',
+    'salsa',
+    'baba ganoush',
+    'baba ghanoush',
+    'tapenade',
+    'spread',
+    'smeersel',
+    'aufstrich',
+    'pasta kanapkowa',
+    'pâté',
+    'pate',
+  ];
+
+  static const _snackDipperTerms = [
+    'crudités',
+    'crudites',
+    'crudité',
+    'rauwkost',
+    'stick',
+    'sticks',
+    'carrot',
+    'carrots',
+    'cucumber',
+    'celery',
+    'radish',
+    'radishes',
+    'pepper strips',
+    'cracker',
+    'crackers',
+    'chips',
+    'crisps',
+    'nachos',
+    'nacho',
+    'tortilla chips',
+    'fritos',
+    'scoops',
+    'pitta',
+    'pita',
+    'naan',
+    'breadsticks',
+    'grissini',
+    'pretzel',
+    'pretzels',
+    'toast',
+    'crostini',
+    'wortel',
+    'wortels',
+    'komkommer',
+    'bleekselderij',
+    'radijs',
+    'soepstengels',
+    'toastjes',
+    'karotten',
+    'gurke',
+    'sellerie',
+    'marchewka',
+    'ogórek',
+    'seler',
+    'krakersy',
+  ];
 
   bool _hasProfessionalRecipeQuality(Recipe recipe) {
     final caloriesPerServing = recipe.caloriesPerServing(recipe.servings);

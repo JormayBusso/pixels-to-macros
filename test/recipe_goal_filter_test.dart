@@ -199,7 +199,7 @@ void main() {
       }
     });
 
-    test('Keto recipes stay within the net-carb limit', () async {
+    test('Keto recipes stay within the 10 g total-carb limit', () async {
       final recipes = await RecipeRepository.instance.query(
         goal: NutritionGoalType.keto,
         limit: 2000,
@@ -207,14 +207,12 @@ void main() {
 
       expect(recipes, isNotEmpty, reason: 'No keto recipes found');
       for (final recipe in recipes) {
-        final netCarbsPerServing =
-            recipe.carbsPerServing(recipe.servings) -
-                recipe.fiberPerServing(recipe.servings);
+        final carbsPerServing = recipe.carbsPerServing(recipe.servings);
         expect(
-          netCarbsPerServing <= 20,
+          carbsPerServing <= 10,
           isTrue,
           reason:
-              '${recipe.name} has ${netCarbsPerServing.toStringAsFixed(1)}g net carbs',
+              '${recipe.name} has ${carbsPerServing.toStringAsFixed(1)}g carbs',
         );
       }
 
@@ -226,6 +224,77 @@ void main() {
         'Msemen met kip van Ahlam',
       ]) {
         expect(names, isNot(contains(name)));
+      }
+    });
+
+    test('Keto eligibility uses total carbs per serving (<= 10 g)', () {
+      Map<String, dynamic> json(double carbsPerServing) => {
+            'id': 'keto_probe_$carbsPerServing',
+            'name': 'Probe',
+            'meal_type': 'lunch',
+            'goals': ['keto'],
+            'servings': 2,
+            'carbs_g': carbsPerServing * 2,
+            'fiber_g': 30,
+          };
+      final high = Recipe.fromJson(json(35));
+      final low = Recipe.fromJson(json(6));
+      expect(high.isKetoEligible, isFalse);
+      expect(high.goals.contains(NutritionGoalType.keto), isFalse);
+      expect(low.isKetoEligible, isTrue);
+      expect(low.goals.contains(NutritionGoalType.keto), isTrue);
+    });
+
+    test('Sauces, condiments and bread meals are never snacks', () async {
+      Recipe probe(String name, {List<String> ingredients = const []}) =>
+          Recipe.fromJson({
+            'id': 'snack_probe_$name',
+            'name': name,
+            'meal_type': 'snack',
+            'servings': 1,
+            'ingredients': [
+              for (final i in ingredients)
+                {'name': i, 'amount': '', 'grams': 10},
+            ],
+            'steps': const ['Mix.'],
+          });
+      for (final name in <String>[
+        'Tofu "alfredo" Sauce',
+        'Creamy tofu alfredo sauce',
+        'Lemon tahini dressing',
+        'Basil pesto',
+        'Chimichurri marinade',
+        'Hummus Pizza',
+        'Lunchbox Hummus Vegetable Sandwich',
+        'Avocado en hummus op brood',
+        'Artichoke & olive dip',
+      ]) {
+        expect(RecipeRepository.isRealSnack(probe(name)), isFalse,
+            reason: '$name must not be a snack');
+      }
+      for (final name in <String>[
+        'Spiced chilli popcorn',
+        'Easy Apricot Bites',
+        'Whipped feta with crudités',
+      ]) {
+        expect(RecipeRepository.isRealSnack(probe(name)), isTrue,
+            reason: '$name is a real snack');
+      }
+      expect(
+        RecipeRepository.isRealSnack(
+            probe('Hummus', ingredients: ['chickpeas', 'carrot sticks'])),
+        isTrue,
+      );
+
+      final snacks = await RecipeRepository.instance.query(
+        mealType: RecipeMealType.snack,
+        limit: 2000,
+      );
+      expect(snacks, isNotEmpty);
+      for (final recipe in snacks) {
+        expect(RecipeRepository.isRealSnack(recipe), isTrue,
+            reason: '${recipe.name} is not a real snack');
+        expect(recipe.name.toLowerCase(), isNot(contains('sauce')));
       }
     });
 

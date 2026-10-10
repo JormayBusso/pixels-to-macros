@@ -29,6 +29,10 @@ import Flutter
         let scannerReg = flutterEngine.registrar(forPlugin: "ScannerPlugin")!
         ScannerPlugin.register(with: scannerReg.messenger())
 
+        // ── On-device recipe translation (Apple Translation) ───────────────
+        let translationReg = flutterEngine.registrar(forPlugin: "TranslationPlugin")!
+        TranslationPlugin.register(with: translationReg.messenger())
+
         // ── Live AR camera platform view ───────────────────────────────────
         let cameraFactory = ARCameraPreviewFactory(
             sessionManager: ScannerPlugin.sessionManager
