@@ -49,8 +49,7 @@ the routing below; otherwise select the tier as follows:
 | HIGH | strong | high |
 
 - **Cheap tier:** `gpt-5.6-luna` at low effort; if unavailable, use
-  `gemini-3.6-flash` at low effort, or `claude-haiku-4.5` (no effort
-  parameter — invoke it without one).
+  `gemini-3.6-flash` or `claude-haiku-4.5` at low effort.
 - **Standard tier:** `gpt-5.6-terra` at medium effort; if unavailable, use
   `gpt-5.5` or `gpt-5.4` at medium effort.
 - **Strong tier:** `claude-opus-4.8` at high effort; if unavailable, use

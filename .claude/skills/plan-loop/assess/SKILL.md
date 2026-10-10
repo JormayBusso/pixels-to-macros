@@ -24,8 +24,7 @@ user typing "assess".
 
 Use the same **Model tiers** mapping and environment fallback rule defined in
 `plan`'s Model tiers section: cheap is `gpt-5.6-luna` at low effort (fallback
-`gemini-3.6-flash` at low effort, or `claude-haiku-4.5` with no effort
-parameter), standard is
+`gemini-3.6-flash` or `claude-haiku-4.5` at low effort), standard is
 `gpt-5.6-terra` at medium effort (fallback `gpt-5.5` or `gpt-5.4` at medium
 effort), and strong is `claude-opus-4.8` at high effort (fallback
 `claude-opus-4.7` or `claude-sonnet-5` at high effort). Always fall back to

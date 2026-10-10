@@ -57,19 +57,26 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
   /// Maps model output labels to user-friendly DB labels where they differ.
   static const _labelAliases = {
     'chicken duck': 'chicken',
+    'egg tart': 'egg',
     'white rice': 'rice',
+    'brown rice': 'rice',
     'fried rice': 'fried rice',
-    'rice with vegetables': 'vegetable rice',
-    'rice with peas': 'vegetable rice',
-    'rice with carrots': 'vegetable rice',
-    'rice with peas and carrots': 'vegetable rice',
+    'vegetable rice': 'fried rice',
+    'rice with vegetables': 'fried rice',
+    'rice with peas': 'fried rice',
+    'rice with carrots': 'fried rice',
+    'rice with peas and carrots': 'fried rice',
     'steamed rice': 'rice',
     'french fries': 'french fries',
     'fries': 'french fries',
     'potato fries': 'french fries',
     'chips': 'french fries',
+    'grilled chicken': 'chicken',
     'roast chicken': 'chicken',
-    'beef steak': 'steak',
+    'fried chicken': 'chicken',
+    'beef steak': 'beef',
+    'steak': 'beef',
+    'ground beef': 'beef',
     'grilled salmon': 'salmon',
     'salmon fillet': 'salmon',
     'grilled fish': 'fish',
@@ -77,13 +84,15 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     'orange juice': 'orange juice',
     'apple juice': 'apple juice',
     'hard boiled egg': 'egg',
-    'scrambled egg': 'scrambled eggs',
+    'scrambled egg': 'egg',
     'fried egg': 'egg',
     'boiled egg': 'egg',
     'whole wheat bread': 'bread',
     'white bread': 'bread',
     'toast': 'bread',
     'yoghurt': 'yogurt',
+    'greek yogurt': 'yogurt',
+    'bell pepper': 'pepper',
     'red pepper': 'pepper',
     'green pepper': 'pepper',
     'carrots': 'carrot',
@@ -91,15 +100,52 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     'peas': 'green peas',
     'pea': 'green peas',
     'green pea': 'green peas',
-    // Classifier vocabulary spelling variants that share a nutrition profile.
-    'lox': 'smoked salmon',
+    'mixed vegetables': 'green peas',
+    // Food-101 / classifier vocabulary -> canonical DB base foods. The fuzzy
+    // resolver catches shared-word cases ("smoked salmon" -> "salmon"); these
+    // cover composite dish names that share no word with a base food.
+    'smoked salmon': 'salmon',
+    'lox': 'salmon',
+    'french toast': 'bread',
+    'garlic bread': 'bread',
+    'avocado toast': 'bread',
+    'club sandwich': 'sandwich',
+    'open sandwich': 'bread',
+    'tuna sandwich': 'sandwich',
+    'tuna melt': 'sandwich',
+    'pulled pork sandwich': 'sandwich',
+    'tuna salad': 'tuna',
+    'tuna mayo': 'tuna',
     'canned tuna': 'tuna',
-    'omelet': 'omelette',
+    'omelette': 'egg',
+    'omelet': 'egg',
+    'deviled eggs': 'egg',
+    'sushi': 'rice',
+    'risotto': 'rice',
+    'guacamole': 'avocado',
+    'hamburger': 'beef',
+    'cheeseburger': 'beef',
+    'spaghetti bolognese': 'pasta',
+    'spaghetti carbonara': 'pasta',
     'macaroni': 'pasta',
+    'mashed potatoes': 'potato',
     'baked potato': 'potato',
-    'barbecue sauce': 'bbq sauce',
-    'dressing': 'salad dressing',
-    'sweet chilli sauce': 'sweet chili sauce',
+    'tomato sauce': 'sauce',
+    'cream sauce': 'sauce',
+    'cheese sauce': 'sauce',
+    'bbq sauce': 'sauce',
+    'barbecue sauce': 'sauce',
+    'hot sauce': 'sauce',
+    'sriracha': 'sauce',
+    'gravy': 'sauce',
+    'salad dressing': 'sauce',
+    'ranch dressing': 'sauce',
+    'dressing': 'sauce',
+    'teriyaki sauce': 'sauce',
+    'sweet chili sauce': 'sauce',
+    'sweet chilli sauce': 'sauce',
+    'aioli': 'mayonnaise',
+    'tzatziki': 'yogurt',
   };
 
   // Labels that are NOT foods — model noise, non-food objects, or sentence fragments.
@@ -146,12 +192,7 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     state = const ScanResultState(loading: true);
 
     try {
-      // Load the user's on-device label corrections so the native pipeline can
-      // recognise foods they've already taught it. Local SQLite only.
-      final userExemplars =
-          await DatabaseService.instance.getFoodExemplars();
-      final rawVolumes = await NativeBridge.instance
-          .runVideoInference(userExemplars: userExemplars);
+      final rawVolumes = await NativeBridge.instance.runVideoInference();
       debugPrint('[SCAN] Flutter received ${rawVolumes.length} raw items from native');
       for (final vol in rawVolumes) {
         debugPrint('[SCAN] Flutter item: $vol');

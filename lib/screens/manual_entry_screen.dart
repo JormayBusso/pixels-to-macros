@@ -382,7 +382,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     final explanation = FoodScoringService.scoreFood(
       food,
       goal: prefs.nutritionGoal,
-      loggedGrams: servingGrams ?? 100,
     );
     final score = explanation.score;
     final Color scoreColor;
@@ -754,9 +753,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                                               FoodScoringService.scoreFood(
                                             food,
                                             goal: prefs.nutritionGoal,
-                                            loggedGrams:
-                                                _gramsOverrides[food.label] ??
-                                                    100,
                                           ),
                                           compact: true,
                                         ),
@@ -873,7 +869,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                                 explanation: FoodScoringService.scoreFood(
                                   _activeFood!,
                                   goal: prefs.nutritionGoal,
-                                  loggedGrams: _sliderGrams,
                                 ),
                               ),
                               const SizedBox(height: 12),

@@ -199,36 +199,6 @@ void main() {
       }
     });
 
-    test('Keto recipes stay within the net-carb limit', () async {
-      final recipes = await RecipeRepository.instance.query(
-        goal: NutritionGoalType.keto,
-        limit: 2000,
-      );
-
-      expect(recipes, isNotEmpty, reason: 'No keto recipes found');
-      for (final recipe in recipes) {
-        final netCarbsPerServing =
-            recipe.carbsPerServing(recipe.servings) -
-                recipe.fiberPerServing(recipe.servings);
-        expect(
-          netCarbsPerServing <= 20,
-          isTrue,
-          reason:
-              '${recipe.name} has ${netCarbsPerServing.toStringAsFixed(1)}g net carbs',
-        );
-      }
-
-      final names = recipes.map((recipe) => recipe.name);
-      for (final name in <String>[
-        'Parmesan-roasted potatoes',
-        'Caramel soufflés with caramel sauce',
-        'Havermout met zomerfruit en walnoten',
-        'Msemen met kip van Ahlam',
-      ]) {
-        expect(names, isNot(contains(name)));
-      }
-    });
-
     test('Muscle growth recipes are high-protein focused', () async {
       final recipes = await RecipeRepository.instance.query(
         goal: NutritionGoalType.muscleGrowth,

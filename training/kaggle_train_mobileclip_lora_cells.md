@@ -6,9 +6,9 @@ encoder only (the text tower is frozen), so it is far lighter than a full
 fine-tune.
 
 This produces a LoRA adapter checkpoint that can be evaluated against the
-already-corrected zero-shot baseline (**91.07% top-1**, measured locally this
-session on a 3,000-image balanced Food-101 test subset with MPS acceleration)
-before deciding whether to bundle it on-device.
+already-corrected zero-shot baseline (**90.33% top-1** on a 300-sample Food-101
+test subset, measured this session after fixing `training/export_mobileclip.py`'s
+image-normalisation bug) before deciding whether to bundle it on-device.
 
 ## Cell 1 — Clone repo (upgraded branch) and install deps
 
@@ -43,37 +43,24 @@ the script's own defaults, tuned as a reasonable starting point; adjust epochs
 downward first if a run doesn't finish inside your Kaggle session time budget
 (so you keep a usable adapter rather than losing the whole run).
 
-**Fixed since the last Kaggle run:** the previous run's `best_adapter` was
-selected by **train accuracy**, which keeps climbing via memorisation and is
-not a proxy for real generalisation — that run's `best_adapter` measured
-**71.47%** top-1 locally, a sharp regression below the **91.07%** no-LoRA
-baseline (verified two ways: direct eval, and a manual
-`merge_and_unload()` + reparameterise pass to rule out an eval-script
-asymmetry). The script now carves a held-out validation slice out of the
-`train` split only (never the `test` split, which stays reserved for Cell 3's
-baseline-vs-LoRA gate below) and picks `best_adapter` by **validation
-accuracy** instead. `--val-fraction 0.1` is the script's own default; passed
-explicitly below so it's visible.
-
 ```python
 # Cell 2 - Full LoRA fine-tune run (auto-downloads MobileCLIP2-S2 + Food-101)
 !python training/train_mobileclip_lora.py \
     --data-dir /kaggle/working/food101_data \
     --output-dir /kaggle/working/mobileclip_lora \
-    --epochs 10 --batch-size 64 --lr 1e-4 --lora-rank 16 --val-fraction 0.1
+    --epochs 10 --batch-size 64 --lr 1e-4 --lora-rank 16
 ```
 
 Checkpoints (`adapter_model.safetensors` + `adapter_config.json`) land in
-three subfolders under `/kaggle/working/mobileclip_lora/` —
-`last_adapter/` (most recent save), `best_adapter/` (highest validation
-accuracy seen so far), `final_adapter/` (end of training) — each with its own
-`adapter_config.json`. Cell 3 evaluates `best_adapter/`.
+`/kaggle/working/mobileclip_lora/` after each save interval (per
+`--checkpoint-seconds`, script default) and again at the end of training — the
+final checkpoint is what Cell 3 evaluates.
 
 ## Cell 3 — Evaluate the LoRA checkpoint against the zero-shot baseline
 
 Runs the same eval harness twice: once on the full held-out Food-101 test split
-with **no adapter** (reproducing this session's 91.07%-class baseline, but on
-the FULL test set rather than the 3,000-image subset used to establish it
+with **no adapter** (reproducing this session's 90.33%-class baseline, but on
+the FULL test set rather than the 300-sample subset used to establish it
 quickly), then once **with** the LoRA adapter, so the two numbers are directly
 comparable on the same metric and same data.
 
@@ -83,10 +70,10 @@ comparable on the same metric and same data.
     --data-root /kaggle/working/food101_data \
     --batch-size 64
 
-# Cell 3b - LoRA-adapted checkpoint (best_adapter/, selected by val_acc), same full test split
+# Cell 3b - LoRA-adapted checkpoint, same full test split
 !python training/eval_mobileclip_lora.py \
     --data-root /kaggle/working/food101_data \
-    --lora-checkpoint /kaggle/working/mobileclip_lora/best_adapter \
+    --lora-checkpoint /kaggle/working/mobileclip_lora \
     --batch-size 64
 ```
 
@@ -99,10 +86,8 @@ useful, reportable finding — do not force a regression into the app.
 ## Cell 4 — Download the adapter checkpoint
 
 ```python
-# Cell 4 - Zip the adapter for download from the Kaggle output pane
-import shutil
-shutil.make_archive('/kaggle/working/mobileclip_lora_adapter', 'zip', '/kaggle/working/mobileclip_lora')
-print('Download /kaggle/working/mobileclip_lora_adapter.zip from the Output tab.')
+
+
 ```
 
 ## Notes

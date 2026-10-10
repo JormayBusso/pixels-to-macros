@@ -426,21 +426,9 @@ class _FoodRow {
   final double grams;
 }
 
-class _PendingLabelPrompt {
-  const _PendingLabelPrompt({
-    required this.food,
-    required this.candidateLabels,
-    required this.embedding,
-  });
-  final DetectedFood food;
-  final List<String> candidateLabels;
-  final List<double> embedding;
-}
-
 class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
   List<_FoodRow> _rows = const [];
   bool _loading = true;
-  bool _didPromptUncertain = false;
 
   @override
   void initState() {
@@ -465,45 +453,10 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
       _rows = rows;
       _loading = false;
     });
-    await _maybePromptUncertainFoods();
   }
 
-  /// On the first load after a scan, proactively ask the user to name any food
-  /// the scanner could not confidently identify (`needsUserLabel`), instead of
-  /// silently showing the guess. Reuses [EditFoodScreen], pre-filled with the
-  /// first candidate label but clearly marked as unconfirmed.
-  Future<void> _maybePromptUncertainFoods() async {
-    if (_didPromptUncertain) return;
-    _didPromptUncertain = true;
-    final pending = <_PendingLabelPrompt>[];
-    for (final row in _rows) {
-      final object = _objectForFood(row.food);
-      if (object != null && object.needsUserLabel) {
-        pending.add(_PendingLabelPrompt(
-          food: row.food,
-          candidateLabels: object.candidateLabels,
-          embedding: object.embedding,
-        ));
-      }
-    }
-    for (final entry in pending) {
-      if (!mounted) return;
-      await _edit(
-        entry.food,
-        needsUserLabel: true,
-        candidateLabels: entry.candidateLabels,
-        labelEmbedding: entry.embedding,
-      );
-    }
-  }
-
-  Future<void> _edit(
-    DetectedFood food, {
-    bool needsUserLabel = false,
-    List<String> candidateLabels = const [],
-    List<double> labelEmbedding = const [],
-  }) async {
-    if (!needsUserLabel && food.label.trim().isNotEmpty) {
+  Future<void> _edit(DetectedFood food) async {
+    if (food.label.trim().isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Editing ${food.label}'),
@@ -513,13 +466,7 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
     }
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => EditFoodScreen(
-          scanId: widget.scanId,
-          food: food,
-          needsUserLabel: needsUserLabel,
-          candidateLabels: candidateLabels,
-          labelEmbedding: labelEmbedding,
-        ),
+        builder: (_) => EditFoodScreen(scanId: widget.scanId, food: food),
       ),
     );
     await ref.read(dailyIntakeProvider.notifier).load();
@@ -675,23 +622,12 @@ class _IngredientPanelState extends ConsumerState<_IngredientPanel> {
                             : null,
                       ),
                       child: ListTile(
-                        title: Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                r.food.label.isEmpty ? '—' : r.food.label,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            if (_objectForFood(r.food)?.isLearnedFromUser ??
-                                false) ...[
-                              const SizedBox(width: 8),
-                              _LearnedBadge(label: l10n.learnedFromYou),
-                            ],
-                          ],
+                        title: Text(
+                          r.food.label.isEmpty ? '—' : r.food.label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         subtitle: Text(
                           selected
@@ -722,39 +658,3 @@ String _normaliseIngredientName(String value) => value
     .toLowerCase()
     .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
     .trim();
-
-/// Small chip shown next to a food name when the label was recognised from a
-/// correction the user previously made on this device (on-device learning).
-class _LearnedBadge extends StatelessWidget {
-  const _LearnedBadge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.tealAccent.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.6)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.auto_awesome, size: 12, color: Colors.tealAccent),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.tealAccent,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-

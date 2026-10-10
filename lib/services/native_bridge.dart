@@ -135,23 +135,11 @@ class NativeBridge {
   /// Returns JSON metadata only after a 3-D model file exists on disk.
   /// Times out after 75 s to avoid false scan failures on cold model load or
   /// USDZ export while still bounding genuine native hangs.
-  ///
-  /// [userExemplars] carries the user's locally-stored label corrections
-  /// (`{'label': String, 'embedding': List<double>}`) so the native pipeline can
-  /// recognise foods the user has already taught it. This data comes from local
-  /// SQLite and is passed only over this in-process channel — it never leaves
-  /// the device.
-  Future<List<Map<String, dynamic>>> runVideoInference({
-    List<Map<String, dynamic>> userExemplars = const [],
-  }) async {
-    debugPrint('[SCAN] NativeBridge.runVideoInference() called '
-        '(exemplars=${userExemplars.length})');
+  Future<List<Map<String, dynamic>>> runVideoInference() async {
+    debugPrint('[SCAN] NativeBridge.runVideoInference() called');
     try {
       final raw = await _channel
-          .invokeMethod<String>(
-            'runVideoInference',
-            {'user_exemplars': userExemplars},
-          )
+          .invokeMethod<String>('runVideoInference')
           .timeout(const Duration(seconds: 75));
       debugPrint('[SCAN] NativeBridge.runVideoInference() raw=${raw?.substring(0, (raw.length > 200 ? 200 : raw.length))}');
       if (raw == null) return [];
@@ -228,11 +216,9 @@ class NativeBridge {
 
   /// Per-object metadata for the most recently exported 3-D model. Each entry
   /// carries `id` (stable cluster id like `rice_0`), `label`, `volume_cm3`,
-  /// `voxel_count`, and `confidence`, plus the optional `needs_user_label`
-  /// (bool, absent → false) and `candidate_labels` (list, absent → empty) that
-  /// flag foods the pipeline could not confidently name. Mirrors the `MDLMesh`
-  /// order in the USDZ scene graph 1:1 so the Flutter UI and the SceneKit
-  /// viewer can address the same objects by `id`.
+  /// `voxel_count`, and `confidence`. Mirrors the `MDLMesh` order in the
+  /// USDZ scene graph 1:1 so the Flutter UI and the SceneKit viewer can
+  /// address the same objects by `id`.
   Future<List<Map<String, dynamic>>> getModel3DObjects() async {
     try {
       final raw = await _channel.invokeMethod<List<dynamic>>('getModel3DObjects');

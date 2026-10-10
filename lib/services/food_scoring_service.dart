@@ -16,16 +16,9 @@ class FoodScoreExplanation {
 class FoodScoringService {
   FoodScoringService._();
 
-  // Twice the NHS 600 kcal main-meal guide; larger entries are penalized
-  // progressively, reaching the maximum penalty at 3,000 kcal.
-  static const double _largeEntryEnergyThresholdKcal = 1200;
-  static const double _maximumLargeEntryEnergyKcal = 3000;
-  static const double _maximumLargeEntryPenalty = 50;
-
   static FoodScoreExplanation scoreFood(
     FoodData food, {
     required NutritionGoalType goal,
-    required double loggedGrams,
   }) {
     var score = 55.0;
     final reasons = <String>[];
@@ -72,18 +65,6 @@ class FoodScoringService {
     if (calorieDensity > 450 && proteinDensity < 12 && fiberDensity < 3) {
       score -= 12;
       reasons.add('energyDenseLowSatiety');
-    }
-
-    final entryEnergyKcal =
-        calorieDensity * (loggedGrams < 0 ? 0 : loggedGrams) / 100;
-    if (entryEnergyKcal > _largeEntryEnergyThresholdKcal) {
-      final penaltyProgress = ((entryEnergyKcal -
-                  _largeEntryEnergyThresholdKcal) /
-              (_maximumLargeEntryEnergyKcal - _largeEntryEnergyThresholdKcal))
-          .clamp(0.0, 1.0)
-          .toDouble();
-      score -= 12 + (_maximumLargeEntryPenalty - 12) * penaltyProgress;
-      reasons.insert(0, 'excessiveEntryEnergy');
     }
 
     switch (goal) {

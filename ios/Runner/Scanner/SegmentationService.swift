@@ -28,25 +28,6 @@ final class SegmentationService {
         let centroid: (row: Int, col: Int)
         /// Average confidence for this class across its pixels.
         let confidence: Float
-        /// True when the refinement passes could not confirm a specific food
-        /// name for this segment (it still carries only a generic / low-
-        /// confidence segmentation guess), so the user should be asked what it
-        /// is. Defaults to false; set late in `InferencePipeline`.
-        var needsUserLabel: Bool = false
-        /// Best-effort plausible label guesses that the classifier / open-vocab
-        /// passes produced but the confidence gate rejected. Empty when nothing
-        /// plausible was seen. Surfaced only to help the user pick a name.
-        var candidateLabels: [String] = []
-        /// L2-normalised MobileCLIP image embedding of this segment's crop,
-        /// captured during the open-vocab refinement pass. Empty when MobileCLIP
-        /// is unavailable or the segment was not embedded. Carried in the scan
-        /// JSON so a user label correction can be learned as a local on-device
-        /// exemplar; never uploaded. Length == the encoder's embedding dim.
-        var embedding: [Float] = []
-        /// Provenance of the final label. `"user_exemplar"` when this segment's
-        /// name came from matching a previously user-corrected on-device
-        /// exemplar; `nil` for the normal recogniser path. Additive metadata.
-        var labelSource: String? = nil
     }
 
     // MARK: – Model

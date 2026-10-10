@@ -9,7 +9,7 @@ import simd
 ///
 /// Accuracy contract:
 ///   • This is an estimate, not a measured LiDAR reconstruction.
-///   • Scale priority: plate diameter → ARKit table distance → 22 cm fallback.
+///   • Scale priority: plate diameter → ARKit table distance → 30 cm fallback.
 ///   • Geometry: top-mask footprint × side-view silhouette profile when
 ///     available, falling back to bounded class priors.
 ///   • Mesh: generated height-field visual hull from real masks, suitable for
@@ -365,12 +365,9 @@ final class MonocularVolumeEstimator {
             } else if let profile {
                 let topAxisCm = profile.topAxis == .columns ? widthCm : depthCm
                 // Thickness comes straight from the measured side silhouette
-                // (aspect ratio × top axis) EXACTLY — no thickness floor, so a
-                // genuinely flat food renders as thin as it truly is and is never
-                // padded up to a perceptible minimum (AGENTS.md §9). Downstream
-                // divisors that use this height already guard with
-                // `max(h, 0.0001)`, so an unfloored thin height cannot NaN.
-                let rawHeightCm = profile.aspectRatio * topAxisCm
+                // (aspect ratio × top axis); only a 0.2 cm physical floor so a
+                // flat food is never padded thicker than it truly is.
+                let rawHeightCm = max(0.2, profile.aspectRatio * topAxisCm)
                 heightCm = boundedHeightCm(
                     rawHeightCm: rawHeightCm,
                     label: seg.label,
@@ -585,10 +582,6 @@ final class MonocularVolumeEstimator {
                 "top_silhouette_edge_snap_vertices": estimatedObject.topSilhouetteEdgeSnapVertices,
                 "side_profile_samples": profile?.normalizedHeights.count ?? 0,
                 "volume_source": "display_mesh",
-                "needs_user_label": seg.needsUserLabel,
-                "candidate_labels": seg.candidateLabels,
-                "embedding": seg.embedding.map { Double($0) },
-                "label_source": seg.labelSource ?? "recognizer",
             ]
             if let guardrailUpperCm3 {
                 row["guardrail_upper_cm3"] = round(guardrailUpperCm3 * 10) / 10
@@ -613,24 +606,11 @@ final class MonocularVolumeEstimator {
         // makeEstimatedObject) so no triangle straddles the two photos and there
         // is no doubled/flickering texture. Without a side capture the top photo
         // is baked alone and every vertex maps into it.
-        //
-        // Silhouette coverage for the atlas: the exporter masks each tile to the
-        // food outline over a dominant-colour underlay so UVs that graze the
-        // plate/table paste food colour, not grey/white background (the reported
-        // bug). The top tile uses the union of the top segmentation masks; the
-        // side tile uses a coverage grid reconstructed from the side profiles.
-        let topCoverage = unionTopCoverage(
-            segments: segments, maskWidth: maskWidth, maskHeight: maskHeight)
-        let sideCoverage = sidePreprocessedRGB != nil
-            ? sideCoverageGrid(profiles: sideProfiles)
-            : nil
         guard let url = exporter.export(
             objects: objects,
             baseName: baseName,
             textureSource: preprocessedRGB,
-            sideTextureSource: sidePreprocessedRGB,
-            topCoverage: topCoverage,
-            sideCoverage: sideCoverage
+            sideTextureSource: sidePreprocessedRGB
         ),
               FileManager.default.fileExists(atPath: url.path) else {
             print("[MonocularEstimator] export failed: objects=\(objects.count), baseName=\(baseName)")
@@ -644,110 +624,6 @@ final class MonocularVolumeEstimator {
 
         print("[MonocularEstimator] scale=\(scale.source), px/cm=\(String(format: "%.2f", scale.pixelsPerCm)), objects=\(objects.count), path=\(url.path)")
         return Result(json: json, modelPath: url.path, objects: metadata)
-    }
-
-    // MARK: - Atlas silhouette coverage
-
-    /// Union of every top segmentation mask, in mask (row-major, top-down)
-    /// coordinates. The atlas top tile is masked to this so the baked top photo
-    /// only shows through where the camera actually saw food; anywhere else the
-    /// exporter's dominant-colour underlay shows instead of the plate/table.
-    private func unionTopCoverage(
-        segments: [SegmentationService.SegmentedObject],
-        maskWidth: Int,
-        maskHeight: Int
-    ) -> [[UInt8]]? {
-        guard maskWidth > 0, maskHeight > 0, !segments.isEmpty else { return nil }
-        var union = [[UInt8]](
-            repeating: [UInt8](repeating: 0, count: maskWidth), count: maskHeight)
-        var any = false
-        for seg in segments {
-            let m = seg.mask
-            for r in 0..<min(maskHeight, m.count) {
-                let row = m[r]
-                let cols = min(maskWidth, row.count)
-                for c in 0..<cols where row[c] != 0 {
-                    union[r][c] = 1
-                    any = true
-                }
-            }
-        }
-        return any ? union : nil
-    }
-
-    /// Reconstruct a food-vs-background coverage grid for the atlas SIDE tile, in
-    /// side-image (row-major, top-down) normalized space, from the side profiles.
-    ///
-    /// LIMITATION: `SideProfile` does NOT carry a full 2-D side mask — it stores
-    /// per-sample silhouette bounds (`normalizedBottoms`/`normalizedTops`) plus
-    /// the food's texture bounding box in the side frame. So this rebuilds the
-    /// silhouette as the exact INVERSE of `InferencePipeline.makeSideProfile`:
-    /// for each grid pixel we map its normalized (col,row) into the profile's
-    /// horizontal/vertical axes, and mark it food when it lies inside that
-    /// column's [bottom,top] band. Gaps between per-sample columns are the only
-    /// approximation; the food outline itself is the captured one. Multiple
-    /// profiles (multi-food side view) are unioned since they share one photo.
-    private func sideCoverageGrid(
-        profiles: [SideProfile],
-        gridW: Int = 384,
-        gridH: Int = 384
-    ) -> [[UInt8]]? {
-        let usable = profiles.filter {
-            $0.normalizedBottoms.count >= 2 &&
-            $0.normalizedBottoms.count == $0.normalizedTops.count &&
-            $0.textureHorizontalMax > $0.textureHorizontalMin &&
-            $0.textureVerticalMax > $0.textureVerticalMin
-        }
-        guard !usable.isEmpty, gridW > 0, gridH > 0 else { return nil }
-
-        var grid = [[UInt8]](
-            repeating: [UInt8](repeating: 0, count: gridW), count: gridH)
-        var any = false
-        for r in 0..<gridH {
-            // Row 0 = top of the side image, matching `CIImage(cvPixelBuffer:)`.
-            let vImg = (Double(r) + 0.5) / Double(gridH)
-            for c in 0..<gridW {
-                let uImg = (Double(c) + 0.5) / Double(gridW)
-                for p in usable {
-                    // Map the image (col,row) to this profile's horizontal /
-                    // vertical axes. `textureHorizontalUsesRows` mirrors
-                    // makeSideProfile's `verticalUsesColumns`: when the height
-                    // axis is image columns, the profile's horizontal axis is
-                    // image rows (and vice versa).
-                    let horizontalNorm = p.textureHorizontalUsesRows ? vImg : uImg
-                    let verticalNorm = p.textureHorizontalUsesRows ? uImg : vImg
-                    let hSpan = p.textureHorizontalMax - p.textureHorizontalMin
-                    guard horizontalNorm >= p.textureHorizontalMin,
-                          horizontalNorm <= p.textureHorizontalMax else { continue }
-                    let hFrac = min(1.0, max(0.0, (horizontalNorm - p.textureHorizontalMin) / hSpan))
-                    // Index the silhouette bounds directly in image order (NOT
-                    // via `sampleBounds`, which applies `reversed` to align with
-                    // the TOP axis — here we want raw image orientation).
-                    let bounds = p.normalizedBottoms
-                    let x = hFrac * Double(bounds.count - 1)
-                    let i0 = Int(x.rounded(.down))
-                    let i1 = min(bounds.count - 1, i0 + 1)
-                    let t = x - Double(i0)
-                    let bottom = p.normalizedBottoms[i0] * (1.0 - t) + p.normalizedBottoms[i1] * t
-                    let top = p.normalizedTops[i0] * (1.0 - t) + p.normalizedTops[i1] * t
-                    guard top > bottom else { continue }
-                    // Bounds are fractions of the food's vertical extent measured
-                    // from its bottom (0) to top (1). The extent spans
-                    // [textureVerticalMin, textureVerticalMax] with the larger
-                    // normalized coordinate at the silhouette bottom, so map both
-                    // edges back into image vertical space.
-                    let vSpan = p.textureVerticalMax - p.textureVerticalMin
-                    let bottomEdge = p.textureVerticalMax - bottom * vSpan
-                    let topEdge = p.textureVerticalMax - top * vSpan
-                    if verticalNorm >= topEdge, verticalNorm <= bottomEdge {
-                        grid[r][c] = 1
-                        any = true
-                        break
-                    }
-                }
-            }
-        }
-        return any ? grid : nil
     }
 
     // MARK: - Scale
@@ -962,17 +838,17 @@ final class MonocularVolumeEstimator {
         priorBoundCm: Double,
         lateralBoundCm: Double
     ) -> Double {
-        // Hard-force the measured silhouette EXACTLY: no lower thickness floor
-        // (not even a physical one), so a genuinely thin/flat food keeps its true
-        // measured thickness instead of being inflated up toward any minimum
-        // (AGENTS.md §9). The upper cap still guards against a foreshortened side
-        // view reading too tall.
+        // Hard-force the measured silhouette: only a 0.2 cm physical floor, never
+        // a prior-based one, so a genuinely thin/flat food keeps its true
+        // thickness instead of being inflated up toward a class prior. The upper
+        // cap still guards against a foreshortened side view reading too tall.
+        let lower = 0.2
         let upper = maxVisualHeightCm(
             label: label,
             priorBoundCm: priorBoundCm,
             lateralBoundCm: lateralBoundCm
         )
-        return min(upper, rawHeightCm)
+        return min(upper, max(lower, rawHeightCm))
     }
 
     private func maxVisualHeightCm(
@@ -1426,16 +1302,10 @@ final class MonocularVolumeEstimator {
         let centroid = footprint.centroid
         let rx = Float(max(widthCm, 2.0) / 200.0)   // half-width in metres
         let rz = Float(max(depthCm, 2.0) / 200.0)   // half-depth in metres
-        // Use the measured thickness EXACTLY — no thickness floor. The 3-D mesh
-        // is built from the exact silhouettes of the two captured photos, so a
-        // genuinely flat food (chocolate square, cracker, deli slice) must render
-        // as thin as it truly is and never be padded up to any perceptible
-        // minimum. Nothing is added in 3-D generation (AGENTS.md §9). No epsilon
-        // is needed: every divisor that uses `h` already guards with
-        // `max(h, 0.0001)`, so a very thin — even zero — height cannot produce a
-        // NaN or divide-by-zero. No silhouette path floors the height any more
-        // (AGENTS.md §9); bowl/depth are positive physical measurements.
-        let h  = Float(heightCm / 100.0)  // height in metres (measured, unfloored)
+        // Honour the measured thickness exactly; only a 1.5 mm physical floor so
+        // a flat food (chocolate, cracker, slice) renders as thin as it truly is
+        // instead of being forced up to a 0.8 cm minimum.
+        let h  = Float(max(heightCm, 0.15) / 100.0)  // height in metres
         let offsetX = Float((centroid.col / Double(maskWidth)) - 0.5) * 0.28
         let offsetZ = Float((centroid.row / Double(maskHeight)) - 0.5) * 0.28
 
@@ -1809,16 +1679,52 @@ final class MonocularVolumeEstimator {
             }
         }
 
-        // No generic/primitive fallback (AGENTS.md §9): the top-mask occupancy is
-        // guaranteed non-empty upstream ("Guarantee at least one cell so the
-        // viewer always has geometry") and every occupied cell above emits its
-        // top+bottom quads unconditionally, so the exact-silhouette loft always
-        // produces geometry. A box/dome/thickness-floor substitute would violate
-        // the exact-silhouette contract, so none is created here.
+        if vertices.isEmpty || faces.count < 3 {
+            let x0 = cornerX(max(0, gc / 2 - 1))
+            let x1 = cornerX(min(gc, gc / 2 + 1))
+            let z0 = cornerZ(max(0, gr / 2 - 1))
+            let z1 = cornerZ(min(gr, gr / 2 + 1))
+            let y1 = max(0.005, h * 0.4)
+            vertices = [
+                SIMD3<Float>(x0, 0, z0), SIMD3<Float>(x1, 0, z0),
+                SIMD3<Float>(x1, 0, z1), SIMD3<Float>(x0, 0, z1),
+                SIMD3<Float>(x0, y1, z0), SIMD3<Float>(x1, y1, z0),
+                SIMD3<Float>(x1, y1, z1), SIMD3<Float>(x0, y1, z1)
+            ]
+            faces = [0, 1, 2, 0, 2, 3, 4, 7, 6, 4, 6, 5,
+                     0, 4, 5, 0, 5, 1, 1, 5, 6, 1, 6, 2,
+                     2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0]
+            hullVoxelVolumeCm3 = max(0.5, Double(y1 * 1_000_000))
+        }
         print("[MonocularEstimator] visual-hull mesh label=\(label) mode=\(surfaceExtractionMode) grid=\(gc)x\(gr) cells=\(occupiedCellCount) rawV=\(vertices.count) rawF=\(faces.count / 3) filledHolePixels=\(filledHoleCells)")
 
-        // HARD-FORCED EXACT SILHOUETTE: re-snap vertices to the exact top/side
-        // silhouette masks below; no geometry smoothing or subdivision is applied.
+        // Smooth the silhouette cage into an organic surface: one Loop
+        // subdivision level removes the triangle facets / straight lines, then a
+        // short Taubin pass polishes it (base pinned + re-grounded inside). This
+        // is the SAME post-process the LiDAR path uses, so both look identical.
+        //
+        // HARD-FORCED EXACT SILHOUETTE (every scan, no fallback): by default a
+        // food keeps its exact captured outline with ZERO subdivision and ZERO
+        // Taubin smoothing, so a flat/angular food (chocolate bar, toast, slice)
+        // can never be rounded into a thicker pillow. ONLY genuinely round
+        // produce — the labels with a transverse-roundness value (tomato, apple,
+        // orange, egg, onion, potato…) — is allowed the organic smoothing that
+        // makes a dome look round.
+        // Bowls always get the organic smoothing so the rounded cavity reads
+        // smooth; otherwise only genuinely round produce is smoothed and a
+        // flat/angular food keeps its exact hard silhouette.
+        // Smooth EVERY food (subdivide + Taubin) so a coarse silhouette cage can
+        // never render as a faceted spike/point — a repeated user complaint. The
+        // outline is re-snapped to the exact mask below, so smoothing keeps the
+        // captured silhouette exact while removing facets. Round produce gets an
+        // extra Taubin pass for a fuller organic surface.
+        // HARD-FORCED EXACT SILHOUETTE (user requirement): NO geometry
+        // smoothing. Loop subdivision + Taubin were rounding the captured
+        // outline into a softer pillow; the user wants the displayed mesh to be
+        // EXACTLY the top + side silhouette. We keep the raw silhouette-cage
+        // vertices and only re-snap them to the exact source mask below. Soft
+        // per-vertex NORMALS (the exporter's addNormals) still shade it
+        // pleasantly without ever altering the geometry.
 
         @inline(__always) func hullBoundsAt(rowGrid: Float, colGrid: Float) -> (bottom: Float, top: Float) {
             let rr = min(gr - 1, max(0, Int(floor(rowGrid))))
@@ -2109,13 +2015,7 @@ final class MonocularVolumeEstimator {
                     nv.append(vertices[v])
                     let cBase = v * colorStride
                     for k in 0..<colorStride {
-                        // Fall back to the segment's own dominant food colour
-                        // (never a fixed grey `200`) when a per-vertex colour
-                        // index runs past the sampled array, so an out-of-bounds
-                        // vertex still reads as food, not institutional grey.
-                        nc.append(cBase + k < colors.count
-                            ? colors[cBase + k]
-                            : (k < color.count ? color[k] : 200))
+                        nc.append(cBase + k < colors.count ? colors[cBase + k] : 200)
                     }
                     nu.append(isSide ? sideUV(vertices[v]) : topUV(vertices[v]))
                 }
