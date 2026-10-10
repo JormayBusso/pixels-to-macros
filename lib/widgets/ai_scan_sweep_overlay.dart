@@ -4,19 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
-/// A themed "AI is scanning" sweep drawn over the live camera during the scan.
+/// A themed, bounded "AI is analysing" indicator over the live camera.
 ///
-/// It layers three cheap, GPU-friendly effects that together read as
-/// on-device intelligence analysing the food:
-///   • a travelling **scan line** with a soft leading glow,
-///   • a faint **reconstruction grid** that the sweep reveals, and
-///   • animated **corner reticles** that lock onto the frame.
-///
-/// Colours follow the active premium theme's [AppVisualTheme.gradient] so each
-/// premium theme gets its own distinctive look; non-premium themes get a clean
-/// neutral cyan so the scan still looks high-tech. Contained in a
-/// [RepaintBoundary] with a single controller, and falls back to a static
-/// frame when the user has reduced motion enabled.
+/// The effect is deliberately limited to the same central circular framing
+/// area as the capture guide. It uses a pulsing halo, orbiting arc segments,
+/// and an inner analysis ring rather than implying detection across unrelated
+/// areas of the camera preview. Colours follow the active premium theme's
+/// [AppVisualTheme.gradient]; non-premium themes get a neutral cyan treatment.
 class AiScanSweepOverlay extends StatefulWidget {
   const AiScanSweepOverlay({
     super.key,
@@ -36,20 +30,14 @@ class AiScanSweepOverlay extends StatefulWidget {
 
 class _AiScanSweepOverlayState extends State<AiScanSweepOverlay>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _sweep;
-  late final AnimationController _fade;
+  late final AnimationController _analysis;
 
   @override
   void initState() {
     super.initState();
-    _sweep = AnimationController(
+    _analysis = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2600),
-    );
-    _fade = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 450),
-      value: widget.active ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 2200),
     );
   }
 
@@ -71,22 +59,19 @@ class _AiScanSweepOverlayState extends State<AiScanSweepOverlay>
     final shouldAnimate = widget.active &&
         TickerMode.valuesOf(context).enabled &&
         !reduceMotion;
-    if (shouldAnimate && !_sweep.isAnimating) {
-      _sweep.repeat();
-    } else if (!shouldAnimate && _sweep.isAnimating) {
-      _sweep.stop();
+    if (shouldAnimate && !_analysis.isAnimating) {
+      _analysis.repeat();
+    } else if (!shouldAnimate && _analysis.isAnimating) {
+      _analysis.stop();
     }
-    if (widget.active) {
-      _fade.forward();
-    } else {
-      _fade.reverse();
+    if (!shouldAnimate) {
+      _analysis.value = 0;
     }
   }
 
   @override
   void dispose() {
-    _sweep.dispose();
-    _fade.dispose();
+    _analysis.dispose();
     super.dispose();
   }
 
@@ -99,118 +84,109 @@ class _AiScanSweepOverlayState extends State<AiScanSweepOverlay>
         ? visual.gradient
         : const [Color(0xFF35E1D6), Color(0xFF3D8BFF), Color(0xFF9B5CFF)];
 
+    if (!widget.active) return const SizedBox.shrink();
+
     return IgnorePointer(
       child: RepaintBoundary(
-        child: AnimatedBuilder(
-          animation: Listenable.merge([_sweep, _fade]),
-          builder: (context, _) {
-            final opacity = Curves.easeInOut.transform(_fade.value);
-            if (opacity <= 0.001) return const SizedBox.shrink();
-            return CustomPaint(
-              size: Size.infinite,
-              painter: _SweepPainter(
-                colors: colors,
-                progress: _sweep.value,
-                opacity: opacity,
-                intensity: widget.intensity.clamp(0.0, 1.0),
-              ),
-            );
-          },
+        child: CustomPaint(
+          size: Size.infinite,
+          painter: _AnalysisPainter(
+            animation: _analysis,
+            colors: colors,
+            intensity: widget.intensity.clamp(0.0, 1.0),
+          ),
         ),
       ),
     );
   }
 }
 
-class _SweepPainter extends CustomPainter {
-  _SweepPainter({
+class _AnalysisPainter extends CustomPainter {
+  _AnalysisPainter({
+    required this.animation,
     required this.colors,
-    required this.progress,
-    required this.opacity,
     required this.intensity,
-  });
+  }) : super(repaint: animation);
 
+  final Animation<double> animation;
   final List<Color> colors;
-  final double progress;
-  final double opacity;
   final double intensity;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
+    final phase = animation.value;
     final primary = colors.first;
     final accent = colors.length >= 3 ? colors[2] : colors.last;
-    final a = opacity * intensity;
+    final center = size.center(Offset.zero);
+    final radius = (size.shortestSide * 0.28).clamp(104.0, 120.0).toDouble();
+    final pulse = 0.5 + 0.5 * math.sin(phase * 2 * math.pi);
+    final analysisRect = Rect.fromCircle(center: center, radius: radius);
 
-    // ── Reconstruction grid (revealed near the sweep line) ───────────────
-    // A faint mesh that suggests the scene is being reconstructed. Vertical
-    // lines fade with distance from the sweep so the grid appears to "build".
-    final sweepX = progress * w;
-    const gridSpacing = 46.0;
-    final gridPaint = Paint()
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
-    for (double x = 0; x <= w; x += gridSpacing) {
-      final d = (x - sweepX).abs() / w;
-      final fade = (1.0 - d).clamp(0.0, 1.0);
-      gridPaint.color = primary.withValues(alpha: 0.10 * fade * a);
-      canvas.drawLine(Offset(x, 0), Offset(x, h), gridPaint);
-    }
-    for (double y = 0; y <= h; y += gridSpacing) {
-      gridPaint.color = primary.withValues(alpha: 0.05 * a);
-      canvas.drawLine(Offset(0, y), Offset(w, y), gridPaint);
-    }
+    // Keep the ambient light strictly within the capture guide: this signals
+    // focused analysis without pretending that a live food mask is available.
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            primary.withValues(alpha: 0.11 * intensity),
+            accent.withValues(alpha: 0.035 * intensity),
+            Colors.transparent,
+          ],
+          stops: const [0.0, 0.68, 1.0],
+        ).createShader(analysisRect),
+    );
 
-    // ── Travelling scan line with a soft leading glow ────────────────────
-    final glowRect = Rect.fromLTWH(sweepX - 70, 0, 140, h);
-    final glowPaint = Paint()
-      ..shader = LinearGradient(
-        colors: [
-          accent.withValues(alpha: 0.0),
-          accent.withValues(alpha: 0.28 * a),
-          primary.withValues(alpha: 0.0),
-        ],
-        stops: const [0.0, 0.5, 1.0],
-      ).createShader(glowRect);
-    canvas.drawRect(glowRect, glowPaint);
-
-    final linePaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.85 * a)
-      ..strokeWidth = 2.0;
-    canvas.drawLine(Offset(sweepX, 0), Offset(sweepX, h), linePaint);
-    final lineCore = Paint()
-      ..color = primary.withValues(alpha: 0.9 * a)
-      ..strokeWidth = 4.0
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-    canvas.drawLine(Offset(sweepX, 0), Offset(sweepX, h), lineCore);
-
-    // ── Corner reticles that "lock on" to the frame ──────────────────────
-    final pulse = 0.5 + 0.5 * math.sin(progress * 2 * math.pi);
-    const inset = 26.0;
-    final bracket = 34.0 + 6.0 * pulse;
-    final reticle = Paint()
-      ..color = primary.withValues(alpha: (0.55 + 0.35 * pulse) * a)
+    final haloRadius = radius * (0.92 + 0.05 * pulse);
+    final haloPaint = Paint()
+      ..color = primary.withValues(alpha: (0.18 + 0.12 * pulse) * intensity)
       ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
-    void corner(double cx, double cy, double sx, double sy) {
-      canvas.drawLine(
-          Offset(cx, cy), Offset(cx + bracket * sx, cy), reticle);
-      canvas.drawLine(
-          Offset(cx, cy), Offset(cx, cy + bracket * sy), reticle);
+    canvas.drawCircle(center, haloRadius, haloPaint);
+
+    final arcPaint = Paint()
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    for (int i = 0; i < 3; i++) {
+      arcPaint.color = (i.isEven ? primary : accent).withValues(
+        alpha: (0.5 + 0.25 * pulse) * intensity,
+      );
+      canvas.drawArc(
+        analysisRect.deflate(5),
+        phase * 2 * math.pi + i * 2.1,
+        0.56,
+        false,
+        arcPaint,
+      );
     }
 
-    corner(inset, inset, 1, 1);
-    corner(w - inset, inset, -1, 1);
-    corner(inset, h - inset, 1, -1);
-    corner(w - inset, h - inset, -1, -1);
+    final innerPaint = Paint()
+      ..color = Colors.white.withValues(alpha: (0.2 + 0.14 * pulse) * intensity)
+      ..strokeWidth = 1.4
+      ..style = PaintingStyle.stroke;
+    const segments = 16;
+    const segmentAngle = (2 * math.pi) / segments;
+    final innerRect = Rect.fromCircle(center: center, radius: radius * 0.59);
+    for (int i = 0; i < segments; i++) {
+      final intensityShift = (math.sin(phase * 2 * math.pi + i * 0.8) + 1) / 2;
+      innerPaint.color = primary.withValues(
+        alpha: (0.15 + 0.25 * intensityShift) * intensity,
+      );
+      canvas.drawArc(
+        innerRect,
+        i * segmentAngle,
+        segmentAngle * 0.54,
+        false,
+        innerPaint,
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _SweepPainter old) =>
-      old.progress != progress ||
-      old.opacity != opacity ||
+  bool shouldRepaint(covariant _AnalysisPainter old) =>
       old.intensity != intensity ||
       old.colors != colors;
 }

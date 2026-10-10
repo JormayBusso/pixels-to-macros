@@ -250,7 +250,7 @@ class _ViewCard extends StatelessWidget {
             width: 34,
             height: 34,
             child: CustomPaint(
-              painter: _MiniShapePainter(isTop: isTop, color: fg),
+              painter: _MiniShapePainter(color: fg),
             ),
           ),
           const SizedBox(height: 6),
@@ -270,12 +270,9 @@ class _ViewCard extends StatelessWidget {
   }
 }
 
-/// Mini diagram of the framing shape for each step: a full circle for the top
-/// view (round plate) and a flat-bottom "D" for the side view (food resting on
-/// a flat surface — no round plate from the side).
+/// Mini diagram of the circular framing shape used for both capture steps.
 class _MiniShapePainter extends CustomPainter {
-  _MiniShapePainter({required this.isTop, required this.color});
-  final bool isTop;
+  _MiniShapePainter({required this.color});
   final Color color;
 
   @override
@@ -287,34 +284,12 @@ class _MiniShapePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
-    if (isTop) {
-      canvas.drawCircle(center, r, paint);
-    } else {
-      _drawArch(canvas, center, r, paint);
-    }
+    canvas.drawCircle(center, r, paint);
   }
 
   @override
   bool shouldRepaint(covariant _MiniShapePainter old) =>
-      old.isTop != isTop || old.color != color;
-}
-
-/// Shared side-view guide: half a circle on top over a straight-sided "cube"
-/// (the corners go straight up from a flat bottom). From the side the food
-/// rests on a flat surface, so this reads more truthfully than a full circle.
-void _drawArch(Canvas canvas, Offset center, double r, Paint paint) {
-  final path = Path()
-    ..moveTo(center.dx - r, center.dy + r) // bottom-left
-    ..lineTo(center.dx - r, center.dy) // straight up the left side
-    ..arcTo(
-      Rect.fromCircle(center: center, radius: r),
-      math.pi,
-      math.pi,
-      false,
-    ) // semicircle over the top to the right side
-    ..lineTo(center.dx + r, center.dy + r) // straight down the right side
-    ..close(); // flat bottom
-  canvas.drawPath(path, paint);
+      old.color != color;
 }
 
 // ── Alignment frame ──────────────────────────────────────────────────────────
@@ -356,7 +331,6 @@ class _AlignmentFrame extends StatelessWidget {
                   painter: _FramePainter(
                     color: color,
                     progress: alignmentScore,
-                    isTop: isTop,
                   ),
                 ),
                 if (confirming)
@@ -391,11 +365,9 @@ class _FramePainter extends CustomPainter {
   _FramePainter({
     required this.color,
     required this.progress,
-    required this.isTop,
   });
   final Color color;
   final double progress;
-  final bool isTop;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -404,18 +376,13 @@ class _FramePainter extends CustomPainter {
 
     // ONE framing shape. A faint full outline (visible even at 0% so the user
     // can aim) plus a single bright arc on the SAME circle that fills to a
-    // complete ring at 100% = the tilt percentage. Circle for the top view;
-    // for the side view an arch (a semicircle over a straight-sided "cube").
+    // complete ring at 100% = the tilt percentage.
     final guide = Paint()
       ..color = color.withValues(alpha: 0.4)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.6
       ..strokeCap = StrokeCap.round;
-    if (isTop) {
-      canvas.drawCircle(center, r, guide);
-    } else {
-      _drawArch(canvas, center, r, guide);
-    }
+    canvas.drawCircle(center, r, guide);
 
     final progressPaint = Paint()
       ..color = color.withValues(alpha: 0.95)
@@ -446,7 +413,7 @@ class _FramePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _FramePainter old) =>
-      old.color != color || old.progress != progress || old.isTop != isTop;
+      old.color != color || old.progress != progress;
 }
 
 // ── Guidance + stability ─────────────────────────────────────────────────────

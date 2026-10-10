@@ -44,6 +44,13 @@ final class MobileCLIPService {
         "FoodLabelEmbeddings",
     ]
 
+    /// Reject an image whose nearest food prompt has no meaningful alignment.
+    /// CLIP compares L2-normalised image/text embeddings by cosine similarity
+    /// (Radford et al., 2021); 0.25 is a conservative practical zero-shot
+    /// rejection floor for a food vocabulary, above the ~0.20 weak-match range.
+    /// It must be recalibrated if the encoder, prompts, or vocabulary changes.
+    static let minimumCosineSimilarity: Float = 0.25
+
     private struct LabelEmbeddings {
         let labels: [String]
         let vectors: [[Float]] // each L2-normalised, length == dim
@@ -191,6 +198,33 @@ final class MobileCLIPService {
         )
     }
 
+    /// Public wrapper that returns the raw L2-normalised image embedding for a
+    /// crop, reusing the exact same encoder + normalisation path as the
+    /// open-vocab classifier. Used by the on-device exemplar-learning system to
+    /// (a) capture a segment's embedding so a user label correction can be
+    /// learned locally, and (b) match a new scan's segment against the user's
+    /// stored exemplars. Returns `nil` when the encoder is unavailable.
+    func embedding(
+        pixelBuffer: CVPixelBuffer,
+        regionOfInterest roi: CGRect
+    ) throws -> [Float]? {
+        try ensureLoaded()
+        return try imageEmbedding(pixelBuffer: pixelBuffer, regionOfInterest: roi)
+    }
+
+    /// Nearest food labels for an already-computed (L2-normalised) image
+    /// embedding — lets a caller embed once and reuse the vector for both the
+    /// label lookup and exemplar capture without re-running the encoder.
+    func nearestLabels(for embedding: [Float], limit: Int = 5) throws -> [Prediction] {
+        try ensureLoaded()
+        guard let table else { throw CLIPError.modelNotFound }
+        return Self.nearestLabels(
+            imageEmbedding: embedding,
+            table: table,
+            limit: max(1, limit)
+        )
+    }
+
     private func imageEmbedding(
         pixelBuffer: CVPixelBuffer,
         regionOfInterest roi: CGRect
@@ -250,6 +284,13 @@ final class MobileCLIPService {
         }
         scored.sort { $0.cosine > $1.cosine }
         guard let best = scored.first else { return [] }
+        guard best.cosine >= Self.minimumCosineSimilarity else {
+            print("[MobileCLIP] rejected low-similarity best match " +
+                  "\(table.labels[best.index]) " +
+                  "(\(String(format: "%.3f", best.cosine)) < " +
+                  "\(String(format: "%.3f", Self.minimumCosineSimilarity)))")
+            return []
+        }
 
         // Softmax over (cosine * logit_scale) for a calibrated confidence.
         let scale = table.logitScale

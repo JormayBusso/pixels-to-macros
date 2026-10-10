@@ -20,6 +20,7 @@ import '../models/scan_benchmark.dart';
 import '../models/scan_result.dart';
 import '../models/user_preferences.dart';
 import '../models/weight_entry.dart';
+import 'health_service.dart';
 
 /// Singleton service wrapping the local SQLite database.
 ///
@@ -50,7 +51,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 45,
+      version: 47,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -255,6 +256,9 @@ class DatabaseService {
 
     // Bolus Calculator Mode tables (insulin settings, dose logs, audit).
     await _createDiabetesTables(db);
+
+    // On-device learned food-label exemplars (few-shot label learning).
+    await _createFoodExemplarTable(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -746,6 +750,15 @@ class DatabaseService {
       try {
         await db.execute('ALTER TABLE pantry_items ADD COLUMN location TEXT');
       } catch (_) {}
+    }
+    if (oldVersion < 46) {
+      // Composite-dish reference rows added after aliases had incorrectly
+      // collapsed them to a constituent food. Ignore preserves user entries.
+      await _seed(db);
+    }
+    if (oldVersion < 47) {
+      // On-device learned food-label exemplars. Local-only; never synced.
+      await _createFoodExemplarTable(db);
     }
   }
 
@@ -4447,6 +4460,259 @@ class DatabaseService {
           proteinPer100g: 9.2,
           carbsPer100g: 13.9,
           fatPer100g: 72.0),
+      // Typical prepared-food profiles from USDA FoodData Central/FNDDS.
+      FoodData(
+          label: 'Mixed Vegetables',
+          densityMin: 0.65,
+          densityMax: 0.85,
+          kcalPer100g: 65,
+          category: 'mixed',
+          proteinPer100g: 3.0,
+          carbsPer100g: 12.0,
+          fatPer100g: 0.5),
+      FoodData(
+          label: 'Vegetable Rice',
+          densityMin: 0.85,
+          densityMax: 1.00,
+          kcalPer100g: 130,
+          category: 'mixed',
+          proteinPer100g: 3.0,
+          carbsPer100g: 25.0,
+          fatPer100g: 1.5),
+      FoodData(
+          label: 'Smoked Salmon',
+          densityMin: 0.98,
+          densityMax: 1.08,
+          kcalPer100g: 117,
+          category: 'fish',
+          proteinPer100g: 18.3,
+          carbsPer100g: 0.0,
+          fatPer100g: 4.3),
+      FoodData(
+          label: 'Garlic Bread',
+          densityMin: 0.45,
+          densityMax: 0.60,
+          kcalPer100g: 350,
+          category: 'mixed',
+          proteinPer100g: 8.0,
+          carbsPer100g: 48.0,
+          fatPer100g: 14.0),
+      FoodData(
+          label: 'Avocado Toast',
+          densityMin: 0.45,
+          densityMax: 0.60,
+          kcalPer100g: 220,
+          category: 'mixed',
+          proteinPer100g: 6.0,
+          carbsPer100g: 23.0,
+          fatPer100g: 12.0),
+      FoodData(
+          label: 'Club Sandwich',
+          densityMin: 0.55,
+          densityMax: 0.75,
+          kcalPer100g: 250,
+          category: 'mixed',
+          proteinPer100g: 13.0,
+          carbsPer100g: 24.0,
+          fatPer100g: 12.0),
+      FoodData(
+          label: 'Open Sandwich',
+          densityMin: 0.50,
+          densityMax: 0.70,
+          kcalPer100g: 200,
+          category: 'mixed',
+          proteinPer100g: 10.0,
+          carbsPer100g: 23.0,
+          fatPer100g: 8.0),
+      FoodData(
+          label: 'Tuna Sandwich',
+          densityMin: 0.55,
+          densityMax: 0.75,
+          kcalPer100g: 215,
+          category: 'mixed',
+          proteinPer100g: 13.0,
+          carbsPer100g: 22.0,
+          fatPer100g: 8.0),
+      FoodData(
+          label: 'Tuna Melt',
+          densityMin: 0.55,
+          densityMax: 0.75,
+          kcalPer100g: 270,
+          category: 'mixed',
+          proteinPer100g: 15.0,
+          carbsPer100g: 22.0,
+          fatPer100g: 14.0),
+      FoodData(
+          label: 'Pulled Pork Sandwich',
+          densityMin: 0.55,
+          densityMax: 0.75,
+          kcalPer100g: 245,
+          category: 'mixed',
+          proteinPer100g: 14.0,
+          carbsPer100g: 24.0,
+          fatPer100g: 10.0),
+      FoodData(
+          label: 'Tuna Salad',
+          densityMin: 0.85,
+          densityMax: 1.00,
+          kcalPer100g: 187,
+          category: 'mixed',
+          proteinPer100g: 16.0,
+          carbsPer100g: 3.0,
+          fatPer100g: 12.0),
+      FoodData(
+          label: 'Tuna Mayo',
+          densityMin: 0.85,
+          densityMax: 1.00,
+          kcalPer100g: 225,
+          category: 'mixed',
+          proteinPer100g: 15.0,
+          carbsPer100g: 2.0,
+          fatPer100g: 17.0),
+      FoodData(
+          label: 'Deviled Eggs',
+          densityMin: 0.85,
+          densityMax: 1.00,
+          kcalPer100g: 201,
+          category: 'mixed',
+          proteinPer100g: 11.0,
+          carbsPer100g: 2.0,
+          fatPer100g: 17.0),
+      FoodData(
+          label: 'Hamburger',
+          densityMin: 0.70,
+          densityMax: 0.85,
+          kcalPer100g: 250,
+          category: 'mixed',
+          proteinPer100g: 13.0,
+          carbsPer100g: 25.0,
+          fatPer100g: 12.0),
+      FoodData(
+          label: 'Cheeseburger',
+          densityMin: 0.70,
+          densityMax: 0.85,
+          kcalPer100g: 303,
+          category: 'mixed',
+          proteinPer100g: 15.0,
+          carbsPer100g: 24.0,
+          fatPer100g: 16.0),
+      FoodData(
+          label: 'Spaghetti Bolognese',
+          densityMin: 0.85,
+          densityMax: 1.00,
+          kcalPer100g: 120,
+          category: 'mixed',
+          proteinPer100g: 6.0,
+          carbsPer100g: 20.0,
+          fatPer100g: 2.0),
+      FoodData(
+          label: 'Spaghetti Carbonara',
+          densityMin: 0.85,
+          densityMax: 1.00,
+          kcalPer100g: 190,
+          category: 'mixed',
+          proteinPer100g: 8.0,
+          carbsPer100g: 23.0,
+          fatPer100g: 7.0),
+      FoodData(
+          label: 'Mashed Potatoes',
+          densityMin: 0.70,
+          densityMax: 0.85,
+          kcalPer100g: 113,
+          category: 'mixed',
+          proteinPer100g: 2.0,
+          carbsPer100g: 17.0,
+          fatPer100g: 4.0),
+      FoodData(
+          label: 'Tomato Sauce',
+          densityMin: 1.00,
+          densityMax: 1.10,
+          kcalPer100g: 29,
+          category: 'condiment',
+          proteinPer100g: 1.4,
+          carbsPer100g: 6.0,
+          fatPer100g: 0.2),
+      FoodData(
+          label: 'Cream Sauce',
+          densityMin: 0.95,
+          densityMax: 1.05,
+          kcalPer100g: 170,
+          category: 'condiment',
+          proteinPer100g: 3.0,
+          carbsPer100g: 5.0,
+          fatPer100g: 15.0),
+      FoodData(
+          label: 'Cheese Sauce',
+          densityMin: 1.00,
+          densityMax: 1.10,
+          kcalPer100g: 180,
+          category: 'condiment',
+          proteinPer100g: 7.0,
+          carbsPer100g: 8.0,
+          fatPer100g: 13.0),
+      FoodData(
+          label: 'Sriracha',
+          densityMin: 1.05,
+          densityMax: 1.15,
+          kcalPer100g: 93,
+          category: 'condiment',
+          proteinPer100g: 1.0,
+          carbsPer100g: 21.0,
+          fatPer100g: 0.9),
+      FoodData(
+          label: 'Gravy',
+          densityMin: 0.95,
+          densityMax: 1.05,
+          kcalPer100g: 50,
+          category: 'condiment',
+          proteinPer100g: 1.5,
+          carbsPer100g: 5.0,
+          fatPer100g: 2.5),
+      FoodData(
+          label: 'Salad Dressing',
+          densityMin: 1.00,
+          densityMax: 1.10,
+          kcalPer100g: 286,
+          category: 'condiment',
+          proteinPer100g: 0.5,
+          carbsPer100g: 7.0,
+          fatPer100g: 28.0),
+      FoodData(
+          label: 'Teriyaki Sauce',
+          densityMin: 1.10,
+          densityMax: 1.20,
+          kcalPer100g: 89,
+          category: 'condiment',
+          proteinPer100g: 3.0,
+          carbsPer100g: 15.0,
+          fatPer100g: 0.0),
+      FoodData(
+          label: 'Sweet Chili Sauce',
+          densityMin: 1.10,
+          densityMax: 1.20,
+          kcalPer100g: 190,
+          category: 'condiment',
+          proteinPer100g: 0.5,
+          carbsPer100g: 47.0,
+          fatPer100g: 0.0),
+      FoodData(
+          label: 'Aioli',
+          densityMin: 0.90,
+          densityMax: 1.00,
+          kcalPer100g: 680,
+          category: 'condiment',
+          proteinPer100g: 1.0,
+          carbsPer100g: 1.0,
+          fatPer100g: 75.0),
+      FoodData(
+          label: 'Tzatziki',
+          densityMin: 0.95,
+          densityMax: 1.05,
+          kcalPer100g: 61,
+          category: 'condiment',
+          proteinPer100g: 3.5,
+          carbsPer100g: 4.0,
+          fatPer100g: 3.0),
     ];
 
     final batch = db.batch();
@@ -4559,6 +4825,11 @@ class DatabaseService {
       final cTokens = contentTokens(c);
       final shared = qTokens.intersection(cTokens);
       if (shared.isEmpty) continue;
+      final union = qTokens.union(cTokens);
+      final jaccardSimilarity = shared.length / union.length;
+      // Jaccard similarity evaluates the overlap relative to both complete
+      // token sets, unlike accepting any one shared word.
+      if (jaccardSimilarity < 0.5) continue;
       var score = shared.fold<int>(0, (sum, t) => sum + t.length);
       // Favour generic single-word base foods ("salmon") that the query just
       // specialises ("smoked salmon"), so we map to the canonical DB entry.
@@ -4570,7 +4841,7 @@ class DatabaseService {
         best = candidate;
       }
     }
-    // Require at least one solid (>=3 char) shared content word.
+    // Require a sufficiently similar token set and a solid shared word.
     return bestScore >= 3 ? best : null;
   }
 
@@ -4611,7 +4882,61 @@ class DatabaseService {
       });
     }
     await batch.commit(noResult: true);
+
+    // Mirror the logged meal into Apple Health (best-effort, never blocks or
+    // fails the local save). Gated behind the same `healthSyncEnabled` toggle
+    // as the read path; hydration/empty entries are skipped.
+    await _writeScanToHealth(result);
+
     return scanId;
+  }
+
+  /// Write a just-logged meal's nutrition to HealthKit when the user has Apple
+  /// Health sync enabled. Energy comes from the scan's calorie estimate; macros
+  /// are derived from the food database the same way the daily-intake totals
+  /// are. Every step is guarded so a HealthKit failure never affects the local
+  /// save.
+  Future<void> _writeScanToHealth(ScanResult result) async {
+    try {
+      if (!HealthService.instance.isSupported) return;
+      if (result.depthMode == 'hydration') return;
+      if (result.foods.isEmpty) return;
+
+      final prefs = await getUserPreferences();
+      if (!prefs.healthSyncEnabled) return;
+
+      final kcal = (result.totalCaloriesMin + result.totalCaloriesMax) / 2;
+      if (!(kcal > 0)) return;
+
+      double proteinSum = 0;
+      double carbsSum = 0;
+      double fatSum = 0;
+      for (final food in result.foods) {
+        var lookupLabel = food.label;
+        const aliases = {'chicken duck': 'chicken'};
+        if (aliases.containsKey(lookupLabel.toLowerCase())) {
+          lookupLabel = aliases[lookupLabel.toLowerCase()]!;
+        }
+        final foodData = await getFoodByLabel(lookupLabel);
+        if (foodData != null && foodData.kcalPer100g > 0) {
+          final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
+          final weightG = avgCal / (foodData.kcalPer100g / 100);
+          proteinSum += weightG * foodData.proteinPer100g / 100;
+          carbsSum += weightG * foodData.carbsPer100g / 100;
+          fatSum += weightG * foodData.fatPer100g / 100;
+        }
+      }
+
+      await HealthService.instance.writeNutrition(
+        kcal: kcal,
+        proteinG: proteinSum > 0 ? proteinSum : null,
+        carbsG: carbsSum > 0 ? carbsSum : null,
+        fatG: fatSum > 0 ? fatSum : null,
+        loggedAt: result.timestamp,
+      );
+    } catch (_) {
+      // Best-effort: HealthKit is never allowed to break a local save.
+    }
   }
 
   Future<List<ScanResult>> getAllScanResults() async {
@@ -4811,6 +5136,93 @@ class DatabaseService {
       ...food.toMap(),
       'scan_id': scanId,
     });
+  }
+
+  // ── food_label_exemplars CRUD (on-device few-shot label learning) ─────────
+
+  /// Embedding-version tag for stored exemplars. Bump this whenever the bundled
+  /// MobileCLIP image encoder changes so stale-space vectors can be filtered
+  /// out (cosine similarity is only meaningful within the same embedding space).
+  static const String foodExemplarEmbeddingVersion = 'mobileclip_v1';
+
+  /// Local-only table of user label corrections used to recognise visually
+  /// similar foods in future scans WITHOUT any network call. Each row stores the
+  /// corrected [label], the segment's L2-normalised MobileCLIP image embedding
+  /// (JSON-encoded float array), the [source_scan_id] it was learned from, a
+  /// [created_at] timestamp and the [embedding_version] tag. This data never
+  /// leaves the device.
+  Future<void> _createFoodExemplarTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS food_label_exemplars (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        label             TEXT    NOT NULL,
+        embedding         TEXT    NOT NULL,
+        source_scan_id    INTEGER,
+        created_at        TEXT    NOT NULL,
+        embedding_version TEXT    NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_food_exemplars_label '
+      'ON food_label_exemplars (label)',
+    );
+  }
+
+  /// Persist one learned label correction. [embedding] must be the segment's
+  /// L2-normalised MobileCLIP image embedding; empty embeddings are ignored so
+  /// no useless rows accumulate. Returns the new row id, or -1 when skipped.
+  Future<int> insertFoodExemplar({
+    required String label,
+    required List<double> embedding,
+    int? sourceScanId,
+  }) async {
+    final trimmed = label.trim();
+    if (trimmed.isEmpty || embedding.isEmpty) return -1;
+    final db = await database;
+    return db.insert('food_label_exemplars', {
+      'label': trimmed,
+      'embedding': jsonEncode(embedding),
+      'source_scan_id': sourceScanId,
+      'created_at': DateTime.now().toIso8601String(),
+      'embedding_version': foodExemplarEmbeddingVersion,
+    });
+  }
+
+  /// All learned exemplars for the current embedding version, as maps ready to
+  /// hand to the native pipeline: `{'label': String, 'embedding': List<double>}`.
+  /// Only same-embedding-version rows are returned (cross-version cosine is
+  /// meaningless). 100% local read — the caller only forwards this to the
+  /// in-process native scanner, never to the network.
+  Future<List<Map<String, dynamic>>> getFoodExemplars() async {
+    final db = await database;
+    final rows = await db.query(
+      'food_label_exemplars',
+      where: 'embedding_version = ?',
+      whereArgs: [foodExemplarEmbeddingVersion],
+    );
+    final out = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      final raw = row['embedding'];
+      if (raw is! String || raw.isEmpty) continue;
+      try {
+        final decoded = (jsonDecode(raw) as List)
+            .map((e) => (e as num).toDouble())
+            .toList(growable: false);
+        if (decoded.isEmpty) continue;
+        out.add({'label': row['label'] as String, 'embedding': decoded});
+      } catch (_) {
+        // Skip corrupt rows rather than failing the whole scan.
+      }
+    }
+    return out;
+  }
+
+  /// Count of stored exemplars (for diagnostics / tests).
+  Future<int> countFoodExemplars() async {
+    final db = await database;
+    final result = await db
+        .rawQuery('SELECT COUNT(*) AS c FROM food_label_exemplars');
+    return (result.first['c'] as int?) ?? 0;
   }
 
   // ── user_preferences CRUD ────────────────────────────────────────────────

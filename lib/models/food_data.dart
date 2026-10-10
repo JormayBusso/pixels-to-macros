@@ -9,6 +9,7 @@ class FoodData {
   final double proteinPer100g;
   final double carbsPer100g;
   final double fatPer100g;
+
   /// True when nutrients are expressed per 100 ml (drinks) rather than per 100 g.
   final bool perMl;
 
@@ -105,7 +106,7 @@ class FoodData {
   /// Sources: Foster-Powell et al. (2002), Atkinson et al. (2008).
   int get estimatedGI {
     // High-fiber lowers GI; check fiber first.
-    if (fiberPer100g > 5) return 35;  // high fiber → lower GI
+    if (fiberPer100g > 5) return 35; // high fiber → lower GI
     switch (category.toLowerCase()) {
       // Fast / high GI
       case 'grain':
@@ -160,7 +161,9 @@ class FoodData {
   /// available_carbs = carbsPer100g - fiberPer100g (fiber not digested).
   double glForGrams(double grams) {
     final availCarbs =
-        ((carbsPer100g - fiberPer100g).clamp(0, double.infinity)) * grams / 100.0;
+        ((carbsPer100g - fiberPer100g).clamp(0, double.infinity)) *
+            grams /
+            100.0;
     return (estimatedGI * availCarbs) / 100.0;
   }
 

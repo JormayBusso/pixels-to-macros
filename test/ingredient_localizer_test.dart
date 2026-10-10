@@ -5,7 +5,8 @@ void main() {
   group('IngredientLocalizer', () {
     test('translates a single English ingredient to Polish', () {
       expect(
-        IngredientLocalizer.localize('onion', targetLang: 'pl', sourceLang: 'en'),
+        IngredientLocalizer.localize('onion',
+            targetLang: 'pl', sourceLang: 'en'),
         'cebula',
       );
     });
@@ -19,7 +20,8 @@ void main() {
 
     test('preserves leading capital letter', () {
       expect(
-        IngredientLocalizer.localize('Garlic', targetLang: 'de', sourceLang: 'en'),
+        IngredientLocalizer.localize('Garlic',
+            targetLang: 'de', sourceLang: 'en'),
         'Knoblauch',
       );
     });
@@ -45,23 +47,25 @@ void main() {
 
     test('returns text unchanged when source equals target', () {
       expect(
-        IngredientLocalizer.localize('onion', targetLang: 'en', sourceLang: 'en'),
+        IngredientLocalizer.localize('onion',
+            targetLang: 'en', sourceLang: 'en'),
         'onion',
       );
     });
 
     test('returns text unchanged for unsupported target language', () {
       expect(
-        IngredientLocalizer.localize('onion', targetLang: 'fr', sourceLang: 'en'),
+        IngredientLocalizer.localize('onion',
+            targetLang: 'fr', sourceLang: 'en'),
         'onion',
       );
     });
 
     test('passes through unknown ingredient words', () {
       expect(
-        IngredientLocalizer.localize('worcestershire sauce',
+        IngredientLocalizer.localize('worcestershire relish',
             targetLang: 'pl', sourceLang: 'en'),
-        'worcestershire sauce',
+        'worcestershire relish',
       );
     });
 
@@ -72,6 +76,83 @@ void main() {
         sourceLang: 'en',
       );
       expect(result, 'cebolla,');
+    });
+
+    test('translates newly supported title words', () {
+      expect(
+        IngredientLocalizer.localize(
+          'Tomato Soup',
+          targetLang: 'pl',
+          sourceLang: 'en',
+        ),
+        'Pomidor Zupa',
+      );
+      expect(
+        IngredientLocalizer.localize(
+          'Tomato Soup',
+          targetLang: 'de',
+          sourceLang: 'en',
+        ),
+        'Tomate Suppe',
+      );
+    });
+
+    test('leaves untranslated dish names completely unchanged', () {
+      for (final targetLang in ['pl', 'nl', 'es', 'de']) {
+        expect(
+          IngredientLocalizer.localize(
+            'Stamppot',
+            targetLang: targetLang,
+            sourceLang: 'en',
+          ),
+          'Stamppot',
+        );
+      }
+    });
+
+    test(
+        'translates cooking-step vocabulary but preserves target-language steps',
+        () {
+      expect(
+        IngredientLocalizer.localize(
+          'Heat the oil in a pan',
+          targetLang: 'pl',
+          sourceLang: 'en',
+        ),
+        'Podgrzej the olej in patelnia',
+      );
+      expect(
+        IngredientLocalizer.localize(
+          'Heat the oil in a pan',
+          targetLang: 'nl',
+          sourceLang: 'en',
+        ),
+        'Verhit the olie in pan',
+      );
+      expect(
+        IngredientLocalizer.localize(
+          'Heat the oil in a pan',
+          targetLang: 'es',
+          sourceLang: 'en',
+        ),
+        'Calienta the aceite in sartén',
+      );
+      expect(
+        IngredientLocalizer.localize(
+          'Heat the oil in a pan',
+          targetLang: 'de',
+          sourceLang: 'en',
+        ),
+        'Erhitzen the Öl in Pfanne',
+      );
+      expect(
+        IngredientLocalizer.localize(
+          'Podgrzej olej na patelni',
+          targetLang: 'pl',
+          sourceLang: 'pl',
+        ),
+        'Podgrzej olej na patelni',
+      );
     });
   });
 }

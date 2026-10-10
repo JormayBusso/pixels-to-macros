@@ -1,6 +1,6 @@
 ---
 name: codify
-description: Update relevant docs and make one git commit per assessed todo from the active plan-*.md file, marking each codified. Runs automatically as the fourth and final phase right after `assess` finishes with all todos passing (part of the PLAN loop chain) — the user does not need to type "codify". Can also be invoked directly if the user explicitly asks to commit/finalize/document work from a plan.
+description: Update relevant docs, commit and push each assessed todo from the active plan-*.md file, marking each codified, then build and deploy the updated app to the phone once the whole plan is codified. Runs automatically as the fourth and final phase right after `assess` finishes with all todos passing (part of the PLAN loop chain) — the user does not need to type "codify". Can also be invoked directly if the user explicitly asks to commit/finalize/document/deploy work from a plan.
 ---
 
 # Codify
@@ -11,8 +11,11 @@ Turns each `assessed` todo into a permanent, documented commit.
 Note: once a loop has been started with the uppercase `PLAN` trigger, this
 phase runs automatically — it is invoked by `assess` itself once every
 todo has passed, not by the user typing "codify". This is also the natural
-end of the automatic chain: after codify finishes, stop and report — do not
-auto-invoke anything further (pushing/PRs remain a separate manual step).
+end of the automatic chain: after codify finishes, stop and report. Per the
+user's explicit standing instruction for this loop, codify also pushes each
+commit and — once the whole plan file is fully codified — builds and
+deploys to the phone automatically (see "Push" and "Deploy to phone" below).
+Opening a PR remains a separate manual step.
 
 ## Find the plan
 
@@ -73,25 +76,70 @@ directly for approval and stop; do not proceed to stage or commit.
    its Description), including the standard
    `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
    trailer.
-4. Record in the todo block:
+4. **Push immediately** (`git push`, current branch). If the push is
+   rejected (e.g. remote moved on), `git pull --rebase` once and retry; if it
+   still fails, stop and report — do not force-push.
+5. Record in the todo block:
 
 ```md
 - Status: codified
-- Codify: commit=<short sha>; docs=<file(s) updated, or "none needed">; model=<tier>(<model-name>) [only if used for wording]
+- Codify: commit=<short sha>; pushed=yes|no (reason if no); docs=<file(s) updated, or "none needed">; model=<tier>(<model-name>) [only if used for wording]
 ```
 
 ## Boundaries
 
-- **Never push and never open a PR.** Codify stops at local commits;
-  pushing/PR creation is a separate manual step for the user.
+- **Push every commit, but never open a PR.** Per the user's explicit
+  standing instruction for this loop, each todo's commit is pushed
+  immediately (Step 4 above); PR creation stays a separate manual step for
+  the user.
+- Never `--force` push. If a normal push is rejected, rebase once and retry
+  (see Step 4); if that fails, stop and report rather than forcing.
 - Do not re-run assessment checks — codify trusts `assess`'s verdict.
 - If staging reveals unexpected unrelated changes mixed in, stop and ask
   the user rather than guessing which files belong to the todo.
 
+## Deploy to phone (once the whole plan is codified)
+
+Only after **every** todo in the plan file is `Status: codified` (i.e. this
+is the last todo of the loop, not each individual todo) — deploy the updated
+app to the phone automatically, once per full plan loop. Skip this step
+entirely if none of this loop's codified changes touch the app bundle (e.g.
+the whole loop was docs-only) and say so instead.
+
+Follow [AGENTS.md](../../../../AGENTS.md) §4 exactly, in order:
+
+1. `flutter clean && flutter build ios --release` — always clean first (a
+   stale `build/ios` breaks code signing on install).
+2. Install with `devicectl`, retrying on transient wireless errors, and
+   checking the real `rc` (never pipe to `tail`/`head`/`grep`, which masks
+   it):
+   ```
+   for i in 1 2 3 4 5 6; do
+     xcrun devicectl device install app \
+       --device 80E158A2-4911-5ED4-A203-7E18D81AEC34 \
+       build/ios/iphoneos/Runner.app > /tmp/dcinstall.log 2>&1
+     rc=$?
+     if [ $rc -eq 0 ]; then echo "INSTALL_OK rc=0"; break; fi
+     echo "install failed rc=$rc, retrying"; sleep 4
+   done
+   ```
+3. **Do not uninstall the app first, and do not change signing
+   identity/team/bundle id.** `devicectl device install app` updates the
+   already-installed app in place; since the developer certificate was
+   trusted once already, this does **not** re-trigger the "Untrusted
+   Developer" prompt in Settings → General → VPN & Device Management — the
+   user should never need to re-approve there for a routine update. Only a
+   genuinely new signing identity or a manual uninstall would require that.
+4. Confirm the real `rc=0` from the log before reporting the deploy as
+   done. If all retries fail, report the failure and the last error instead
+   of claiming success.
+
 ## After codifying
 
-- Summarize per todo: commit sha and docs touched.
+- Summarize per todo: commit sha, whether it pushed, and docs touched.
 - Report the overall plan file status: if every todo is now `codified`,
-  mark the file's top-level `Status: complete`; otherwise leave `Status:
-  active` and note which todos remain (still `pending`/`delegated`/`failed`)
-  for a future loop pass.
+  mark the file's top-level `Status: complete`, and report the phone-deploy
+  result (installed rc=0, or skipped because the loop was non-app-bundle,
+  or failed with the reason); otherwise leave `Status: active` and note
+  which todos remain (still `pending`/`delegated`/`failed`) for a future
+  loop pass — no deploy happens until the whole plan is codified.

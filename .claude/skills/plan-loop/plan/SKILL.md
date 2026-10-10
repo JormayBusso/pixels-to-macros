@@ -58,6 +58,65 @@ configured. The top-priced models (Opus 5, Opus 4.8) are never used — Opus
   type `PLAN` again, since that is a continuation of a loop already started
   with `PLAN`.
 
+## Step 0 — Improve the prompt (before researching or decomposing)
+
+Whenever the user gives a prompt (the text after `PLAN`, or the failure
+reason on a revise-mode re-entry), improve it using modern prompt-engineering
+principles before doing any research or decomposition. **Do not blindly apply
+a fixed template.** Add structure only when it improves clarity, accuracy,
+consistency, or usefulness.
+
+Analyze the prompt and, when relevant, incorporate:
+- **Task** — clearly define what the AI needs to accomplish using specific
+  action verbs.
+- **Context** — relevant background, environment, data, and assumptions that
+  materially affect the task (this repo's stack, relevant AGENTS.md sections,
+  affected files/modules, the LiDAR/non-LiDAR split when applicable).
+- **Requirements and Constraints** — technical, functional, compatibility,
+  safety, or scope requirements, including what must be avoided.
+- **Success Criteria** — what a successful result should accomplish and, where
+  useful, how it can be evaluated.
+- **Output Format** — the desired structure, format, schema, level of detail,
+  or presentation.
+- **Examples** — few-shot examples only when they would clarify the desired
+  behavior or output. Do not add examples unnecessarily.
+- **Role** — an appropriate role or perspective only when it provides
+  meaningful value. Do not use exaggerated credentials or unnecessary persona
+  descriptions.
+
+Follow these principles:
+- Prioritize clarity and specificity over unnecessary length.
+- Include enough context to remove meaningful ambiguity, but do not add
+  irrelevant information.
+- Do not assume that a longer prompt produces a better result.
+- Do not invent missing requirements, facts, data, or constraints. Clearly
+  identify important missing information instead.
+- Resolve contradictions in the original prompt where possible, and flag them
+  when they cannot safely be resolved.
+- Preserve the user's actual intent.
+- Do not add unnecessary introductory text, motivational language, or generic
+  prompt-engineering terminology.
+- If the original prompt is already good, make only the changes that
+  materially improve it.
+- For complex tasks, make the prompt explicit about evaluation criteria and
+  expected deliverables.
+- If the task requires structured or machine-readable output, make the
+  required structure explicit and unambiguous.
+- Optimize the prompt for this task rather than forcing every prompt into the
+  same structure.
+
+Write the result into the plan file under a `## Improved Prompt` section (see
+the required file structure below), with these parts:
+- **Improved Prompt** — the complete optimized prompt, ready to use as the
+  basis for research and decomposition.
+- **What Changed** — briefly list the most important improvements and why
+  they were made.
+- **Missing Information** — only include this if important information is
+  genuinely missing; omit the part entirely otherwise.
+
+Then use the Improved Prompt — not the raw request — as the basis for
+research (below) and for decomposing todos.
+
 ## File location & naming
 
 - Session workspace: `files/plan-<YYYY-MM-DD>.md` (use the current date; if a
@@ -77,7 +136,10 @@ configured. The top-priced models (Opus 5, Opus 4.8) are never used — Opus
    the failure reason left by `assess`, reset `Status: pending`, reset Risk
    and Recommended-Model fields if the revision changes scope or risk, and
    clear stale Delegation/Assessment notes for that todo. Do not touch todos
-   that are `delegated`, `assessed`, or `codified`.
+   that are `delegated`, `assessed`, or `codified`. Leave the file's existing
+   `## Improved Prompt` section as-is unless the failure reason reveals the
+   original task/constraints were themselves wrong — only then re-run Step 0
+   for the affected part and update that section.
 
 ## Risk classification
 
@@ -113,6 +175,16 @@ Status: active
 
 ## Goal
 <1-3 sentences: what done looks like for the whole loop>
+
+## Improved Prompt
+<the complete optimized prompt>
+
+### What Changed
+<the most important improvements and why they were made>
+
+### Missing Information
+<only present if important information is genuinely missing; omit this
+subsection entirely otherwise>
 
 ## Todos
 
@@ -172,9 +244,11 @@ unresolved design questions.
 
 ## After writing/revising the file
 
-- Tell the user the file path and a one-line summary of the todos (or, in
-  revise mode, which todo(s) were revised and why), including each new todo's
-  risk level.
+- Tell the user the file path, the Improved Prompt (or a concise summary of
+  it) plus its What Changed / Missing Information notes so they can
+  sanity-check the interpretation, and a one-line summary of the todos (or,
+  in revise mode, which todo(s) were revised and why), including each new
+  todo's risk level.
 - Immediately continue the loop yourself: invoke `delegate` next in the same
   turn without waiting for the user to type anything. The full
   `delegate → assess → codify` chain runs automatically once `PLAN` has

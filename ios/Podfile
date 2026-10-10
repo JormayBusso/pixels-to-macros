@@ -1,4 +1,5 @@
-# Pixels to Macros — iOS 17+ only (iPhone 15 and newer)
+# Pixels to Macros — iOS 17+ only; scanner behavior is capability-based for
+# iPhone 15/16/17 and future models, not hard-coded to marketing names.
 platform :ios, '17.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.

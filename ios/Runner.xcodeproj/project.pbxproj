@@ -8,23 +8,34 @@
 
 /* Begin PBXBuildFile section */
 		00F929A0E1900BAC819B1489 /* CoreML.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 106E69CAAEAFA6A5B66AD4AC /* CoreML.framework */; };
+		0CE2EB2DDB7EC90AD57FFC21 /* MobileSamDecoder.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = E33CEEBDAC617D6881ADDA72 /* MobileSamDecoder.mlmodelc */; };
+		13D0DA49CB82FB919FBE2CEF /* FoodLabelEmbeddings.json in Resources */ = {isa = PBXBuildFile; fileRef = 4FB0E776E8798D8FBA77E5F8 /* FoodLabelEmbeddings.json */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		1B6DD6317DD3145FB6028C45 /* MonoDepth.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 514F71439B0203B75E0C0B36 /* MonoDepth.mlmodelc */; };
 		24CBC83F2DA4A19876130207 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6CAAE6E0DFEB32AB337D33B7 /* CoreVideo.framework */; };
+		27B29D7E4DBFF6FC59C1F730 /* MobileCLIPImage.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 3508969D79D9F959C92F711C /* MobileCLIPImage.mlmodelc */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3325C11CF380F60DC2317633 /* SegmentationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753DB09FA42E27044AE313AF /* SegmentationService.swift */; };
+		354025B4414946373AE0E35E /* YOLOSegmentationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F457EE21D28F8991FB1794F2 /* YOLOSegmentationService.swift */; };
 		37D095512B3AB36EABD18AD9 /* BarcodeScannerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B31312A6A0EAC58E824D6DC /* BarcodeScannerPlugin.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		3D6F446E71D9A26DB407808E /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D713E30A5540B7F350AC47C2 /* AVFoundation.framework */; };
 		5921BBABFEF377DE4411E45D /* VolumeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C973C24EACDEDA0CA84F5A25 /* VolumeCalculator.swift */; };
 		5CAF5253687665D15E7C256E /* Food3DExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1683C3A3958B6FE8DA56E51 /* Food3DExporter.swift */; };
+		5D01C0FF0017F00000000001 /* MonocularVolumeEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D01C0FF0017F00000000000 /* MonocularVolumeEstimator.swift */; };
 		6F06832C86A68E1812C45917 /* ScannerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF95F7274EDE7D628FF00B57 /* ScannerPlugin.swift */; };
+		710444ACC7C21EE9F504D11B /* Food3DTextureBaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F2D2ADD144D6E8613B574CF /* Food3DTextureBaker.swift */; };
 		716DF690045748758CCFCC22 /* PointCloudExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4147F5FBF2C3FF8FB550B03 /* PointCloudExporter.swift */; };
+		736B7E4E4EF34BEA6A9C7680 /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5662700E76C7838BA72BC7D1 /* CoreMotion.framework */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A232C2CA52BEB0C154F86E /* ARCameraPreviewPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A430111209B9F1B66F2EB7D /* ARCameraPreviewPlugin.swift */; };
+		7A791A37CDFED49A71146C82 /* FoodClassifierService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D64D28332E08F7760383C9EB /* FoodClassifierService.swift */; };
 		85261BCEEAF8890AB5AD6966 /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EB40F0EA6B69F7366A4C0A6D /* Vision.framework */; };
 		8799FEB7EE3524C3187E1815 /* ModelIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 45253471A282FCFFF61F56CE /* ModelIO.framework */; };
+		8F56B74FEB516263169B0426 /* MobileSamEncoder.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 5D06435D5201B59BD7A04F5A /* MobileSamEncoder.mlmodelc */; };
 		9067585C0B3681D95E7B0E7B /* MLKitFoodValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140240A56278DC831D8F29B5 /* MLKitFoodValidator.swift */; };
+		92E1BE887986365546D2F19B /* Food3DRealityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6713F1DA74192839CE32B65 /* Food3DRealityView.swift */; };
 		95DB82C4E0F591668815CCC5 /* Scan3DViewerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97D9CB2E74FBD4A952254CFF /* Scan3DViewerPlugin.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
@@ -35,12 +46,22 @@
 		AE6CD655BAAFDEAB3A9093F4 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E94BBFB04F45F07C2C97BB54 /* Pods_Runner.framework */; };
 		B8410DFB9E7D43B20984CA04 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD21DFEC0A22BBFCB8544CBC /* Pods_RunnerTests.framework */; };
 		B9F1794EDC74D4B66629E742 /* InferencePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FC2652E2325A3BB61C0433C /* InferencePipeline.swift */; };
+		BFBBF023731E53233CA98AD1 /* MeshSmoothing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EF951929ADAB6434D66D18D /* MeshSmoothing.swift */; };
+		C17EE1400334A1F1CBAEED47 /* MotionStabilityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1216872B75939DD9FC20D1E3 /* MotionStabilityMonitor.swift */; };
 		C22D5836EB3C91CD06874FAA /* DepthFusion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E044877C9BA5C5BD6249387 /* DepthFusion.swift */; };
+		C3A95B2DB506702563B1AB3C /* FoodClassifier.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 0CE3957ACA294D7390C05E88 /* FoodClassifier.mlmodelc */; };
+		C6902D46C1904645B9759B61 /* ARMeshVolumeEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54DB78DF1B2697AC7053B30 /* ARMeshVolumeEstimator.swift */; };
 		DA7869F3377AA0498695AD5C /* FoodSegmentation.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 10DECEA94831997726B8E2B6 /* FoodSegmentation.mlmodelc */; };
+		DA7869F3377AA0498695AD5D /* FoodSegmentationLabels.json in Resources */ = {isa = PBXBuildFile; fileRef = 10DECEA94831997726B8E2B7 /* FoodSegmentationLabels.json */; };
 		DBCC33BCCF16F1E7F8C2EAC1 /* FramePreprocessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECDA3130CA35D9F91C47196F /* FramePreprocessor.swift */; };
 		DEB562316E9CEBA6EB8F2BF3 /* ARSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E243E09ACB6B5BAB44E8B6 /* ARSessionManager.swift */; };
 		DF0456C669A0C8CB1CA92275 /* PlateDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BB9B00B7CD4C732A187E257 /* PlateDetector.swift */; };
 		E6F3CDF1DB17086AB61A91B6 /* FrameCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE729DB996BF7648B1074CAC /* FrameCaptureService.swift */; };
+		EDAF8639309D86D2F8803B25 /* MobileSamRefiner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B574D1B20CEB86A923DBF076 /* MobileSamRefiner.swift */; };
+		EDEA7B6B4CA0FA7ED8779BD0 /* FoodClassifierLabels.json in Resources */ = {isa = PBXBuildFile; fileRef = 5755CE01041B33B4B6A7010F /* FoodClassifierLabels.json */; };
+		EE30AF551432D7698D48F2B4 /* FoodSegYolo.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = B50E4E3D0C9A5B0F8F413A1D /* FoodSegYolo.mlmodelc */; };
+		EE592D71C88D7676C21623A9 /* MobileCLIPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F70FD3D45DA8AD693BA58B20 /* MobileCLIPService.swift */; };
+		EFF8B23A41BA9547D2527651 /* MonoDepthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A247DD49A22C552B3A3F825 /* MonoDepthService.swift */; };
 		F4268855C1B76226E9EE7CAF /* DepthModeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74BC3714EC9CC09580BECA59 /* DepthModeDetector.swift */; };
 /* End PBXBuildFile section */
 
@@ -70,18 +91,29 @@
 /* Begin PBXFileReference section */
 		0B9AE4DF4C235B31E91A8461 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		0BB9B00B7CD4C732A187E257 /* PlateDetector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlateDetector.swift; sourceTree = "<group>"; };
+		0CE3957ACA294D7390C05E88 /* FoodClassifier.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = FoodClassifier.mlmodelc; sourceTree = "<group>"; };
 		106E69CAAEAFA6A5B66AD4AC /* CoreML.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreML.framework; path = System/Library/Frameworks/CoreML.framework; sourceTree = SDKROOT; };
 		10DECEA94831997726B8E2B6 /* FoodSegmentation.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper; path = FoodSegmentation.mlmodelc; sourceTree = "<group>"; };
+		10DECEA94831997726B8E2B7 /* FoodSegmentationLabels.json */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json; path = FoodSegmentationLabels.json; sourceTree = "<group>"; };
+		1216872B75939DD9FC20D1E3 /* MotionStabilityMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MotionStabilityMonitor.swift; sourceTree = "<group>"; };
 		140240A56278DC831D8F29B5 /* MLKitFoodValidator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MLKitFoodValidator.swift; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		2B31312A6A0EAC58E824D6DC /* BarcodeScannerPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BarcodeScannerPlugin.swift; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3508969D79D9F959C92F711C /* MobileCLIPImage.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = MobileCLIPImage.mlmodelc; sourceTree = "<group>"; };
 		37F48EF5C5BB2FDE9E14640F /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		45253471A282FCFFF61F56CE /* ModelIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ModelIO.framework; path = System/Library/Frameworks/ModelIO.framework; sourceTree = SDKROOT; };
+		4FB0E776E8798D8FBA77E5F8 /* FoodLabelEmbeddings.json */ = {isa = PBXFileReference; includeInIndex = 1; path = FoodLabelEmbeddings.json; sourceTree = "<group>"; };
+		514F71439B0203B75E0C0B36 /* MonoDepth.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = MonoDepth.mlmodelc; sourceTree = "<group>"; };
+		5662700E76C7838BA72BC7D1 /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
+		5755CE01041B33B4B6A7010F /* FoodClassifierLabels.json */ = {isa = PBXFileReference; includeInIndex = 1; path = FoodClassifierLabels.json; sourceTree = "<group>"; };
+		5D01C0FF0017F00000000000 /* MonocularVolumeEstimator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonocularVolumeEstimator.swift; sourceTree = "<group>"; };
+		5D06435D5201B59BD7A04F5A /* MobileSamEncoder.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = MobileSamEncoder.mlmodelc; sourceTree = "<group>"; };
 		5E044877C9BA5C5BD6249387 /* DepthFusion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DepthFusion.swift; sourceTree = "<group>"; };
+		6A247DD49A22C552B3A3F825 /* MonoDepthService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonoDepthService.swift; sourceTree = "<group>"; };
 		6CAAE6E0DFEB32AB337D33B7 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -89,6 +121,7 @@
 		753DB09FA42E27044AE313AF /* SegmentationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SegmentationService.swift; sourceTree = "<group>"; };
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+		7EF951929ADAB6434D66D18D /* MeshSmoothing.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MeshSmoothing.swift; sourceTree = "<group>"; };
 		7FC2652E2325A3BB61C0433C /* InferencePipeline.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InferencePipeline.swift; sourceTree = "<group>"; };
 		88E243E09ACB6B5BAB44E8B6 /* ARSessionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ARSessionManager.swift; sourceTree = "<group>"; };
 		92BB1585E2EB52463132A421 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
@@ -101,7 +134,11 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		97D9CB2E74FBD4A952254CFF /* Scan3DViewerPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Scan3DViewerPlugin.swift; sourceTree = "<group>"; };
 		9A430111209B9F1B66F2EB7D /* ARCameraPreviewPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ARCameraPreviewPlugin.swift; sourceTree = "<group>"; };
+		9F2D2ADD144D6E8613B574CF /* Food3DTextureBaker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Food3DTextureBaker.swift; sourceTree = "<group>"; };
+		A6713F1DA74192839CE32B65 /* Food3DRealityView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Food3DRealityView.swift; sourceTree = "<group>"; };
 		AA000001000000000000001A /* ObjCExceptionCatcher.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ObjCExceptionCatcher.m; sourceTree = "<group>"; };
+		B50E4E3D0C9A5B0F8F413A1D /* FoodSegYolo.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = FoodSegYolo.mlmodelc; sourceTree = "<group>"; };
+		B574D1B20CEB86A923DBF076 /* MobileSamRefiner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MobileSamRefiner.swift; sourceTree = "<group>"; };
 		BC46B42D77B588FF7A5F69A7 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		BCCC3C44B46334EE1A23C7B2 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		BDB83C97BEECE046CF9B14D3 /* MultiFrameRecorder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MultiFrameRecorder.swift; sourceTree = "<group>"; };
@@ -109,14 +146,19 @@
 		BF95F7274EDE7D628FF00B57 /* ScannerPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScannerPlugin.swift; sourceTree = "<group>"; };
 		C1683C3A3958B6FE8DA56E51 /* Food3DExporter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Food3DExporter.swift; sourceTree = "<group>"; };
 		C3DBAEB08B6A6E88C4984849 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
+		C54DB78DF1B2697AC7053B30 /* ARMeshVolumeEstimator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ARMeshVolumeEstimator.swift; sourceTree = "<group>"; };
 		C973C24EACDEDA0CA84F5A25 /* VolumeCalculator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VolumeCalculator.swift; sourceTree = "<group>"; };
 		D4147F5FBF2C3FF8FB550B03 /* PointCloudExporter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PointCloudExporter.swift; sourceTree = "<group>"; };
+		D64D28332E08F7760383C9EB /* FoodClassifierService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FoodClassifierService.swift; sourceTree = "<group>"; };
 		D713E30A5540B7F350AC47C2 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		DD21DFEC0A22BBFCB8544CBC /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		E33CEEBDAC617D6881ADDA72 /* MobileSamDecoder.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = MobileSamDecoder.mlmodelc; sourceTree = "<group>"; };
 		E94BBFB04F45F07C2C97BB54 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB40F0EA6B69F7366A4C0A6D /* Vision.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Vision.framework; path = System/Library/Frameworks/Vision.framework; sourceTree = SDKROOT; };
 		ECDA3130CA35D9F91C47196F /* FramePreprocessor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FramePreprocessor.swift; sourceTree = "<group>"; };
+		F457EE21D28F8991FB1794F2 /* YOLOSegmentationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = YOLOSegmentationService.swift; sourceTree = "<group>"; };
 		F484AD302BB78A36A902D2ED /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
+		F70FD3D45DA8AD693BA58B20 /* MobileCLIPService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MobileCLIPService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -131,6 +173,7 @@
 				24CBC83F2DA4A19876130207 /* CoreVideo.framework in Frameworks */,
 				3D6F446E71D9A26DB407808E /* AVFoundation.framework in Frameworks */,
 				8799FEB7EE3524C3187E1815 /* ModelIO.framework in Frameworks */,
+				736B7E4E4EF34BEA6A9C7680 /* CoreMotion.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -164,6 +207,7 @@
 				BE729DB996BF7648B1074CAC /* FrameCaptureService.swift */,
 				ECDA3130CA35D9F91C47196F /* FramePreprocessor.swift */,
 				7FC2652E2325A3BB61C0433C /* InferencePipeline.swift */,
+				5D01C0FF0017F00000000000 /* MonocularVolumeEstimator.swift */,
 				BDB83C97BEECE046CF9B14D3 /* MultiFrameRecorder.swift */,
 				0BB9B00B7CD4C732A187E257 /* PlateDetector.swift */,
 				D4147F5FBF2C3FF8FB550B03 /* PointCloudExporter.swift */,
@@ -173,6 +217,16 @@
 				140240A56278DC831D8F29B5 /* MLKitFoodValidator.swift */,
 				C1683C3A3958B6FE8DA56E51 /* Food3DExporter.swift */,
 				97D9CB2E74FBD4A952254CFF /* Scan3DViewerPlugin.swift */,
+				F457EE21D28F8991FB1794F2 /* YOLOSegmentationService.swift */,
+				D64D28332E08F7760383C9EB /* FoodClassifierService.swift */,
+				9F2D2ADD144D6E8613B574CF /* Food3DTextureBaker.swift */,
+				A6713F1DA74192839CE32B65 /* Food3DRealityView.swift */,
+				C54DB78DF1B2697AC7053B30 /* ARMeshVolumeEstimator.swift */,
+				6A247DD49A22C552B3A3F825 /* MonoDepthService.swift */,
+				1216872B75939DD9FC20D1E3 /* MotionStabilityMonitor.swift */,
+				F70FD3D45DA8AD693BA58B20 /* MobileCLIPService.swift */,
+				7EF951929ADAB6434D66D18D /* MeshSmoothing.swift */,
+				B574D1B20CEB86A923DBF076 /* MobileSamRefiner.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -188,6 +242,7 @@
 				6CAAE6E0DFEB32AB337D33B7 /* CoreVideo.framework */,
 				D713E30A5540B7F350AC47C2 /* AVFoundation.framework */,
 				45253471A282FCFFF61F56CE /* ModelIO.framework */,
+				5662700E76C7838BA72BC7D1 /* CoreMotion.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -239,6 +294,15 @@
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				555B619B130ED1D2AE4E1B14 /* Scanner */,
 				10DECEA94831997726B8E2B6 /* FoodSegmentation.mlmodelc */,
+				10DECEA94831997726B8E2B7 /* FoodSegmentationLabels.json */,
+				B50E4E3D0C9A5B0F8F413A1D /* FoodSegYolo.mlmodelc */,
+				514F71439B0203B75E0C0B36 /* MonoDepth.mlmodelc */,
+				3508969D79D9F959C92F711C /* MobileCLIPImage.mlmodelc */,
+				4FB0E776E8798D8FBA77E5F8 /* FoodLabelEmbeddings.json */,
+				0CE3957ACA294D7390C05E88 /* FoodClassifier.mlmodelc */,
+				5755CE01041B33B4B6A7010F /* FoodClassifierLabels.json */,
+				5D06435D5201B59BD7A04F5A /* MobileSamEncoder.mlmodelc */,
+				E33CEEBDAC617D6881ADDA72 /* MobileSamDecoder.mlmodelc */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -357,6 +421,15 @@
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 				DA7869F3377AA0498695AD5C /* FoodSegmentation.mlmodelc in Resources */,
+				DA7869F3377AA0498695AD5D /* FoodSegmentationLabels.json in Resources */,
+				EE30AF551432D7698D48F2B4 /* FoodSegYolo.mlmodelc in Resources */,
+				1B6DD6317DD3145FB6028C45 /* MonoDepth.mlmodelc in Resources */,
+				27B29D7E4DBFF6FC59C1F730 /* MobileCLIPImage.mlmodelc in Resources */,
+				13D0DA49CB82FB919FBE2CEF /* FoodLabelEmbeddings.json in Resources */,
+				C3A95B2DB506702563B1AB3C /* FoodClassifier.mlmodelc in Resources */,
+				EDEA7B6B4CA0FA7ED8779BD0 /* FoodClassifierLabels.json in Resources */,
+				8F56B74FEB516263169B0426 /* MobileSamEncoder.mlmodelc in Resources */,
+				0CE2EB2DDB7EC90AD57FFC21 /* MobileSamDecoder.mlmodelc in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -499,6 +572,7 @@
 				E6F3CDF1DB17086AB61A91B6 /* FrameCaptureService.swift in Sources */,
 				DBCC33BCCF16F1E7F8C2EAC1 /* FramePreprocessor.swift in Sources */,
 				B9F1794EDC74D4B66629E742 /* InferencePipeline.swift in Sources */,
+				5D01C0FF0017F00000000001 /* MonocularVolumeEstimator.swift in Sources */,
 				A82398675BD851836A4AA653 /* MultiFrameRecorder.swift in Sources */,
 				DF0456C669A0C8CB1CA92275 /* PlateDetector.swift in Sources */,
 				716DF690045748758CCFCC22 /* PointCloudExporter.swift in Sources */,
@@ -508,6 +582,16 @@
 				9067585C0B3681D95E7B0E7B /* MLKitFoodValidator.swift in Sources */,
 				5CAF5253687665D15E7C256E /* Food3DExporter.swift in Sources */,
 				95DB82C4E0F591668815CCC5 /* Scan3DViewerPlugin.swift in Sources */,
+				354025B4414946373AE0E35E /* YOLOSegmentationService.swift in Sources */,
+				7A791A37CDFED49A71146C82 /* FoodClassifierService.swift in Sources */,
+				710444ACC7C21EE9F504D11B /* Food3DTextureBaker.swift in Sources */,
+				92E1BE887986365546D2F19B /* Food3DRealityView.swift in Sources */,
+				C6902D46C1904645B9759B61 /* ARMeshVolumeEstimator.swift in Sources */,
+				EFF8B23A41BA9547D2527651 /* MonoDepthService.swift in Sources */,
+				C17EE1400334A1F1CBAEED47 /* MotionStabilityMonitor.swift in Sources */,
+				EE592D71C88D7676C21623A9 /* MobileCLIPService.swift in Sources */,
+				BFBBF023731E53233CA98AD1 /* MeshSmoothing.swift in Sources */,
+				EDAF8639309D86D2F8803B25 /* MobileSamRefiner.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

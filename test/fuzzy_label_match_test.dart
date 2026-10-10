@@ -65,6 +65,16 @@ void main() {
       );
     });
 
+    test('rejects a low-overlap shared-word match', () {
+      expect(
+        DatabaseService.bestFuzzyLabelMatch(
+          'chicken salad with dressing',
+          ['chicken', 'salad'],
+        ),
+        isNull,
+      );
+    });
+
     test('plural visible vegetables map to base foods', () {
       expect(DatabaseService.bestFuzzyLabelMatch('carrots', dbLabels), 'carrot');
       expect(

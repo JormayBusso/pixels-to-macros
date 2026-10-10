@@ -372,6 +372,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                   : FoodScoringService.scoreFood(
                       foodData,
                       goal: prefs.nutritionGoal,
+                      loggedGrams: grams,
                     ),
               bolusUnits: null,
               onEdit: () => _editFood(f),
