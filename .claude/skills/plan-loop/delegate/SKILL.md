@@ -48,17 +48,11 @@ the routing below; otherwise select the tier as follows:
 | MEDIUM | standard | medium |
 | HIGH | strong | high |
 
-- **Cheap tier:** `gpt-5.6-luna` at low effort; if unavailable, use
-  `gemini-3.6-flash` or `claude-haiku-4.5` at low effort.
-- **Standard tier:** `gpt-5.6-terra` at medium effort; if unavailable, use
-  `gpt-5.5` or `gpt-5.4` at medium effort.
-- **Strong tier:** `claude-opus-4.8` at high effort; if unavailable, use
-  `claude-opus-4.7` or `claude-sonnet-5` at high effort.
-
-Follow the `plan` skill's Model tiers environment fallback rule: fall back to
-the closest available tier rather than failing because a named model is
-unavailable. Never default to flagship models such as `claude-opus-5` or
-`gpt-5.6-sol`.
+Models come from `plan`'s **Model tiers** table; delegate uses the
+**implement** role. In short: cheap = `claude-haiku-5.5`, standard =
+`claude-sonnet-5.5`, strong = `claude-opus-5.5`. Pass the model and effort to
+the task tool's `model` / `reasoning_effort` fields, and apply that table's
+fallback rule when a model is unavailable.
 
 ## Automatic escalation
 

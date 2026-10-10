@@ -23,14 +23,9 @@ auto-invoke anything further (pushing/PRs remain a separate manual step).
 
 ## Model routing
 
-Use the same **Model tiers** mapping and environment fallback rule defined in
-`plan`'s Model tiers section: cheap is `gpt-5.6-luna` at low effort (fallback
-`gemini-3.6-flash` or `claude-haiku-4.5` at low effort), standard is
-`gpt-5.6-terra` at medium effort (fallback `gpt-5.5` or `gpt-5.4` at medium
-effort), and strong is `claude-opus-4.8` at high effort (fallback
-`claude-opus-4.7` or `claude-sonnet-5` at high effort). Always fall back to
-the closest available model rather than failing; never default to flagship
-models such as `claude-opus-5` or `gpt-5.6-sol`.
+Models come from `plan`'s **Model tiers** table (cheap = `claude-haiku-5.5`;
+standard wording = `gpt-6.1-sol`); apply its fallback rule when a model is
+unavailable.
 
 - Prefer deterministic tooling with no model call where possible. Staging
   files, running `git status`/`git diff`, and committing via a fixed message

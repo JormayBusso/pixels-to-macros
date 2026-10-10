@@ -11,23 +11,40 @@ mutate.
 
 ## Model tiers
 
-- **Cheap tier:** Prefer `gpt-5.6-luna` at low effort for simple,
-  low-cost work. If it is unavailable in this environment, use the closest
-  available low-cost/fast model, such as `gemini-3.6-flash` or
-  `claude-haiku-4.5`, at low effort. Fall back to the closest available tier;
-  never fail merely because a named model is not configured.
-- **Standard tier:** Use `gpt-5.6-terra` at medium effort for normal work.
-  If unavailable, fall back to `gpt-5.5` or `gpt-5.4` at medium effort, or
-  the closest available standard-tier model; never fail due to an unavailable
-  model name.
-- **Strong tier:** Use `claude-opus-4.8` at high effort for high-risk or
-  complex work. If unavailable, fall back to `claude-opus-4.7` or
-  `claude-sonnet-5` at high effort, or the closest available strong-tier
-  model; never fail due to an unavailable model name.
+Single source of truth for model choice in this loop; `delegate`, `assess`,
+and `codify` reference this table. Prices are Copilot input/output units
+(Oct 2026).
 
-Never use the most expensive/flagship tier (for example, `claude-opus-5` or
-`gpt-5.6-sol`) as a default in this loop. Reserve it only for an explicit
-manual user escalation outside normal routing.
+| Tier | Role | Model (effort) | Price | Fallback |
+| --- | --- | --- | --- | --- |
+| cheap | any | `claude-haiku-5.5` (low) | 10/50 | `gpt-6-luna` (low) |
+| standard | **implement** (delegate) | `claude-sonnet-5.5` (medium) | 200/1000 | `gpt-6.1-sol` (medium) |
+| standard | **reason** (plan, assess) | `gpt-6.1-sol` (medium) | 200/1000 | `claude-sonnet-5.5` (medium) |
+| strong | any | `claude-opus-5.5` (high) | 400/2000 | `gpt-6.1-sol` (xhigh) |
+
+Why these (BenchLM, Artificial Analysis, DataCamp, explainx.ai — Oct 2026):
+
+- **Standard is split by role.** Sonnet 5.5 and GPT-6.1 Sol cost the same.
+  Sonnet 5.5 is #1 on coding (BenchLM coding 84 vs 71; Bug Hunt 51 vs 44
+  fixes; AA Intelligence Index 56 vs 51.8), so it writes the code. GPT-6.1
+  Sol leads on reasoning (ARC-AGI), rejects bad inputs rather than caveating
+  them, and has half-price cache reads, so it plans and assesses. Assessing
+  with a different vendor than the implementer is a deliberate
+  **cross-check**: one model's blind spots get reviewed by another.
+- **Strong is Opus 5.5.** It beats Opus 5 and Opus 4.8 on every shared
+  benchmark (SWE-bench Pro 89.9% vs 79.2% vs 69.2%) at a lower price.
+- **Cheap is Haiku 5.5.** It costs the same as GPT-6 Luna, edges it on coding,
+  and Luna showed coding regressions after its reprice.
+
+Off-roster (dominated — a same-or-cheaper roster model is better): Opus 4.8,
+Opus 5, Sonnet 5, GPT-6 Sol (superseded by 6.1 Sol at the same price),
+GPT-5.6 Sol/Terra/Luna, GPT-5.3-Codex, MAI-Code-1.1-Flash. `gemini-3.8-flash`
+(75/375) is a last-resort cheap fallback only.
+
+If a named model is unavailable, use its listed fallback, then the closest
+available model of the same tier; never fail because a model name is not
+configured. The top-priced models (Opus 5, Opus 4.8) are never used — Opus
+5.5 is both stronger and cheaper.
 
 ## Trigger rule (case-sensitive)
 
@@ -125,7 +142,7 @@ Status: active
 - The Routing Log must capture the risk level, model tier actually used per
   phase, the reason for that tier (including escalation reasons), commands run
   and their pass/fail result, and the assess decision. For example:
-  `Routing Log: risk=MEDIUM; delegate_model=standard(gpt-5.6-terra); delegate_reason=established module fix; checks=pytest tests/test_x.py=pass; assess_model=standard(gpt-5.6-terra); assess_decision=PASS`
+  `Routing Log: risk=MEDIUM; delegate_model=standard(claude-sonnet-5.5); delegate_reason=established module fix; checks=flutter test test/x_test.dart=pass; assess_model=standard(gpt-6.1-sol); assess_decision=PASS`
 - Use kebab-case todo-ids, descriptive (not `t1`, `t2`).
 - Break the goal into the smallest set of todos that are each independently
   delegatable and independently checkable. Avoid one giant todo.
@@ -137,7 +154,8 @@ Status: active
 ## PLAN-phase model routing
 
 PLAN itself—the model that produces or revises the plan file—uses the standard
-tier at medium effort by default for LOW and MEDIUM overall task complexity.
+**reason** model (`gpt-6.1-sol`) at medium effort by default for LOW and
+MEDIUM overall task complexity.
 Escalate PLAN itself to the strong tier at high effort only when the overall
 requested task is clearly HIGH risk or complex according to the classification
 above.
