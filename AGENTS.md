@@ -143,7 +143,14 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
      build CODE_SIGNING_ALLOWED=NO
    ```
 5. Trusting the dev cert (Settings → General → VPN & Device Management) is a **one-time
-   USER step** and cannot be done remotely.
+   USER step** and cannot be done remotely. It must be redone whenever the Mac gets a new
+   signing cert (e.g. after a reinstall): `devicectl` install then succeeds but launch fails
+   with `FBSOpenApplicationErrorDomain error 3` ("profile has not been explicitly trusted").
+6. **Project location: `~/Developer/pixels-to-macros`, NOT `~/Desktop`.** iCloud
+   "Desktop & Documents" sync stamps `com.apple.FinderInfo`/`fileprovider` xattrs onto
+   bundles, and codesign then fails with `resource fork, Finder information, or similar
+   detritus not allowed` (Flutter.framework / objective_c.framework). If that error appears,
+   the repo is inside an iCloud-synced folder — move it; `xattr -cr` alone does not stick.
 
 ---
 
@@ -218,11 +225,45 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
 - **Any NEW `ios/Runner/Scanner/*.swift` file must be registered in the Runner target** by
   running `ruby scripts/add_scanner_files.rb` (globs new Scanner swift into the target).
   Forgetting this = "Self has no member …" / missing-symbol build failures.
+  The script adds **every** `Scanner/*.swift` file. An unfinished draft in that folder
+  (e.g. `DepthFusion+TopViewFiltering.swift.draft`, which declares a stored property in an
+  extension and is invalid Swift) will break the build. Before running the script, move
+  drafts out or rename them to `.swift.draft`.
 - Bundling a new CoreML model/resource (files are gitignored, pbxproj refs are committed):
   `ruby scripts/add_yolo_model.rb <ModelName.mlmodelc>` (or any resource filename).
-- Segmentation backend auto-selects: YOLO-seg (`*-seg.mlmodelc` bundled) else SegFormer.
+- Segmentation backend auto-selects: YOLO-seg (`*-seg.mlmodelc` bundled) else the
+  `FoodSegmentation` fallback (logged as "SegFormer", but the bundled model is DeepLabV3+).
   Optional refiners `FoodClassifier.mlmodelc` and `MobileCLIPImage.mlmodelc` +
   `FoodLabelEmbeddings.json` are gated/inert until bundled.
+- **Bundled models and how to regenerate them** (all `*.mlmodelc` are gitignored; the
+  pbxproj references all 7, so a missing one fails the build with "couldn't be opened").
+  Use a Python 3.11 venv at `training/.venv` (gitignored via `.git/info/exclude`) with
+  `torch==2.7.0` (newest torch coremltools 9 is tested with) + `training/requirements.txt`:
+  - `FoodSegYolo` — **custom-trained**, cannot be regenerated from public weights. Source:
+    Kaggle notebook `jormay/upgraded-pixels-to-macros` (YOLO11s-seg, FoodSeg103, 640px).
+    Its in-notebook CoreML export crashes (`TypeError: only 0-dimensional arrays…`,
+    coremltools 9 + NumPy 2), so pull only the weights — a bulk `kernels output` downloads
+    the whole dataset and triggers HTTP 429:
+    `kaggle kernels output jormay/upgraded-pixels-to-macros -p <dir> --file-pattern 'best\.pt'`
+    (token in `~/.kaggle/access_token`), then export in a separate venv with
+    `coremltools==8.3.0` + `numpy<2`: `YOLO('best.pt').export(format='coreml', nms=False,
+    imgsz=640, half=True)` → rename to `FoodSegYolo.mlpackage` → `xcrun coremlcompiler
+    compile … ios/Runner/`. Class names are embedded in the model metadata.
+  - `FoodSegmentation` — **custom-trained fallback**, and it is **DeepLabV3+
+    (smp, `efficientnet-b3` encoder, 104 classes, 512², ImageNet-normalised inside the
+    model)**, NOT the SegFormer that today's `export_coreml.py` builds. Only its
+    `weight.bin` is kept (`training/output/FoodSegmentation.mlpackage`); if the
+    `model.mlmodel` spec is lost, rebuild it by converting that architecture with the
+    pre-Jun-18 `export_coreml.py` wrapper (`git show 461c52b1^:training/export_coreml.py`)
+    using non-zero dummy weights (all-zero weights get constant-folded and change the blob
+    layout), then drop the original `weight.bin` in — the layout must match exactly
+    (278 blobs, 22,160,144 bytes).
+  - Public-weight models (`--compile_ios` writes the `.mlmodelc` into `ios/Runner/`):
+    `export_mobileclip.py` → `MobileCLIPImage` (+ `FoodLabelEmbeddings.json`),
+    `export_food_classifier.py` → `FoodClassifier`, `export_depth_coreml.py` →
+    `MonoDepth`, `export_mobilesam.py` → `MobileSamEncoder` + `MobileSamDecoder`.
+  - The MobileCLIP LoRA adapter (Kaggle `jormay/pixels-to-macros-updated-version`, Sep 20)
+    is **not** bundled: 73.07% vs 91.04% zero-shot on 2,020 Food-101 test images.
 
 ---
 
