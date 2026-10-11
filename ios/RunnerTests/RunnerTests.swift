@@ -109,7 +109,7 @@ class RunnerTests: XCTestCase {
     XCTAssertTrue(fusion.carveBySideSilhouette(solid, id: "mirror-outside", topIndex: 0).keys.isEmpty)
   }
 
-  func testCoLocatedTopsShareLargestFoodsSideProfile() {
+  func testCoLocatedTopsNeverBorrowAnotherFoodsSideProfile() {
     let tops = [
       ScanMaskGeometry.SideMatchTop(lo: 0.1, hi: 0.9, area: 1000, label: "beef", classIndex: 1),
       ScanMaskGeometry.SideMatchTop(lo: 0.1, hi: 0.9, area: 900, label: "beef", classIndex: 1),
@@ -117,12 +117,10 @@ class RunnerTests: XCTestCase {
     let side = ScanMaskGeometry.SideMatchSide(lo: 10, hi: 89, area: 1000, label: "beef",
       classIndex: 1, centredness: 1, verticalExtent: Array(repeating: 20, count: 100))
     let matches = ScanMaskGeometry.matchSideSegments(tops: tops, sides: [side], horizontalDim: 100)
-    XCTAssertEqual(matches.map(\.topIndex), [0, 1])
-    XCTAssertEqual(matches.map(\.isShared), [false, true])
-    XCTAssertEqual(matches.map(\.reason), ["overlap", "occluded_shared"])
+    XCTAssertTrue(matches.isEmpty)
   }
 
-  func testCalibratedOcclusionFrontFoodOwnsAndBackFoodShares() {
+  func testCalibratedOcclusionOnlyAssignsVisiblePiece() {
     var near = ScanMaskGeometry.SideMatchTop(lo: 0.1, hi: 0.9, area: 900, label: "beef", classIndex: 1)
     near.projectedLo = 0.1; near.projectedHi = 0.9; near.cameraDepth = 0.3
     var far = near
@@ -130,8 +128,8 @@ class RunnerTests: XCTestCase {
     let side = ScanMaskGeometry.SideMatchSide(lo: 10, hi: 89, area: 1000, label: "beef",
       classIndex: 1, centredness: 1, verticalExtent: Array(repeating: 20, count: 100))
     let matches = ScanMaskGeometry.matchSideSegments(tops: [far, near], sides: [side], horizontalDim: 100)
-    XCTAssertEqual(matches.map(\.topIndex), [0, 1])
-    XCTAssertEqual(matches.map(\.isShared), [true, false])
+    XCTAssertEqual(matches.map(\.topIndex), [1])
+    XCTAssertEqual(matches.map(\.isShared), [false])
   }
 
   func testSmallCalibratedPieceKeepsItsOwnSideMask() {
@@ -233,7 +231,7 @@ class RunnerTests: XCTestCase {
     XCTAssertEqual(union.mask[5][29], 0)
   }
 
-  func testUnmatchedTopBorrowsNearestSidePiece() {
+  func testUnmatchedTopDoesNotBorrowNearestSidePiece() {
     var a = ScanMaskGeometry.SideMatchTop(lo: 0.1, hi: 0.3, area: 1000, label: "apple", classIndex: 1)
     a.projectedLo = 0.1; a.projectedHi = 0.3; a.cameraDepth = 0.3
     var b = ScanMaskGeometry.SideMatchTop(lo: 0.6, hi: 0.8, area: 1000, label: "pear", classIndex: 1)
@@ -242,15 +240,12 @@ class RunnerTests: XCTestCase {
     c.projectedLo = 0.85; c.projectedHi = 0.95; c.cameraDepth = 0.6
     let matches = ScanMaskGeometry.matchSideSegments(
       tops: [a, b, c], sides: [side(10, 29), side(60, 79)], horizontalDim: 100)
-    XCTAssertEqual(matches.map(\.topIndex), [0, 1, 2])
-    XCTAssertEqual(matches.map(\.sideIndex), [0, 1, 1])
-    XCTAssertEqual(matches[2].reason, "nearest_shared")
-    XCTAssertTrue(matches[2].isShared)
-    XCTAssertEqual(matches[2].from, 60)
-    XCTAssertEqual(matches[2].to, 79)
+    XCTAssertEqual(matches.map(\.topIndex), [0, 1])
+    XCTAssertEqual(matches.map(\.sideIndex), [0, 1])
+    XCTAssertTrue(matches.allSatisfy { !$0.isShared })
   }
 
-  func testNoSideSilhouetteRequiresSideView() {
+  func testMissingSideDiagnosticAndLidarRetakeError() {
     XCTAssertEqual(InferencePipeline.monocularSideViewFailure(sideFrameCaptured: false, sideProfileCount: 0),
       "missing_side_capture")
     XCTAssertEqual(InferencePipeline.monocularSideViewFailure(sideFrameCaptured: true, sideProfileCount: 0),
@@ -305,6 +300,46 @@ class RunnerTests: XCTestCase {
     XCTAssertNotNil(MonocularVolumeEstimator().usableSideProfile(profile, for: "beef"))
     XCTAssertFalse(profile.maskSnappedUV(SIMD2(-0.1, 0.5)).found)
     XCTAssertFalse(profile.maskSnappedUV(SIMD2(1.1, 0.5)).found)
+    var borrowed = profile
+    borrowed.sideShared = true
+    XCTAssertNil(MonocularVolumeEstimator().usableSideProfile(borrowed, for: "beef"))
+  }
+
+  func testMonocularMissingSideExportsUnmeasuredTopMaskSheet() throws {
+    var buffer: CVPixelBuffer?
+    XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, 64, 64,
+      kCVPixelFormatType_32BGRA, [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary,
+      &buffer), kCVReturnSuccess)
+    let rgb = try XCTUnwrap(buffer)
+    CVPixelBufferLockBaseAddress(rgb, [])
+    memset(CVPixelBufferGetBaseAddress(rgb), 100, CVPixelBufferGetBytesPerRow(rgb) * 64)
+    CVPixelBufferUnlockBaseAddress(rgb, [])
+    var camera = matrix_identity_float4x4
+    camera.columns.1 = SIMD4(0, 0, -1, 0)
+    camera.columns.2 = SIMD4(0, 1, 0, 0)
+    camera.columns.3 = SIMD4(0, 0.5, 0, 1)
+    let k = simd_float3x3(columns: (SIMD3(64, 0, 0), SIMD3(0, 64, 0), SIMD3(32, 32, 1)))
+    let frame = FrameCaptureService.CapturedFrame(pixelBuffer: rgb, depthBuffer: nil,
+      cameraTransform: camera, cameraIntrinsics: k, timestamp: 1)
+    var mask = Array(repeating: Array(repeating: UInt8(0), count: 64), count: 64)
+    for r in 16..<48 { for c in 16..<48 { mask[r][c] = 1 } }
+    let segment = SegmentationService.SegmentedObject(label: "apple", classIndex: 1,
+      mask: mask, pixelCount: 1024, centroid: (row: 32, col: 32), confidence: 0.9)
+    for side in [nil, frame] as [FrameCaptureService.CapturedFrame?] {
+      let result = try MonocularVolumeEstimator().estimate(
+        segments: [segment], topFrame: frame, sideFrame: side, maskWidth: 64,
+        maskHeight: 64, preprocessedRGB: rgb, tableDistanceCm: 50)
+      let object = try XCTUnwrap(result.objects.first)
+      XCTAssertEqual(object["scan_mode"] as? String, "monocular_top_only")
+      XCTAssertEqual(object["volume_measured"] as? Bool, false)
+      XCTAssertEqual(object["side_view_applied"] as? Bool, false)
+      XCTAssertEqual(object["height_cm"] as? Double, 0)
+      XCTAssertEqual(object["mesh_volume_cm3"] as? Double, 0)
+      XCTAssertEqual(object["volume_cm3"] as? Double, 0)
+      XCTAssertEqual(object["side_missing_reason"] as? String,
+        side == nil ? "missing_capture" : "unmatched_occluded_or_invalid_mask")
+      XCTAssertTrue(FileManager.default.fileExists(atPath: result.modelPath))
+    }
   }
 
   /// 4×4×3 cm box at x,z ∈ [0, 4) cm, y ∈ [0, 3) cm on a table at y = 0, seen by
@@ -358,12 +393,14 @@ class RunnerTests: XCTestCase {
     XCTAssertEqual(cluster.id, "apple_0")
     XCTAssertEqual(cluster.topSegmentIndex, 0)
     XCTAssertEqual(cluster.heightSource, .sideSilhouette)
-    // Height is exactly the side mask's 3 cm; footprint exactly the 4×4 cm box.
-    XCTAssertEqual(Set(cluster.voxelKeys.map(\.y)), [0, 1, 2])
-    XCTAssertEqual(Set(cluster.voxelKeys.map(\.x)), [0, 1, 2, 3])
-    XCTAssertEqual(Set(cluster.voxelKeys.map(\.z)), [0, 1, 2, 3])
-    XCTAssertEqual(cluster.voxelKeys.count, 48)
-    XCTAssertEqual(cluster.volumeCm3, 48, accuracy: 0.001)
+    // Rasterized silhouette cones include the boundary pixels and perspective,
+    // so the measured hull differs from the ideal box used to make the masks.
+    XCTAssertEqual(cluster.voxelSizeM, 0.0025, accuracy: 0.000001)
+    XCTAssertEqual(Set(cluster.voxelKeys.map(\.y)), Set((0..<13).map(Int32.init)))
+    XCTAssertEqual(Set(cluster.voxelKeys.map(\.x)), Set((0..<17).map(Int32.init)))
+    XCTAssertEqual(Set(cluster.voxelKeys.map(\.z)), Set((0..<17).map(Int32.init)))
+    XCTAssertEqual(cluster.voxelKeys.count, 3593)
+    XCTAssertEqual(cluster.volumeCm3, 56.140625, accuracy: 0.001)
   }
 
   func testLidarSparseDepthWithoutSideSilhouetteRequiresSideView() {

@@ -12,8 +12,8 @@ import simd
 ///   • Scale priority: plate diameter → ARKit table distance → 22 cm fallback.
 ///   • Geometry: top-mask footprint × matched side-view silhouette profile.
 ///     Height ALWAYS comes from the side silhouette; there is no class prior,
-///     default height or thickness floor. Without a side silhouette the scan
-///     fails with `EstimateError.sideViewRequired` (Flutter `SIDE_VIEW_REQUIRED`).
+///     default height or thickness floor. Missing side evidence produces an
+///     exact top-mask sheet, explicitly excluded from nutrition estimates.
 ///   • Mesh: generated height-field visual hull from real masks, suitable for
 ///     the viewer and for keeping volume/calorie math wired identically.
 final class MonocularVolumeEstimator {
@@ -300,17 +300,6 @@ final class MonocularVolumeEstimator {
             tableDistanceCm: tableDistanceCm
         )
 
-        // No side capture → no measured height for ANY food. Never substitute a
-        // class prior, default height or thickness floor (AGENTS.md §9).
-        guard sideFrame != nil else {
-            print("[MonocularEstimator] SIDE_VIEW_REQUIRED reason=missing_side_capture (no prior/default height is ever used)")
-            throw EstimateError.sideViewRequired("missing_side_capture")
-        }
-        guard !sideProfiles.isEmpty else {
-            print("[MonocularEstimator] SIDE_VIEW_REQUIRED reason=no_side_food_mask segments=\(segments.count)")
-            throw EstimateError.sideViewRequired("no_side_food_mask")
-        }
-
         // Depth Anything V2 (gated, AGENTS.md §9) is only ever a RELATIVE top
         // surface relief. It is never a height or volume source.
         let depthGrid: MonoDepthService.DepthGrid? = {
@@ -352,41 +341,47 @@ final class MonocularVolumeEstimator {
                 in: sideProfiles,
                 excluding: usedSideProfileIndices
             )
-            guard let profile = usableSideProfile(profileMatch?.profile, for: seg.label) else {
-                print("[MonocularEstimator] SIDE_VIEW_REQUIRED food#\(idx) \(seg.label): no side silhouette (matched=\(profileMatch != nil), sideProfiles=\(sideProfiles.count), matchedTops=\(sideProfiles.compactMap { $0.topSegmentIndex }.map(String.init).joined(separator: ","))) — no prior/default height is ever used")
-                throw EstimateError.sideViewRequired("food#\(idx)_no_side_silhouette")
+            let profile = sideFrame == nil ? nil : usableSideProfile(profileMatch?.profile, for: seg.label)
+            let sideApplied = profile != nil
+            if !sideApplied {
+                print("[MonocularEstimator] top-only food#\(idx) \(seg.label): volume=unmeasured sideProfiles=\(sideProfiles.count) — retake a level side photo; no height is invented")
             }
-            if let profileMatch { usedSideProfileIndices.insert(profileMatch.index) }
+            if sideApplied, let profileMatch { usedSideProfileIndices.insert(profileMatch.index) }
 
-            let topAxisCm = profile.topAxis == .columns ? widthCm : depthCm
+            let topAxisCm = profile?.topAxis == .columns ? widthCm : depthCm
             // Thickness comes straight from the measured side silhouette —
             // metric via the captured side pose when calibrated, else the side
             // aspect ratio × the matching top axis. No floor, cap or prior.
-            let calibratedHeightCm = profile.measuredHeightCm.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
-            let heightSource = calibratedHeightCm != nil ? "side_pose_ray" : "side_aspect_x_top_axis"
-            let heightCm = calibratedHeightCm ?? profile.aspectRatio * topAxisCm
+            let calibratedHeightCm = profile?.measuredHeightCm.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
+            let heightSource = sideApplied
+                ? (calibratedHeightCm != nil ? "side_pose_ray" : "side_aspect_x_top_axis")
+                : "unmeasured"
+            let heightCm = calibratedHeightCm ?? (profile?.aspectRatio ?? 0) * topAxisCm
             // Prism telemetry only (the display mesh is the volume source): the
             // measured side-silhouette fill, no shape-factor prior or guardrail.
-            let rawVolumeCm3 = areaCm2 * heightCm * profile.meanNormalizedHeight
+            let rawVolumeCm3 = areaCm2 * heightCm * (profile?.meanNormalizedHeight ?? 0)
             let volumeCm3 = rawVolumeCm3
-            let scanMode = "monocular_visual_hull"
+            let scanMode = sideApplied ? "monocular_visual_hull" : "monocular_top_only"
             let meshMode = "exact_silhouette"
             let debugInfo = String(
-                format: "visual_hull: side=exact mesh=%@ scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm(%@) fill=%.2f ar=%.2f match=%@%@ vol=%.0fcm³",
+                format: "%@: side=%@ mesh=%@ scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm(%@) fill=%.2f ar=%.2f match=%@ vol=%.0fcm³",
+                scanMode,
+                sideApplied ? "exact" : "missing_volume_unmeasured",
                 meshMode,
                 scale.source,
                 scale.pixelsPerCm,
-                profile.topAxis.rawValue,
-                profile.reversed ? "R" : "",
+                profile?.topAxis.rawValue ?? "none",
+                profile?.reversed == true ? "R" : "",
                 heightCm,
                 heightSource,
-                profile.meanNormalizedHeight,
-                profile.aspectRatio,
-                profile.matchReason,
-                profile.sideShared ? "(shared)" : "",
+                profile?.meanNormalizedHeight ?? 0,
+                profile?.aspectRatio ?? 0,
+                profile?.matchReason ?? "unmatched",
                 volumeCm3
             )
-            print("[MonocularEstimator] visual-hull food#\(idx) \(seg.label): sideLabel=\(profile.label), sideMatch=top#\(profile.topSegmentIndex.map(String.init) ?? "label") reason=\(profile.matchReason) shared=\(profile.sideShared) score=\(String(format: "%.2f", profile.matchScore)), heightSource=\(heightSource), measuredH=\(calibratedHeightCm.map { String(format: "%.2f", $0) } ?? "nil")cm, axisCm=\(String(format: "%.2f", topAxisCm)), axis=\(profile.topAxis.rawValue), reversed=\(profile.reversed), mesh=\(meshMode), ar=\(String(format: "%.2f", profile.aspectRatio)), height=\(String(format: "%.2f", heightCm))cm, fill=\(String(format: "%.2f", profile.meanNormalizedHeight)), vol=\(String(format: "%.1f", volumeCm3))cm3")
+            if let profile {
+                print("[MonocularEstimator] visual-hull food#\(idx) \(seg.label): sideLabel=\(profile.label), sideMatch=top#\(profile.topSegmentIndex.map(String.init) ?? "label") reason=\(profile.matchReason) score=\(String(format: "%.2f", profile.matchScore)), heightSource=\(heightSource), measuredH=\(calibratedHeightCm.map { String(format: "%.2f", $0) } ?? "nil")cm, axisCm=\(String(format: "%.2f", topAxisCm)), axis=\(profile.topAxis.rawValue), reversed=\(profile.reversed), mesh=\(meshMode), ar=\(String(format: "%.2f", profile.aspectRatio)), height=\(String(format: "%.2f", heightCm))cm, fill=\(String(format: "%.2f", profile.meanNormalizedHeight)), vol=\(String(format: "%.1f", volumeCm3))cm3")
+            }
             let id = "\(sanitised(seg.label))_\(idx)"
             // Depth-relief shaping (gated + fail-safe): a normalized per-pixel
             // top-surface relief from the metric depth, used ONLY to shape the
@@ -394,7 +389,7 @@ final class MonocularVolumeEstimator {
             // plate/side path. Skipped for low coverage or flat foods.
             var reliefValues: [[Float]]? = nil
             var reliefWeight: Float = 0
-            if MonocularVolumeEstimator.useDepthRelief, let grid = depthGrid,
+            if sideApplied, MonocularVolumeEstimator.useDepthRelief, let grid = depthGrid,
                let relief = monoDepth.reliefGrid(
                    depth: grid, mask: seg.mask,
                    maskWidth: maskWidth, maskHeight: maskHeight),
@@ -433,19 +428,20 @@ final class MonocularVolumeEstimator {
             let densityEstimate = estimatedDensityGPerCm3(for: seg.label)
             let weightEstimateG = finalVolumeCm3 * densityEstimate
             let heightSamples = [0.0, 0.25, 0.5, 0.75, 1.0]
-                .map { String(format: "%.2f", profile.sample($0)) }
+                .map { String(format: "%.2f", profile?.sample($0) ?? 0) }
                 .joined(separator: ",")
             let sideProfileSummary = String(
-                format: " sideProfile=applied axis=%@%@ samples=%d heights=[%@] fill=%.2f ar=%.2f",
-                profile.topAxis.rawValue,
-                profile.reversed ? "R" : "",
-                profile.normalizedHeights.count,
+                format: " sideProfile=%@ axis=%@%@ samples=%d heights=[%@] fill=%.2f ar=%.2f",
+                sideApplied ? "applied" : "missing",
+                profile?.topAxis.rawValue ?? "none",
+                profile?.reversed == true ? "R" : "",
+                profile?.normalizedHeights.count ?? 0,
                 heightSamples,
-                profile.meanNormalizedHeight,
-                profile.aspectRatio
+                profile?.meanNormalizedHeight ?? 0,
+                profile?.aspectRatio ?? 0
             )
             let diagnosticInfo = String(
-                format: "%@ | footprint raw=%.1fcm² %.1fx%.1fcm height=%.2fcm rawVol=%.1fcm³ meshVol=%.1fcm³ hullCellVol=%.1fcm³ finalVol=%.1fcm³ density=%.2fg/cm³ weight=%.0fg sideApplied=true%@",
+                format: "%@ | footprint raw=%.1fcm² %.1fx%.1fcm height=%.2fcm rawVol=%.1fcm³ meshVol=%.1fcm³ hullCellVol=%.1fcm³ finalVol=%.1fcm³ density=%.2fg/cm³ weight=%.0fg sideApplied=%@%@",
                 debugInfo,
                 rawAreaCm2,
                 rawWidthCm,
@@ -457,6 +453,7 @@ final class MonocularVolumeEstimator {
                 finalVolumeCm3,
                 densityEstimate,
                 weightEstimateG,
+                sideApplied ? "true" : "false",
                 sideProfileSummary
             )
             let confidence = confidenceForScale(scale, segmentConfidence: seg.confidence, sideFrame: sideFrame)
@@ -466,8 +463,8 @@ final class MonocularVolumeEstimator {
             // Component confidences so the diagnostics screen can explain WHY a
             // scan scored the way it did (scale vs segmentation vs silhouette).
             let scaleConfidence = scale.confidence
-            let silhouetteConfidence = Double(profile.confidence)
-            let lowConfidence = roundedConfidence < 0.62 || scale.source == "intrinsic_default"
+            let silhouetteConfidence = Double(profile?.confidence ?? 0)
+            let lowConfidence = !sideApplied || roundedConfidence < 0.62 || scale.source == "intrinsic_default"
             var row: [String: Any] = [
                 "id": id,
                 "label": seg.label,
@@ -484,7 +481,7 @@ final class MonocularVolumeEstimator {
                 "silhouette_height_px": round(heightCm * scale.pixelsPerCm * 10) / 10,
                 "pixels_per_cm": round(scale.pixelsPerCm * 100) / 100,
                 "density_source": "label_prior",
-                "frames_used": 2,
+                "frames_used": sideFrame == nil ? 1 : 2,
                 "scan_mode": scanMode,
                 "scale_source": scale.source,
                 "scale_fallback_reason": scale.fallbackReason ?? "none",
@@ -495,17 +492,16 @@ final class MonocularVolumeEstimator {
                 "depth_cm": round(depthCm * 10) / 10,
                 "height_cm": round(heightCm * 10) / 10,
                 "height_source": heightSource,
-                "side_match_reason": profile.matchReason,
-                "side_match_shared": profile.sideShared,
+                "side_match_reason": profile?.matchReason ?? "unmatched",
+                "side_match_shared": false,
                 "raw_volume_cm3": round(rawVolumeCm3 * 10) / 10,
                 "density_g_cm3": round(densityEstimate * 100) / 100,
                 "weight_g": round(weightEstimateG),
                 "volume_guardrail_applied": false,
-                "side_view_applied": true,
-                "volume_measured": true,
-                "side_missing_reason": "none",
-                // No prior/default/top-only path exists any more (AGENTS.md §9).
-                "fallback_used": false,
+                "side_view_applied": sideApplied,
+                "volume_measured": sideApplied,
+                "side_missing_reason": sideApplied ? "none" : (sideFrame == nil ? "missing_capture" : "unmatched_occluded_or_invalid_mask"),
+                "fallback_used": !sideApplied,
                 "temporal_smoothing_applied": false,
                 "temporal_samples": 1,
                 "pre_smoothing_volume_cm3": round(volumeCm3 * 10) / 10,
@@ -514,7 +510,7 @@ final class MonocularVolumeEstimator {
                 "surface_extraction_mode": estimatedObject.surfaceExtractionMode,
                 "top_silhouette_snap_vertices": estimatedObject.topSilhouetteSnapVertices,
                 "top_silhouette_edge_snap_vertices": estimatedObject.topSilhouetteEdgeSnapVertices,
-                "side_profile_samples": profile.normalizedHeights.count,
+                "side_profile_samples": profile?.normalizedHeights.count ?? 0,
                 "volume_source": "display_mesh",
                 "needs_user_label": seg.needsUserLabel,
                 "candidate_labels": seg.candidateLabels,
@@ -523,7 +519,7 @@ final class MonocularVolumeEstimator {
             ]
             row["debug"] = diagnosticInfo
             // [EVAL] one line per food for known-weight calibration (#3).
-            print("[EVAL] label=\(seg.label) conf=\(String(format: "%.2f", roundedConfidence)) footprint_cm2=\(String(format: "%.1f", areaCm2)) silhouette_px=\(String(format: "%.1f", heightCm * scale.pixelsPerCm)) height_cm=\(String(format: "%.2f", heightCm)) height_source=\(heightSource) raw_volume_cm3=\(String(format: "%.1f", rawVolumeCm3)) final_volume_cm3=\(String(format: "%.1f", roundedVolume)) density_g_cm3=\(String(format: "%.2f", densityEstimate)) density_source=label_prior weight_g=\(String(format: "%.0f", weightEstimateG)) mode=\(scanMode) scale=\(scale.source) px/cm=\(String(format: "%.2f", scale.pixelsPerCm)) side_applied=true side_match=\(profile.matchReason)\(profile.sideShared ? "(shared)" : "") fallback=false")
+            print("[EVAL] label=\(seg.label) conf=\(String(format: "%.2f", roundedConfidence)) footprint_cm2=\(String(format: "%.1f", areaCm2)) silhouette_px=\(String(format: "%.1f", heightCm * scale.pixelsPerCm)) height_cm=\(String(format: "%.2f", heightCm)) height_source=\(heightSource) raw_volume_cm3=\(String(format: "%.1f", rawVolumeCm3)) final_volume_cm3=\(String(format: "%.1f", roundedVolume)) density_g_cm3=\(String(format: "%.2f", densityEstimate)) density_source=label_prior weight_g=\(String(format: "%.0f", weightEstimateG)) mode=\(scanMode) scale=\(scale.source) px/cm=\(String(format: "%.2f", scale.pixelsPerCm)) side_applied=\(sideApplied) side_match=\(profile?.matchReason ?? "unmatched") fallback=\(!sideApplied)")
             payload.append(row)
             metadata.append(row)
         }
@@ -895,7 +891,7 @@ final class MonocularVolumeEstimator {
     }
 
     func usableSideProfile(_ profile: SideProfile?, for label: String) -> SideProfile? {
-        guard let profile else { return nil }
+        guard let profile, !profile.sideShared else { return nil }
         // Reject only geometrically unusable masks. A low segmentation
         // confidence never drops a real side silhouette (there is no prior to
         // fall back to — AGENTS.md §9).
@@ -921,12 +917,8 @@ final class MonocularVolumeEstimator {
         let reason: String
     }
 
-    /// Dual-silhouette gate. A monocular reconstruction is only accepted when a
-    /// valid TOP silhouette AND a valid SIDE silhouette both exist for the
-    /// primary (largest) food and their alignment/consistency clears threshold.
-    /// There is NO single-silhouette fallback: when this returns valid == false
-    /// the caller retries the pipeline or surfaces a failure to the user instead
-    /// of exporting a degraded single-view shape.
+    /// Primary-object telemetry. The caller validates profiles independently;
+    /// missing side evidence leaves that food's top sheet unmeasured.
     func validateDualSilhouette(
         segments: [SegmentationService.SegmentedObject],
         sideProfiles: [SideProfile]
@@ -1273,9 +1265,7 @@ final class MonocularVolumeEstimator {
                 }
                 return finish(s.bottom, s.top)
             }
-            // Unreachable for scans: `estimate` throws `sideViewRequired`
-            // before building a mesh without a side silhouette.
-            return finish(0, 1.0)
+            return (0, 0)
         }
 
         @inline(__always) func cornerX(_ cc: Int) -> Float {
@@ -1451,7 +1441,7 @@ final class MonocularVolumeEstimator {
         // silhouette masks below; no geometry smoothing or subdivision is applied.
 
         @inline(__always) func hullBoundsAt(rowGrid: Float, colGrid: Float) -> (bottom: Float, top: Float) {
-            guard let sideProfile else { return (0, 1) }
+            guard let sideProfile else { return (0, 0) }
             let columnU = Double(colGrid / Float(max(1, gc)))
             let rowU = Double(rowGrid / Float(max(1, gr)))
             let matched = sideProfile.sampleBounds(sideProfile.topAxis == .columns ? columnU : rowU)

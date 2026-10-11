@@ -120,10 +120,8 @@ final class InferencePipeline {
         case volumeFailed
         case model3DExportFailed(String)
         case dualSilhouetteFailed(String, String)
-        /// A food with no measured height: non-LiDAR without a usable side
-        /// silhouette, or LiDAR with too little fused depth and no usable side
-        /// silhouette. There is no prior, default height or top-only shape to
-        /// fall back to (AGENTS.md §9), so the user retakes a level side photo.
+        /// LiDAR with too little fused depth and no usable side silhouette.
+        /// Retake guidance; non-LiDAR keeps an explicitly unmeasured top sheet.
         case sideViewRequired(String)
 
         /// Verbatim message surfaced to Dart with FlutterError code
@@ -149,7 +147,8 @@ final class InferencePipeline {
 
     /// Monocular gate: the side photo must exist AND contain at least one food
     /// silhouette, or no height can be measured. Returns the failure reason, or
-    /// nil when the scan may proceed. Pure for unit tests.
+    /// nil when side evidence exists. Non-LiDAR scans can still export an
+    /// explicitly unmeasured top sheet; LiDAR uses this to explain a retake.
     static func monocularSideViewFailure(sideFrameCaptured: Bool, sideProfileCount: Int) -> String? {
         if !sideFrameCaptured { return "missing_side_capture" }
         if sideProfileCount <= 0 { return "no_side_food_mask" }
@@ -234,7 +233,7 @@ final class InferencePipeline {
         lastModel3DObjects = []
 
         print("[SCAN] ═══════════ VIDEO SCAN START ═══════════")
-        print("[SCAN] build=2026-10-10b (monocular height = side silhouette only; LiDAR height = fused depth, else exact side-silhouette hull; no priors/default heights; SIDE_VIEW_REQUIRED when side has no food)")
+        print("[SCAN] build=2026-10-11-merge (monocular missing side = unmeasured top sheet; LiDAR height = fused depth, else exact side-silhouette hull; no borrowed silhouettes or priors)")
         print("[CAPTUREPAIR] inference id=\(recorder.captureID) top=\(recorder.topFrame?.timestamp.description ?? "none") side=\(recorder.sideFrame?.timestamp.description ?? "none")")
         print("[SCAN] recorder: topFrame=\(recorder.topFrame != nil), sideFrame=\(recorder.sideFrame != nil), topViewFrames=\(recorder.topViewFrames.count), lightFrames=\(recorder.lightFrames.count), frameCount=\(recorder.frameCount)")
 
@@ -473,8 +472,8 @@ final class InferencePipeline {
         // ── 3b. Non-LiDAR dual-photo visual hull ───────────────────────
         // If ARKit did not provide scene depth, do NOT force the device
         // through DepthFusion. Every food is reconstructed from its top mask ∩
-        // its matched side silhouette (mirrored). Without a side silhouette the
-        // scan fails with SIDE_VIEW_REQUIRED — never a prior/default height.
+        // its matched side silhouette (mirrored). Without a usable side
+        // silhouette, preserve the top-mask sheet as explicitly unmeasured.
         var capturedSideProfiles: [MonocularVolumeEstimator.SideProfile] = []
         var capturedSideRGB: CVPixelBuffer?
         if !recorder.hasDepthData || recorder.sideFrame != nil {
@@ -543,19 +542,12 @@ final class InferencePipeline {
                     segConfTop: segments.map { $0.confidence }.max() ?? 0,
                     segConfSide: 0, attempt: 1, reason: "missing_side_view")
                 print("[DUALHULL] \(dbg)")
-                print("[PIPELINE] missing side view (no top-only fallback exists)")
+                print("[PIPELINE] missing side view: top-only geometry, volume unmeasured; retake a level side photo")
             }
             capturedSideProfiles = sideProfiles
             capturedSideRGB = sidePreprocessedRGB
         }
         if !recorder.hasDepthData {
-            if let reason = Self.monocularSideViewFailure(
-                sideFrameCaptured: recorder.sideFrame != nil,
-                sideProfileCount: capturedSideProfiles.count
-            ) {
-                print("[PIPELINE] SIDE_VIEW_REQUIRED reason=\(reason) topSegments=\(segments.count) sideProfiles=\(capturedSideProfiles.count)")
-                throw PipelineError.sideViewRequired(reason)
-            }
             let estimate: MonocularVolumeEstimator.Result
             do {
                 estimate = try monocularEstimator.estimate(
@@ -3010,7 +3002,7 @@ enum ScanMaskGeometry {
     /// Assign every top instance one or more side-silhouette pieces. The side
     /// view only ever provides PROFILES — it never adds instances — and a real
     /// side silhouette is never dropped (AGENTS.md §9: there is no prior,
-    /// default height or top-only shape to fall back to). A top may receive
+    /// default height to fall back to). A top may receive
     /// several pieces (their union is its silhouette).
     ///
     /// - One top food: it gets the union of ALL side food segments (stem /
@@ -3020,10 +3012,10 @@ enum ScanMaskGeometry {
     ///   of the top span onto the side span). A side segment goes to the
     ///   top(s) it overlaps; one shared by separated foods is cut at the
     ///   narrowest point (waist) between their predicted positions, and
-    ///   co-located (occluded) foods share the front food's piece.
+    ///   co-located foods use only the calibrated front food's piece.
     /// - Side pieces overlapping no top are paired with still-unmatched tops by
     ///   horizontal ORDER, or else unioned into the nearest top.
-    /// - A top still unmatched borrows the nearest side piece by position.
+    /// - A top still unmatched remains explicitly unmeasured.
     static func matchSideSegments(
         tops: [SideMatchTop],
         sides: [SideMatchSide],
@@ -3087,7 +3079,7 @@ enum ScanMaskGeometry {
         var result: [SideMatchAssignment] = []
         var unowned: [Int] = []
 
-        // Phase 1: overlap ownership (+ waist split / occlusion sharing).
+        // Phase 1: overlap ownership and waist splitting.
         for s in candidates {
             let side = sides[s]
             let scored = tops.indices.map { ($0, overlap($0, s)) }.filter { $0.1 >= 0.25 }
@@ -3143,24 +3135,22 @@ enum ScanMaskGeometry {
                 }
             }
             for (k, cluster) in clusters.enumerated() where bounds[k].lo <= bounds[k].hi {
-                // Co-located tops (one occludes the other in the side view):
-                // the front one (calibrated camera depth) — else the largest —
-                // owns the piece and the others share it.
                 let primary: Int
-                if cluster.allSatisfy({ tops[$0].cameraDepth != nil }) {
+                if cluster.count == 1 {
+                    primary = cluster[0]
+                } else if cluster.allSatisfy({ tops[$0].cameraDepth != nil }) {
                     primary = cluster.min { tops[$0].cameraDepth! < tops[$1].cameraDepth! }!
                 } else {
-                    primary = cluster.max {
-                        tops[$0].area != tops[$1].area ? tops[$0].area < tops[$1].area : $0 > $1
-                    }!
+                    print("[SIDEMATCH] tops=\(cluster) reason=ambiguous_side_overlap_without_calibration (no borrowed silhouette)")
+                    continue
                 }
-                for t in cluster {
-                    let shared = t != primary
-                    result.append(SideMatchAssignment(
-                        topIndex: t, sideIndex: s, from: bounds[k].lo, to: bounds[k].hi,
-                        score: scoreOf[t] ?? 0, isSplit: clusters.count > 1,
-                        isShared: shared, reason: shared ? "occluded_shared" : "overlap"))
+                for t in cluster where t != primary {
+                    print("[SIDEMATCH] top#\(t) reason=side_occluded_by_top#\(primary) (no borrowed silhouette)")
                 }
+                result.append(SideMatchAssignment(
+                    topIndex: primary, sideIndex: s, from: bounds[k].lo, to: bounds[k].hi,
+                    score: scoreOf[primary] ?? 0, isSplit: clusters.count > 1,
+                    isShared: false, reason: "overlap"))
             }
         }
 
@@ -3194,23 +3184,6 @@ enum ScanMaskGeometry {
             }
         }
 
-        // Phase 3: a top still without a piece borrows the side piece nearest
-        // to its predicted position (never a prior).
-        let owned = result
-        for t in tops.indices where !owned.contains(where: { $0.topIndex == t }) {
-            let c = predictedCentre(t)
-            func distance(_ x: SideMatchAssignment) -> Double {
-                let lo = Double(x.from), hi = Double(x.to + 1)
-                return c < lo ? lo - c : (c > hi ? c - hi : 0)
-            }
-            guard let nearest = owned.min(by: {
-                let d0 = distance($0), d1 = distance($1)
-                return d0 != d1 ? d0 < d1 : $0.isShared == false && $1.isShared
-            }) else { continue }
-            result.append(SideMatchAssignment(
-                topIndex: t, sideIndex: nearest.sideIndex, from: nearest.from, to: nearest.to,
-                score: 0, isSplit: nearest.isSplit, isShared: true, reason: "nearest_shared"))
-        }
         return sorted(result)
     }
 

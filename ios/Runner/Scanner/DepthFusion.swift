@@ -769,15 +769,12 @@ final class DepthFusion {
                     var solid = CarvedSolid(keys: filled, voxelSizeM: voxelSizeM)
                     var sideCarved = false
                     if let carved = exactSideCarve(filled, id: id, topIndex: topIndex) {
-                        if carved.keys.isEmpty {
-                            // Measured depth is real geometry: a side mask that
-                            // misses it (pose error, mismatch) must not delete
-                            // the food. Keep the measured depth solid uncarved.
-                            print("[LIDAR] food#\(topIndex?.description ?? "none") id=\(id) side carve emptied a depth-measured cluster → keeping measured depth geometry (sideCarved=false)")
-                        } else {
-                            solid = carved
-                            sideCarved = true
+                        guard !carved.keys.isEmpty else {
+                            print("[LIDAR] food#\(topIndex?.description ?? "none") id=\(id) side carve emptied depth cluster — retry exact silhouette hull; never undo carving")
+                            continue
                         }
+                        solid = carved
+                        sideCarved = true
                     }
                     let ys = solid.keys.map(\.y)
                     let heightCm = Float((ys.max() ?? 0) - (ys.min() ?? 0) + 1) * solid.voxelSizeM * 100

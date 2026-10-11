@@ -8,28 +8,29 @@ land.
 > The agent cannot run this — it requires the physical iPhone 16 Plus
 > (monocular, no LiDAR) and real food. This is the human-in-the-loop checklist.
 
-## Live food contour checks
+## Live food glow checks
 
 LiDAR framing and non-LiDAR TOP/SIDE framing use the same
-`com.pixelstomacros/ar_camera` preview and native live contour renderer. Saved
+`com.pixelstomacros/ar_camera` preview and native live glow renderer. Saved
 capture segmentation, geometry and texture projection are separate and unchanged
 by the live-only gates.
 
 - Check a plate with food, then an empty table, plate, utensils and other objects:
-  only recognized food classes should receive contours. Unknown/generic labels
+  only recognized food classes should receive a glow. Unknown/generic labels
   are rejected; ML food-class false positives remain possible.
 - Pan/rotate the camera, switch TOP to SIDE, close/reopen the scanner and
   background/foreground the app. Old outlines must disappear rather than trail
   the previous image. Check both landscape directions and the guide alignment.
-- Contours should be thin and crisp, with a subtle fill and no blurred halo,
-  historical-mask blending, cross-fade or moving shimmer.
+- The current food mask should have a soft fill/edge/core glow without
+  historical-mask blending or trails. This live-only blur never alters the
+  saved segmentation or reconstructed silhouette.
 - Paste `[LiveGlow] backend=`, `infer=`, `drop_stale`, `roi` and any
   `label_map_rejected` logs. Frames older than 350 ms or displaced by more than
   1 cm / 3° are not displayed. A slow model can therefore yield fewer/no live
-  contours; it must not fall back to highlighting arbitrary foreground objects.
+  glows; it must not fall back to highlighting arbitrary foreground objects.
 - Host regression checks: `python3 ios/RunnerTests/run_live_overlay_checks.py`.
   These validate live label gates, reset/backlog handling, freshness, camera
-  motion, vector boundaries and ROI mapping, not on-device ML/render quality.
+  motion, smooth bounded glow fields and ROI mapping, not on-device ML/render quality.
 
 Scheduling follows Apple's [TN2445](https://developer.apple.com/library/archive/technotes/tn2445/_index.html):
 one inference slot, discard busy frames, and promptly release camera buffers.
@@ -118,7 +119,7 @@ For each item, capture top + side as guided, then open Scanner Diagnostics:
 | ---------------------------------------------- | ---------------------------------------------------------- |
 | `scale_source = fallback_22cm`                 | Plate not detected — improve plate framing/contrast.       |
 | `side=false`, `fallback=true`                  | Missing capture, unmatched/occluded food, or invalid mask; inspect `[CAPTUREPAIR]` and `[SIDEMATCH]`. Top-only monocular geometry is a zero-thickness sheet, not an inferred portion. |
-| Visible horizontal layers                      | Monocular mesh should report `surface_extraction_mode = contour_loft`; otherwise an old layered hull path is still being used. |
+| Visible horizontal layers                      | Monocular mesh should report `surface_extraction_mode = exact_silhouette_loft`; otherwise an old layered hull path is still being used. |
 | Cube/cylinder shape                            | Inspect missing-side input and silhouette association; do not add smoothing, rim taper, or class thickness. |
 | `guardrail: softened` on a normal portion      | Raw volume overshoot — review envelope for that label.     |
 | `volume_cm3` swings wildly on identical scans  | Unstable scale or silhouette extraction.                   |
@@ -166,6 +167,11 @@ the side capture never creates a missing fifth top detection.
   retention never undoes carving. Side-photo colors require the same matched
   mask plus camera visibility/depth tests. Missing side retains observed depth,
   logs degraded geometry explicitly, and never substitutes a class primitive.
+  Sub-voxel side carving uses 2.5 mm cells when the mesh-grid size permits it;
+  sparse-depth foods use an exact silhouette hull on a measured support plane.
+  If neither depth nor side evidence supplies height, LiDAR requests a retake
+  rather than dropping the food or inventing geometry. An empty side carve is
+  never undone by restoring the uncarved solid.
   Surface Nets remains the existing depth surface extraction; no added
   smoothing/subdivision. The exported mesh remains the volume source.
 
@@ -177,11 +183,14 @@ explicit observation-limited assumption.
 
 ### Deterministic checks and device acceptance
 
-Run `python3 ios/RunnerTests/run_repeatability_checks.py`: six existing-target
+Run `python3 ios/RunnerTests/run_repeatability_checks.py`: existing-target
 XCTest regression methods execute against extracted **production** Swift
 helpers with fail-fast assertions (no copied algorithm). Covers duplicated
 profiles, calibrated occlusion, small mislabeled pieces, missing side, crop/
-gravity/photo projection, and thin profiles/out-of-image sampling. The host
+gravity/photo projection, thin profiles/out-of-image sampling, and sparse-depth
+LiDAR hulls. `testMonocularMissingSideExportsUnmeasuredTopMaskSheet` runs in
+RunnerTests on the simulator and verifies actual export plus unmeasured metadata.
+The host
 check is not an iOS typecheck or substitute for release/simulator compilation;
 the coordinator must run those builds and deploy.
 
