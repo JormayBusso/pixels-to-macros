@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -14,7 +13,8 @@ import '../providers/grocery_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/pantry_provider.dart';
 import '../services/barcode_lookup_service.dart';
-import '../services/database_service.dart';
+import '../services/pantry_photo_service.dart';
+import '../services/ingredient_localizer.dart';
 import '../theme/app_theme.dart';
 
 /// Screen for managing a personal grocery shopping list.
@@ -25,7 +25,9 @@ import '../theme/app_theme.dart';
 ///   • Up to 3 reference photos (fridge / basket / freezer) — stored locally,
 ///     never uploaded
 class GroceryListScreen extends ConsumerStatefulWidget {
-  const GroceryListScreen({super.key});
+  const GroceryListScreen({super.key, this.photoService});
+
+  final PantryPhotoService? photoService;
 
   @override
   ConsumerState<GroceryListScreen> createState() => _GroceryListScreenState();
@@ -37,6 +39,32 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
   String? _selectedCategory;
   bool _loaded = false;
+  bool _atHome = false;
+  bool _photoBusy = false;
+  late final _photoService =
+      widget.photoService ?? PantryPhotoService(aliases: _pantryAliases);
+
+  static final _pantryAliases = <String, String>{
+    for (final entry in _productMap.entries)
+      entry.key: entry.value.replaceAll(RegExp(r' \([^)]*\)'), ''),
+    'bananas': 'Bananas',
+    'apples': 'Apples',
+    'banaan': 'Bananas',
+    'bananen': 'Bananas',
+    'banane': 'Bananas',
+    'banan': 'Bananas',
+    'banany': 'Bananas',
+    'plátano': 'Bananas',
+    'plátanos': 'Bananas',
+    'appel': 'Apples',
+    'appels': 'Apples',
+    'apfel': 'Apples',
+    'äpfel': 'Apples',
+    'jabłko': 'Apples',
+    'jabłka': 'Apples',
+    'manzana': 'Apples',
+    'manzanas': 'Apples',
+  };
 
   /// Selected food-group filter for the grocery list (null = show all groups).
   String? _selectedFoodGroup;
@@ -140,9 +168,15 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   void _addItem() {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) return;
-    ref
-        .read(groceryProvider.notifier)
-        .addItem(name, category: _selectedCategory);
+    if (_atHome && ref.read(smartGroceryEnabledProvider)) {
+      unawaited(ref
+          .read(pantryProvider.notifier)
+          .addOrIncrement(name, category: _selectedCategory));
+    } else {
+      unawaited(ref
+          .read(groceryProvider.notifier)
+          .addItem(name, category: _selectedCategory));
+    }
     _nameCtrl.clear();
     _selectedCategory = null;
   }
@@ -166,8 +200,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l10n.addGroceryItem,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              Text(_atHome ? l10n.pantryAddItem : l10n.addGroceryItem,
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 16),
               TextField(
                 controller: _nameCtrl,
@@ -217,6 +252,82 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _editPantryItem(PantryItem item) async {
+    final l10n = AppLocalizations.of(context);
+    final quantityCtrl = TextEditingController(text: item.quantity.toString());
+    ModalRoute<void>? quantityRoute;
+    var saving = false;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: context.appSurfaceColor,
+      builder: (ctx) {
+        quantityRoute ??= ModalRoute.of<void>(ctx);
+        return StatefulBuilder(
+            builder: (ctx, setSheet) => Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text(IngredientLocalizer.localize(item.name,
+                        targetLang: l10n.locale.languageCode,
+                        sourceLang: 'en')),
+                    TextField(
+                      controller: quantityCtrl,
+                      enabled: !saving,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                          labelText: l10n.quantityLabel, suffixText: item.unit),
+                    ),
+                    Row(children: [
+                      TextButton(
+                          onPressed: saving ? null : () => Navigator.pop(ctx),
+                          child: Text(l10n.cancel)),
+                      const Spacer(),
+                      FilledButton(
+                        onPressed: saving
+                            ? null
+                            : () async {
+                                final quantity = double.tryParse(
+                                    quantityCtrl.text.replaceAll(',', '.'));
+                                if (quantity == null ||
+                                    !quantity.isFinite ||
+                                    quantity < 0) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                      SnackBar(
+                                          content:
+                                              Text(l10n.pantryInvalidItems)));
+                                  return;
+                                }
+                                setSheet(() => saving = true);
+                                try {
+                                  await ref
+                                      .read(pantryProvider.notifier)
+                                      .setQuantity(item, quantity);
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                } catch (e) {
+                                  if (ctx.mounted) {
+                                    setSheet(() => saving = false);
+                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                        SnackBar(
+                                            content:
+                                                Text(l10n.pantrySaveFailed)));
+                                  }
+                                }
+                              },
+                        child: Text(l10n.save),
+                      ),
+                    ]),
+                  ]),
+                ));
+      },
+    );
+    await quantityRoute?.completed;
+    quantityCtrl.dispose();
   }
 
   void _editItem(GroceryItem item) {
@@ -331,9 +442,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     }
     final name = food.name.trim();
     if (name.isEmpty) return;
-    await ref.read(groceryProvider.notifier).addItem(name);
-    if (ref.read(smartGroceryEnabledProvider)) {
-      unawaited(ref.read(pantryProvider.notifier).addOrIncrement(name));
+    if (_atHome && ref.read(smartGroceryEnabledProvider)) {
+      await ref.read(pantryProvider.notifier).addOrIncrement(name);
+    } else {
+      await ref.read(groceryProvider.notifier).addItem(name);
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -348,89 +460,136 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   /// Take a photo of the fridge / fruit bowl / products, recognise the items,
   /// then show an EDITABLE list the user confirms before anything is added.
   Future<void> _scanWhatIHave() async {
-    final file = await _picker.pickImage(
-      source: ImageSource.camera,
-      maxWidth: 1200,
-      maxHeight: 1200,
-      imageQuality: 80,
-    );
-    if (file == null || !mounted) return;
+    if (_photoBusy) return;
     final l10n = AppLocalizations.of(context);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(l10n.scanningIngredients),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-
-    final recognized = <String>{};
-    try {
-      final inputImage = InputImage.fromFilePath(file.path);
-
-      // Visual labels.
-      final labeler = ImageLabeler(
-        options: ImageLabelerOptions(confidenceThreshold: 0.5),
-      );
-      final labels = await labeler.processImage(inputImage);
-      await labeler.close();
-
-      // OCR of any package text.
-      final textRecognizer =
-          TextRecognizer(script: TextRecognitionScript.latin);
-      final recognizedText = await textRecognizer.processImage(inputImage);
-      await textRecognizer.close();
-
-      // Only keep terms that map to a real food product; generic labels
-      // ("Food", "Produce") and brand text are ignored.
-      for (final label in labels) {
-        final p = _matchKnownProduct(label.label);
-        if (p != null) recognized.add(p);
-      }
-      final words = <String>[];
-      for (final line in recognizedText.text.split(RegExp(r'\n+'))) {
-        for (final w in line.toLowerCase().split(RegExp(r'[\s,;]+'))) {
-          final t = w.trim();
-          if (t.length >= 3) words.add(t);
+    final photos = <XFile>[];
+    var busy = false;
+    setState(() => _photoBusy = true);
+    final candidates = await showModalBottomSheet<List<PantryPhotoCandidate>>(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: context.appSurfaceColor,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
+        Future<void> pick(ImageSource source) async {
+          setSheet(() => busy = true);
+          try {
+            final selected = await _photoService.pick(source);
+            if (!ctx.mounted) return;
+            setSheet(() {
+              final paths = photos.map((p) => p.path).toSet();
+              photos.addAll(selected.where((p) => paths.add(p.path)));
+            });
+          } catch (e) {
+            if (ctx.mounted) {
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(content: Text(l10n.couldNotAnalyzePhoto)));
+            }
+          } finally {
+            if (ctx.mounted) setSheet(() => busy = false);
+          }
         }
-      }
-      for (var i = 0; i < words.length; i++) {
-        final p1 = _matchKnownProduct(words[i]);
-        if (p1 != null) recognized.add(p1);
-        if (i + 1 < words.length) {
-          final p2 = _matchKnownProduct('${words[i]} ${words[i + 1]}');
-          if (p2 != null) recognized.add(p2);
-        }
-      }
-    } catch (e) {
-      debugPrint('GroceryList: fridge scan failed: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.couldNotAnalyzePhoto)),
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(l10n.groceryScanWhatYouHave,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, color: ctx.appTextColor)),
+              const SizedBox(height: 8),
+              Text(l10n.pantryPhotoReviewHint,
+                  style: TextStyle(color: ctx.appMutedTextColor)),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: photos.length,
+                  itemBuilder: (_, i) => ListTile(
+                    leading: Image.file(File(photos[i].path),
+                        width: 48, height: 48, fit: BoxFit.cover),
+                    title: Text(l10n.pantryPhotoNumber(i + 1)),
+                    trailing: IconButton(
+                      tooltip: l10n.removePhoto,
+                      icon: const Icon(Icons.close),
+                      onPressed: busy
+                          ? null
+                          : () => setSheet(() => photos.removeAt(i)),
+                    ),
+                  ),
+                ),
+              ),
+              Wrap(spacing: 8, children: [
+                TextButton.icon(
+                    onPressed: busy ? null : () => pick(ImageSource.camera),
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: Text(l10n.takePhoto)),
+                TextButton.icon(
+                    onPressed: busy ? null : () => pick(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: Text(l10n.chooseFromGallery)),
+              ]),
+              if (busy) const LinearProgressIndicator(),
+              Row(children: [
+                TextButton(
+                    onPressed: busy ? null : () => Navigator.pop(ctx),
+                    child: Text(l10n.cancel)),
+                const Spacer(),
+                FilledButton(
+                  onPressed: busy || photos.isEmpty
+                      ? null
+                      : () async {
+                          setSheet(() => busy = true);
+                          try {
+                            final results =
+                                await _photoService.analyzeAll(photos);
+                            if (ctx.mounted) Navigator.pop(ctx, results);
+                          } catch (e) {
+                            debugPrint(
+                                'GroceryList: photo analysis failed: $e');
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                                  content: Text(l10n.couldNotAnalyzePhoto)));
+                            }
+                          } finally {
+                            if (ctx.mounted) setSheet(() => busy = false);
+                          }
+                        },
+                  child: Text(l10n.pantryReviewPhotos),
+                ),
+              ]),
+            ]),
+          ),
         );
-      }
-      return;
-    }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    await _showRecognizedItemsSheet(
-      recognized.toList(),
-      toPantry: ref.read(smartGroceryEnabledProvider),
+      }),
     );
+    if (!mounted) return;
+    setState(() => _photoBusy = false);
+    if (candidates == null) return;
+    await _showRecognizedItemsSheet(candidates.map((c) => c.name).toList(),
+        toPantry: true, candidates: candidates);
   }
 
   /// Take a photo of a shopping receipt, OCR its line items, and stock the
   /// recognised foods into the home-ingredients database (pantry). Prices,
   /// totals and store lines are ignored; the user reviews/edits before adding.
   Future<void> _scanReceipt() async {
-    final file = await _picker.pickImage(
-      source: ImageSource.camera,
-      maxWidth: 1600,
-      maxHeight: 1600,
-      imageQuality: 85,
-    );
+    XFile? file;
+    try {
+      file = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context).couldNotReadReceipt)));
+      }
+      return;
+    }
     if (file == null || !mounted) return;
     final l10n = AppLocalizations.of(context);
 
@@ -446,11 +605,13 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       final inputImage = InputImage.fromFilePath(file.path);
       final textRecognizer =
           TextRecognizer(script: TextRecognitionScript.latin);
-      final recognizedText = await textRecognizer.processImage(inputImage);
-      await textRecognizer.close();
-
-      for (final product in _parseReceiptProducts(recognizedText.text)) {
-        recognized.add(product);
+      try {
+        final recognizedText = await textRecognizer.processImage(inputImage);
+        for (final product in _parseReceiptProducts(recognizedText.text)) {
+          recognized.add(product);
+        }
+      } finally {
+        await textRecognizer.close();
       }
     } catch (e) {
       debugPrint('GroceryList: receipt scan failed: $e');
@@ -465,7 +626,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
-    await _showRecognizedItemsSheet(recognized.toList(), toPantry: true);
+    await _showRecognizedItemsSheet(recognized.toList(),
+        toPantry: true, observations: false);
   }
 
   /// Parse receipt OCR text into clean food product names. Receipt lines mix
@@ -477,12 +639,51 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     final seen = <String>{};
     // Non-food receipt keywords (multilingual) to skip whole lines.
     const skipWords = {
-      'total', 'totaal', 'gesamt', 'suma', 'subtotal', 'tax', 'btw', 'vat',
-      'iva', 'mwst', 'change', 'cash', 'card', 'visa', 'debit', 'credit',
-      'balance', 'receipt', 'invoice', 'bon', 'ticket', 'store', 'tel',
-      'phone', 'www', 'http', 'discount', 'coupon', 'loyalty', 'points',
-      'thank', 'welcome', 'cashier', 'terminal', 'auth', 'ref', 'date',
-      'time', 'qty', 'amount', 'price', 'ust', 'summe', 'zahlung', 'rabat',
+      'total',
+      'totaal',
+      'gesamt',
+      'suma',
+      'subtotal',
+      'tax',
+      'btw',
+      'vat',
+      'iva',
+      'mwst',
+      'change',
+      'cash',
+      'card',
+      'visa',
+      'debit',
+      'credit',
+      'balance',
+      'receipt',
+      'invoice',
+      'bon',
+      'ticket',
+      'store',
+      'tel',
+      'phone',
+      'www',
+      'http',
+      'discount',
+      'coupon',
+      'loyalty',
+      'points',
+      'thank',
+      'welcome',
+      'cashier',
+      'terminal',
+      'auth',
+      'ref',
+      'date',
+      'time',
+      'qty',
+      'amount',
+      'price',
+      'ust',
+      'summe',
+      'zahlung',
+      'rabat',
     };
     for (final line in rawText.split(RegExp(r'\n+'))) {
       final lower = line.toLowerCase();
@@ -490,10 +691,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       // Strip a trailing price / weight (e.g. "  2.99", "1,49 €", "0.350 kg").
       var cleaned = line
           .replaceAll(RegExp(r'[€$£]'), ' ')
+          .replaceAll(RegExp(r'\b\d+[.,]\d{2,3}\b'), ' ') // prices / kg weights
           .replaceAll(
-              RegExp(r'\b\d+[.,]\d{2,3}\b'), ' ') // prices / kg weights
-          .replaceAll(RegExp(r'\bx?\s*\d+\s*(pcs?|stk|szt|x)\b',
-              caseSensitive: false), ' ')
+              RegExp(r'\bx?\s*\d+\s*(pcs?|stk|szt|x)\b', caseSensitive: false),
+              ' ')
           .replaceAll(RegExp(r'[^A-Za-zÀ-ÿ ]'), ' ')
           .replaceAll(RegExp(r'\s+'), ' ')
           .trim();
@@ -518,143 +719,264 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   Future<void> _showRecognizedItemsSheet(
     List<String> recognized, {
     bool toPantry = false,
+    List<PantryPhotoCandidate>? candidates,
+    bool observations = true,
   }) async {
     final l10n = AppLocalizations.of(context);
-    final items = <String>[...recognized];
+    final items = mergePantryCandidates(
+        candidates ?? recognized.map((name) => PantryPhotoCandidate(name)));
+    if (toPantry && observations) {
+      final stock = ref.read(pantryProvider).availableItems;
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].quantity != 1 || items[i].unit != null) continue;
+        for (final existing in stock) {
+          if (PantryItem.normalizeKey(existing.name) ==
+              PantryItem.normalizeKey(items[i].name)) {
+            items[i] = PantryPhotoCandidate(items[i].name,
+                quantity: existing.quantity, unit: existing.unit);
+            break;
+          }
+        }
+      }
+    }
+    var saving = false;
     final addCtrl = TextEditingController();
+    ModalRoute<void>? reviewRoute;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       backgroundColor: context.appSurfaceColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) {
+          reviewRoute ??= ModalRoute.of<void>(ctx);
           void addTyped() {
             final t = addCtrl.text.trim();
             if (t.isEmpty) return;
             setSheet(() {
-              items.add(t);
+              if (!items.any((item) =>
+                  PantryItem.normalizeKey(item.name) ==
+                  PantryItem.normalizeKey(t))) {
+                items.add(PantryPhotoCandidate(t));
+              }
               addCtrl.clear();
             });
           }
 
-          return Padding(
-            padding: EdgeInsets.fromLTRB(
-                20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.groceryRecognizedTitle,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 4),
-                Text(
-                    toPantry
-                        ? l10n.groceryRecognizedHomeSubtitle
-                        : l10n.groceryRecognizedSubtitle,
-                    style: TextStyle(
-                        fontSize: 12.5, color: context.appMutedTextColor)),
-                const SizedBox(height: 12),
-                if (items.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Text(l10n.groceryNothingRecognized,
-                        style: TextStyle(color: context.appMutedTextColor)),
-                  )
-                else
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: items.length,
-                      itemBuilder: (_, i) => ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.check_circle_outline,
-                            color: context.primary600),
-                        title: Text(items[i]),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.close, size: 20),
-                          onPressed: () => setSheet(() => items.removeAt(i)),
+          return PopScope<void>(
+            canPop: !saving,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                  20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.groceryRecognizedTitle,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  Text(
+                      toPantry
+                          ? l10n.groceryRecognizedHomeSubtitle
+                          : l10n.groceryRecognizedSubtitle,
+                      style: TextStyle(
+                          fontSize: 12.5, color: context.appMutedTextColor)),
+                  const SizedBox(height: 12),
+                  if (items.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Text(l10n.groceryNothingRecognized,
+                          style: TextStyle(color: context.appMutedTextColor)),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: items.length,
+                        itemBuilder: (_, i) => ListTile(
+                          key: ObjectKey(items[i]),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.check_circle_outline,
+                              color: context.primary600),
+                          title: TextFormField(
+                            initialValue: IngredientLocalizer.localize(
+                                items[i].name,
+                                targetLang: l10n.locale.languageCode,
+                                sourceLang: 'en'),
+                            enabled: !saving,
+                            decoration:
+                                InputDecoration(labelText: l10n.itemName),
+                            onChanged: (value) {
+                              items[i] = PantryPhotoCandidate(value,
+                                  quantity: items[i].quantity,
+                                  unit: items[i].unit);
+                            },
+                          ),
+                          subtitle: Row(children: [
+                            Expanded(
+                                child: TextFormField(
+                              initialValue: items[i].quantity.toString(),
+                              enabled: !saving,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                              decoration: InputDecoration(
+                                  labelText: l10n.quantityLabel),
+                              onChanged: (value) {
+                                items[i] = PantryPhotoCandidate(items[i].name,
+                                    quantity: double.tryParse(
+                                            value.replaceAll(',', '.')) ??
+                                        0,
+                                    unit: items[i].unit);
+                              },
+                            )),
+                            const SizedBox(width: 8),
+                            Expanded(
+                                child: TextFormField(
+                              initialValue: items[i].unit ?? '',
+                              enabled: !saving,
+                              decoration:
+                                  InputDecoration(labelText: l10n.unitOptional),
+                              onChanged: (value) {
+                                items[i] = PantryPhotoCandidate(items[i].name,
+                                    quantity: items[i].quantity,
+                                    unit: value.trim().isEmpty
+                                        ? null
+                                        : value.trim());
+                              },
+                            )),
+                          ]),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.close, size: 20),
+                            onPressed: saving
+                                ? null
+                                : () => setSheet(() => items.removeAt(i)),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: addCtrl,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          hintText: l10n.itemName,
-                          border: const OutlineInputBorder(),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: addCtrl,
+                          enabled: !saving,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: InputDecoration(
+                            isDense: true,
+                            hintText: l10n.itemName,
+                            border: const OutlineInputBorder(),
+                          ),
+                          onSubmitted: (_) => addTyped(),
                         ),
-                        onSubmitted: (_) => addTyped(),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      onPressed: addTyped,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    icon: Icon(
-                        toPantry ? Icons.kitchen_outlined : Icons.playlist_add),
-                    label: Text(toPantry
-                        ? l10n.groceryAddNToHome(items.length)
-                        : l10n.groceryAddNItems(items.length)),
-                    onPressed: items.isEmpty
-                        ? null
-                        : () async {
-                            if (toPantry) {
-                              for (final name in items) {
-                                await ref
-                                    .read(pantryProvider.notifier)
-                                    .addOrIncrement(
-                                      name,
-                                      category: _guessCategory(
-                                          name.toLowerCase()),
-                                    );
-                              }
-                            } else {
-                              for (final name in items) {
-                                await ref.read(groceryProvider.notifier).addItem(
-                                      name,
-                                      category:
-                                          _guessCategory(name.toLowerCase()),
-                                    );
-                              }
-                            }
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(toPantry
-                                      ? l10n.addedNToHomeStock(items.length)
-                                      : l10n.foundIngredients(items.length)),
-                                  backgroundColor: AppTheme.green600,
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            }
-                          },
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: saving ? null : addTyped,
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  TextButton(
+                      onPressed: saving ? null : () => Navigator.pop(ctx),
+                      child: Text(l10n.cancel)),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: Icon(toPantry
+                          ? Icons.kitchen_outlined
+                          : Icons.playlist_add),
+                      label: Text(toPantry
+                          ? l10n.groceryAddNToHome(items.length)
+                          : l10n.groceryAddNItems(items.length)),
+                      onPressed: items.isEmpty || saving
+                          ? null
+                          : () async {
+                              if (saving) return;
+                              if (items.any((item) =>
+                                  item.name.trim().isEmpty ||
+                                  !item.quantity.isFinite ||
+                                  item.quantity <= 0)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content:
+                                            Text(l10n.pantryInvalidItems)));
+                                return;
+                              }
+                              setSheet(() => saving = true);
+                              try {
+                                final reviewed = mergePantryCandidates(items);
+                                if (toPantry) {
+                                  final now = DateTime.now();
+                                  await ref
+                                      .read(pantryProvider.notifier)
+                                      .saveReviewedItems(
+                                          reviewed
+                                              .map((item) => PantryItem(
+                                                  name: item.name.trim(),
+                                                  category:
+                                                      _guessCategory(item.name),
+                                                  quantity: item.quantity,
+                                                  unit: item.unit,
+                                                  createdAt: now,
+                                                  updatedAt: now))
+                                              .toList(),
+                                          observations: observations);
+                                } else {
+                                  for (final item in reviewed) {
+                                    await ref
+                                        .read(groceryProvider.notifier)
+                                        .addItem(
+                                          item.name,
+                                          quantity: item.quantity.ceil(),
+                                          unit: item.unit,
+                                          category: _guessCategory(
+                                              item.name.toLowerCase()),
+                                        );
+                                  }
+                                }
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(toPantry
+                                          ? l10n.addedNToHomeStock(items.length)
+                                          : l10n
+                                              .foundIngredients(items.length)),
+                                      backgroundColor: AppTheme.green600,
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (ctx.mounted) {
+                                  setSheet(() => saving = false);
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                      SnackBar(
+                                          content: Text(e is ArgumentError
+                                              ? l10n.pantryUnitConflict
+                                              : l10n.pantrySaveFailed)));
+                                }
+                              }
+                            },
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
       ),
     );
+    await reviewRoute?.completed;
+    addCtrl.dispose();
   }
 
   /// Known scan-label → nice product-name map, shared by the smart suggestions
@@ -719,11 +1041,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   /// Normalise a detected food label to a specific grocery product.
   /// E.g. "plain yogurt" → "Yogurt (plain)", "banana" stays "Banana".
   static String _normalizeProduct(String raw) {
-    final l = raw.toLowerCase().trim();
-    if (_productMap.containsKey(l)) return _productMap[l]!;
-    for (final entry in _productMap.entries) {
-      if (l.contains(entry.key)) return entry.value;
-    }
+    final matched = PantryPhotoService.matchProducts(raw, _productMap);
+    if (matched.length == 1) return matched.single;
     return raw.isEmpty ? raw : raw[0].toUpperCase() + raw.substring(1);
   }
 
@@ -731,13 +1050,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   /// recognised food, so generic labels ("Food", brand text) are ignored by
   /// the fridge-photo recogniser.
   static String? _matchKnownProduct(String raw) {
-    final l = raw.toLowerCase().trim();
-    if (l.length < 3) return null;
-    if (_productMap.containsKey(l)) return _productMap[l];
-    for (final entry in _productMap.entries) {
-      if (l == entry.key || l.contains(entry.key)) return entry.value;
-    }
-    return null;
+    final matches = PantryPhotoService.matchProducts(raw, _pantryAliases);
+    return matches.isEmpty ? null : matches.first;
   }
 
   /// Compute suggestion items from scan history.
@@ -907,267 +1221,43 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     return 'Other';
   }
 
-  Future<void> _takePhoto(int slot, StateSetter setSheetState) async {
-    final file = await _picker.pickImage(
-      source: ImageSource.camera,
-      maxWidth: 1200,
-      maxHeight: 1200,
-      imageQuality: 75,
-    );
-    if (file != null && mounted) {
-      setState(() => _photos[slot] = file);
-      setSheetState(() {});
-
-      // Analyze photo with ML Kit to detect food items.
-      unawaited(_analyzePhotoForFoods(file));
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).analyzingFoodTextQty),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  /// Runs ML Kit Image Labeling on the photo and adds detected food labels
-  /// to the grocery list automatically.
-  Future<void> _analyzePhotoForFoods(XFile photo) async {
+  Future<void> _takePhoto(
+      int slot, StateSetter setSheetState, BuildContext sheetContext) async {
+    if (_photoBusy) return;
+    setState(() => _photoBusy = true);
     try {
-      final inputImage = InputImage.fromFilePath(photo.path);
-
-      // 1) Visual labels from the image
-      final labeler = ImageLabeler(
-        options: ImageLabelerOptions(confidenceThreshold: 0.5),
-      );
-      final labels = await labeler.processImage(inputImage);
-      await labeler.close();
-
-      // 2) OCR text extraction (package text like "2x milk", "eggs 12")
-      final textRecognizer =
-          TextRecognizer(script: TextRecognitionScript.latin);
-      final recognizedText = await textRecognizer.processImage(inputImage);
-      await textRecognizer.close();
-
-      // Filter to food-related labels only.
-      const foodKeywords = {
-        'food',
-        'fruit',
-        'vegetable',
-        'meat',
-        'dairy',
-        'bread',
-        'egg',
-        'cheese',
-        'milk',
-        'apple',
-        'banana',
-        'tomato',
-        'lettuce',
-        'carrot',
-        'pepper',
-        'onion',
-        'potato',
-        'chicken',
-        'beef',
-        'fish',
-        'rice',
-        'pasta',
-        'cereal',
-        'juice',
-        'yogurt',
-        'butter',
-        'cream',
-        'sauce',
-        'berry',
-        'grape',
-        'orange',
-        'lemon',
-        'avocado',
-        'broccoli',
-        'mushroom',
-        'cucumber',
-        'spinach',
-        'produce',
-        'grocery',
-      };
-      final detected = <String>[];
-      for (final label in labels) {
-        final name = label.label.toLowerCase();
-        if (foodKeywords.any((k) => name.contains(k))) {
-          detected.add(label.label);
-        }
-      }
-
-      // 3) Parse OCR lines for explicit quantity and unit patterns.
-      final quantityAndUnitHints = _extractQuantityAndUnitHints(
-        recognizedText.text,
-        allowedKeywords: foodKeywords,
-      );
-
-      // 4) Build candidate foods from labels + OCR keyword matches.
-      final candidates = <String, _PhotoCandidate>{};
-      for (final label in detected) {
-        final normalized = _normalizeFoodName(label);
-        if (normalized.isEmpty) continue;
-        final prev = candidates[normalized];
-        final hint = quantityAndUnitHints[normalized.toLowerCase()];
-        candidates[normalized] = _PhotoCandidate(
-          name: normalized,
-          sourceCount: (prev?.sourceCount ?? 0) + 1,
-          quantity: hint?['quantity'] ?? (prev?.quantity ?? 1),
-          unit: hint?['unit'] ?? prev?.unit,
-        );
-      }
-
-      for (final line in recognizedText.text.split(RegExp(r'\n+'))) {
-        final lower = line.toLowerCase();
-        for (final keyword in foodKeywords) {
-          if (lower.contains(keyword)) {
-            final normalized = _normalizeFoodName(keyword);
-            if (normalized.isEmpty) continue;
-            final prev = candidates[normalized];
-            final hint = quantityAndUnitHints[normalized.toLowerCase()];
-            candidates[normalized] = _PhotoCandidate(
-              name: normalized,
-              sourceCount: (prev?.sourceCount ?? 0) + 1,
-              quantity: hint?['quantity'] ?? (prev?.quantity ?? 1),
-              unit: hint?['unit'] ?? prev?.unit,
-            );
-          }
-        }
-      }
-
-      if (candidates.isEmpty || !mounted) return;
-
-      // 5) Upsert into grocery list with quantity and unit awareness.
-      final groceryNotifier = ref.read(groceryProvider.notifier);
-      final existingItems = ref.read(groceryProvider).items;
-      final existingByName = {
-        for (final i in existingItems) i.name.toLowerCase().trim(): i,
-      };
-
-      int added = 0;
-      int updated = 0;
-      for (final entry in candidates.values) {
-        final hint = quantityAndUnitHints[entry.name.toLowerCase()];
-        final explicitQty = hint?['quantity'] ?? 0;
-        final explicitUnit = hint?['unit'];
-        final inferredQty =
-            explicitQty > 0 ? explicitQty : entry.sourceCount.clamp(1, 3);
-
-        final key = entry.name.toLowerCase();
-        final existing = existingByName[key];
-        if (existing != null) {
-          // Update with new quantity and preserve or add unit
-          final newUnit = explicitUnit ?? existing.unit;
-          await DatabaseService.instance.updateGroceryItem(
-            existing.copyWith(
-              quantity: ((existing.quantity + inferredQty).clamp(1, 99)) as int,
-              unit: newUnit,
-            ),
-          );
-          updated++;
-        } else {
-          await groceryNotifier.addItem(
-            entry.name,
-            category: _guessCategory(entry.name),
-            quantity: inferredQty,
-            unit: explicitUnit,
-          );
-          added++;
-        }
-      }
-
-      if (!mounted) return;
-      if (added > 0 || updated > 0) {
-        final sample = candidates.values.take(3).map((c) => c.name).join(', ');
-        final found = '$sample${candidates.length > 3 ? '…' : ''}';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)
-                .groceryPhotoScanComplete(added, updated, found)),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      final files = await _photoService.pick(ImageSource.camera);
+      if (files.isEmpty || !mounted || !sheetContext.mounted) return;
+      setState(() => _photos[slot] = files.single);
+      setSheetState(() {});
+      await _analyzePhotoForFoods(files.single, sheetContext);
     } catch (e) {
-      // ML Kit not available (e.g. simulator) — skip, but log for diagnosis.
-      debugPrint('GroceryList: photo food analysis failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context).couldNotAnalyzePhoto)));
+      }
+    } finally {
+      if (mounted) setState(() => _photoBusy = false);
     }
   }
 
-  /// Extracts quantity hints AND units from OCR text.
-  /// Returns a map of food name -> {quantity (int), unit (String?)}
-  Map<String, Map<String, dynamic>> _extractQuantityAndUnitHints(
-    String rawText, {
-    required Set<String> allowedKeywords,
-  }) {
-    final hints = <String, Map<String, dynamic>>{};
-    final lines = rawText
-        .split(RegExp(r'\n+'))
-        .map((l) => l.trim())
-        .where((l) => l.isNotEmpty)
-        .toList();
-
-    final countPatternA = RegExp(
-      r'(\d{1,2})\s*(x|pcs?|pieces?|packs?|bottles?|cans?|g|kg|ml|L|l)\s+([a-zA-Z][a-zA-Z ]{1,30})',
-      caseSensitive: false,
-    );
-    final countPatternB = RegExp(
-      r'([a-zA-Z][a-zA-Z ]{1,30})\s*(x|×)\s*(\d{1,2})',
-      caseSensitive: false,
-    );
-    final countPatternC = RegExp(
-      r'(\d{1,2})\s+([a-zA-Z][a-zA-Z ]{1,30})',
-      caseSensitive: false,
-    );
-
-    for (final line in lines) {
-      final lower = line.toLowerCase();
-      if (!allowedKeywords.any(lower.contains)) continue;
-
-      final mA = countPatternA.firstMatch(line);
-      if (mA != null) {
-        final qty = int.tryParse(mA.group(1) ?? '') ?? 0;
-        final unitStr = mA.group(2) ?? '';
-        final food = _normalizeFoodName(mA.group(3) ?? '');
-        if (qty > 0 && food.isNotEmpty) {
-          hints[food.toLowerCase()] = {
-            'quantity': qty.clamp(1, 99),
-            'unit': unitStr,
-          };
-          continue;
-        }
-      }
-
-      final mB = countPatternB.firstMatch(line);
-      if (mB != null) {
-        final qty = int.tryParse(mB.group(3) ?? '') ?? 0;
-        final food = _normalizeFoodName(mB.group(1) ?? '');
-        if (qty > 0 && food.isNotEmpty) {
-          hints[food.toLowerCase()] = {
-            'quantity': qty.clamp(1, 99),
-            'unit': null,
-          };
-          continue;
-        }
-      }
-
-      final mC = countPatternC.firstMatch(line);
-      if (mC != null) {
-        final qty = int.tryParse(mC.group(1) ?? '') ?? 0;
-        final food = _normalizeFoodName(mC.group(2) ?? '');
-        if (qty > 0 && food.isNotEmpty) {
-          hints[food.toLowerCase()] = {
-            'quantity': qty.clamp(1, 99),
-            'unit': null,
-          };
-        }
+  /// Review reference-photo foods before stocking the pantry.
+  Future<void> _analyzePhotoForFoods(
+      XFile photo, BuildContext sheetContext) async {
+    try {
+      final candidates = await _photoService.analyzeAll([photo]);
+      if (!mounted || !sheetContext.mounted) return;
+      await _showRecognizedItemsSheet(
+          candidates.map((item) => item.name).toList(),
+          toPantry: true,
+          candidates: candidates);
+    } catch (e) {
+      debugPrint('GroceryList: photo food analysis failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context).couldNotAnalyzePhoto)));
       }
     }
-
-    return hints;
   }
 
   String _normalizeFoodName(String raw) {
@@ -1276,10 +1366,14 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                         Row(
                           children: List.generate(3, (i) {
                             final photo = _photos[i];
-                            final labels = ['Fridge', 'Basket', 'Freezer'];
+                            final labels = [
+                              l10n.pantryLocationLabel('fridge'),
+                              l10n.pantryLocationLabel('pantry'),
+                              l10n.pantryLocationLabel('freezer'),
+                            ];
                             return Expanded(
                               child: GestureDetector(
-                                onTap: () => _takePhoto(i, setSheetState),
+                                onTap: () => _takePhoto(i, setSheetState, ctx),
                                 child: Container(
                                   height: 90,
                                   margin:
@@ -1342,10 +1436,14 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                             const Spacer(),
                             DropdownButton<int>(
                               value: _groceryFrequency,
+                              dropdownColor: ctx.appSurfaceColor,
+                              style: TextStyle(color: ctx.appTextColor),
+                              iconEnabledColor: ctx.appTextColor,
                               underline: const SizedBox.shrink(),
                               items: [1, 2, 3, 4, 5, 7].map((n) {
                                 return DropdownMenuItem(
-                                    value: n, child: Text(l10n.timesPerWeek(n)));
+                                    value: n,
+                                    child: Text(l10n.timesPerWeek(n)));
                               }).toList(),
                               onChanged: (v) {
                                 if (v != null) {
@@ -1473,36 +1571,131 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   /// for items added without a category.
   static const _foodGroupKeywords = <String, List<String>>{
     'Fruits': [
-      'apple', 'banana', 'orange', 'berr', 'grape', 'melon', 'mango', 'pear',
-      'peach', 'plum', 'kiwi', 'pineapple', 'lemon', 'lime', 'cherry',
-      'apricot', 'fig', 'date', 'fruit', 'avocado'
+      'apple',
+      'banana',
+      'orange',
+      'berr',
+      'grape',
+      'melon',
+      'mango',
+      'pear',
+      'peach',
+      'plum',
+      'kiwi',
+      'pineapple',
+      'lemon',
+      'lime',
+      'cherry',
+      'apricot',
+      'fig',
+      'date',
+      'fruit',
+      'avocado'
     ],
     'Vegetables': [
-      'tomato', 'cucumber', 'lettuce', 'spinach', 'carrot', 'potato', 'onion',
-      'pepper', 'broccoli', 'pea', 'bean', 'zucchini', 'courgette', 'kale',
-      'cabbage', 'garlic', 'mushroom', 'corn', 'salad', 'celery', 'leek',
-      'beet', 'radish', 'pumpkin', 'squash', 'asparagus', 'cauliflower',
-      'eggplant', 'aubergine', 'veg'
+      'tomato',
+      'cucumber',
+      'lettuce',
+      'spinach',
+      'carrot',
+      'potato',
+      'onion',
+      'pepper',
+      'broccoli',
+      'pea',
+      'bean',
+      'zucchini',
+      'courgette',
+      'kale',
+      'cabbage',
+      'garlic',
+      'mushroom',
+      'corn',
+      'salad',
+      'celery',
+      'leek',
+      'beet',
+      'radish',
+      'pumpkin',
+      'squash',
+      'asparagus',
+      'cauliflower',
+      'eggplant',
+      'aubergine',
+      'veg'
     ],
     'Protein': [
-      'chicken', 'beef', 'pork', 'meat', 'fish', 'salmon', 'tuna', 'egg',
-      'tofu', 'shrimp', 'prawn', 'turkey', 'ham', 'bacon', 'sausage', 'steak',
-      'lentil', 'chickpea', 'mince'
+      'chicken',
+      'beef',
+      'pork',
+      'meat',
+      'fish',
+      'salmon',
+      'tuna',
+      'egg',
+      'tofu',
+      'shrimp',
+      'prawn',
+      'turkey',
+      'ham',
+      'bacon',
+      'sausage',
+      'steak',
+      'lentil',
+      'chickpea',
+      'mince'
     ],
     'Dairy': [
-      'milk', 'cheese', 'yogurt', 'yoghurt', 'butter', 'cream', 'kefir', 'quark'
+      'milk',
+      'cheese',
+      'yogurt',
+      'yoghurt',
+      'butter',
+      'cream',
+      'kefir',
+      'quark'
     ],
     'Grains': [
-      'bread', 'rice', 'pasta', 'oat', 'cereal', 'flour', 'quinoa', 'tortilla',
-      'bagel', 'cracker', 'noodle', 'couscous', 'barley', 'wrap'
+      'bread',
+      'rice',
+      'pasta',
+      'oat',
+      'cereal',
+      'flour',
+      'quinoa',
+      'tortilla',
+      'bagel',
+      'cracker',
+      'noodle',
+      'couscous',
+      'barley',
+      'wrap'
     ],
     'Drinks': [
-      'water', 'juice', 'coffee', 'tea', 'soda', 'cola', 'beer', 'wine',
-      'drink', 'smoothie', 'lemonade'
+      'water',
+      'juice',
+      'coffee',
+      'tea',
+      'soda',
+      'cola',
+      'beer',
+      'wine',
+      'drink',
+      'smoothie',
+      'lemonade'
     ],
     'Snacks': [
-      'chocolate', 'chip', 'candy', 'cookie', 'biscuit', 'nut', 'snack',
-      'popcorn', 'crisp', 'pretzel', 'bar'
+      'chocolate',
+      'chip',
+      'candy',
+      'cookie',
+      'biscuit',
+      'nut',
+      'snack',
+      'popcorn',
+      'crisp',
+      'pretzel',
+      'bar'
     ],
   };
 
@@ -1584,6 +1777,12 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     final pantryItems = smartEnabled
         ? ref.watch(pantryProvider).availableItems
         : const <PantryItem>[];
+    final atHome = smartEnabled && _atHome;
+    final visiblePantry = pantryItems
+        .where((item) =>
+            _selectedFoodGroup == null ||
+            (item.category ?? _guessCategory(item.name)) == _selectedFoodGroup)
+        .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -1595,38 +1794,14 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
             tooltip: l10n.groceryScanBarcodeTooltip,
             onPressed: _scanBarcode,
           ),
-          // Scan what you have — check off ingredients from photos
-          IconButton(
-            icon: const Icon(Icons.camera_alt_outlined),
-            tooltip: l10n.groceryScanWhatYouHave,
-            onPressed: _scanWhatIHave,
-          ),
-          // Scan a shopping receipt → stock the home-ingredients database
-          IconButton(
-            icon: const Icon(Icons.receipt_long_outlined),
-            tooltip: l10n.scanReceiptTooltip,
-            onPressed: _scanReceipt,
-          ),
-          // Smart suggestion — always visible
-          IconButton(
-            icon: const Icon(Icons.auto_awesome_outlined),
-            tooltip: l10n.grocerySmartSuggestionsTooltip,
-            onPressed: _showSmartSuggestSheet,
-          ),
-          // Manual add — always visible
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: l10n.groceryAddItemTooltip,
-            onPressed: _showAddDialog,
-          ),
-          if (checked.isNotEmpty)
+          if (!atHome && checked.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep),
               tooltip: l10n.groceryClearPurchased,
               onPressed: () =>
                   ref.read(groceryProvider.notifier).clearChecked(),
             ),
-          if (grocery.items.isNotEmpty)
+          if (!atHome && grocery.items.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_outline),
               tooltip: l10n.grocerySelectAllDelete,
@@ -1664,6 +1839,27 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                if (smartEnabled)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    child: SegmentedButton<bool>(
+                      segments: [
+                        ButtonSegment(
+                            value: false,
+                            label: Text(l10n.pantryGroceries),
+                            icon: const Icon(Icons.shopping_cart_outlined)),
+                        ButtonSegment(
+                            value: true,
+                            label: Text(l10n.pantryAtHome),
+                            icon: const Icon(Icons.kitchen_outlined)),
+                      ],
+                      selected: {atHome},
+                      onSelectionChanged: (value) => setState(() {
+                        _atHome = value.single;
+                        _selectedFoodGroup = null;
+                      }),
+                    ),
+                  ),
                 // Two primary actions, always at the top of the tab.
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
@@ -1671,14 +1867,23 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                     children: [
                       Expanded(
                         child: FilledButton.icon(
-                          icon: const Icon(Icons.add, size: 18),
-                          label: Text(l10n.addToGroceryList),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: Text(atHome
+                              ? l10n.pantryAddItem
+                              : l10n.addToGroceryList),
                           onPressed: _showAddDialog,
                           style: FilledButton.styleFrom(
                             backgroundColor: context.isPremiumTheme
                                 ? context.visualTheme.primaryAccent
                                 : context.primary500,
-                            foregroundColor: Colors.white,
+                            foregroundColor:
+                                ThemeData.estimateBrightnessForColor(context
+                                                .isPremiumTheme
+                                            ? context.visualTheme.primaryAccent
+                                            : context.primary500) ==
+                                        Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black,
                             minimumSize: const Size.fromHeight(46),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
@@ -1688,16 +1893,26 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: FilledButton.icon(
-                          icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                          label: Text(l10n.groceryScanWhatYouHave),
-                          onPressed: _scanWhatIHave,
+                          icon:
+                              const Icon(Icons.auto_awesome_outlined, size: 18),
+                          label: Text(l10n.aiScan),
+                          onPressed: _photoBusy
+                              ? null
+                              : atHome
+                                  ? _scanWhatIHave
+                                  : _showSmartSuggestSheet,
                           style: FilledButton.styleFrom(
                             backgroundColor: context.isPremiumTheme
                                 ? context.visualTheme.cardColor
                                 : context.primary600,
-                            foregroundColor: context.isPremiumTheme
-                                ? context.visualTheme.primaryAccent
-                                : Colors.white,
+                            foregroundColor:
+                                ThemeData.estimateBrightnessForColor(
+                                            context.isPremiumTheme
+                                                ? context.visualTheme.cardColor
+                                                : context.primary600) ==
+                                        Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black,
                             minimumSize: const Size.fromHeight(46),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
@@ -1707,6 +1922,12 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                     ],
                   ),
                 ),
+                if (!atHome)
+                  TextButton.icon(
+                    onPressed: _scanReceipt,
+                    icon: const Icon(Icons.receipt_long_outlined),
+                    label: Text(l10n.scanReceiptTooltip),
+                  ),
                 // Food-group selectable variables (like the Recipes tab).
                 SizedBox(
                   height: 46,
@@ -1725,15 +1946,14 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                           _GroceryGroupChip(
                             label: l10n.groceryCategoryLabel(g),
                             selected: _selectedFoodGroup == g,
-                            onTap: () =>
-                                setState(() => _selectedFoodGroup = g),
+                            onTap: () => setState(() => _selectedFoodGroup = g),
                           ),
                       ],
                     ),
                   ),
                 ),
                 Expanded(
-                  child: (grocery.items.isEmpty && pantryItems.isEmpty)
+                  child: (atHome ? pantryItems.isEmpty : grocery.items.isEmpty)
                       ? Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -1741,7 +1961,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                               Icon(Icons.shopping_cart_outlined,
                                   size: 64, color: AppTheme.gray300),
                               const SizedBox(height: 16),
-                              Text(l10n.groceryListEmpty,
+                              Text(
+                                  atHome
+                                      ? l10n.pantryEmptyHint
+                                      : l10n.groceryListEmpty,
                                   style: TextStyle(
                                       fontSize: 16,
                                       color: context.appMutedTextColor)),
@@ -1751,9 +1974,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                       : ListView(
                           padding: const EdgeInsets.only(bottom: 24),
                           children: [
-                            if (smartEnabled && _selectedFoodGroup == null) ...[
+                            if (atHome) ...[
                               _SectionLabel(
-                                '${l10n.pantrySectionTitle} (${pantryItems.length})',
+                                '${l10n.pantrySectionTitle} (${visiblePantry.length})',
                                 color: context.primary700,
                               ),
                               if (pantryItems.isEmpty)
@@ -1776,7 +1999,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                   child: Wrap(
                                     spacing: 8,
                                     runSpacing: 8,
-                                    children: pantryItems.map((p) {
+                                    children: visiblePantry.map((p) {
                                       final q = p.quantity;
                                       final qStr = q == q.roundToDouble()
                                           ? q.toInt().toString()
@@ -1785,7 +2008,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                           ? ' $qStr ${p.unit}'
                                           : (q > 1 ? ' ×$qStr' : '');
                                       return InputChip(
-                                        label: Text('${p.name}$qtyLabel'),
+                                        label: Text(
+                                            '${IngredientLocalizer.localize(p.name, targetLang: l10n.locale.languageCode, sourceLang: 'en')}$qtyLabel'),
                                         backgroundColor:
                                             context.appSubtleFillColor,
                                         labelStyle: TextStyle(
@@ -1794,6 +2018,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                         ),
                                         deleteIconColor:
                                             context.appMutedTextColor,
+                                        onPressed: () => _editPantryItem(p),
                                         onDeleted: () => ref
                                             .read(pantryProvider.notifier)
                                             .deleteItem(p),
@@ -1803,17 +2028,20 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                                 ),
                               const Divider(height: 1),
                             ],
-                            ..._buildGroupedGroceries(
-                              l10n,
-                              _selectedFoodGroup == null
-                                  ? unchecked
-                                  : unchecked
-                                      .where((i) =>
-                                          _foodGroupFor(i) == _selectedFoodGroup)
-                                      .toList(),
-                              smartEnabled,
-                            ),
-                            if (checked.isNotEmpty &&
+                            if (!atHome)
+                              ..._buildGroupedGroceries(
+                                l10n,
+                                _selectedFoodGroup == null
+                                    ? unchecked
+                                    : unchecked
+                                        .where((i) =>
+                                            _foodGroupFor(i) ==
+                                            _selectedFoodGroup)
+                                        .toList(),
+                                smartEnabled,
+                              ),
+                            if (!atHome &&
+                                checked.isNotEmpty &&
                                 _selectedFoodGroup == null) ...[
                               _SectionLabel(
                                   l10n.groceryPurchased(checked.length),
@@ -1850,19 +2078,6 @@ class _SuggestionItem {
   final int suggestedQty;
   const _SuggestionItem(
       {required this.name, required this.category, this.suggestedQty = 1});
-}
-
-class _PhotoCandidate {
-  final String name;
-  final int sourceCount;
-  final int quantity;
-  final String? unit;
-  const _PhotoCandidate({
-    required this.name,
-    this.sourceCount = 1,
-    this.quantity = 1,
-    this.unit,
-  });
 }
 
 // ── Food-group filter chip (Recipes-tab style pill) ─────────────────────────

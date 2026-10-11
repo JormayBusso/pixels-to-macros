@@ -7,7 +7,23 @@ import 'package:flutter/services.dart';
 import '../core/app_localizations.dart';
 import '../core/scan_state.dart';
 import '../theme/app_theme.dart';
-import 'ai_scan_sweep_overlay.dart';
+
+class ScanCaptureAlignment {
+  const ScanCaptureAlignment._();
+
+  static const double toleranceRad = math.pi / 30; // 6 degrees.
+  static const double falloffRad = 0.384;
+
+  static bool isAligned(double error) =>
+      error.isFinite && error.abs() <= toleranceRad;
+
+  static double score(double error) {
+    if (!error.isFinite) return 0;
+    if (isAligned(error)) return 1;
+    return (1 - (error.abs() - toleranceRad) / (falloffRad - toleranceRad))
+        .clamp(0.0, 1.0);
+  }
+}
 
 /// Shared geometry of the capture guide (the region of interest).
 ///
@@ -83,19 +99,35 @@ class ScanGuideGeometry {
   ]) =>
       videoRect(size, videoAspect).width;
 
-  /// Horizontal centre of the right-hand control rail (shutter / flash),
-  /// placed in the letterbox bar beside the camera image when there is room.
+  /// Rails prefer the aspect-fit letterbox, otherwise use only space outside
+  /// the unchanged native ROI. Their contents scroll rather than shrink.
+  static ({Rect left, Rect right}) rails(
+    Size size,
+    EdgeInsets padding, [
+    double videoAspect = defaultVideoAspect,
+  ]) {
+    final video = videoRect(size, videoAspect);
+    final roi = guide(size, 0, videoAspect).outerRect;
+    final left = padding.left + 8;
+    final right = size.width - padding.right - 8;
+    final leftEnd = video.left - left >= 132 ? video.left - 8 : roi.left - 8;
+    final rightStart =
+        right - video.right >= 132 ? video.right + 8 : roi.right + 8;
+    final top = padding.top + 64;
+    final bottom = math.max(top, size.height - padding.bottom - 8);
+    return (
+      left: Rect.fromLTRB(left, top, math.max(left, leftEnd), bottom),
+      right: Rect.fromLTRB(math.min(right, rightStart), top, right, bottom),
+    );
+  }
+
+  /// Horizontal centre of the right-hand control rail (flash).
   static double rightRailCenterX(
     Size size,
     EdgeInsets padding, [
     double videoAspect = defaultVideoAspect,
   ]) {
-    final inner = math.max(
-      size.width / 2 + radius(size, videoAspect) + 12,
-      (size.width + previewWidth(size, videoAspect)) / 2,
-    );
-    final outer = size.width - padding.right;
-    return outer - inner >= 80 ? (inner + outer) / 2 : outer - 44;
+    return rails(size, padding, videoAspect).right.center.dx;
   }
 }
 
@@ -146,9 +178,8 @@ class ScanChromePalette {
           : Colors.black;
 
   /// ARGB ints for the native live glow.
-  List<int> get nativeColors => premium
-      ? [for (final c in gradient) c.toARGB32()]
-      : [accent.toARGB32()];
+  List<int> get nativeColors =>
+      premium ? [for (final c in gradient) c.toARGB32()] : [accent.toARGB32()];
 
   static Color onDark(Color c) {
     var hsl = HSLColor.fromColor(c);
@@ -186,9 +217,8 @@ class ScanChromePalette {
 /// Drives the two-step capture flow — **Top view** then **Side view** — with a
 /// morphing framing guide (circle → rounded rectangle), a precise tilt gauge,
 /// an alignment readout with directional guidance, a live "food detected"
-/// tag, and an iOS-style shutter that traces the hold-steady progress. The
-/// auto shutter is owned by the scan screen; this widget is pure presentation
-/// plus an optional manual-capture fallback.
+/// tag. The auto shutter is owned by the scan screen; this widget presents
+/// guidance without an alignment or motion bypass.
 class DualPhotoCaptureOverlay extends StatefulWidget {
   const DualPhotoCaptureOverlay({
     super.key,
@@ -203,7 +233,9 @@ class DualPhotoCaptureOverlay extends StatefulWidget {
     this.foodDetected = false,
     this.liveDetectionAvailable = false,
     this.videoAspect = ScanGuideGeometry.defaultVideoAspect,
-    this.onManualCapture,
+    this.lowLight = false,
+    this.extraAccuracy = true,
+    this.onExtraAccuracyChanged,
   });
 
   final ScanState scanState;
@@ -240,8 +272,9 @@ class DualPhotoCaptureOverlay extends StatefulWidget {
   /// guide is laid out on the frame's centred square like the native ROI.
   final double videoAspect;
 
-  /// Manual-capture fallback, invoked if the user taps the shutter.
-  final VoidCallback? onManualCapture;
+  final bool lowLight;
+  final bool extraAccuracy;
+  final ValueChanged<bool>? onExtraAccuracyChanged;
 
   /// Pitch error (radians) at which the tilt gauge pins to its end stop.
   static const double gaugeRangeRad = 0.384;
@@ -279,8 +312,7 @@ class _DualPhotoCaptureOverlayState extends State<DualPhotoCaptureOverlay>
       duration: const Duration(milliseconds: 450),
       value: widget._isTopStep ? 0.0 : 1.0,
     );
-    _morphCurve =
-        CurvedAnimation(parent: _morph, curve: Curves.easeInOutCubic);
+    _morphCurve = CurvedAnimation(parent: _morph, curve: Curves.easeInOutCubic);
     _align = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 220),
@@ -357,13 +389,8 @@ class _DualPhotoCaptureOverlayState extends State<DualPhotoCaptureOverlay>
         final size = constraints.biggest;
         final aspect = widget.videoAspect;
         final r = ScanGuideGeometry.radius(size, aspect);
-        final panelLeft = padding.left + 12;
-        final panelWidth =
-            ((size.width / 2 - r - 44) - panelLeft).clamp(112.0, 176.0);
-        final railX =
-            ScanGuideGeometry.rightRailCenterX(size, padding, aspect);
-        final gaugeHeight = math.min(r * 1.15, 170.0);
-        final gaugeX = size.width / 2 - r - 26;
+        final rails = ScanGuideGeometry.rails(size, padding, aspect);
+        final gaugeHeight = math.min(r * 0.65, 100.0);
         final gaugeValue =
             (widget.tiltError / DualPhotoCaptureOverlay.gaugeRangeRad)
                 .clamp(-1.0, 1.0);
@@ -400,42 +427,13 @@ class _DualPhotoCaptureOverlayState extends State<DualPhotoCaptureOverlay>
                                 palette: palette,
                                 ambient: _ambient,
                                 align: _align,
-                                holdProgress: widget.aligned
-                                    ? widget.holdProgress
-                                    : 0.0,
+                                holdProgress:
+                                    widget.aligned ? widget.holdProgress : 0.0,
                                 confirming: confirming,
                               ),
                             ),
                           ),
                         ),
-                        Positioned.fill(
-                          child: AiScanSweepOverlay(
-                            guide: guide,
-                            palette: palette,
-                            active: !confirming,
-                            searching: !widget.foodDetected,
-                          ),
-                        ),
-                        if (widget.liveDetectionAvailable)
-                          Positioned(
-                            left: guide.left,
-                            width: guide.width,
-                            top: math.max(guide.top - 14, padding.top + 4),
-                            height: 28,
-                            child: Center(
-                              child: AnimatedOpacity(
-                                opacity: confirming ? 0.0 : 1.0,
-                                duration: const Duration(milliseconds: 200),
-                                child: _StatusTag(
-                                  detected: widget.foodDetected,
-                                  palette: palette,
-                                  label: widget.foodDetected
-                                      ? l10n.scanFoodDetected
-                                      : l10n.scanLookingForFood,
-                                ),
-                              ),
-                            ),
-                          ),
                       ],
                     );
                   },
@@ -461,64 +459,103 @@ class _DualPhotoCaptureOverlayState extends State<DualPhotoCaptureOverlay>
               ),
             ),
 
-            // Precision tilt gauge, just left of the guide.
-            Positioned(
-              left: gaugeX - 11,
-              top: size.height / 2 - gaugeHeight / 2,
-              width: 22,
-              height: gaugeHeight,
-              child: IgnorePointer(
-                child: _TiltGauge(
-                  value: confirming ? 0.0 : gaugeValue,
-                  aligned: widget.aligned || confirming,
-                  palette: palette,
+            Positioned.fromRect(
+              rect: rails.left,
+              child: SingleChildScrollView(
+                key: const ValueKey('scan-left-rail'),
+                child: Column(
+                  children: [
+                    Text(l10n.extraAccuracy,
+                        style: const TextStyle(color: Colors.white)),
+                    Semantics(
+                      label: l10n.extraAccuracy,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: Switch.adaptive(
+                          value: widget.extraAccuracy,
+                          onChanged: widget.onExtraAccuracyChanged,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      widget.extraAccuracy
+                          ? l10n.strictScanMode
+                          : l10n.approximateScanMode,
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    _GuidancePanel(
+                      top: top,
+                      aligned: widget.aligned,
+                      alignmentScore: widget.alignmentScore,
+                      stability: widget.stability,
+                      confirming: confirming,
+                      tiltError: widget.tiltError,
+                      palette: palette,
+                      alignmentOnly: false,
+                      extraAccuracy: widget.extraAccuracy,
+                    ),
+                    if (widget.liveDetectionAvailable &&
+                        widget.foodDetected &&
+                        !confirming) ...[
+                      const SizedBox(height: 8),
+                      _StatusTag(
+                        detected: widget.foodDetected,
+                        palette: palette,
+                        label: l10n.scanFoodDetected,
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
-
-            // Guidance panel (step, alignment %, direction, ROI note).
-            Positioned(
-              left: panelLeft,
-              width: panelWidth,
-              top: padding.top + 60,
-              bottom: padding.bottom + 12,
-              child: IgnorePointer(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: SizedBox(
-                      width: panelWidth,
-                      child: _GuidancePanel(
-                        top: top,
-                        aligned: widget.aligned,
-                        alignmentScore: widget.alignmentScore,
-                        stability: widget.stability,
-                        confirming: confirming,
-                        tiltError: widget.tiltError,
+            Positioned.fromRect(
+              rect: rails.right,
+              child: SingleChildScrollView(
+                key: const ValueKey('scan-right-rail'),
+                child: Column(
+                  children: [
+                    if (widget.lowLight) ...[
+                      Text(l10n.lowLightScanWarning,
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 12)),
+                      const SizedBox(height: 8),
+                    ],
+                    _GuidancePanel(
+                      top: top,
+                      aligned: widget.aligned,
+                      alignmentScore: widget.alignmentScore,
+                      stability: widget.stability,
+                      confirming: confirming,
+                      tiltError: widget.tiltError,
+                      palette: palette,
+                      alignmentOnly: true,
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: 22,
+                      height: gaugeHeight,
+                      child: _TiltGauge(
+                        value: confirming ? 0.0 : gaugeValue,
+                        aligned: widget.aligned || confirming,
                         palette: palette,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: _CaptureProgressIndicator(
+                        holdProgress: widget.aligned ? widget.holdProgress : 0,
+                        aligned: widget.aligned,
+                        confirming: confirming,
+                        palette: palette,
+                        ambient: _ambient,
+                        semanticsLabel: l10n.scanHoldSteady,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-
-            // iOS-style shutter on the right rail.
-            Positioned(
-              left: railX - 38,
-              top: size.height / 2 - 38,
-              width: 76,
-              height: 76,
-              child: _ShutterButton(
-                holdProgress: widget.aligned ? widget.holdProgress : 0.0,
-                aligned: widget.aligned,
-                confirming: confirming,
-                palette: palette,
-                ambient: _ambient,
-                semanticsLabel: l10n.scanTakePhoto,
-                onTap: widget.onManualCapture,
               ),
             ),
           ],
@@ -634,8 +671,8 @@ class _GuidePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     const len = 8.0;
     final c = guide.center;
-    canvas.drawLine(Offset(c.dx, guide.bottom), Offset(c.dx, guide.bottom - len),
-        tick);
+    canvas.drawLine(
+        Offset(c.dx, guide.bottom), Offset(c.dx, guide.bottom - len), tick);
     canvas.drawLine(
         Offset(guide.left, c.dy), Offset(guide.left + len, c.dy), tick);
     canvas.drawLine(
@@ -688,7 +725,8 @@ class _ConfirmBadge extends StatelessWidget {
             : null,
         boxShadow: [
           BoxShadow(
-            color: palette.accent.withValues(alpha: palette.premium ? 0.55 : 0.3),
+            color:
+                palette.accent.withValues(alpha: palette.premium ? 0.55 : 0.3),
             blurRadius: palette.premium ? 24 : 12,
           ),
         ],
@@ -715,8 +753,7 @@ class _StatusTag extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 260),
-      height: 26,
-      padding: const EdgeInsets.symmetric(horizontal: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.62),
         borderRadius: BorderRadius.circular(13),
@@ -757,17 +794,18 @@ class _StatusTag extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 7),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            child: Text(
-              label,
-              key: ValueKey(label),
-              maxLines: 1,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.2,
+          Flexible(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              child: Text(
+                label,
+                key: ValueKey(label),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
               ),
             ),
           ),
@@ -897,6 +935,8 @@ class _GuidancePanel extends StatelessWidget {
     required this.confirming,
     required this.tiltError,
     required this.palette,
+    required this.alignmentOnly,
+    this.extraAccuracy = true,
   });
 
   final bool top;
@@ -906,6 +946,8 @@ class _GuidancePanel extends StatelessWidget {
   final bool confirming;
   final double tiltError;
   final ScanChromePalette palette;
+  final bool alignmentOnly;
+  final bool extraAccuracy;
 
   @override
   Widget build(BuildContext context) {
@@ -920,8 +962,7 @@ class _GuidancePanel extends StatelessWidget {
       direction = l10n.scanCaptured;
     } else if (aligned) {
       directionIcon = Icons.center_focus_strong_rounded;
-      direction =
-          stability >= 0.35 ? l10n.scanHoldSteady : l10n.scanAlmostThere;
+      direction = l10n.scanHoldSteady;
     } else if (top) {
       directionIcon = Icons.arrow_downward_rounded;
       direction = l10n.scanAimStraightDown;
@@ -935,7 +976,7 @@ class _GuidancePanel extends StatelessWidget {
 
     final percentStyle = TextStyle(
       color: level && !palette.premium ? palette.accent : Colors.white,
-      fontSize: 34,
+      fontSize: 26,
       height: 1.0,
       fontWeight: FontWeight.w700,
       letterSpacing: -0.5,
@@ -955,92 +996,95 @@ class _GuidancePanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _StepSegmented(topActive: top, palette: palette),
-        const SizedBox(height: 16),
-        percentText,
-        const SizedBox(height: 4),
-        Text(
-          l10n.scanAlignment.toUpperCase(),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.1,
+        if (!alignmentOnly) ...[
+          if (extraAccuracy)
+            _StepSegmented(topActive: top, palette: palette)
+          else
+            Text(l10n.scanTopView, style: const TextStyle(color: Colors.white)),
+          const SizedBox(height: 16),
+        ],
+        if (alignmentOnly) ...[
+          percentText,
+          const SizedBox(height: 4),
+          Text(
+            l10n.scanAlignment.toUpperCase(),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          child: Row(
-            key: ValueKey(direction),
+          const SizedBox(height: 12),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: Row(
+              key: ValueKey(direction),
+              children: [
+                Icon(
+                  directionIcon,
+                  size: 17,
+                  color: level ? palette.accent : Colors.white,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    direction,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (!alignmentOnly) ...[
+          const SizedBox(height: 6),
+          Text(
+            top ? l10n.scanTopHint : l10n.scanSideHint,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 11.5,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(height: 1, color: Colors.white.withValues(alpha: 0.10)),
+          const SizedBox(height: 9),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                directionIcon,
-                size: 17,
-                color: level ? palette.accent : Colors.white,
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: SizedBox(
+                  width: 14,
+                  height: 12,
+                  child: CustomPaint(
+                    painter: _GuideGlyphPainter(
+                      isTop: top,
+                      color: Colors.white.withValues(alpha: 0.75),
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 7),
               Expanded(
                 child: Text(
-                  direction,
-                  maxLines: 2,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
+                  top ? l10n.scanCircleInstruction : l10n.scanFrameInstruction,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.68),
+                    fontSize: 12,
+                    height: 1.3,
                   ),
                 ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          top ? l10n.scanTopHint : l10n.scanSideHint,
-          maxLines: 3,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.72),
-            fontSize: 11.5,
-            height: 1.3,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Container(height: 1, color: Colors.white.withValues(alpha: 0.10)),
-        const SizedBox(height: 9),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: SizedBox(
-                width: 14,
-                height: 12,
-                child: CustomPaint(
-                  painter: _GuideGlyphPainter(
-                    isTop: top,
-                    color: Colors.white.withValues(alpha: 0.75),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 7),
-            Expanded(
-              child: Text(
-                top ? l10n.scanCircleInstruction : l10n.scanFrameInstruction,
-                maxLines: 5,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.68),
-                  fontSize: 10.5,
-                  height: 1.3,
-                ),
-              ),
-            ),
-          ],
-        ),
+        ],
       ],
     );
 
@@ -1126,7 +1170,6 @@ class _StepSegmented extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    const segment = 34.0;
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
@@ -1135,7 +1178,6 @@ class _StepSegmented extends StatelessWidget {
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: SizedBox(
-        height: segment * 2,
         child: Stack(
           children: [
             Positioned.fill(
@@ -1181,14 +1223,12 @@ class _StepSegmented extends StatelessWidget {
                   label: l10n.scanTopView,
                   active: topActive,
                   done: !topActive,
-                  height: segment,
                 ),
                 _segmentRow(
                   isTop: false,
                   label: l10n.scanSideView,
                   active: !topActive,
                   done: false,
-                  height: segment,
                 ),
               ],
             ),
@@ -1203,14 +1243,13 @@ class _StepSegmented extends StatelessWidget {
     required String label,
     required bool active,
     required bool done,
-    required double height,
   }) {
     final fg = active ? Colors.white : Colors.white.withValues(alpha: 0.6);
     return SizedBox(
-      height: height,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 9),
-        child: Row(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
               width: 14,
@@ -1219,17 +1258,13 @@ class _StepSegmented extends StatelessWidget {
                 painter: _GuideGlyphPainter(isTop: isTop, color: fg),
               ),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: fg,
-                  fontSize: 12.5,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: fg,
+                fontSize: 12.5,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
             if (done)
@@ -1274,17 +1309,16 @@ class _GuideGlyphPainter extends CustomPainter {
       old.isTop != isTop || old.color != color;
 }
 
-// ── Shutter ──────────────────────────────────────────────────────────────────
+// ── Automatic capture progress (not a shutter control) ────────────────────────
 
-class _ShutterButton extends StatelessWidget {
-  const _ShutterButton({
+class _CaptureProgressIndicator extends StatelessWidget {
+  const _CaptureProgressIndicator({
     required this.holdProgress,
     required this.aligned,
     required this.confirming,
     required this.palette,
     required this.ambient,
     required this.semanticsLabel,
-    required this.onTap,
   });
 
   final double holdProgress;
@@ -1293,16 +1327,13 @@ class _ShutterButton extends StatelessWidget {
   final ScanChromePalette palette;
   final Animation<double> ambient;
   final String semanticsLabel;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      button: true,
       label: semanticsLabel,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: confirming ? null : onTap,
+      value: '${(holdProgress * 100).round()}%',
+      child: IgnorePointer(
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -1318,23 +1349,13 @@ class _ShutterButton extends StatelessWidget {
                 ),
               ),
             ),
-            AnimatedContainer(
+            AnimatedOpacity(
+              opacity: confirming ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 160),
-              curve: Curves.easeOut,
-              width: confirming ? 50 : 60,
-              height: confirming ? 50 : 60,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
+              child: const Icon(
+                Icons.check_rounded,
+                size: 18,
                 color: Colors.white,
-              ),
-              child: AnimatedOpacity(
-                opacity: confirming ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 160),
-                child: const Icon(
-                  Icons.check_rounded,
-                  size: 26,
-                  color: Colors.black87,
-                ),
               ),
             ),
           ],

@@ -448,21 +448,11 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
     /// Surface-stage shader modifier: write the interpolated per-vertex colour
     /// straight into the diffuse. This makes the captured photo colours render
     /// per-vertex regardless of whether the device multiplies the raw `.color`
-    /// source under `.physicallyBased` — the cause of the earlier flat-white
-    /// food. If the modifier fails to compile SceneKit ignores it and the
-    /// material's average-colour diffuse (see buildScene) shows instead — still
-    /// never white.
+    /// source under `.physicallyBased`. White is valid captured food color.
     private static let vertexColorSurfaceModifier = """
     #pragma body
     float3 p2mVC = in.p2mVertexColor;
-    // If the per-vertex colour source failed to bind on this device it reads as
-    // pure white (1,1,1); in that degenerate case keep the real average-colour
-    // diffuse (set in buildScene from the sampled food colour) so the food can
-    // never render flat white. Any real food vertex colour — even a light one —
-    // sums below this threshold, so per-vertex colour still applies normally.
-    if (p2mVC.r + p2mVC.g + p2mVC.b < 2.97) {
-        _surface.diffuse.rgb = p2mVC;
-    }
+    _surface.diffuse.rgb = p2mVC;
     """
 
     /// Build a scene whose geometry keeps a real `SCNGeometrySource(.color)` so
@@ -472,16 +462,7 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
     private func buildScene(fromSidecar objects: [SidecarObject], textureURL: URL?) -> SCNScene {
         let scene = SCNScene()
 
-        // Load the baked capture photo once. When present, each food maps its
-        // stored UVs onto this image so the mesh shows the REAL picture pasted
-        // onto the food, instead of a per-vertex tint that some devices rendered
-        // white. `.constant` (unlit) shading keeps the pasted photo at full
-        // brightness regardless of scene lighting.
-        var textureImage: UIImage?
-        if let textureURL, FileManager.default.fileExists(atPath: textureURL.path) {
-            textureImage = UIImage(contentsOfFile: textureURL.path)
-        }
-        print("[Scan3DViewer] sidecar texture=\(textureImage != nil ? (textureURL?.lastPathComponent ?? "?") : "none")")
+        print("[Scan3DViewer] sidecar colorSource=per_food_mask_pixels texture=ignored")
 
         for object in objects {
             guard object.positions.count >= 3, object.indices.count >= 3 else { continue }
@@ -501,20 +482,7 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
                 dataOffset: 0,
                 dataStride: 4
             )
-            // Paste the captured photo when we have both the texture and one UV
-            // per vertex. SceneKit texcoords are top-left origin, so flip V back
-            // from the USD (bottom-left) convention the exporter stored. Drop the
-            // per-vertex colour source in the textured case so SceneKit shows the
-            // photo EXACTLY, with no vertex-colour modulation.
-            let canTexture = textureImage != nil &&
-                object.uvs.count == object.positions.count
-            var sources = canTexture
-                ? [positionSource, normalSource]
-                : [positionSource, normalSource, colorSource]
-            if canTexture {
-                let texcoords = object.uvs.map { CGPoint(x: $0.x, y: 1.0 - $0.y) }
-                sources.append(SCNGeometrySource(textureCoordinates: texcoords))
-            }
+            let sources = [positionSource, normalSource, colorSource]
 
             let element = SCNGeometryElement(
                 indices: object.indices, primitiveType: .triangles
@@ -522,34 +490,16 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
             let geometry = SCNGeometry(sources: sources, elements: [element])
 
             let material = SCNMaterial()
-            if canTexture, let textureImage {
-                // The real photo, pasted onto the food. Unlit so it renders
-                // exactly as captured; clamp wrapping so edge UVs don't bleed.
-                material.diffuse.contents = textureImage
-                material.diffuse.wrapS = .clamp
-                material.diffuse.wrapT = .clamp
-                material.lightingModel = .constant
-                material.isDoubleSided = true
-                print("[Scan3DViewer] sidecar node=\(object.id) verts=\(object.positions.count) textured=true")
-            } else {
-                // Fallback: sampled per-vertex colour (average diffuse + shader
-                // modifier), never white.
-                material.diffuse.contents = UIColor(
-                    red: CGFloat(max(0, min(1, object.averageColor.x))),
-                    green: CGFloat(max(0, min(1, object.averageColor.y))),
-                    blue: CGFloat(max(0, min(1, object.averageColor.z))),
-                    alpha: 1.0
-                )
-                material.shaderModifiers = [
-                    .geometry: Self.vertexColorGeometryModifier,
-                    .surface: Self.vertexColorSurfaceModifier,
-                ]
-                print("[Scan3DViewer] sidecar node=\(object.id) " +
-                      "verts=\(object.positions.count) textured=false avgColor=(" +
-                      "\(String(format: "%.2f", object.averageColor.x))," +
-                      "\(String(format: "%.2f", object.averageColor.y))," +
-                      "\(String(format: "%.2f", object.averageColor.z)))")
-            }
+            material.diffuse.contents = UIColor.white
+            material.shaderModifiers = [
+                .geometry: Self.vertexColorGeometryModifier,
+                .surface: Self.vertexColorSurfaceModifier,
+            ]
+            print("[Scan3DViewer] sidecar node=\(object.id) vertexColors=true " +
+                  "verts=\(object.positions.count) textured=false avgColor=(" +
+                  "\(String(format: "%.2f", object.averageColor.x))," +
+                  "\(String(format: "%.2f", object.averageColor.y))," +
+                  "\(String(format: "%.2f", object.averageColor.z)))")
             geometry.materials = [material]
 
             let node = SCNNode(geometry: geometry)

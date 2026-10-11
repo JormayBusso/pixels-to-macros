@@ -65,6 +65,26 @@ Map<String, dynamic> _lidar() => {
 
 void main() {
   group('FoodDiagnostic.fromMap', () {
+    test('exports capture and measurement provenance for either native path',
+        () {
+      for (final payload in [_monocularBothViews(), _lidar()]) {
+        payload['measurement_provenance'] =
+            'id=replay top={timestamp=1 cropTL=0.2,0.1,0.6,0.8} '
+            'side={timestamp=2} scaleSource=intrinsic_guided '
+            'heightReason=no_table_calibration meshVolumeCm3=96.4';
+        final diagnostics = ScanDiagnostics.fromCapture(
+          depthMode: payload['scan_mode'] as String,
+          nativeObjects: [payload],
+          timings: const {},
+        );
+        expect(diagnostics.foods.single.measurementProvenance,
+            payload['measurement_provenance']);
+        expect(diagnostics.toReport(),
+            contains('provenance: ${payload['measurement_provenance']}'));
+      }
+      expect(FoodDiagnostic.fromMap(_lidar()).measurementProvenance, isNull);
+    });
+
     test('parses a full monocular both-views payload', () {
       final f = FoodDiagnostic.fromMap(_monocularBothViews());
       expect(f.label, 'tomato');

@@ -100,26 +100,43 @@ final class IntroOverlayView: UIView {
     private override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .black
+        clipsToBounds = true
         autoresizingMask = [.flexibleWidth, .flexibleHeight]
         isUserInteractionEnabled = true
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    private func start() {
-        let screen = bounds.size
-        // Video pixels -> points so the icon crop spans exactly the screen width.
-        let s = screen.width / Self.cropRect.width
-        let cropH = Self.cropRect.height * s
-        let center = CGPoint(x: screen.width / 2, y: screen.height / 2)
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        content.bounds = CGRect(origin: .zero, size: bounds.size)
+        content.center = CGPoint(x: bounds.midX, y: bounds.midY)
+        imageView.frame = content.bounds
 
-        content.frame = bounds
+        // Match the launch image's aspect-fill crop, including before playback.
+        let s = max(bounds.width / Self.cropRect.width, bounds.height / Self.cropRect.height)
+        let layerW = Self.videoSize.width * s
+        let layerH = Self.videoSize.height * s
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        playerLayer?.frame = CGRect(
+            x: content.bounds.midX - layerW / 2,
+            y: content.bounds.midY - layerH / 2,
+            width: layerW,
+            height: layerH
+        )
+        CATransaction.commit()
+    }
+
+    private func start() {
         addSubview(content)
 
         imageView.image = UIImage(named: "IntroFirstFrame")
-        imageView.contentMode = .scaleToFill
-        imageView.frame = CGRect(x: 0, y: center.y - cropH / 2, width: screen.width, height: cropH)
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
         content.addSubview(imageView)
+        setNeedsLayout()
+        layoutIfNeeded()
 
         // Hard timeout: never leave the overlay stuck.
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.timeout) { [weak self] in
@@ -141,13 +158,12 @@ final class IntroOverlayView: UIView {
         self.player = player
 
         let layer = AVPlayerLayer(player: player)
-        layer.videoGravity = .resize
+        layer.videoGravity = .resizeAspectFill
         layer.backgroundColor = UIColor.black.cgColor
-        let layerW = Self.videoSize.width * s
-        let layerH = Self.videoSize.height * s
-        layer.frame = CGRect(x: center.x - layerW / 2, y: center.y - layerH / 2, width: layerW, height: layerH)
         content.layer.insertSublayer(layer, below: imageView.layer)
         playerLayer = layer
+        setNeedsLayout()
+        layoutIfNeeded()
 
         // Keep the first-frame image on top until the video can display, so
         // there is never a black gap; then drop it (the frames are identical).
@@ -167,8 +183,9 @@ final class IntroOverlayView: UIView {
             forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main
         ) { [weak self] _ in self?.finish() }
 
-        // Continuous ease-in zoom until the square icon content covers the screen height.
-        let endScale = max(screen.height / cropH, 1)
+        // Retain the original relative zoom, now starting from full-screen coverage.
+        let widthFittedCropHeight = Self.cropRect.height * bounds.width / Self.cropRect.width
+        let endScale = max(bounds.height / widthFittedCropHeight, 1)
         let duration = 1.3346
         player.play()
         UIView.animate(withDuration: duration, delay: 0, options: [.curveEaseIn, .allowUserInteraction]) {

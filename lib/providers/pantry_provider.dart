@@ -28,7 +28,8 @@ class PantryNotifier extends StateNotifier<PantryState> {
     state = PantryState(items: items);
   }
 
-  Future<void> addItem(String name, {String? category, String? location}) async {
+  Future<void> addItem(String name,
+      {String? category, String? location}) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;
     final now = DateTime.now();
@@ -182,6 +183,13 @@ class PantryNotifier extends StateNotifier<PantryState> {
       ),
     );
     await load();
+  }
+
+  Future<void> saveReviewedItems(List<PantryItem> items,
+      {bool observations = true}) async {
+    final updated = await DatabaseService.instance
+        .saveReviewedPantryItems(items, observations: observations);
+    state = PantryState(items: updated);
   }
 
   /// Remove every pantry item.

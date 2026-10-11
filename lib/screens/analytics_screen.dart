@@ -92,6 +92,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   ),
                   const SizedBox(height: 16),
                   _StatTilesGrid(state: analytics, goal: goal),
+                  if (analytics.includesApproximateEstimates)
+                    Text(AppLocalizations.of(context).approximateEstimate,
+                        style: TextStyle(color: context.appMutedTextColor)),
                   const SizedBox(height: 16),
                   _MacroDonutCard(
                     state: analytics,
@@ -109,15 +112,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                           color: context.primary100,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(Icons.eco_outlined,
-                            color: context.primary600),
+                        child:
+                            Icon(Icons.eco_outlined, color: context.primary600),
                       ),
                       title: Text(
                         AppLocalizations.of(context).foodGroupBalanceTitle,
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
-                      subtitle: Text(
-                          AppLocalizations.of(context).foodGroupBalanceSubtitle),
+                      subtitle: Text(AppLocalizations.of(context)
+                          .foodGroupBalanceSubtitle),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
@@ -226,8 +229,8 @@ class _CalorieTrendCard extends StatelessWidget {
         child: SizedBox(
           height: 160,
           child: Center(
-            child:
-                Text(AppLocalizations.of(context).noDataYet, style: TextStyle(color: context.appMutedTextColor)),
+            child: Text(AppLocalizations.of(context).noDataYet,
+                style: TextStyle(color: context.appMutedTextColor)),
           ),
         ),
       );

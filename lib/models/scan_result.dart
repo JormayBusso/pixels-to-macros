@@ -3,9 +3,15 @@ import 'dart:convert';
 /// Null means a legacy record did not declare whether volume was measured.
 enum ScanVolumeStatus {
   measured,
+  estimated,
   unmeasured;
 
   static ScanVolumeStatus? fromMap(Map<String, dynamic> map) {
+    if (map['volume_status'] == 'estimated') return ScanVolumeStatus.estimated;
+    if (map['volume_status'] == 'unavailable' ||
+        map['scan_mode'] == 'approximate') {
+      return ScanVolumeStatus.unmeasured;
+    }
     final measured = map['volume_measured'];
     if (measured is bool) {
       return measured ? ScanVolumeStatus.measured : ScanVolumeStatus.unmeasured;
@@ -66,6 +72,28 @@ class ScanResult {
   double get totalCaloriesMax =>
       foods.fold(0.0, (sum, f) => sum + f.caloriesMax);
 
+  bool get isApproximate => depthMode == 'approximate';
+
+  double? reviewedPortionFor(DetectedFood food) {
+    if (!isApproximate || modelObjectsJson == null) return null;
+    try {
+      final objects = jsonDecode(modelObjectsJson!) as List;
+      final index = foods.indexOf(food);
+      for (final object in objects.whereType<Map>()) {
+        if ((object['food_index'] == index ||
+                (object['food_index'] == null &&
+                    object['label'] == food.label)) &&
+            object['portion_reviewed'] == true) {
+          final grams =
+              ((object['portion_amount'] ?? object['weight_g']) as num?)
+                  ?.toDouble();
+          if (grams != null && grams.isFinite && grams > 0) return grams;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Unmeasured objects live in model metadata, never in nutrition rows.
   List<String> get unmeasuredFoodLabels {
     final raw = modelObjectsJson;
@@ -74,10 +102,11 @@ class ScanResult {
       final objects = jsonDecode(raw) as List<dynamic>;
       return [
         for (final object in objects.whereType<Map>())
-          if (!ScanVolumeStatus.hasUsableVolume(
-            ScanVolumeStatus.fromMap(Map<String, dynamic>.from(object)),
-            (object['volume_cm3'] as num?)?.toDouble() ?? 0,
-          ))
+          if (object['portion_reviewed'] != true &&
+              !ScanVolumeStatus.hasUsableVolume(
+                ScanVolumeStatus.fromMap(Map<String, dynamic>.from(object)),
+                (object['volume_cm3'] as num?)?.toDouble() ?? 0,
+              ))
             object['label'] as String? ?? '',
       ].where((label) => label.isNotEmpty).toList(growable: false);
     } catch (_) {

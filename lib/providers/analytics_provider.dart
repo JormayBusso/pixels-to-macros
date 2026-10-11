@@ -10,6 +10,7 @@ class DaySummary {
   final double carbsG;
   final double fatG;
   final int scanCount;
+  final int approximateScanCount;
 
   const DaySummary({
     required this.date,
@@ -18,6 +19,7 @@ class DaySummary {
     required this.carbsG,
     required this.fatG,
     required this.scanCount,
+    this.approximateScanCount = 0,
   });
 
   bool get isEmpty => scanCount == 0;
@@ -52,17 +54,16 @@ class AnalyticsState {
   double get lowestLoggedDay {
     final logged = _logged.toList();
     if (logged.isEmpty) return 0;
-    return logged
-        .map((d) => d.caloriesAvg)
-        .reduce((a, b) => a < b ? a : b);
+    return logged.map((d) => d.caloriesAvg).reduce((a, b) => a < b ? a : b);
   }
 
   int get totalScans => days.fold(0, (s, d) => s + d.scanCount);
+  bool get includesApproximateEstimates =>
+      days.any((day) => day.approximateScanCount > 0);
 
   int get loggedDays => _logged.length;
 
-  double get consistency =>
-      days.isEmpty ? 0 : loggedDays / days.length;
+  double get consistency => days.isEmpty ? 0 : loggedDays / days.length;
 
   /// Average daily macro grams across logged days.
   ({double protein, double carbs, double fat}) get avgMacros {
@@ -82,7 +83,8 @@ class AnalyticsState {
     final mid = logged.length ~/ 2;
     final earlier = logged.sublist(0, mid);
     final later = logged.sublist(mid);
-    final eAvg = earlier.fold(0.0, (s, d) => s + d.caloriesAvg) / earlier.length;
+    final eAvg =
+        earlier.fold(0.0, (s, d) => s + d.caloriesAvg) / earlier.length;
     final lAvg = later.fold(0.0, (s, d) => s + d.caloriesAvg) / later.length;
     if (eAvg <= 0) return null;
     return ((lAvg - eAvg) / eAvg) * 100.0;
@@ -121,13 +123,12 @@ class AnalyticsNotifier extends StateNotifier<AnalyticsState> {
     };
     final foodCache = <String, dynamic>{};
     for (final label in labels) {
-      foodCache[label] =
-          await DatabaseService.instance.getFoodByLabel(label);
+      foodCache[label] = await DatabaseService.instance.getFoodByLabel(label);
     }
 
     for (int i = 0; i < rangeDays; i++) {
-      final date = DateTime(now.year, now.month, now.day)
-          .subtract(Duration(days: i));
+      final date =
+          DateTime(now.year, now.month, now.day).subtract(Duration(days: i));
       final nextDate = date.add(const Duration(days: 1));
 
       final dayScans = allScans
@@ -160,6 +161,7 @@ class AnalyticsNotifier extends StateNotifier<AnalyticsState> {
         carbsG: cSum,
         fatG: fSum,
         scanCount: dayScans.length,
+        approximateScanCount: dayScans.where((s) => s.isApproximate).length,
       ));
     }
 

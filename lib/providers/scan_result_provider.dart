@@ -14,6 +14,18 @@ enum ScanFailureKind {
   reconstructionFailed,
   dualSilhouetteFailed,
   sideViewRequired,
+  containerPortionReviewRequired,
+}
+
+class ApproximatePortion {
+  const ApproximatePortion({
+    required this.label,
+    this.grams,
+    this.foodData,
+  });
+  final String label;
+  final double? grams;
+  final FoodData? foodData;
 }
 
 /// Holds the results of the most recent scan.
@@ -24,6 +36,9 @@ class ScanResultState {
     this.failureKind,
     this.foods = const [],
     this.unmeasuredFoodLabels = const [],
+    this.approximate = false,
+    this.portions = const [],
+    this.metadata = const [],
   });
 
   final bool loading;
@@ -31,6 +46,10 @@ class ScanResultState {
   final ScanFailureKind? failureKind;
   final List<DetectedFood> foods;
   final List<String> unmeasuredFoodLabels;
+  final bool approximate;
+  final List<ApproximatePortion> portions;
+  final List<Map<String, dynamic>> metadata;
+  bool get needsPortionReview => approximate && portions.isNotEmpty;
   bool get hasUnmeasuredFoods => unmeasuredFoodLabels.isNotEmpty;
 
   ScanResultState copyWith({
@@ -39,6 +58,8 @@ class ScanResultState {
     ScanFailureKind? failureKind,
     List<DetectedFood>? foods,
     List<String>? unmeasuredFoodLabels,
+    List<ApproximatePortion>? portions,
+    List<Map<String, dynamic>>? metadata,
   }) {
     return ScanResultState(
       loading: loading ?? this.loading,
@@ -46,6 +67,9 @@ class ScanResultState {
       failureKind: failureKind,
       foods: foods ?? this.foods,
       unmeasuredFoodLabels: unmeasuredFoodLabels ?? this.unmeasuredFoodLabels,
+      approximate: approximate,
+      portions: portions ?? this.portions,
+      metadata: metadata ?? this.metadata,
     );
   }
 
@@ -62,12 +86,15 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
   ScanResultNotifier({
     Future<List<Map<String, dynamic>>> Function()? runInference,
     Future<FoodData?> Function(String)? lookupFood,
+    Future<double?> Function(String)? lookupPortion,
   })  : _runInference = runInference,
         _lookupFood = lookupFood,
+        _lookupPortion = lookupPortion,
         super(const ScanResultState());
 
   final Future<List<Map<String, dynamic>>> Function()? _runInference;
   final Future<FoodData?> Function(String)? _lookupFood;
+  final Future<double?> Function(String)? _lookupPortion;
 
   /// Maps model output labels to user-friendly DB labels where they differ.
   static const _labelAliases = {
@@ -157,13 +184,14 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
   }
 
   /// Run the multi-frame video inference pipeline.
-  Future<void> runVideoScan() async {
-    state = const ScanResultState(loading: true);
+  Future<void> runVideoScan({bool extraAccuracy = true}) async {
+    state = ScanResultState(loading: true, approximate: !extraAccuracy);
 
     try {
       // Load the user's on-device label corrections so the native pipeline can
       // recognise foods they've already taught it. Local SQLite only.
-      final rawVolumes = await (_runInference?.call() ?? _runNativeInference());
+      final rawVolumes = await (_runInference?.call() ??
+          _runNativeInference(extraAccuracy: extraAccuracy));
       debugPrint(
           '[SCAN] Flutter received ${rawVolumes.length} raw items from native');
       for (final vol in rawVolumes) {
@@ -182,8 +210,45 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
         return;
       }
 
+      if (!extraAccuracy) {
+        final portions = <ApproximatePortion>[];
+        for (final item in rawVolumes) {
+          final label = _normaliseLabel(item['label'] as String? ?? '');
+          if (label == null) continue;
+          final food = await _foodFor(label);
+          final grams = food == null ? null : await _previousPortion(label);
+          portions.add(
+              ApproximatePortion(label: label, grams: grams, foodData: food));
+        }
+        state = portions.isEmpty
+            ? const ScanResultState(
+                error: 'No food detected.', failureKind: ScanFailureKind.noFood)
+            : ScanResultState(approximate: true, portions: portions);
+        return;
+      }
+
       final foods = <DetectedFood>[];
       final unmeasuredFoodLabels = <String>[];
+
+      // A strict monocular plate is atomic: one unsupported food requires a
+      // retake before nutrition lookup or the screen's successful-save branch.
+      // Legacy history and the separate LiDAR status contract stay readable.
+      for (final vol in rawVolumes) {
+        final mode = vol['scan_mode'] as String? ?? '';
+        final label = _normaliseLabel(vol['label'] as String? ?? 'unknown');
+        if (label != null &&
+            mode.startsWith('monocular_') &&
+            !ScanVolumeStatus.hasUsableVolume(
+              ScanVolumeStatus.fromMap(vol),
+              (vol['volume_cm3'] as num?)?.toDouble() ?? 0,
+            )) {
+          throw PlatformException(
+            code: 'SIDE_VIEW_REQUIRED',
+            details: vol['side_missing_reason'] ??
+                'missing_or_invalid_monocular_measurement',
+          );
+        }
+      }
 
       for (final vol in rawVolumes) {
         final rawLabel = vol['label'] as String? ?? 'unknown';
@@ -240,6 +305,16 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
           calMax = volumeCm3 * 1.0 / 100 * 120;
         }
 
+        DebugLog.instance.log(
+          'NutritionMeasurement',
+          'nativeId=${vol['id']} rawLabel=$rawLabel normalizedLabel=$label '
+              'volumeSource=${vol['volume_source']} volumeCm3=$volumeCm3 '
+              'lookup=${foodData?.label ?? "none"} '
+              'densitySource=${foodData != null ? "food_database_range" : "unknown_food_fallback"} '
+              'densityMin=${foodData?.densityMin} densityMax=${foodData?.densityMax} '
+              'kcalPer100g=${foodData?.kcalPer100g} calories=$calMin...$calMax',
+        );
+
         foods.add(DetectedFood(
           label: label,
           volumeCm3: volumeCm3,
@@ -282,15 +357,83 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _runNativeInference() async {
+  Future<FoodData?> _foodFor(String label) async => _lookupFood != null
+      ? _lookupFood(label)
+      : DatabaseService.instance.getFoodByLabelFuzzy(label);
+
+  Future<double?> _previousPortion(String label) async {
+    if (_lookupPortion != null) return _lookupPortion(label);
+    final scans = await DatabaseService.instance.getAllScanResults();
+    for (final scan in scans) {
+      for (final food in scan.foods) {
+        if (food.label.toLowerCase() != label.toLowerCase()) continue;
+        final grams = scan.reviewedPortionFor(food);
+        if (grams != null) return grams;
+      }
+    }
+    return null;
+  }
+
+  Future<bool> confirmApproximatePortions(
+      List<ApproximatePortion> reviewed) async {
+    if (!state.needsPortionReview || reviewed.length != state.portions.length) {
+      return false;
+    }
+    final foods = <DetectedFood>[];
+    final metadata = <Map<String, dynamic>>[];
+    for (final portion in reviewed) {
+      final label = _normaliseLabel(portion.label);
+      final grams = portion.grams;
+      if (label == null || grams == null || !grams.isFinite || grams <= 0) {
+        return false;
+      }
+      final data = await _foodFor(label);
+      if (data == null || !data.kcalPer100g.isFinite || data.kcalPer100g < 0) {
+        return false;
+      }
+      // Store weight separately: it is user-reviewed, never a measured volume.
+      final calories = grams / 100 * data.kcalPer100g;
+      if (!calories.isFinite) return false;
+      foods.add(DetectedFood(
+          label: data.label,
+          volumeCm3: 0,
+          caloriesMin: calories,
+          caloriesMax: calories));
+      metadata.add({
+        'food_index': foods.length - 1,
+        'label': data.label,
+        'scan_mode': 'approximate',
+        'volume_status': 'unavailable',
+        'volume_measured': false,
+        'volume_cm3': 0,
+        'portion_status': 'estimated',
+        'portion_reviewed': true,
+        'estimated': true,
+        'portion_amount': grams,
+        'portion_unit': data.perMl ? 'ml' : 'g',
+        if (!data.perMl) 'weight_g': grams,
+        'measurement_provenance': 'user_reviewed_local_food_portion',
+      });
+    }
+    state =
+        ScanResultState(approximate: true, foods: foods, metadata: metadata);
+    return true;
+  }
+
+  Future<List<Map<String, dynamic>>> _runNativeInference({
+    required bool extraAccuracy,
+  }) async {
     final userExemplars = await DatabaseService.instance.getFoodExemplars();
-    return NativeBridge.instance
-        .runVideoInference(userExemplars: userExemplars);
+    return NativeBridge.instance.runVideoInference(
+        userExemplars: userExemplars, extraAccuracy: extraAccuracy);
   }
 
   @visibleForTesting
   static ScanFailureKind classifyFailure(Object error) {
     if (error is PlatformException) {
+      if (error.code == 'CONTAINER_PORTION_REVIEW_REQUIRED') {
+        return ScanFailureKind.containerPortionReviewRequired;
+      }
       if (error.code == 'SIDE_VIEW_REQUIRED') {
         return ScanFailureKind.sideViewRequired;
       }

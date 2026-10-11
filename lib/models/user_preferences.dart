@@ -106,6 +106,7 @@ class UserPreferences {
   /// When true, pull weight + active energy from Apple Health and auto-adjust
   /// the daily calorie target (adaptive coaching instead of a fixed number).
   final bool healthSyncEnabled;
+  final bool extraAccuracy;
 
   const UserPreferences({
     this.id,
@@ -140,6 +141,7 @@ class UserPreferences {
     this.premiumUnlocked = false,
     this.premiumThemeLight = false,
     this.healthSyncEnabled = false,
+    this.extraAccuracy = true,
   });
 
   Map<String, dynamic> toMap() {
@@ -177,6 +179,7 @@ class UserPreferences {
       'premium_unlocked': premiumUnlocked ? 1 : 0,
       'premium_theme_light': premiumThemeLight ? 1 : 0,
       'health_sync_enabled': healthSyncEnabled ? 1 : 0,
+      'extra_accuracy': extraAccuracy ? 1 : 0,
     };
   }
 
@@ -222,6 +225,7 @@ class UserPreferences {
       premiumUnlocked: (map['premium_unlocked'] as int?) == 1,
       premiumThemeLight: (map['premium_theme_light'] as int?) == 1,
       healthSyncEnabled: (map['health_sync_enabled'] as int?) == 1,
+      extraAccuracy: (map['extra_accuracy'] as int?) != 0,
     );
   }
 
@@ -257,6 +261,7 @@ class UserPreferences {
     bool? premiumUnlocked,
     bool? premiumThemeLight,
     bool? healthSyncEnabled,
+    bool? extraAccuracy,
   }) {
     return UserPreferences(
       id: id,
@@ -296,6 +301,7 @@ class UserPreferences {
       premiumUnlocked: premiumUnlocked ?? this.premiumUnlocked,
       premiumThemeLight: premiumThemeLight ?? this.premiumThemeLight,
       healthSyncEnabled: healthSyncEnabled ?? this.healthSyncEnabled,
+      extraAccuracy: extraAccuracy ?? this.extraAccuracy,
     );
   }
 }

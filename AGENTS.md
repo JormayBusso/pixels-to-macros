@@ -27,7 +27,7 @@ outdated, update this file in the same change.
 6. **Scan changes: implement the LiDAR and non-LiDAR paths SEPARATELY**, and make the final
    3D model look the SAME for both. Never edit one path and assume the other. On BOTH paths the
    3D model MUST be built from the EXACT silhouette of the TOP **and** SIDE photos, hard-forced
-   with **no** generic/primitive or thickness-floor fallback (accuracy + consistency). See §9.
+   with **no** shape fallback, smoothing, subdivision or thickness floor. See §9.
 7. **The 3D scan render + shape is DEVICE-ONLY validatable.** You cannot see the scan
    output in the dev environment. After any scan change: build, deploy, and ask the user
    to re-scan + paste the named debug logs. NEVER claim a visual scan bug is fixed
@@ -274,12 +274,19 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
 
 ## 9. The AI scan pipeline (device-only validation)
 
+- **Extra accuracy:** default-ON, persisted and snapshotted at capture start.
+  ON follows the strict two-photo rules below. Explicit OFF is the user-approved
+  separate approximate top-only mode: recognition then mandatory portion review,
+  no measured height/volume or 3D/export. Use reviewed local portions, mark nutrition
+  estimated and volume unavailable in saved metadata; unsupported foods require
+  correction before saving. This exception never relaxes strict geometry.
 - **Two independent code paths — change BOTH, separately.** LiDAR devices use `DepthFusion`
-  (ARKit depth → voxels → SurfaceNets mesh); non-LiDAR devices (incl. the iPhone 16 Plus in
+  (ARKit measured support/depth → source-mask boundary hull); non-LiDAR devices (incl. the iPhone 16 Plus in
   use) use the monocular dual-photo path (`MonocularVolumeEstimator`). Any scan change must be
   implemented for each path on its own terms — never edit one and assume the other follows.
-  The **final 3D model must look the SAME to the user on both paths**: same smoothing
-  (SurfaceNets + Loop/Taubin), same per-vertex color source, and the same
+  The **final 3D model must look the SAME to the user on both paths**: source-resolution
+  silhouette support without added shape or geometry smoothing/subdivision/Taubin,
+  same per-vertex color source, and the same
   `volume_source=display_mesh` contract. State in your report what you did for each path.
 - **ALWAYS use the EXACT silhouette — hard-forced, no fallback shape.** On BOTH paths the 3D
   model MUST be reconstructed from the exact outline of the TOP mask **and** the exact profile
@@ -297,9 +304,16 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
   measurement** — the matched side silhouette (monocular) or fused depth + side carve (LiDAR).
   There is NO prior/default height, class-prior table, or top-only reconstruction. Side↔top
   matching (`ScanMaskGeometry.matchSideSegments` + `sidePieceUnion`) gives every top food a side
-  profile; if the side photo is missing / has no food mask (or a LiDAR food has neither enough
-  depth nor a side silhouette), native throws `FlutterError` code `SIDE_VIEW_REQUIRED` and the
+  profile; if either path lacks an independently assigned food SIDE mask, even when LiDAR
+  depth exists, native throws `FlutterError` code `SIDE_VIEW_REQUIRED` and the
   Dart scan flow asks the user to retake (nothing is saved). Never re-add a fallback height.
+- **Container portions:** keep visible FOOD masks separate from the rim/exterior. The user
+  approved hidden-interior/fill assumptions only for a separately marked **estimated**
+  portion bounded by measured observations, never as exact visible-food geometry. When
+  hidden thickness cannot be bounded, return `CONTAINER_PORTION_REVIEW_REQUIRED` before
+  export/nutrition/save; ask for manual portion entry or a top+side retake on a plate.
+  Current bowl/cup context detection is conservative, not robust interior segmentation;
+  no hidden-fill estimator is implemented. Preserve the strict visible-food hull rules.
 - Volume→calories: `scan_result_provider` maps label → `FoodData` (fuzzy label match) →
   `calorieRange(volume)`. The **displayed mesh is the volume source** (`volume_source=display_mesh`).
 - **Scale is the monocular accuracy core.** Metric-scale hierarchy: `plate_diameter`

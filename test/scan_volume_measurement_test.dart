@@ -106,18 +106,19 @@ void main() {
   });
 
   group('Native result to nutrition', () {
-    test('top-only scan succeeds without nutrition or DB lookup', () async {
+    test('strict top-only output requires retake before nutrition lookup',
+        () async {
       final notifier = ScanResultNotifier(
         runInference: () async => [_object()],
         lookupFood: (_) async => throw StateError('must not look up nutrition'),
       );
       addTearDown(notifier.dispose);
       await notifier.runVideoScan();
-      expect(notifier.state.error, isNull);
-      expect(notifier.state.failureKind, isNull);
+      expect(notifier.state.error, isNotNull);
+      expect(notifier.state.failureKind, ScanFailureKind.sideViewRequired);
       expect(notifier.state.foods, isEmpty);
-      expect(notifier.state.unmeasuredFoodLabels, ['beef']);
-      expect(notifier.state.hasUnmeasuredFoods, isTrue);
+      expect(notifier.state.unmeasuredFoodLabels, isEmpty);
+      expect(notifier.state.hasUnmeasuredFoods, isFalse);
       expect(notifier.state.totalCaloriesMin, 0);
       expect(notifier.state.totalCaloriesMax, 0);
     });
@@ -137,13 +138,13 @@ void main() {
       expect(notifier.state.totalCaloriesMax, 0);
     });
 
-    test('partial scan keeps measured instances only, including same label',
+    test('legacy LiDAR partial scan keeps measured instances, same label',
         () async {
       final lookups = <String>[];
       final notifier = ScanResultNotifier(
         runInference: () async => [
-          _object(volume: 100, measured: true, mode: 'monocular_visual_hull'),
-          _object(id: 'beef_1'),
+          _object(volume: 100, measured: true, mode: 'lidar_mesh'),
+          _object(id: 'beef_1', mode: 'lidar_mesh'),
           _object(id: 'beef_2', volume: 100, mode: 'lidar_mesh'),
         ],
         lookupFood: (label) async {
@@ -160,6 +161,24 @@ void main() {
       expect(notifier.state.totalCaloriesMax, 200);
       expect(notifier.state.unmeasuredFoodLabels, ['beef', 'beef']);
       expect(lookups, ['beef']);
+    });
+
+    test('one unsupported strict monocular food rejects the entire plate',
+        () async {
+      final notifier = ScanResultNotifier(
+        runInference: () async => [
+          _object(volume: 100, measured: true, mode: 'monocular_visual_hull'),
+          _object(id: 'beef_1'),
+        ],
+        lookupFood: (_) async => throw StateError('no partial nutrition'),
+      );
+      addTearDown(notifier.dispose);
+      await notifier.runVideoScan();
+      expect(notifier.state.error, isNotNull);
+      expect(notifier.state.failureKind, ScanFailureKind.sideViewRequired);
+      expect(notifier.state.foods, isEmpty);
+      expect(notifier.state.unmeasuredFoodLabels, isEmpty);
+      expect(notifier.state.totalCaloriesMax, 0);
     });
 
     test('legacy measured scan keeps existing nutrition calculation', () async {

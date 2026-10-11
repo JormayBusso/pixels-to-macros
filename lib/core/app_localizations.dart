@@ -41,6 +41,78 @@ class AppLocalizations {
         'de': 'Abbrechen',
       });
 
+  String get extraAccuracy => _t({
+        'en': 'Extra accuracy',
+        'nl': 'Extra nauwkeurigheid',
+        'es': 'Precisión adicional',
+        'de': 'Extra Genauigkeit',
+        'pl': 'Większa dokładność',
+      });
+  String get strictScanMode => _t({
+        'en': 'Two photos · strict 3D',
+        'nl': 'Twee foto’s · strikte 3D',
+        'es': 'Dos fotos · 3D estricto',
+        'de': 'Zwei Fotos · striktes 3D',
+        'pl': 'Dwa zdjęcia · ścisłe 3D',
+      });
+  String get approximateScanMode => _t({
+        'en': 'One top photo · estimate · no 3D',
+        'nl': 'Eén bovenfoto · schatting · geen 3D',
+        'es': 'Una foto superior · estimación · sin 3D',
+        'de': 'Ein Foto von oben · Schätzung · kein 3D',
+        'pl': 'Jedno zdjęcie z góry · szacunek · bez 3D',
+      });
+  String get approximateEstimate => _t({
+        'en': 'Approximate estimate',
+        'nl': 'Bij benadering geschat',
+        'es': 'Estimación aproximada',
+        'de': 'Ungefähre Schätzung',
+        'pl': 'Przybliżony szacunek',
+      });
+  String get reviewScanPortions => _t({
+        'en': 'Review food and portions',
+        'nl': 'Controleer voedsel en porties',
+        'es': 'Revisa alimentos y porciones',
+        'de': 'Lebensmittel und Portionen prüfen',
+        'pl': 'Sprawdź produkty i porcje',
+      });
+  String get approximatePortionHelp => _t({
+        'en':
+            'One photo cannot measure volume. Confirm or correct each food and amount (g, or ml for drinks). A previous reviewed portion may be suggested. Unknown foods need a matching local food before saving. Nutrition is estimated; no 3D is created.',
+        'nl':
+            'Eén foto meet geen volume. Bevestig of corrigeer elk voedsel en de hoeveelheid (g, of ml voor dranken). Een eerder gecontroleerde portie kan worden voorgesteld. Onbekend voedsel moet vóór opslaan overeenkomen met lokaal voedsel. Voedingswaarden zijn geschat; er wordt geen 3D gemaakt.',
+        'es':
+            'Una foto no mide el volumen. Confirma o corrige cada alimento y cantidad (g, o ml para bebidas). Puede sugerirse una porción revisada antes. Los alimentos desconocidos necesitan coincidir con uno local antes de guardar. La nutrición es estimada; no se crea 3D.',
+        'de':
+            'Ein Foto misst kein Volumen. Bestätige oder korrigiere jedes Lebensmittel und die Menge (g, oder ml für Getränke). Eine zuvor geprüfte Portion kann vorgeschlagen werden. Unbekannte Lebensmittel benötigen vor dem Speichern einen lokalen Treffer. Nährwerte sind geschätzt; es entsteht kein 3D.',
+        'pl':
+            'Jedno zdjęcie nie mierzy objętości. Potwierdź lub popraw każdy produkt i ilość (g lub ml dla napojów). Może być proponowana wcześniej sprawdzona porcja. Nieznany produkt wymaga dopasowania do lokalnej bazy przed zapisem. Wartości odżywcze są szacowane; model 3D nie powstaje.',
+      });
+  String get scanPortionReviewInvalid => _t({
+        'en': 'Enter a known food and a positive amount for every item.',
+        'nl':
+            'Voer voor elk item bekend voedsel en een positieve hoeveelheid in.',
+        'es':
+            'Introduce un alimento conocido y una cantidad positiva para cada elemento.',
+        'de':
+            'Gib für jeden Eintrag ein bekanntes Lebensmittel und eine positive Menge ein.',
+        'pl': 'Dla każdej pozycji podaj znany produkt i dodatnią ilość.',
+      });
+  String get scanFoodLabel => _t({
+        'en': 'Food',
+        'nl': 'Voedsel',
+        'es': 'Alimento',
+        'de': 'Lebensmittel',
+        'pl': 'Produkt',
+      });
+  String get scanPortionAmount => _t({
+        'en': 'Amount (g / ml)',
+        'nl': 'Hoeveelheid (g / ml)',
+        'es': 'Cantidad (g / ml)',
+        'de': 'Menge (g / ml)',
+        'pl': 'Ilość (g / ml)',
+      });
+
   String get save => _t({
         'en': 'Save',
         'pl': 'Zapisz',
@@ -470,31 +542,26 @@ class AppLocalizations {
       });
 
   String get icrExplanation => _t({
-        'en':
-            'Your ICR (Insulin-to-Carb Ratio) tells you how many grams of carbohydrate one unit of insulin covers.\n\n'
-                'Example: an ICR of 10 means 1 unit covers 10 g of carbs.\n\n'
-                'This value is personal and should be set by your diabetes care team. '
-                'Do NOT use a pre-set value — an incorrect ICR can cause dangerous blood sugar swings.',
-        'pl':
-            'Twój WWcW (współczynnik insulina-węglowodany) mówi, ile gramów węglowodanów pokrywa jedna jednostka insuliny.\n\n'
-                'Przykład: WWcW równy 10 oznacza, że 1 jednostka pokrywa 10 g węglowodanów.\n\n'
-                'Ta wartość jest indywidualna i powinna być ustalona przez Twój zespół diabetologiczny. '
-                'NIE używaj wartości domyślnej — błędny współczynnik może powodować groźne wahania cukru.',
-        'nl':
-            'Je ICR (insuline-koolhydraatratio) geeft aan hoeveel gram koolhydraten één eenheid insuline dekt.\n\n'
-                'Voorbeeld: een ICR van 10 betekent dat 1 eenheid 10 g koolhydraten dekt.\n\n'
-                'Deze waarde is persoonlijk en moet door je diabetesteam worden ingesteld. '
-                'Gebruik GEEN vooraf ingestelde waarde — een onjuiste ICR kan gevaarlijke bloedsuikerschommelingen veroorzaken.',
-        'es':
-            'Tu ICR (ratio insulina-carbohidratos) indica cuántos gramos de carbohidratos cubre una unidad de insulina.\n\n'
-                'Ejemplo: un ICR de 10 significa que 1 unidad cubre 10 g de carbohidratos.\n\n'
-                'Este valor es personal y debe establecerlo tu equipo médico de diabetes. '
-                'NO uses un valor predefinido: un ICR incorrecto puede causar variaciones peligrosas de azúcar en sangre.',
-        'de':
-            'Dein KE-Faktor (Insulin-Kohlenhydrat-Verhältnis) gibt an, wie viele Gramm Kohlenhydrate eine Einheit Insulin abdeckt.\n\n'
-                'Beispiel: Ein ICR von 10 bedeutet, dass 1 Einheit 10 g Kohlenhydrate abdeckt.\n\n'
-                'Dieser Wert ist persönlich und sollte von deinem Diabetes-Team festgelegt werden. '
-                'Verwende KEINEN voreingestellten Wert — ein falscher ICR kann gefährliche Blutzuckerschwankungen verursachen.',
+        'en': 'Your ICR (Insulin-to-Carb Ratio) tells you how many grams of carbohydrate one unit of insulin covers.\n\n'
+            'Example: an ICR of 10 means 1 unit covers 10 g of carbs.\n\n'
+            'This value is personal and should be set by your diabetes care team. '
+            'Do NOT use a pre-set value — an incorrect ICR can cause dangerous blood sugar swings.',
+        'pl': 'Twój WWcW (współczynnik insulina-węglowodany) mówi, ile gramów węglowodanów pokrywa jedna jednostka insuliny.\n\n'
+            'Przykład: WWcW równy 10 oznacza, że 1 jednostka pokrywa 10 g węglowodanów.\n\n'
+            'Ta wartość jest indywidualna i powinna być ustalona przez Twój zespół diabetologiczny. '
+            'NIE używaj wartości domyślnej — błędny współczynnik może powodować groźne wahania cukru.',
+        'nl': 'Je ICR (insuline-koolhydraatratio) geeft aan hoeveel gram koolhydraten één eenheid insuline dekt.\n\n'
+            'Voorbeeld: een ICR van 10 betekent dat 1 eenheid 10 g koolhydraten dekt.\n\n'
+            'Deze waarde is persoonlijk en moet door je diabetesteam worden ingesteld. '
+            'Gebruik GEEN vooraf ingestelde waarde — een onjuiste ICR kan gevaarlijke bloedsuikerschommelingen veroorzaken.',
+        'es': 'Tu ICR (ratio insulina-carbohidratos) indica cuántos gramos de carbohidratos cubre una unidad de insulina.\n\n'
+            'Ejemplo: un ICR de 10 significa que 1 unidad cubre 10 g de carbohidratos.\n\n'
+            'Este valor es personal y debe establecerlo tu equipo médico de diabetes. '
+            'NO uses un valor predefinido: un ICR incorrecto puede causar variaciones peligrosas de azúcar en sangre.',
+        'de': 'Dein KE-Faktor (Insulin-Kohlenhydrat-Verhältnis) gibt an, wie viele Gramm Kohlenhydrate eine Einheit Insulin abdeckt.\n\n'
+            'Beispiel: Ein ICR von 10 bedeutet, dass 1 Einheit 10 g Kohlenhydrate abdeckt.\n\n'
+            'Dieser Wert ist persönlich und sollte von deinem Diabetes-Team festgelegt werden. '
+            'Verwende KEINEN voreingestellten Wert — ein falscher ICR kann gefährliche Blutzuckerschwankungen verursachen.',
       });
 
   String get icrFieldLabel => _t({
@@ -518,36 +585,126 @@ class AppLocalizations {
   String mascotStageLabel(String key) {
     switch (key) {
       case 'gorilla_baby':
-        return _t({'en': 'Baby Gorilla', 'pl': 'Mały goryl', 'nl': 'Babygorilla', 'es': 'Gorila bebé', 'de': 'Baby-Gorilla'});
+        return _t({
+          'en': 'Baby Gorilla',
+          'pl': 'Mały goryl',
+          'nl': 'Babygorilla',
+          'es': 'Gorila bebé',
+          'de': 'Baby-Gorilla'
+        });
       case 'gorilla_growing':
       case 'plant_growing':
-        return _t({'en': 'Growing Strong', 'pl': 'Rośnie w siłę', 'nl': 'Wordt sterker', 'es': 'Creciendo fuerte', 'de': 'Wird stärker'});
+        return _t({
+          'en': 'Growing Strong',
+          'pl': 'Rośnie w siłę',
+          'nl': 'Wordt sterker',
+          'es': 'Creciendo fuerte',
+          'de': 'Wird stärker'
+        });
       case 'gorilla_mighty':
-        return _t({'en': 'Mighty Gorilla', 'pl': 'Potężny goryl', 'nl': 'Machtige gorilla', 'es': 'Gorila poderoso', 'de': 'Mächtiger Gorilla'});
+        return _t({
+          'en': 'Mighty Gorilla',
+          'pl': 'Potężny goryl',
+          'nl': 'Machtige gorilla',
+          'es': 'Gorila poderoso',
+          'de': 'Mächtiger Gorilla'
+        });
       case 'gorilla_champion':
-        return _t({'en': 'Champion', 'pl': 'Mistrz', 'nl': 'Kampioen', 'es': 'Campeón', 'de': 'Champion'});
+        return _t({
+          'en': 'Champion',
+          'pl': 'Mistrz',
+          'nl': 'Kampioen',
+          'es': 'Campeón',
+          'de': 'Champion'
+        });
       case 'plant_seedling':
-        return _t({'en': 'Seedling', 'pl': 'Sadzonka', 'nl': 'Zaailing', 'es': 'Plántula', 'de': 'Sämling'});
+        return _t({
+          'en': 'Seedling',
+          'pl': 'Sadzonka',
+          'nl': 'Zaailing',
+          'es': 'Plántula',
+          'de': 'Sämling'
+        });
       case 'plant_sprouting':
-        return _t({'en': 'Sprouting', 'pl': 'Kiełkowanie', 'nl': 'Ontkiemend', 'es': 'Brotando', 'de': 'Keimt'});
+        return _t({
+          'en': 'Sprouting',
+          'pl': 'Kiełkowanie',
+          'nl': 'Ontkiemend',
+          'es': 'Brotando',
+          'de': 'Keimt'
+        });
       case 'plant_bloom':
-        return _t({'en': 'In Full Bloom', 'pl': 'W pełnym rozkwicie', 'nl': 'In volle bloei', 'es': 'En plena floración', 'de': 'In voller Blüte'});
+        return _t({
+          'en': 'In Full Bloom',
+          'pl': 'W pełnym rozkwicie',
+          'nl': 'In volle bloei',
+          'es': 'En plena floración',
+          'de': 'In voller Blüte'
+        });
       case 'flame_none':
-        return _t({'en': 'No Burn Yet', 'pl': 'Brak spalania', 'nl': 'Nog geen verbranding', 'es': 'Sin quema aún', 'de': 'Noch keine Verbrennung'});
+        return _t({
+          'en': 'No Burn Yet',
+          'pl': 'Brak spalania',
+          'nl': 'Nog geen verbranding',
+          'es': 'Sin quema aún',
+          'de': 'Noch keine Verbrennung'
+        });
       case 'flame_warming':
-        return _t({'en': 'Warming Up', 'pl': 'Rozgrzewka', 'nl': 'Opwarmen', 'es': 'Calentando', 'de': 'Aufwärmen'});
+        return _t({
+          'en': 'Warming Up',
+          'pl': 'Rozgrzewka',
+          'nl': 'Opwarmen',
+          'es': 'Calentando',
+          'de': 'Aufwärmen'
+        });
       case 'flame_burning':
-        return _t({'en': 'Fat Burning', 'pl': 'Spalanie tłuszczu', 'nl': 'Vetverbranding', 'es': 'Quema de grasa', 'de': 'Fettverbrennung'});
+        return _t({
+          'en': 'Fat Burning',
+          'pl': 'Spalanie tłuszczu',
+          'nl': 'Vetverbranding',
+          'es': 'Quema de grasa',
+          'de': 'Fettverbrennung'
+        });
       case 'flame_extreme':
-        return _t({'en': 'Extreme Burn', 'pl': 'Ekstremalne spalanie', 'nl': 'Extreme verbranding', 'es': 'Quema extrema', 'de': 'Extreme Verbrennung'});
+        return _t({
+          'en': 'Extreme Burn',
+          'pl': 'Ekstremalne spalanie',
+          'nl': 'Extreme verbranding',
+          'es': 'Quema extrema',
+          'de': 'Extreme Verbrennung'
+        });
       case 'sugar_overload':
-        return _t({'en': 'Sugar Overload', 'pl': 'Przeładowanie cukrem', 'nl': 'Suikeroverbelasting', 'es': 'Sobrecarga de azúcar', 'de': 'Zuckerüberladung'});
+        return _t({
+          'en': 'Sugar Overload',
+          'pl': 'Przeładowanie cukrem',
+          'nl': 'Suikeroverbelasting',
+          'es': 'Sobrecarga de azúcar',
+          'de': 'Zuckerüberladung'
+        });
       case 'sugar_toomuch':
-        return _t({'en': 'Too Much Sugar', 'pl': 'Za dużo cukru', 'nl': 'Te veel suiker', 'es': 'Demasiado azúcar', 'de': 'Zu viel Zucker'});
+        return _t({
+          'en': 'Too Much Sugar',
+          'pl': 'Za dużo cukru',
+          'nl': 'Te veel suiker',
+          'es': 'Demasiado azúcar',
+          'de': 'Zu viel Zucker'
+        });
       case 'sugar_control':
-        return _t({'en': 'Under Control', 'pl': 'Pod kontrolą', 'nl': 'Onder controle', 'es': 'Bajo control', 'de': 'Unter Kontrolle'});
+        return _t({
+          'en': 'Under Control',
+          'pl': 'Pod kontrolą',
+          'nl': 'Onder controle',
+          'es': 'Bajo control',
+          'de': 'Unter Kontrolle'
+        });
       case 'sugar_excellent':
-        return _t({'en': 'Excellent Control', 'pl': 'Doskonała kontrola', 'nl': 'Uitstekende controle', 'es': 'Control excelente', 'de': 'Ausgezeichnete Kontrolle'});
+        return _t({
+          'en': 'Excellent Control',
+          'pl': 'Doskonała kontrola',
+          'nl': 'Uitstekende controle',
+          'es': 'Control excelente',
+          'de': 'Ausgezeichnete Kontrolle'
+        });
       default:
         return key;
     }
@@ -681,11 +838,16 @@ class AppLocalizations {
       });
 
   String get healthSyncPermissionDenied => _t({
-        'en': 'Health access denied. Turn it on in Settings › Privacy & Security › Health.',
-        'pl': 'Odmówiono dostępu do Health. Włącz go w Ustawienia › Prywatność › Zdrowie.',
-        'nl': 'Health-toegang geweigerd. Zet het aan in Instellingen › Privacy › Gezondheid.',
-        'es': 'Acceso a Salud denegado. Actívalo en Ajustes › Privacidad › Salud.',
-        'de': 'Health-Zugriff verweigert. Aktiviere ihn in Einstellungen › Datenschutz › Health.',
+        'en':
+            'Health access denied. Turn it on in Settings › Privacy & Security › Health.',
+        'pl':
+            'Odmówiono dostępu do Health. Włącz go w Ustawienia › Prywatność › Zdrowie.',
+        'nl':
+            'Health-toegang geweigerd. Zet het aan in Instellingen › Privacy › Gezondheid.',
+        'es':
+            'Acceso a Salud denegado. Actívalo en Ajustes › Privacidad › Salud.',
+        'de':
+            'Health-Zugriff verweigert. Aktiviere ihn in Einstellungen › Datenschutz › Health.',
       });
 
   String get healthSyncUnavailable => _t({
@@ -701,7 +863,8 @@ class AppLocalizations {
         'pl': 'Nie udało się odczytać Apple Health. Spróbuj ponownie.',
         'nl': 'Kon Apple Health niet lezen. Probeer het opnieuw.',
         'es': 'No se pudo leer Apple Salud. Inténtalo de nuevo.',
-        'de': 'Apple Health konnte nicht gelesen werden. Bitte erneut versuchen.',
+        'de':
+            'Apple Health konnte nicht gelesen werden. Bitte erneut versuchen.',
       });
 
   String get logMonthlyWeight => _t({
@@ -1622,11 +1785,16 @@ class AppLocalizations {
       });
 
   String get scanCircleInstruction => _t({
-        'en': 'Only food inside the circle is recognised and used for the 3D model.',
-        'pl': 'Rozpoznawane i używane do modelu 3D jest tylko jedzenie wewnątrz koła.',
-        'nl': 'Alleen eten binnen de cirkel wordt herkend en gebruikt voor het 3D-model.',
-        'es': 'Solo se reconoce y usa para el modelo 3D la comida dentro del círculo.',
-        'de': 'Nur Essen innerhalb des Kreises wird erkannt und für das 3D-Modell verwendet.',
+        'en':
+            'Only food inside the circle is recognised and used for the 3D model.',
+        'pl':
+            'Rozpoznawane i używane do modelu 3D jest tylko jedzenie wewnątrz koła.',
+        'nl':
+            'Alleen eten binnen de cirkel wordt herkend en gebruikt voor het 3D-model.',
+        'es':
+            'Solo se reconoce y usa para el modelo 3D la comida dentro del círculo.',
+        'de':
+            'Nur Essen innerhalb des Kreises wird erkannt und für das 3D-Modell verwendet.',
       });
 
   // ── Voice / AI Speech ──
@@ -2135,8 +2303,10 @@ class AppLocalizations {
           'en': 'This single entry is exceptionally high in energy.',
           'pl': 'Ten pojedynczy wpis ma wyjątkowo wysoką wartość energetyczną.',
           'nl': 'Deze enkele invoer bevat uitzonderlijk veel energie.',
-          'es': 'Esta entrada individual tiene una cantidad excepcional de energía.',
-          'de': 'Dieser einzelne Eintrag hat einen außergewöhnlich hohen Energiegehalt.',
+          'es':
+              'Esta entrada individual tiene una cantidad excepcional de energía.',
+          'de':
+              'Dieser einzelne Eintrag hat einen außergewöhnlich hohen Energiegehalt.',
         });
       case 'diabetesCarbFiber':
         return _t({
@@ -2239,22 +2409,70 @@ class AppLocalizations {
   String groceryCategoryLabel(String key) {
     switch (key) {
       case 'Fruits':
-        return _t({'en': 'Fruits', 'pl': 'Owoce', 'nl': 'Fruit', 'es': 'Frutas', 'de': 'Obst'});
+        return _t({
+          'en': 'Fruits',
+          'pl': 'Owoce',
+          'nl': 'Fruit',
+          'es': 'Frutas',
+          'de': 'Obst'
+        });
       case 'Vegetables':
-        return _t({'en': 'Vegetables', 'pl': 'Warzywa', 'nl': 'Groenten', 'es': 'Verduras', 'de': 'Gemüse'});
+        return _t({
+          'en': 'Vegetables',
+          'pl': 'Warzywa',
+          'nl': 'Groenten',
+          'es': 'Verduras',
+          'de': 'Gemüse'
+        });
       case 'Protein':
-        return _t({'en': 'Protein', 'pl': 'Białko', 'nl': 'Eiwitten', 'es': 'Proteína', 'de': 'Protein'});
+        return _t({
+          'en': 'Protein',
+          'pl': 'Białko',
+          'nl': 'Eiwitten',
+          'es': 'Proteína',
+          'de': 'Protein'
+        });
       case 'Dairy':
-        return _t({'en': 'Dairy', 'pl': 'Nabiał', 'nl': 'Zuivel', 'es': 'Lácteos', 'de': 'Milchprodukte'});
+        return _t({
+          'en': 'Dairy',
+          'pl': 'Nabiał',
+          'nl': 'Zuivel',
+          'es': 'Lácteos',
+          'de': 'Milchprodukte'
+        });
       case 'Grains':
-        return _t({'en': 'Grains', 'pl': 'Zboża', 'nl': 'Granen', 'es': 'Cereales', 'de': 'Getreide'});
+        return _t({
+          'en': 'Grains',
+          'pl': 'Zboża',
+          'nl': 'Granen',
+          'es': 'Cereales',
+          'de': 'Getreide'
+        });
       case 'Snacks':
-        return _t({'en': 'Snacks', 'pl': 'Przekąski', 'nl': 'Snacks', 'es': 'Aperitivos', 'de': 'Snacks'});
+        return _t({
+          'en': 'Snacks',
+          'pl': 'Przekąski',
+          'nl': 'Snacks',
+          'es': 'Aperitivos',
+          'de': 'Snacks'
+        });
       case 'Drinks':
-        return _t({'en': 'Drinks', 'pl': 'Napoje', 'nl': 'Dranken', 'es': 'Bebidas', 'de': 'Getränke'});
+        return _t({
+          'en': 'Drinks',
+          'pl': 'Napoje',
+          'nl': 'Dranken',
+          'es': 'Bebidas',
+          'de': 'Getränke'
+        });
       case 'Other':
       default:
-        return _t({'en': 'Other', 'pl': 'Inne', 'nl': 'Overig', 'es': 'Otros', 'de': 'Sonstiges'});
+        return _t({
+          'en': 'Other',
+          'pl': 'Inne',
+          'nl': 'Overig',
+          'es': 'Otros',
+          'de': 'Sonstiges'
+        });
     }
   }
 
@@ -2355,11 +2573,16 @@ class AppLocalizations {
       });
 
   String get noMatchingGroceryItems => _t({
-        'en': 'No matching grocery items found in the photo. Try scanning closer to the items.',
-        'pl': 'Nie znaleziono pasujących produktów na zdjęciu. Spróbuj zeskanować bliżej.',
-        'nl': 'Geen overeenkomende boodschappen gevonden op de foto. Scan dichter bij de items.',
-        'es': 'No se encontraron artículos coincidentes en la foto. Intenta escanear más cerca.',
-        'de': 'Keine passenden Artikel im Foto gefunden. Versuche, näher zu scannen.',
+        'en':
+            'No matching grocery items found in the photo. Try scanning closer to the items.',
+        'pl':
+            'Nie znaleziono pasujących produktów na zdjęciu. Spróbuj zeskanować bliżej.',
+        'nl':
+            'Geen overeenkomende boodschappen gevonden op de foto. Scan dichter bij de items.',
+        'es':
+            'No se encontraron artículos coincidentes en la foto. Intenta escanear más cerca.',
+        'de':
+            'Keine passenden Artikel im Foto gefunden. Versuche, näher zu scannen.',
       });
 
   String get couldNotAnalyzePhoto => _t({
@@ -3495,7 +3718,8 @@ class AppLocalizations {
         'pl': 'Przypomnij o śniadaniu, obiedzie i kolacji, jeśli zapomnę',
         'nl': 'Herinner me aan ontbijt, lunch en diner als ik het vergeet',
         'es': 'Recordarme registrar desayuno, almuerzo y cena si lo olvido',
-        'de': 'Erinnere mich an Frühstück, Mittag- & Abendessen, falls ich es vergesse',
+        'de':
+            'Erinnere mich an Frühstück, Mittag- & Abendessen, falls ich es vergesse',
       });
 
   String get mealReminderBreakfastTitle => _t({
@@ -4301,7 +4525,8 @@ class AppLocalizations {
         'pl': 'To tylko przypuszczenie — potwierdź je lub popraw.',
         'nl': 'Dit is maar een gok — bevestig of corrigeer het.',
         'es': 'Esto es solo una suposición: confírmala o corrígela.',
-        'de': 'Das ist nur eine Vermutung – bitte bestätige oder korrigiere sie.',
+        'de':
+            'Das ist nur eine Vermutung – bitte bestätige oder korrigiere sie.',
       });
 
   String get learnedFromYou => _t({
@@ -4480,6 +4705,113 @@ class AppLocalizations {
         'de': 'Aus Galerie wählen',
       });
 
+  String get pantryAddItem => _t({
+        'en': 'Add at home',
+        'pl': 'Dodaj do zapasów',
+        'nl': 'Thuis toevoegen',
+        'es': 'Añadir en casa',
+        'de': 'Zu Hause hinzufügen',
+      });
+
+  String get pantryAtHome => _t({
+        'en': 'At home',
+        'pl': 'W domu',
+        'nl': 'Thuis',
+        'es': 'En casa',
+        'de': 'Zu Hause',
+      });
+
+  String get pantryGroceries => _t({
+        'en': 'Groceries',
+        'pl': 'Zakupy',
+        'nl': 'Boodschappen',
+        'es': 'Compras',
+        'de': 'Einkauf',
+      });
+
+  String get pantryPhotoReviewHint => _t({
+        'en':
+            'Add fridge or freezer photos, then review the merged suggestions. Foods may be missed; correct names and quantities before saving. Repeat photos do not add extra stock.',
+        'pl':
+            'Dodaj zdjęcia lodówki lub zamrażarki i sprawdź połączone propozycje. Produkty mogą zostać pominięte; popraw nazwy i ilości przed zapisem. Powtórzone zdjęcia nie zwiększają zapasów.',
+        'nl':
+            'Voeg koelkast- of vriezerfoto’s toe en controleer de samengevoegde suggesties. Producten kunnen ontbreken; pas namen en hoeveelheden aan vóór opslaan. Herhaalde foto’s voegen geen extra voorraad toe.',
+        'es':
+            'Añade fotos del frigorífico o congelador y revisa las sugerencias combinadas. Pueden faltar alimentos; corrige nombres y cantidades antes de guardar. Las fotos repetidas no añaden existencias.',
+        'de':
+            'Füge Kühlschrank- oder Gefrierfachfotos hinzu und prüfe die zusammengeführten Vorschläge. Lebensmittel können fehlen; korrigiere Namen und Mengen vor dem Speichern. Wiederholte Fotos erhöhen den Vorrat nicht.',
+      });
+
+  String pantryPhotoNumber(int number) => _t({
+        'en': 'Photo $number',
+        'pl': 'Zdjęcie $number',
+        'nl': 'Foto $number',
+        'es': 'Foto $number',
+        'de': 'Foto $number',
+      });
+
+  String get pantryReviewPhotos => _t({
+        'en': 'Review foods',
+        'pl': 'Sprawdź produkty',
+        'nl': 'Producten controleren',
+        'es': 'Revisar alimentos',
+        'de': 'Lebensmittel prüfen',
+      });
+
+  String get pantryInvalidItems => _t({
+        'en': 'Enter a name and a positive quantity for each item.',
+        'pl': 'Podaj nazwę i dodatnią ilość każdego produktu.',
+        'nl': 'Vul voor elk product een naam en positieve hoeveelheid in.',
+        'es': 'Introduce un nombre y una cantidad positiva para cada producto.',
+        'de': 'Gib für jeden Artikel einen Namen und eine positive Menge ein.',
+      });
+
+  String get pantrySaveFailed => _t({
+        'en': 'Could not save stock. Your review is still here; try again.',
+        'pl':
+            'Nie udało się zapisać zapasów. Twoja lista jest zachowana; spróbuj ponownie.',
+        'nl':
+            'Voorraad opslaan mislukt. Je controlelijst is er nog; probeer opnieuw.',
+        'es':
+            'No se pudieron guardar las existencias. La revisión sigue aquí; inténtalo de nuevo.',
+        'de':
+            'Vorrat konnte nicht gespeichert werden. Deine Prüfung bleibt erhalten; versuche es erneut.',
+      });
+
+  String get pantryUnitConflict => _t({
+        'en':
+            'A product uses a different unit in your existing stock. Review its quantity and use the same unit before saving.',
+        'pl':
+            'Produkt ma inną jednostkę w zapisanych zapasach. Sprawdź ilość i użyj tej samej jednostki przed zapisem.',
+        'nl':
+            'Een product heeft een andere eenheid in je bestaande voorraad. Controleer de hoeveelheid en gebruik dezelfde eenheid vóór opslaan.',
+        'es':
+            'Un producto usa otra unidad en las existencias guardadas. Revisa su cantidad y usa la misma unidad antes de guardar.',
+        'de':
+            'Ein Produkt verwendet im vorhandenen Vorrat eine andere Einheit. Prüfe die Menge und verwende vor dem Speichern dieselbe Einheit.',
+      });
+
+  String get containerPortionReviewTitle => _t({
+        'en': 'Portion hidden by container',
+        'pl': 'Porcja zasłonięta przez naczynie',
+        'nl': 'Portie verborgen door de kom of beker',
+        'es': 'Porción oculta por el recipiente',
+        'de': 'Portion durch Behälter verdeckt',
+      });
+
+  String get containerPortionReviewBody => _t({
+        'en':
+            'The bowl or cup hides the food’s depth. No complete portion was measured. Move the food to a plate and retake both photos, or enter the portion manually.',
+        'pl':
+            'Miska lub kubek zasłania głębokość jedzenia. Nie zmierzono całej porcji. Przełóż jedzenie na talerz i zrób ponownie oba zdjęcia albo wpisz porcję ręcznie.',
+        'nl':
+            'De kom of beker verbergt de diepte van het eten. Er is geen volledige portie gemeten. Leg het eten op een bord en maak beide foto’s opnieuw, of voer de portie handmatig in.',
+        'es':
+            'El cuenco o la taza oculta la profundidad de la comida. No se ha medido una porción completa. Pasa la comida a un plato y repite ambas fotos, o introduce la porción manualmente.',
+        'de':
+            'Die Schüssel oder Tasse verdeckt die Tiefe des Essens. Es wurde keine vollständige Portion gemessen. Lege das Essen auf einen Teller und mache beide Fotos erneut oder gib die Portion manuell ein.',
+      });
+
   String get removePhoto => _t({
         'en': 'Remove photo',
         'pl': 'Usuń zdjęcie',
@@ -4593,29 +4925,101 @@ class AppLocalizations {
   String organLabel(String key) {
     switch (key) {
       case 'brain':
-        return _t({'en': 'Brain', 'pl': 'Mózg', 'nl': 'Hersenen', 'es': 'Cerebro', 'de': 'Gehirn'});
+        return _t({
+          'en': 'Brain',
+          'pl': 'Mózg',
+          'nl': 'Hersenen',
+          'es': 'Cerebro',
+          'de': 'Gehirn'
+        });
       case 'eyes':
-        return _t({'en': 'Eyes', 'pl': 'Oczy', 'nl': 'Ogen', 'es': 'Ojos', 'de': 'Augen'});
+        return _t({
+          'en': 'Eyes',
+          'pl': 'Oczy',
+          'nl': 'Ogen',
+          'es': 'Ojos',
+          'de': 'Augen'
+        });
       case 'lungs':
-        return _t({'en': 'Lungs', 'pl': 'Płuca', 'nl': 'Longen', 'es': 'Pulmones', 'de': 'Lunge'});
+        return _t({
+          'en': 'Lungs',
+          'pl': 'Płuca',
+          'nl': 'Longen',
+          'es': 'Pulmones',
+          'de': 'Lunge'
+        });
       case 'heart':
-        return _t({'en': 'Heart', 'pl': 'Serce', 'nl': 'Hart', 'es': 'Corazón', 'de': 'Herz'});
+        return _t({
+          'en': 'Heart',
+          'pl': 'Serce',
+          'nl': 'Hart',
+          'es': 'Corazón',
+          'de': 'Herz'
+        });
       case 'liver':
-        return _t({'en': 'Liver', 'pl': 'Wątroba', 'nl': 'Lever', 'es': 'Hígado', 'de': 'Leber'});
+        return _t({
+          'en': 'Liver',
+          'pl': 'Wątroba',
+          'nl': 'Lever',
+          'es': 'Hígado',
+          'de': 'Leber'
+        });
       case 'stomach':
-        return _t({'en': 'Stomach', 'pl': 'Żołądek', 'nl': 'Maag', 'es': 'Estómago', 'de': 'Magen'});
+        return _t({
+          'en': 'Stomach',
+          'pl': 'Żołądek',
+          'nl': 'Maag',
+          'es': 'Estómago',
+          'de': 'Magen'
+        });
       case 'intestines':
-        return _t({'en': 'Intestines', 'pl': 'Jelita', 'nl': 'Darmen', 'es': 'Intestinos', 'de': 'Darm'});
+        return _t({
+          'en': 'Intestines',
+          'pl': 'Jelita',
+          'nl': 'Darmen',
+          'es': 'Intestinos',
+          'de': 'Darm'
+        });
       case 'kidneys':
-        return _t({'en': 'Kidneys', 'pl': 'Nerki', 'nl': 'Nieren', 'es': 'Riñones', 'de': 'Nieren'});
+        return _t({
+          'en': 'Kidneys',
+          'pl': 'Nerki',
+          'nl': 'Nieren',
+          'es': 'Riñones',
+          'de': 'Nieren'
+        });
       case 'bones':
-        return _t({'en': 'Bones', 'pl': 'Kości', 'nl': 'Botten', 'es': 'Huesos', 'de': 'Knochen'});
+        return _t({
+          'en': 'Bones',
+          'pl': 'Kości',
+          'nl': 'Botten',
+          'es': 'Huesos',
+          'de': 'Knochen'
+        });
       case 'muscles':
-        return _t({'en': 'Muscles', 'pl': 'Mięśnie', 'nl': 'Spieren', 'es': 'Músculos', 'de': 'Muskeln'});
+        return _t({
+          'en': 'Muscles',
+          'pl': 'Mięśnie',
+          'nl': 'Spieren',
+          'es': 'Músculos',
+          'de': 'Muskeln'
+        });
       case 'skin':
-        return _t({'en': 'Skin', 'pl': 'Skóra', 'nl': 'Huid', 'es': 'Piel', 'de': 'Haut'});
+        return _t({
+          'en': 'Skin',
+          'pl': 'Skóra',
+          'nl': 'Huid',
+          'es': 'Piel',
+          'de': 'Haut'
+        });
       case 'blood':
-        return _t({'en': 'Blood', 'pl': 'Krew', 'nl': 'Bloed', 'es': 'Sangre', 'de': 'Blut'});
+        return _t({
+          'en': 'Blood',
+          'pl': 'Krew',
+          'nl': 'Bloed',
+          'es': 'Sangre',
+          'de': 'Blut'
+        });
       default:
         return key;
     }
@@ -4625,99 +5029,159 @@ class AppLocalizations {
     switch (key) {
       case 'brain':
         return _t({
-          'en': 'B12 and folate keep nerves firing. Iron carries oxygen to brain tissue and supports focus and memory.',
-          'pl': 'B12 i kwas foliowy utrzymują pracę nerwów. Żelazo dostarcza tlen do mózgu i wspiera koncentrację i pamięć.',
-          'nl': 'B12 en foliumzuur houden de zenuwen actief. IJzer brengt zuurstof naar hersenweefsel en ondersteunt focus en geheugen.',
-          'es': 'La B12 y el folato mantienen activos los nervios. El hierro lleva oxígeno al cerebro y favorece la concentración y la memoria.',
-          'de': 'B12 und Folat halten die Nerven aktiv. Eisen transportiert Sauerstoff ins Hirngewebe und unterstützt Konzentration und Gedächtnis.',
+          'en':
+              'B12 and folate keep nerves firing. Iron carries oxygen to brain tissue and supports focus and memory.',
+          'pl':
+              'B12 i kwas foliowy utrzymują pracę nerwów. Żelazo dostarcza tlen do mózgu i wspiera koncentrację i pamięć.',
+          'nl':
+              'B12 en foliumzuur houden de zenuwen actief. IJzer brengt zuurstof naar hersenweefsel en ondersteunt focus en geheugen.',
+          'es':
+              'La B12 y el folato mantienen activos los nervios. El hierro lleva oxígeno al cerebro y favorece la concentración y la memoria.',
+          'de':
+              'B12 und Folat halten die Nerven aktiv. Eisen transportiert Sauerstoff ins Hirngewebe und unterstützt Konzentration und Gedächtnis.',
         });
       case 'eyes':
         return _t({
-          'en': 'Vitamin A is essential for night vision. Vitamin C and zinc protect against age-related macular degeneration.',
-          'pl': 'Witamina A jest niezbędna do widzenia w nocy. Witamina C i cynk chronią przed zwyrodnieniem plamki żółtej.',
-          'nl': 'Vitamine A is essentieel voor nachtzicht. Vitamine C en zink beschermen tegen leeftijdsgebonden maculadegeneratie.',
-          'es': 'La vitamina A es esencial para la visión nocturna. La vitamina C y el zinc protegen contra la degeneración macular.',
-          'de': 'Vitamin A ist wichtig für das Nachtsehen. Vitamin C und Zink schützen vor altersbedingter Makuladegeneration.',
+          'en':
+              'Vitamin A is essential for night vision. Vitamin C and zinc protect against age-related macular degeneration.',
+          'pl':
+              'Witamina A jest niezbędna do widzenia w nocy. Witamina C i cynk chronią przed zwyrodnieniem plamki żółtej.',
+          'nl':
+              'Vitamine A is essentieel voor nachtzicht. Vitamine C en zink beschermen tegen leeftijdsgebonden maculadegeneratie.',
+          'es':
+              'La vitamina A es esencial para la visión nocturna. La vitamina C y el zinc protegen contra la degeneración macular.',
+          'de':
+              'Vitamin A ist wichtig für das Nachtsehen. Vitamin C und Zink schützen vor altersbedingter Makuladegeneration.',
         });
       case 'lungs':
         return _t({
-          'en': 'Antioxidants like vitamin C, E and A defend lung tissue against oxidative stress and inflammation.',
-          'pl': 'Antyoksydanty jak witamina C, E i A chronią tkankę płuc przed stresem oksydacyjnym i stanem zapalnym.',
-          'nl': 'Antioxidanten zoals vitamine C, E en A beschermen longweefsel tegen oxidatieve stress en ontsteking.',
-          'es': 'Antioxidantes como las vitaminas C, E y A defienden el tejido pulmonar del estrés oxidativo y la inflamación.',
-          'de': 'Antioxidantien wie Vitamin C, E und A schützen das Lungengewebe vor oxidativem Stress und Entzündungen.',
+          'en':
+              'Antioxidants like vitamin C, E and A defend lung tissue against oxidative stress and inflammation.',
+          'pl':
+              'Antyoksydanty jak witamina C, E i A chronią tkankę płuc przed stresem oksydacyjnym i stanem zapalnym.',
+          'nl':
+              'Antioxidanten zoals vitamine C, E en A beschermen longweefsel tegen oxidatieve stress en ontsteking.',
+          'es':
+              'Antioxidantes como las vitaminas C, E y A defienden el tejido pulmonar del estrés oxidativo y la inflamación.',
+          'de':
+              'Antioxidantien wie Vitamin C, E und A schützen das Lungengewebe vor oxidativem Stress und Entzündungen.',
         });
       case 'heart':
         return _t({
-          'en': 'Potassium regulates heartbeat, magnesium relaxes blood vessels, and vitamin E protects cells from oxidative damage.',
-          'pl': 'Potas reguluje rytm serca, magnez rozluźnia naczynia, a witamina E chroni komórki przed uszkodzeniem oksydacyjnym.',
-          'nl': 'Kalium reguleert de hartslag, magnesium ontspant bloedvaten en vitamine E beschermt cellen tegen oxidatieve schade.',
-          'es': 'El potasio regula el latido, el magnesio relaja los vasos y la vitamina E protege las células del daño oxidativo.',
-          'de': 'Kalium reguliert den Herzschlag, Magnesium entspannt die Gefäße und Vitamin E schützt Zellen vor oxidativen Schäden.',
+          'en':
+              'Potassium regulates heartbeat, magnesium relaxes blood vessels, and vitamin E protects cells from oxidative damage.',
+          'pl':
+              'Potas reguluje rytm serca, magnez rozluźnia naczynia, a witamina E chroni komórki przed uszkodzeniem oksydacyjnym.',
+          'nl':
+              'Kalium reguleert de hartslag, magnesium ontspant bloedvaten en vitamine E beschermt cellen tegen oxidatieve schade.',
+          'es':
+              'El potasio regula el latido, el magnesio relaja los vasos y la vitamina E protege las células del daño oxidativo.',
+          'de':
+              'Kalium reguliert den Herzschlag, Magnesium entspannt die Gefäße und Vitamin E schützt Zellen vor oxidativen Schäden.',
         });
       case 'liver':
         return _t({
-          'en': 'The liver stores fat-soluble vitamins. Vitamin K supports clotting; B12 is processed and stored here.',
-          'pl': 'Wątroba magazynuje witaminy rozpuszczalne w tłuszczach. Witamina K wspiera krzepnięcie; B12 jest tu przetwarzana i magazynowana.',
-          'nl': 'De lever slaat vetoplosbare vitamines op. Vitamine K ondersteunt de bloedstolling; B12 wordt hier verwerkt en opgeslagen.',
-          'es': 'El hígado almacena vitaminas liposolubles. La vitamina K favorece la coagulación; la B12 se procesa y almacena aquí.',
-          'de': 'Die Leber speichert fettlösliche Vitamine. Vitamin K unterstützt die Gerinnung; B12 wird hier verarbeitet und gespeichert.',
+          'en':
+              'The liver stores fat-soluble vitamins. Vitamin K supports clotting; B12 is processed and stored here.',
+          'pl':
+              'Wątroba magazynuje witaminy rozpuszczalne w tłuszczach. Witamina K wspiera krzepnięcie; B12 jest tu przetwarzana i magazynowana.',
+          'nl':
+              'De lever slaat vetoplosbare vitamines op. Vitamine K ondersteunt de bloedstolling; B12 wordt hier verwerkt en opgeslagen.',
+          'es':
+              'El hígado almacena vitaminas liposolubles. La vitamina K favorece la coagulación; la B12 se procesa y almacena aquí.',
+          'de':
+              'Die Leber speichert fettlösliche Vitamine. Vitamin K unterstützt die Gerinnung; B12 wird hier verarbeitet und gespeichert.',
         });
       case 'stomach':
         return _t({
-          'en': 'Zinc maintains the stomach lining. B-vitamins support the production of digestive enzymes.',
-          'pl': 'Cynk utrzymuje błonę śluzową żołądka. Witaminy z grupy B wspierają produkcję enzymów trawiennych.',
-          'nl': 'Zink onderhoudt de maagwand. B-vitamines ondersteunen de aanmaak van spijsverteringsenzymen.',
-          'es': 'El zinc mantiene la mucosa del estómago. Las vitaminas B apoyan la producción de enzimas digestivas.',
-          'de': 'Zink erhält die Magenschleimhaut. B-Vitamine unterstützen die Bildung von Verdauungsenzymen.',
+          'en':
+              'Zinc maintains the stomach lining. B-vitamins support the production of digestive enzymes.',
+          'pl':
+              'Cynk utrzymuje błonę śluzową żołądka. Witaminy z grupy B wspierają produkcję enzymów trawiennych.',
+          'nl':
+              'Zink onderhoudt de maagwand. B-vitamines ondersteunen de aanmaak van spijsverteringsenzymen.',
+          'es':
+              'El zinc mantiene la mucosa del estómago. Las vitaminas B apoyan la producción de enzimas digestivas.',
+          'de':
+              'Zink erhält die Magenschleimhaut. B-Vitamine unterstützen die Bildung von Verdauungsenzymen.',
         });
       case 'intestines':
         return _t({
-          'en': 'Dietary fiber feeds healthy gut bacteria. Magnesium and potassium keep intestinal muscles contracting smoothly.',
-          'pl': 'Błonnik odżywia zdrowe bakterie jelitowe. Magnez i potas zapewniają płynne skurcze mięśni jelit.',
-          'nl': 'Vezels voeden gezonde darmbacteriën. Magnesium en kalium houden de darmspieren soepel samentrekken.',
-          'es': 'La fibra alimenta las bacterias intestinales sanas. El magnesio y el potasio mantienen los músculos intestinales en movimiento.',
-          'de': 'Ballaststoffe nähren gesunde Darmbakterien. Magnesium und Kalium halten die Darmmuskulatur geschmeidig in Bewegung.',
+          'en':
+              'Dietary fiber feeds healthy gut bacteria. Magnesium and potassium keep intestinal muscles contracting smoothly.',
+          'pl':
+              'Błonnik odżywia zdrowe bakterie jelitowe. Magnez i potas zapewniają płynne skurcze mięśni jelit.',
+          'nl':
+              'Vezels voeden gezonde darmbacteriën. Magnesium en kalium houden de darmspieren soepel samentrekken.',
+          'es':
+              'La fibra alimenta las bacterias intestinales sanas. El magnesio y el potasio mantienen los músculos intestinales en movimiento.',
+          'de':
+              'Ballaststoffe nähren gesunde Darmbakterien. Magnesium und Kalium halten die Darmmuskulatur geschmeidig in Bewegung.',
         });
       case 'kidneys':
         return _t({
-          'en': 'Potassium and magnesium balance helps the kidneys filter waste; staying hydrated reduces kidney load.',
-          'pl': 'Równowaga potasu i magnezu pomaga nerkom filtrować odpady; nawodnienie zmniejsza obciążenie nerek.',
-          'nl': 'Een balans van kalium en magnesium helpt de nieren afval te filteren; goed hydrateren verlaagt de nierbelasting.',
-          'es': 'El equilibrio de potasio y magnesio ayuda a los riñones a filtrar desechos; hidratarse reduce su carga.',
-          'de': 'Ein Gleichgewicht von Kalium und Magnesium hilft den Nieren beim Filtern; ausreichend trinken entlastet die Nieren.',
+          'en':
+              'Potassium and magnesium balance helps the kidneys filter waste; staying hydrated reduces kidney load.',
+          'pl':
+              'Równowaga potasu i magnezu pomaga nerkom filtrować odpady; nawodnienie zmniejsza obciążenie nerek.',
+          'nl':
+              'Een balans van kalium en magnesium helpt de nieren afval te filteren; goed hydrateren verlaagt de nierbelasting.',
+          'es':
+              'El equilibrio de potasio y magnesio ayuda a los riñones a filtrar desechos; hidratarse reduce su carga.',
+          'de':
+              'Ein Gleichgewicht von Kalium und Magnesium hilft den Nieren beim Filtern; ausreichend trinken entlastet die Nieren.',
         });
       case 'bones':
         return _t({
-          'en': 'Calcium builds bone density. Vitamin D drives calcium absorption. Vitamin K guides calcium into bone, not arteries.',
-          'pl': 'Wapń buduje gęstość kości. Witamina D napędza wchłanianie wapnia. Witamina K kieruje wapń do kości, a nie do tętnic.',
-          'nl': 'Calcium bouwt botdichtheid op. Vitamine D stimuleert calciumopname. Vitamine K leidt calcium naar bot, niet naar slagaders.',
-          'es': 'El calcio aumenta la densidad ósea. La vitamina D impulsa su absorción. La vitamina K dirige el calcio al hueso, no a las arterias.',
-          'de': 'Kalzium baut Knochendichte auf. Vitamin D fördert die Aufnahme. Vitamin K lenkt Kalzium in die Knochen, nicht in die Arterien.',
+          'en':
+              'Calcium builds bone density. Vitamin D drives calcium absorption. Vitamin K guides calcium into bone, not arteries.',
+          'pl':
+              'Wapń buduje gęstość kości. Witamina D napędza wchłanianie wapnia. Witamina K kieruje wapń do kości, a nie do tętnic.',
+          'nl':
+              'Calcium bouwt botdichtheid op. Vitamine D stimuleert calciumopname. Vitamine K leidt calcium naar bot, niet naar slagaders.',
+          'es':
+              'El calcio aumenta la densidad ósea. La vitamina D impulsa su absorción. La vitamina K dirige el calcio al hueso, no a las arterias.',
+          'de':
+              'Kalzium baut Knochendichte auf. Vitamin D fördert die Aufnahme. Vitamin K lenkt Kalzium in die Knochen, nicht in die Arterien.',
         });
       case 'muscles':
         return _t({
-          'en': 'Magnesium and potassium prevent cramps. Calcium triggers contraction. Adequate protein repairs muscle fibers.',
-          'pl': 'Magnez i potas zapobiegają skurczom. Wapń wyzwala skurcz. Odpowiednia ilość białka naprawia włókna mięśniowe.',
-          'nl': 'Magnesium en kalium voorkomen kramp. Calcium zet de samentrekking in gang. Voldoende eiwit herstelt spiervezels.',
-          'es': 'El magnesio y el potasio previenen calambres. El calcio activa la contracción. Suficiente proteína repara las fibras musculares.',
-          'de': 'Magnesium und Kalium verhindern Krämpfe. Kalzium löst die Kontraktion aus. Genug Protein repariert Muskelfasern.',
+          'en':
+              'Magnesium and potassium prevent cramps. Calcium triggers contraction. Adequate protein repairs muscle fibers.',
+          'pl':
+              'Magnez i potas zapobiegają skurczom. Wapń wyzwala skurcz. Odpowiednia ilość białka naprawia włókna mięśniowe.',
+          'nl':
+              'Magnesium en kalium voorkomen kramp. Calcium zet de samentrekking in gang. Voldoende eiwit herstelt spiervezels.',
+          'es':
+              'El magnesio y el potasio previenen calambres. El calcio activa la contracción. Suficiente proteína repara las fibras musculares.',
+          'de':
+              'Magnesium und Kalium verhindern Krämpfe. Kalzium löst die Kontraktion aus. Genug Protein repariert Muskelfasern.',
         });
       case 'skin':
         return _t({
-          'en': 'Vitamin C builds collagen, vitamin E shields against UV damage, and zinc accelerates wound healing.',
-          'pl': 'Witamina C buduje kolagen, witamina E chroni przed promieniowaniem UV, a cynk przyspiesza gojenie ran.',
-          'nl': 'Vitamine C bouwt collageen op, vitamine E beschermt tegen UV-schade en zink versnelt wondgenezing.',
-          'es': 'La vitamina C forma colágeno, la vitamina E protege del daño UV y el zinc acelera la cicatrización.',
-          'de': 'Vitamin C bildet Kollagen, Vitamin E schützt vor UV-Schäden und Zink beschleunigt die Wundheilung.',
+          'en':
+              'Vitamin C builds collagen, vitamin E shields against UV damage, and zinc accelerates wound healing.',
+          'pl':
+              'Witamina C buduje kolagen, witamina E chroni przed promieniowaniem UV, a cynk przyspiesza gojenie ran.',
+          'nl':
+              'Vitamine C bouwt collageen op, vitamine E beschermt tegen UV-schade en zink versnelt wondgenezing.',
+          'es':
+              'La vitamina C forma colágeno, la vitamina E protege del daño UV y el zinc acelera la cicatrización.',
+          'de':
+              'Vitamin C bildet Kollagen, Vitamin E schützt vor UV-Schäden und Zink beschleunigt die Wundheilung.',
         });
       case 'blood':
         return _t({
-          'en': 'Iron is the core of haemoglobin. B12 and folate are required to produce healthy red blood cells.',
-          'pl': 'Żelazo jest rdzeniem hemoglobiny. B12 i kwas foliowy są potrzebne do produkcji zdrowych czerwonych krwinek.',
-          'nl': 'IJzer is de kern van hemoglobine. B12 en foliumzuur zijn nodig om gezonde rode bloedcellen te maken.',
-          'es': 'El hierro es el núcleo de la hemoglobina. La B12 y el folato son necesarios para producir glóbulos rojos sanos.',
-          'de': 'Eisen ist der Kern des Hämoglobins. B12 und Folat werden für gesunde rote Blutkörperchen benötigt.',
+          'en':
+              'Iron is the core of haemoglobin. B12 and folate are required to produce healthy red blood cells.',
+          'pl':
+              'Żelazo jest rdzeniem hemoglobiny. B12 i kwas foliowy są potrzebne do produkcji zdrowych czerwonych krwinek.',
+          'nl':
+              'IJzer is de kern van hemoglobine. B12 en foliumzuur zijn nodig om gezonde rode bloedcellen te maken.',
+          'es':
+              'El hierro es el núcleo de la hemoglobina. La B12 y el folato son necesarios para producir glóbulos rojos sanos.',
+          'de':
+              'Eisen ist der Kern des Hämoglobins. B12 und Folat werden für gesunde rote Blutkörperchen benötigt.',
         });
       default:
         return '';
@@ -4728,99 +5192,159 @@ class AppLocalizations {
     switch (key) {
       case 'brain':
         return _t({
-          'en': 'Prioritise eggs, fish, dairy, lean meat, legumes, leafy greens, and iron-rich foods paired with vitamin C.',
-          'pl': 'Stawiaj na jajka, ryby, nabiał, chude mięso, rośliny strączkowe, zielone warzywa i produkty bogate w żelazo z witaminą C.',
-          'nl': 'Geef prioriteit aan eieren, vis, zuivel, mager vlees, peulvruchten, bladgroenten en ijzerrijke voeding met vitamine C.',
-          'es': 'Prioriza huevos, pescado, lácteos, carne magra, legumbres, verduras de hoja y alimentos ricos en hierro con vitamina C.',
-          'de': 'Bevorzuge Eier, Fisch, Milchprodukte, mageres Fleisch, Hülsenfrüchte, Blattgemüse und eisenreiche Lebensmittel mit Vitamin C.',
+          'en':
+              'Prioritise eggs, fish, dairy, lean meat, legumes, leafy greens, and iron-rich foods paired with vitamin C.',
+          'pl':
+              'Stawiaj na jajka, ryby, nabiał, chude mięso, rośliny strączkowe, zielone warzywa i produkty bogate w żelazo z witaminą C.',
+          'nl':
+              'Geef prioriteit aan eieren, vis, zuivel, mager vlees, peulvruchten, bladgroenten en ijzerrijke voeding met vitamine C.',
+          'es':
+              'Prioriza huevos, pescado, lácteos, carne magra, legumbres, verduras de hoja y alimentos ricos en hierro con vitamina C.',
+          'de':
+              'Bevorzuge Eier, Fisch, Milchprodukte, mageres Fleisch, Hülsenfrüchte, Blattgemüse und eisenreiche Lebensmittel mit Vitamin C.',
         });
       case 'eyes':
         return _t({
-          'en': 'Look for carrots, sweet potato, spinach, bell pepper, citrus, eggs, shellfish, seeds, and zinc-rich proteins.',
-          'pl': 'Wybieraj marchew, bataty, szpinak, paprykę, cytrusy, jajka, owoce morza, nasiona i białka bogate w cynk.',
-          'nl': 'Kies voor wortels, zoete aardappel, spinazie, paprika, citrus, eieren, schaaldieren, zaden en zinkrijke eiwitten.',
-          'es': 'Busca zanahorias, batata, espinacas, pimiento, cítricos, huevos, mariscos, semillas y proteínas ricas en zinc.',
-          'de': 'Achte auf Karotten, Süßkartoffeln, Spinat, Paprika, Zitrusfrüchte, Eier, Meeresfrüchte, Samen und zinkreiche Proteine.',
+          'en':
+              'Look for carrots, sweet potato, spinach, bell pepper, citrus, eggs, shellfish, seeds, and zinc-rich proteins.',
+          'pl':
+              'Wybieraj marchew, bataty, szpinak, paprykę, cytrusy, jajka, owoce morza, nasiona i białka bogate w cynk.',
+          'nl':
+              'Kies voor wortels, zoete aardappel, spinazie, paprika, citrus, eieren, schaaldieren, zaden en zinkrijke eiwitten.',
+          'es':
+              'Busca zanahorias, batata, espinacas, pimiento, cítricos, huevos, mariscos, semillas y proteínas ricas en zinc.',
+          'de':
+              'Achte auf Karotten, Süßkartoffeln, Spinat, Paprika, Zitrusfrüchte, Eier, Meeresfrüchte, Samen und zinkreiche Proteine.',
         });
       case 'lungs':
         return _t({
-          'en': 'Colourful fruit, leafy greens, nuts, seeds, olive oil, and vitamin C-rich produce help cover antioxidant needs.',
-          'pl': 'Kolorowe owoce, zielone warzywa, orzechy, nasiona, oliwa i produkty bogate w witaminę C pokrywają potrzeby antyoksydacyjne.',
-          'nl': 'Kleurrijk fruit, bladgroenten, noten, zaden, olijfolie en vitamine C-rijke producten dekken de antioxidantbehoefte.',
-          'es': 'Frutas coloridas, verduras de hoja, frutos secos, semillas, aceite de oliva y productos ricos en vitamina C cubren los antioxidantes.',
-          'de': 'Buntes Obst, Blattgemüse, Nüsse, Samen, Olivenöl und Vitamin-C-reiche Produkte decken den Antioxidantienbedarf.',
+          'en':
+              'Colourful fruit, leafy greens, nuts, seeds, olive oil, and vitamin C-rich produce help cover antioxidant needs.',
+          'pl':
+              'Kolorowe owoce, zielone warzywa, orzechy, nasiona, oliwa i produkty bogate w witaminę C pokrywają potrzeby antyoksydacyjne.',
+          'nl':
+              'Kleurrijk fruit, bladgroenten, noten, zaden, olijfolie en vitamine C-rijke producten dekken de antioxidantbehoefte.',
+          'es':
+              'Frutas coloridas, verduras de hoja, frutos secos, semillas, aceite de oliva y productos ricos en vitamina C cubren los antioxidantes.',
+          'de':
+              'Buntes Obst, Blattgemüse, Nüsse, Samen, Olivenöl und Vitamin-C-reiche Produkte decken den Antioxidantienbedarf.',
         });
       case 'heart':
         return _t({
-          'en': 'Potassium-rich fruit and vegetables, legumes, nuts, seeds, whole grains, and magnesium-rich foods are most useful.',
-          'pl': 'Najlepsze są owoce i warzywa bogate w potas, rośliny strączkowe, orzechy, nasiona, pełne ziarna i produkty bogate w magnez.',
-          'nl': 'Kaliumrijk fruit en groenten, peulvruchten, noten, zaden, volle granen en magnesiumrijke voeding zijn het nuttigst.',
-          'es': 'Frutas y verduras ricas en potasio, legumbres, frutos secos, semillas, granos integrales y alimentos ricos en magnesio son lo más útil.',
-          'de': 'Kaliumreiches Obst und Gemüse, Hülsenfrüchte, Nüsse, Samen, Vollkorn und magnesiumreiche Lebensmittel sind am nützlichsten.',
+          'en':
+              'Potassium-rich fruit and vegetables, legumes, nuts, seeds, whole grains, and magnesium-rich foods are most useful.',
+          'pl':
+              'Najlepsze są owoce i warzywa bogate w potas, rośliny strączkowe, orzechy, nasiona, pełne ziarna i produkty bogate w magnez.',
+          'nl':
+              'Kaliumrijk fruit en groenten, peulvruchten, noten, zaden, volle granen en magnesiumrijke voeding zijn het nuttigst.',
+          'es':
+              'Frutas y verduras ricas en potasio, legumbres, frutos secos, semillas, granos integrales y alimentos ricos en magnesio son lo más útil.',
+          'de':
+              'Kaliumreiches Obst und Gemüse, Hülsenfrüchte, Nüsse, Samen, Vollkorn und magnesiumreiche Lebensmittel sind am nützlichsten.',
         });
       case 'liver':
         return _t({
-          'en': 'Use eggs, leafy greens, fermented dairy, fish, nuts, seeds, and varied proteins to cover K, E, and B12.',
-          'pl': 'Jedz jajka, zielone warzywa, fermentowany nabiał, ryby, orzechy, nasiona i różne białka, aby pokryć K, E i B12.',
-          'nl': 'Gebruik eieren, bladgroenten, gefermenteerde zuivel, vis, noten, zaden en gevarieerde eiwitten voor K, E en B12.',
-          'es': 'Usa huevos, verduras de hoja, lácteos fermentados, pescado, frutos secos, semillas y proteínas variadas para cubrir K, E y B12.',
-          'de': 'Nutze Eier, Blattgemüse, fermentierte Milchprodukte, Fisch, Nüsse, Samen und vielfältige Proteine für K, E und B12.',
+          'en':
+              'Use eggs, leafy greens, fermented dairy, fish, nuts, seeds, and varied proteins to cover K, E, and B12.',
+          'pl':
+              'Jedz jajka, zielone warzywa, fermentowany nabiał, ryby, orzechy, nasiona i różne białka, aby pokryć K, E i B12.',
+          'nl':
+              'Gebruik eieren, bladgroenten, gefermenteerde zuivel, vis, noten, zaden en gevarieerde eiwitten voor K, E en B12.',
+          'es':
+              'Usa huevos, verduras de hoja, lácteos fermentados, pescado, frutos secos, semillas y proteínas variadas para cubrir K, E y B12.',
+          'de':
+              'Nutze Eier, Blattgemüse, fermentierte Milchprodukte, Fisch, Nüsse, Samen und vielfältige Proteine für K, E und B12.',
         });
       case 'stomach':
         return _t({
-          'en': 'Zinc-rich seafood, meat, legumes, dairy, eggs, and B-vitamin foods support the stomach lining and digestion.',
-          'pl': 'Owoce morza bogate w cynk, mięso, strączki, nabiał, jajka i produkty z witaminami B wspierają błonę żołądka i trawienie.',
-          'nl': 'Zinkrijke zeevruchten, vlees, peulvruchten, zuivel, eieren en B-vitamine voeding ondersteunen de maagwand en spijsvertering.',
-          'es': 'Mariscos ricos en zinc, carne, legumbres, lácteos, huevos y alimentos con vitamina B apoyan la mucosa gástrica y la digestión.',
-          'de': 'Zinkreiche Meeresfrüchte, Fleisch, Hülsenfrüchte, Milchprodukte, Eier und B-Vitamin-Lebensmittel unterstützen Magenschleimhaut und Verdauung.',
+          'en':
+              'Zinc-rich seafood, meat, legumes, dairy, eggs, and B-vitamin foods support the stomach lining and digestion.',
+          'pl':
+              'Owoce morza bogate w cynk, mięso, strączki, nabiał, jajka i produkty z witaminami B wspierają błonę żołądka i trawienie.',
+          'nl':
+              'Zinkrijke zeevruchten, vlees, peulvruchten, zuivel, eieren en B-vitamine voeding ondersteunen de maagwand en spijsvertering.',
+          'es':
+              'Mariscos ricos en zinc, carne, legumbres, lácteos, huevos y alimentos con vitamina B apoyan la mucosa gástrica y la digestión.',
+          'de':
+              'Zinkreiche Meeresfrüchte, Fleisch, Hülsenfrüchte, Milchprodukte, Eier und B-Vitamin-Lebensmittel unterstützen Magenschleimhaut und Verdauung.',
         });
       case 'intestines':
         return _t({
-          'en': 'Beans, lentils, oats, whole grains, vegetables, fruit, nuts, seeds, and enough fluids are the strongest levers.',
-          'pl': 'Fasola, soczewica, owies, pełne ziarna, warzywa, owoce, orzechy, nasiona i dość płynów to najsilniejsze dźwignie.',
-          'nl': 'Bonen, linzen, haver, volle granen, groenten, fruit, noten, zaden en voldoende vocht zijn de sterkste hefbomen.',
-          'es': 'Frijoles, lentejas, avena, granos integrales, verduras, fruta, frutos secos, semillas y suficientes líquidos son las mayores palancas.',
-          'de': 'Bohnen, Linsen, Hafer, Vollkorn, Gemüse, Obst, Nüsse, Samen und ausreichend Flüssigkeit sind die stärksten Hebel.',
+          'en':
+              'Beans, lentils, oats, whole grains, vegetables, fruit, nuts, seeds, and enough fluids are the strongest levers.',
+          'pl':
+              'Fasola, soczewica, owies, pełne ziarna, warzywa, owoce, orzechy, nasiona i dość płynów to najsilniejsze dźwignie.',
+          'nl':
+              'Bonen, linzen, haver, volle granen, groenten, fruit, noten, zaden en voldoende vocht zijn de sterkste hefbomen.',
+          'es':
+              'Frijoles, lentejas, avena, granos integrales, verduras, fruta, frutos secos, semillas y suficientes líquidos son las mayores palancas.',
+          'de':
+              'Bohnen, Linsen, Hafer, Vollkorn, Gemüse, Obst, Nüsse, Samen und ausreichend Flüssigkeit sind die stärksten Hebel.',
         });
       case 'kidneys':
         return _t({
-          'en': 'Hydration plus balanced potassium and magnesium from fruit, vegetables, legumes, and nuts supports filtering.',
-          'pl': 'Nawodnienie oraz zbilansowany potas i magnez z owoców, warzyw, strączków i orzechów wspierają filtrację.',
-          'nl': 'Hydratatie plus uitgebalanceerd kalium en magnesium uit fruit, groenten, peulvruchten en noten ondersteunt de filtering.',
-          'es': 'La hidratación más un equilibrio de potasio y magnesio de fruta, verduras, legumbres y frutos secos apoya el filtrado.',
-          'de': 'Flüssigkeit sowie ausgewogenes Kalium und Magnesium aus Obst, Gemüse, Hülsenfrüchten und Nüssen unterstützen die Filterung.',
+          'en':
+              'Hydration plus balanced potassium and magnesium from fruit, vegetables, legumes, and nuts supports filtering.',
+          'pl':
+              'Nawodnienie oraz zbilansowany potas i magnez z owoców, warzyw, strączków i orzechów wspierają filtrację.',
+          'nl':
+              'Hydratatie plus uitgebalanceerd kalium en magnesium uit fruit, groenten, peulvruchten en noten ondersteunt de filtering.',
+          'es':
+              'La hidratación más un equilibrio de potasio y magnesio de fruta, verduras, legumbres y frutos secos apoya el filtrado.',
+          'de':
+              'Flüssigkeit sowie ausgewogenes Kalium und Magnesium aus Obst, Gemüse, Hülsenfrüchten und Nüssen unterstützen die Filterung.',
         });
       case 'bones':
         return _t({
-          'en': 'Dairy or fortified alternatives, sardines, tofu, leafy greens, eggs, fish, and vitamin K vegetables support bone strength.',
-          'pl': 'Nabiał lub wzbogacone zamienniki, sardynki, tofu, zielone warzywa, jajka, ryby i warzywa z witaminą K wspierają kości.',
-          'nl': 'Zuivel of verrijkte alternatieven, sardines, tofu, bladgroenten, eieren, vis en vitamine K-groenten ondersteunen sterke botten.',
-          'es': 'Lácteos o alternativas fortificadas, sardinas, tofu, verduras de hoja, huevos, pescado y verduras con vitamina K fortalecen los huesos.',
-          'de': 'Milchprodukte oder angereicherte Alternativen, Sardinen, Tofu, Blattgemüse, Eier, Fisch und Vitamin-K-Gemüse stärken die Knochen.',
+          'en':
+              'Dairy or fortified alternatives, sardines, tofu, leafy greens, eggs, fish, and vitamin K vegetables support bone strength.',
+          'pl':
+              'Nabiał lub wzbogacone zamienniki, sardynki, tofu, zielone warzywa, jajka, ryby i warzywa z witaminą K wspierają kości.',
+          'nl':
+              'Zuivel of verrijkte alternatieven, sardines, tofu, bladgroenten, eieren, vis en vitamine K-groenten ondersteunen sterke botten.',
+          'es':
+              'Lácteos o alternativas fortificadas, sardinas, tofu, verduras de hoja, huevos, pescado y verduras con vitamina K fortalecen los huesos.',
+          'de':
+              'Milchprodukte oder angereicherte Alternativen, Sardinen, Tofu, Blattgemüse, Eier, Fisch und Vitamin-K-Gemüse stärken die Knochen.',
         });
       case 'muscles':
         return _t({
-          'en': 'Pair protein with magnesium, potassium, and calcium from dairy, legumes, potatoes, bananas, nuts, and greens.',
-          'pl': 'Łącz białko z magnezem, potasem i wapniem z nabiału, strączków, ziemniaków, bananów, orzechów i zielonych warzyw.',
-          'nl': 'Combineer eiwit met magnesium, kalium en calcium uit zuivel, peulvruchten, aardappelen, bananen, noten en groenten.',
-          'es': 'Combina proteína con magnesio, potasio y calcio de lácteos, legumbres, patatas, plátanos, frutos secos y verduras.',
-          'de': 'Kombiniere Protein mit Magnesium, Kalium und Kalzium aus Milchprodukten, Hülsenfrüchten, Kartoffeln, Bananen, Nüssen und Grünzeug.',
+          'en':
+              'Pair protein with magnesium, potassium, and calcium from dairy, legumes, potatoes, bananas, nuts, and greens.',
+          'pl':
+              'Łącz białko z magnezem, potasem i wapniem z nabiału, strączków, ziemniaków, bananów, orzechów i zielonych warzyw.',
+          'nl':
+              'Combineer eiwit met magnesium, kalium en calcium uit zuivel, peulvruchten, aardappelen, bananen, noten en groenten.',
+          'es':
+              'Combina proteína con magnesio, potasio y calcio de lácteos, legumbres, patatas, plátanos, frutos secos y verduras.',
+          'de':
+              'Kombiniere Protein mit Magnesium, Kalium und Kalzium aus Milchprodukten, Hülsenfrüchten, Kartoffeln, Bananen, Nüssen und Grünzeug.',
         });
       case 'skin':
         return _t({
-          'en': 'Vitamin C fruit, nuts, seeds, avocado, olive oil, seafood, legumes, and zinc-rich proteins help collagen and repair.',
-          'pl': 'Owoce z witaminą C, orzechy, nasiona, awokado, oliwa, owoce morza, strączki i białka bogate w cynk wspierają kolagen i regenerację.',
-          'nl': 'Vitamine C-fruit, noten, zaden, avocado, olijfolie, zeevruchten, peulvruchten en zinkrijke eiwitten helpen collageen en herstel.',
-          'es': 'Frutas con vitamina C, frutos secos, semillas, aguacate, aceite de oliva, mariscos, legumbres y proteínas ricas en zinc ayudan al colágeno y la reparación.',
-          'de': 'Vitamin-C-Obst, Nüsse, Samen, Avocado, Olivenöl, Meeresfrüchte, Hülsenfrüchte und zinkreiche Proteine fördern Kollagen und Heilung.',
+          'en':
+              'Vitamin C fruit, nuts, seeds, avocado, olive oil, seafood, legumes, and zinc-rich proteins help collagen and repair.',
+          'pl':
+              'Owoce z witaminą C, orzechy, nasiona, awokado, oliwa, owoce morza, strączki i białka bogate w cynk wspierają kolagen i regenerację.',
+          'nl':
+              'Vitamine C-fruit, noten, zaden, avocado, olijfolie, zeevruchten, peulvruchten en zinkrijke eiwitten helpen collageen en herstel.',
+          'es':
+              'Frutas con vitamina C, frutos secos, semillas, aguacate, aceite de oliva, mariscos, legumbres y proteínas ricas en zinc ayudan al colágeno y la reparación.',
+          'de':
+              'Vitamin-C-Obst, Nüsse, Samen, Avocado, Olivenöl, Meeresfrüchte, Hülsenfrüchte und zinkreiche Proteine fördern Kollagen und Heilung.',
         });
       case 'blood':
         return _t({
-          'en': 'Iron, B12, and folate come from red meat, fish, eggs, dairy, legumes, spinach, fortified grains, and citrus pairings.',
-          'pl': 'Żelazo, B12 i kwas foliowy pochodzą z czerwonego mięsa, ryb, jaj, nabiału, strączków, szpinaku, wzbogaconych zbóż i cytrusów.',
-          'nl': 'IJzer, B12 en foliumzuur komen uit rood vlees, vis, eieren, zuivel, peulvruchten, spinazie, verrijkte granen en citrus.',
-          'es': 'El hierro, la B12 y el folato vienen de carne roja, pescado, huevos, lácteos, legumbres, espinacas, granos fortificados y cítricos.',
-          'de': 'Eisen, B12 und Folat stammen aus rotem Fleisch, Fisch, Eiern, Milchprodukten, Hülsenfrüchten, Spinat, angereichertem Getreide und Zitrusfrüchten.',
+          'en':
+              'Iron, B12, and folate come from red meat, fish, eggs, dairy, legumes, spinach, fortified grains, and citrus pairings.',
+          'pl':
+              'Żelazo, B12 i kwas foliowy pochodzą z czerwonego mięsa, ryb, jaj, nabiału, strączków, szpinaku, wzbogaconych zbóż i cytrusów.',
+          'nl':
+              'IJzer, B12 en foliumzuur komen uit rood vlees, vis, eieren, zuivel, peulvruchten, spinazie, verrijkte granen en citrus.',
+          'es':
+              'El hierro, la B12 y el folato vienen de carne roja, pescado, huevos, lácteos, legumbres, espinacas, granos fortificados y cítricos.',
+          'de':
+              'Eisen, B12 und Folat stammen aus rotem Fleisch, Fisch, Eiern, Milchprodukten, Hülsenfrüchten, Spinat, angereichertem Getreide und Zitrusfrüchten.',
         });
       default:
         return '';
@@ -4828,51 +5352,77 @@ class AppLocalizations {
   }
 
   String organCoverageNoData(String organLower) => _t({
-        'en': 'No meaningful nutrient data has been logged yet, so $organLower cannot be assessed today.',
-        'pl': 'Nie zarejestrowano jeszcze istotnych danych o składnikach, więc $organLower nie można dziś ocenić.',
-        'nl': 'Er zijn nog geen relevante voedingsgegevens gelogd, dus $organLower kan vandaag niet worden beoordeeld.',
-        'es': 'Aún no se han registrado datos de nutrientes relevantes, así que $organLower no se puede evaluar hoy.',
-        'de': 'Es wurden noch keine aussagekräftigen Nährstoffdaten erfasst, daher kann $organLower heute nicht bewertet werden.',
+        'en':
+            'No meaningful nutrient data has been logged yet, so $organLower cannot be assessed today.',
+        'pl':
+            'Nie zarejestrowano jeszcze istotnych danych o składnikach, więc $organLower nie można dziś ocenić.',
+        'nl':
+            'Er zijn nog geen relevante voedingsgegevens gelogd, dus $organLower kan vandaag niet worden beoordeeld.',
+        'es':
+            'Aún no se han registrado datos de nutrientes relevantes, así que $organLower no se puede evaluar hoy.',
+        'de':
+            'Es wurden noch keine aussagekräftigen Nährstoffdaten erfasst, daher kann $organLower heute nicht bewertet werden.',
       });
 
   String organCoverageLow(int pct) => _t({
-        'en': '$pct% coverage: this area is missing several key nutrients today. Add one or two food sources from the list above.',
-        'pl': '$pct% pokrycia: temu obszarowi brakuje dziś kilku kluczowych składników. Dodaj jedno lub dwa źródła z listy powyżej.',
-        'nl': '$pct% dekking: dit gebied mist vandaag enkele belangrijke voedingsstoffen. Voeg een of twee bronnen uit de lijst hierboven toe.',
-        'es': '$pct% de cobertura: a esta zona le faltan hoy varios nutrientes clave. Añade una o dos fuentes de la lista anterior.',
-        'de': '$pct% Abdeckung: Diesem Bereich fehlen heute mehrere wichtige Nährstoffe. Füge ein oder zwei Quellen aus der Liste oben hinzu.',
+        'en':
+            '$pct% coverage: this area is missing several key nutrients today. Add one or two food sources from the list above.',
+        'pl':
+            '$pct% pokrycia: temu obszarowi brakuje dziś kilku kluczowych składników. Dodaj jedno lub dwa źródła z listy powyżej.',
+        'nl':
+            '$pct% dekking: dit gebied mist vandaag enkele belangrijke voedingsstoffen. Voeg een of twee bronnen uit de lijst hierboven toe.',
+        'es':
+            '$pct% de cobertura: a esta zona le faltan hoy varios nutrientes clave. Añade una o dos fuentes de la lista anterior.',
+        'de':
+            '$pct% Abdeckung: Diesem Bereich fehlen heute mehrere wichtige Nährstoffe. Füge ein oder zwei Quellen aus der Liste oben hinzu.',
       });
 
   String organCoverageImproving(int pct) => _t({
-        'en': '$pct% coverage: improving, but still below the target range for this body part.',
-        'pl': '$pct% pokrycia: poprawia się, ale wciąż poniżej zakresu docelowego dla tej części ciała.',
-        'nl': '$pct% dekking: verbetert, maar nog onder het streefbereik voor dit lichaamsdeel.',
-        'es': '$pct% de cobertura: mejorando, pero aún por debajo del rango objetivo para esta parte del cuerpo.',
-        'de': '$pct% Abdeckung: verbessert sich, liegt aber noch unter dem Zielbereich für diesen Körperteil.',
+        'en':
+            '$pct% coverage: improving, but still below the target range for this body part.',
+        'pl':
+            '$pct% pokrycia: poprawia się, ale wciąż poniżej zakresu docelowego dla tej części ciała.',
+        'nl':
+            '$pct% dekking: verbetert, maar nog onder het streefbereik voor dit lichaamsdeel.',
+        'es':
+            '$pct% de cobertura: mejorando, pero aún por debajo del rango objetivo para esta parte del cuerpo.',
+        'de':
+            '$pct% Abdeckung: verbessert sich, liegt aber noch unter dem Zielbereich für diesen Körperteil.',
       });
 
   String organCoverageHealthy(int pct) => _t({
         'en': '$pct% coverage: this is in the healthy target zone for today.',
         'pl': '$pct% pokrycia: to mieści się dziś w zdrowej strefie docelowej.',
         'nl': '$pct% dekking: dit zit vandaag in de gezonde streefzone.',
-        'es': '$pct% de cobertura: esto está hoy en la zona objetivo saludable.',
+        'es':
+            '$pct% de cobertura: esto está hoy en la zona objetivo saludable.',
         'de': '$pct% Abdeckung: das liegt heute in der gesunden Zielzone.',
       });
 
   String organCoverageAbove(int pct) => _t({
-        'en': '$pct% coverage: above target. Usually okay short term, but the map starts warning when intake keeps rising.',
-        'pl': '$pct% pokrycia: powyżej celu. Zwykle okej na krótko, ale mapa ostrzega, gdy spożycie wciąż rośnie.',
-        'nl': '$pct% dekking: boven het doel. Meestal kortdurend prima, maar de kaart waarschuwt als de inname blijft stijgen.',
-        'es': '$pct% de cobertura: por encima del objetivo. Suele estar bien a corto plazo, pero el mapa avisa si la ingesta sigue subiendo.',
-        'de': '$pct% Abdeckung: über dem Ziel. Kurzfristig meist okay, aber die Karte warnt, wenn die Zufuhr weiter steigt.',
+        'en':
+            '$pct% coverage: above target. Usually okay short term, but the map starts warning when intake keeps rising.',
+        'pl':
+            '$pct% pokrycia: powyżej celu. Zwykle okej na krótko, ale mapa ostrzega, gdy spożycie wciąż rośnie.',
+        'nl':
+            '$pct% dekking: boven het doel. Meestal kortdurend prima, maar de kaart waarschuwt als de inname blijft stijgen.',
+        'es':
+            '$pct% de cobertura: por encima del objetivo. Suele estar bien a corto plazo, pero el mapa avisa si la ingesta sigue subiendo.',
+        'de':
+            '$pct% Abdeckung: über dem Ziel. Kurzfristig meist okay, aber die Karte warnt, wenn die Zufuhr weiter steigt.',
       });
 
   String organCoverageVeryHigh(int pct) => _t({
-        'en': '$pct% coverage: very high today. Repeated high intake can become unhealthy, especially for fat-soluble vitamins and minerals.',
-        'pl': '$pct% pokrycia: bardzo wysokie dziś. Powtarzające się wysokie spożycie może być niezdrowe, zwłaszcza witamin rozpuszczalnych w tłuszczach i minerałów.',
-        'nl': '$pct% dekking: vandaag erg hoog. Herhaaldelijk hoge inname kan ongezond worden, vooral voor vetoplosbare vitamines en mineralen.',
-        'es': '$pct% de cobertura: muy alta hoy. Una ingesta alta repetida puede volverse poco saludable, sobre todo de vitaminas liposolubles y minerales.',
-        'de': '$pct% Abdeckung: heute sehr hoch. Wiederholt hohe Zufuhr kann ungesund werden, besonders bei fettlöslichen Vitaminen und Mineralstoffen.',
+        'en':
+            '$pct% coverage: very high today. Repeated high intake can become unhealthy, especially for fat-soluble vitamins and minerals.',
+        'pl':
+            '$pct% pokrycia: bardzo wysokie dziś. Powtarzające się wysokie spożycie może być niezdrowe, zwłaszcza witamin rozpuszczalnych w tłuszczach i minerałów.',
+        'nl':
+            '$pct% dekking: vandaag erg hoog. Herhaaldelijk hoge inname kan ongezond worden, vooral voor vetoplosbare vitamines en mineralen.',
+        'es':
+            '$pct% de cobertura: muy alta hoy. Una ingesta alta repetida puede volverse poco saludable, sobre todo de vitaminas liposolubles y minerales.',
+        'de':
+            '$pct% Abdeckung: heute sehr hoch. Wiederholt hohe Zufuhr kann ungesund werden, besonders bei fettlöslichen Vitaminen und Mineralstoffen.',
       });
 
   // ── Nutrition dashboard ──
@@ -4918,11 +5468,16 @@ class AppLocalizations {
       });
 
   String get nutritionDisclaimer => _t({
-        'en': '* Targets shown are goal- and gender-adjusted Dietary Reference Values (European Food Safety Authority, EFSA). Micronutrient values are estimated from European food composition databases (EuroFIR). For personalised advice, consult a registered dietitian.',
-        'pl': '* Pokazane cele to referencyjne wartości spożycia dostosowane do celu i płci (Europejski Urząd ds. Bezpieczeństwa Żywności, EFSA). Wartości mikroskładników szacowane są na podstawie europejskich baz składu żywności (EuroFIR). Po indywidualną poradę zwróć się do dietetyka.',
-        'nl': '* De getoonde doelen zijn op doel en geslacht afgestemde Dietary Reference Values (Europese Autoriteit voor voedselveiligheid, EFSA). Micronutriëntwaarden zijn geschat op basis van Europese voedingsmiddelendatabases (EuroFIR). Raadpleeg voor persoonlijk advies een diëtist.',
-        'es': '* Los objetivos mostrados son valores dietéticos de referencia ajustados por meta y sexo (Autoridad Europea de Seguridad Alimentaria, EFSA). Los valores de micronutrientes se estiman a partir de bases de datos europeas de composición de alimentos (EuroFIR). Para asesoramiento personalizado, consulta a un dietista.',
-        'de': '* Die angezeigten Ziele sind ziel- und geschlechtsangepasste Dietary Reference Values (Europäische Behörde für Lebensmittelsicherheit, EFSA). Mikronährstoffwerte werden aus europäischen Lebensmittel-Zusammensetzungsdatenbanken (EuroFIR) geschätzt. Für persönliche Beratung wende dich an eine Ernährungsfachkraft.',
+        'en':
+            '* Targets shown are goal- and gender-adjusted Dietary Reference Values (European Food Safety Authority, EFSA). Micronutrient values are estimated from European food composition databases (EuroFIR). For personalised advice, consult a registered dietitian.',
+        'pl':
+            '* Pokazane cele to referencyjne wartości spożycia dostosowane do celu i płci (Europejski Urząd ds. Bezpieczeństwa Żywności, EFSA). Wartości mikroskładników szacowane są na podstawie europejskich baz składu żywności (EuroFIR). Po indywidualną poradę zwróć się do dietetyka.',
+        'nl':
+            '* De getoonde doelen zijn op doel en geslacht afgestemde Dietary Reference Values (Europese Autoriteit voor voedselveiligheid, EFSA). Micronutriëntwaarden zijn geschat op basis van Europese voedingsmiddelendatabases (EuroFIR). Raadpleeg voor persoonlijk advies een diëtist.',
+        'es':
+            '* Los objetivos mostrados son valores dietéticos de referencia ajustados por meta y sexo (Autoridad Europea de Seguridad Alimentaria, EFSA). Los valores de micronutrientes se estiman a partir de bases de datos europeas de composición de alimentos (EuroFIR). Para asesoramiento personalizado, consulta a un dietista.',
+        'de':
+            '* Die angezeigten Ziele sind ziel- und geschlechtsangepasste Dietary Reference Values (Europäische Behörde für Lebensmittelsicherheit, EFSA). Mikronährstoffwerte werden aus europäischen Lebensmittel-Zusammensetzungsdatenbanken (EuroFIR) geschätzt. Für persönliche Beratung wende dich an eine Ernährungsfachkraft.',
       });
 
   // ── Analytics ──
@@ -4944,67 +5499,106 @@ class AppLocalizations {
       });
 
   String analyticsConsistencyLow(int pct) => _t({
-        'en': 'You logged only $pct% of days. Scanning more often makes these analytics much more accurate.',
-        'pl': 'Zarejestrowałeś tylko $pct% dni. Częstsze skanowanie znacznie zwiększa dokładność tych statystyk.',
-        'nl': 'Je hebt slechts $pct% van de dagen gelogd. Vaker scannen maakt deze analyses veel nauwkeuriger.',
-        'es': 'Solo registraste el $pct% de los días. Escanear con más frecuencia hace estos análisis mucho más precisos.',
-        'de': 'Du hast nur $pct% der Tage erfasst. Häufigeres Scannen macht diese Auswertungen viel genauer.',
+        'en':
+            'You logged only $pct% of days. Scanning more often makes these analytics much more accurate.',
+        'pl':
+            'Zarejestrowałeś tylko $pct% dni. Częstsze skanowanie znacznie zwiększa dokładność tych statystyk.',
+        'nl':
+            'Je hebt slechts $pct% van de dagen gelogd. Vaker scannen maakt deze analyses veel nauwkeuriger.',
+        'es':
+            'Solo registraste el $pct% de los días. Escanear con más frecuencia hace estos análisis mucho más precisos.',
+        'de':
+            'Du hast nur $pct% der Tage erfasst. Häufigeres Scannen macht diese Auswertungen viel genauer.',
       });
 
   String analyticsConsistencyHigh(int logged, int total) => _t({
-        'en': 'Excellent consistency — you logged $logged of $total days. Trends here are reliable.',
-        'pl': 'Świetna regularność — zarejestrowałeś $logged z $total dni. Trendy są wiarygodne.',
-        'nl': 'Uitstekende consistentie — je hebt $logged van $total dagen gelogd. Deze trends zijn betrouwbaar.',
-        'es': 'Excelente constancia: registraste $logged de $total días. Estas tendencias son fiables.',
-        'de': 'Ausgezeichnete Beständigkeit — du hast $logged von $total Tagen erfasst. Diese Trends sind verlässlich.',
+        'en':
+            'Excellent consistency — you logged $logged of $total days. Trends here are reliable.',
+        'pl':
+            'Świetna regularność — zarejestrowałeś $logged z $total dni. Trendy są wiarygodne.',
+        'nl':
+            'Uitstekende consistentie — je hebt $logged van $total dagen gelogd. Deze trends zijn betrouwbaar.',
+        'es':
+            'Excelente constancia: registraste $logged de $total días. Estas tendencias son fiables.',
+        'de':
+            'Ausgezeichnete Beständigkeit — du hast $logged von $total Tagen erfasst. Diese Trends sind verlässlich.',
       });
 
   String get analyticsAvgMatchesGoal => _t({
-        'en': 'Your daily average matches your goal almost exactly. Nice work staying on plan.',
-        'pl': 'Twoja dzienna średnia niemal dokładnie pokrywa się z celem. Świetna robota, trzymasz plan.',
-        'nl': 'Je dagelijkse gemiddelde komt bijna precies overeen met je doel. Goed bezig met je plan.',
-        'es': 'Tu promedio diario coincide casi exactamente con tu objetivo. Buen trabajo siguiendo el plan.',
-        'de': 'Dein Tagesdurchschnitt entspricht fast genau deinem Ziel. Gut gemacht, du bleibst am Plan.',
+        'en':
+            'Your daily average matches your goal almost exactly. Nice work staying on plan.',
+        'pl':
+            'Twoja dzienna średnia niemal dokładnie pokrywa się z celem. Świetna robota, trzymasz plan.',
+        'nl':
+            'Je dagelijkse gemiddelde komt bijna precies overeen met je doel. Goed bezig met je plan.',
+        'es':
+            'Tu promedio diario coincide casi exactamente con tu objetivo. Buen trabajo siguiendo el plan.',
+        'de':
+            'Dein Tagesdurchschnitt entspricht fast genau deinem Ziel. Gut gemacht, du bleibst am Plan.',
       });
 
   String analyticsAvgOverGoal(int delta, int goal, int dropKcal) => _t({
-        'en': "You're averaging $delta kcal/day over your $goal kcal goal. If your goal is fat-loss, drop ~$dropKcal kcal of fast carbs first.",
-        'pl': 'Średnio jesz $delta kcal/dzień ponad cel $goal kcal. Jeśli celem jest redukcja, najpierw odejmij ~$dropKcal kcal szybkich węglowodanów.',
-        'nl': 'Je zit gemiddeld $delta kcal/dag boven je doel van $goal kcal. Als vetverlies je doel is, schrap eerst ~$dropKcal kcal snelle koolhydraten.',
-        'es': 'Promedias $delta kcal/día por encima de tu objetivo de $goal kcal. Si tu meta es perder grasa, reduce primero ~$dropKcal kcal de carbohidratos rápidos.',
-        'de': 'Du liegst im Schnitt $delta kcal/Tag über deinem Ziel von $goal kcal. Wenn Fettabbau dein Ziel ist, streiche zuerst ~$dropKcal kcal schnelle Kohlenhydrate.',
+        'en':
+            "You're averaging $delta kcal/day over your $goal kcal goal. If your goal is fat-loss, drop ~$dropKcal kcal of fast carbs first.",
+        'pl':
+            'Średnio jesz $delta kcal/dzień ponad cel $goal kcal. Jeśli celem jest redukcja, najpierw odejmij ~$dropKcal kcal szybkich węglowodanów.',
+        'nl':
+            'Je zit gemiddeld $delta kcal/dag boven je doel van $goal kcal. Als vetverlies je doel is, schrap eerst ~$dropKcal kcal snelle koolhydraten.',
+        'es':
+            'Promedias $delta kcal/día por encima de tu objetivo de $goal kcal. Si tu meta es perder grasa, reduce primero ~$dropKcal kcal de carbohidratos rápidos.',
+        'de':
+            'Du liegst im Schnitt $delta kcal/Tag über deinem Ziel von $goal kcal. Wenn Fettabbau dein Ziel ist, streiche zuerst ~$dropKcal kcal schnelle Kohlenhydrate.',
       });
 
   String analyticsAvgUnderGoal(int deficit, int goal) => _t({
-        'en': "You're $deficit kcal/day under your $goal kcal goal. If you're tired, add a protein-rich snack.",
-        'pl': 'Jesz $deficit kcal/dzień poniżej celu $goal kcal. Jeśli czujesz zmęczenie, dodaj przekąskę bogatą w białko.',
-        'nl': 'Je zit $deficit kcal/dag onder je doel van $goal kcal. Als je moe bent, voeg een eiwitrijke snack toe.',
-        'es': 'Estás $deficit kcal/día por debajo de tu objetivo de $goal kcal. Si te sientes cansado, añade un snack rico en proteína.',
-        'de': 'Du liegst $deficit kcal/Tag unter deinem Ziel von $goal kcal. Wenn du müde bist, füge einen proteinreichen Snack hinzu.',
+        'en':
+            "You're $deficit kcal/day under your $goal kcal goal. If you're tired, add a protein-rich snack.",
+        'pl':
+            'Jesz $deficit kcal/dzień poniżej celu $goal kcal. Jeśli czujesz zmęczenie, dodaj przekąskę bogatą w białko.',
+        'nl':
+            'Je zit $deficit kcal/dag onder je doel van $goal kcal. Als je moe bent, voeg een eiwitrijke snack toe.',
+        'es':
+            'Estás $deficit kcal/día por debajo de tu objetivo de $goal kcal. Si te sientes cansado, añade un snack rico en proteína.',
+        'de':
+            'Du liegst $deficit kcal/Tag unter deinem Ziel von $goal kcal. Wenn du müde bist, füge einen proteinreichen Snack hinzu.',
       });
 
   String analyticsTrendUp(String pct) => _t({
-        'en': 'Calories are trending up by $pct% recently — worth checking which days.',
+        'en':
+            'Calories are trending up by $pct% recently — worth checking which days.',
         'pl': 'Kalorie ostatnio rosną o $pct% — warto sprawdzić, które dni.',
-        'nl': 'Calorieën stijgen de laatste tijd met $pct% — de moeite waard om te kijken welke dagen.',
-        'es': 'Las calorías están subiendo un $pct% últimamente — conviene revisar qué días.',
-        'de': 'Die Kalorien steigen zuletzt um $pct% — es lohnt sich zu prüfen, an welchen Tagen.',
+        'nl':
+            'Calorieën stijgen de laatste tijd met $pct% — de moeite waard om te kijken welke dagen.',
+        'es':
+            'Las calorías están subiendo un $pct% últimamente — conviene revisar qué días.',
+        'de':
+            'Die Kalorien steigen zuletzt um $pct% — es lohnt sich zu prüfen, an welchen Tagen.',
       });
 
   String analyticsTrendDown(String pct) => _t({
-        'en': "Calories are trending down by $pct% recently — make sure you're still hitting protein targets.",
-        'pl': 'Kalorie ostatnio spadają o $pct% — upewnij się, że wciąż realizujesz cele białkowe.',
-        'nl': 'Calorieën dalen de laatste tijd met $pct% — zorg dat je je eiwitdoelen blijft halen.',
-        'es': 'Las calorías están bajando un $pct% últimamente — asegúrate de seguir alcanzando tus objetivos de proteína.',
-        'de': 'Die Kalorien sinken zuletzt um $pct% — achte darauf, dass du deine Proteinziele weiter erreichst.',
+        'en':
+            "Calories are trending down by $pct% recently — make sure you're still hitting protein targets.",
+        'pl':
+            'Kalorie ostatnio spadają o $pct% — upewnij się, że wciąż realizujesz cele białkowe.',
+        'nl':
+            'Calorieën dalen de laatste tijd met $pct% — zorg dat je je eiwitdoelen blijft halen.',
+        'es':
+            'Las calorías están bajando un $pct% últimamente — asegúrate de seguir alcanzando tus objetivos de proteína.',
+        'de':
+            'Die Kalorien sinken zuletzt um $pct% — achte darauf, dass du deine Proteinziele weiter erreichst.',
       });
 
   String analyticsProteinShareLow(int pct) => _t({
-        'en': 'Protein is only $pct% of your average intake. Aim for 20–30% for satiety and muscle support.',
-        'pl': 'Białko to tylko $pct% Twojego średniego spożycia. Celuj w 20–30% dla sytości i wsparcia mięśni.',
-        'nl': 'Eiwit is slechts $pct% van je gemiddelde inname. Streef naar 20–30% voor verzadiging en spierondersteuning.',
-        'es': 'La proteína es solo el $pct% de tu ingesta media. Apunta al 20–30% para saciedad y apoyo muscular.',
-        'de': 'Protein macht nur $pct% deiner durchschnittlichen Zufuhr aus. Ziele auf 20–30% für Sättigung und Muskelunterstützung.',
+        'en':
+            'Protein is only $pct% of your average intake. Aim for 20–30% for satiety and muscle support.',
+        'pl':
+            'Białko to tylko $pct% Twojego średniego spożycia. Celuj w 20–30% dla sytości i wsparcia mięśni.',
+        'nl':
+            'Eiwit is slechts $pct% van je gemiddelde inname. Streef naar 20–30% voor verzadiging en spierondersteuning.',
+        'es':
+            'La proteína es solo el $pct% de tu ingesta media. Apunta al 20–30% para saciedad y apoyo muscular.',
+        'de':
+            'Protein macht nur $pct% deiner durchschnittlichen Zufuhr aus. Ziele auf 20–30% für Sättigung und Muskelunterstützung.',
       });
 
   // ── Recipe meal types & nutrition goals ──
@@ -5110,66 +5704,104 @@ class AppLocalizations {
       case 'muscleGrowth':
         return _t({
           'en': 'Build muscle with a calorie surplus and high protein intake.',
-          'pl': 'Buduj mięśnie dzięki nadwyżce kalorycznej i wysokiemu spożyciu białka.',
-          'nl': 'Bouw spieren op met een calorieoverschot en een hoge eiwitinname.',
-          'es': 'Desarrolla músculo con un superávit calórico y una alta ingesta de proteínas.',
-          'de': 'Baue Muskeln mit einem Kalorienüberschuss und hoher Proteinzufuhr auf.',
+          'pl':
+              'Buduj mięśnie dzięki nadwyżce kalorycznej i wysokiemu spożyciu białka.',
+          'nl':
+              'Bouw spieren op met een calorieoverschot en een hoge eiwitinname.',
+          'es':
+              'Desarrolla músculo con un superávit calórico y una alta ingesta de proteínas.',
+          'de':
+              'Baue Muskeln mit einem Kalorienüberschuss und hoher Proteinzufuhr auf.',
         });
       case 'diabetes':
         return _t({
-          'en': 'Keep blood sugar stable by managing your daily carbohydrate intake.',
-          'pl': 'Utrzymuj stabilny poziom cukru we krwi, kontrolując dzienne spożycie węglowodanów.',
-          'nl': 'Houd je bloedsuiker stabiel door je dagelijkse koolhydraatinname te beheren.',
-          'es': 'Mantén estable el azúcar en sangre gestionando tu ingesta diaria de carbohidratos.',
-          'de': 'Halte deinen Blutzucker stabil, indem du deine tägliche Kohlenhydratzufuhr steuerst.',
+          'en':
+              'Keep blood sugar stable by managing your daily carbohydrate intake.',
+          'pl':
+              'Utrzymuj stabilny poziom cukru we krwi, kontrolując dzienne spożycie węglowodanów.',
+          'nl':
+              'Houd je bloedsuiker stabiel door je dagelijkse koolhydraatinname te beheren.',
+          'es':
+              'Mantén estable el azúcar en sangre gestionando tu ingesta diaria de carbohidratos.',
+          'de':
+              'Halte deinen Blutzucker stabil, indem du deine tägliche Kohlenhydratzufuhr steuerst.',
         });
       case 'vegan':
         return _t({
-          'en': 'Track nutrients often missing from plant-based diets: protein, B12, iron, vitamin D.',
-          'pl': 'Śledź składniki często brakujące w dietach roślinnych: białko, B12, żelazo, witaminę D.',
-          'nl': 'Volg voedingsstoffen die vaak ontbreken in plantaardige diëten: eiwit, B12, ijzer, vitamine D.',
-          'es': 'Controla los nutrientes que suelen faltar en las dietas vegetales: proteína, B12, hierro, vitamina D.',
-          'de': 'Verfolge Nährstoffe, die in pflanzlichen Ernährungsformen oft fehlen: Protein, B12, Eisen, Vitamin D.',
+          'en':
+              'Track nutrients often missing from plant-based diets: protein, B12, iron, vitamin D.',
+          'pl':
+              'Śledź składniki często brakujące w dietach roślinnych: białko, B12, żelazo, witaminę D.',
+          'nl':
+              'Volg voedingsstoffen die vaak ontbreken in plantaardige diëten: eiwit, B12, ijzer, vitamine D.',
+          'es':
+              'Controla los nutrientes que suelen faltar en las dietas vegetales: proteína, B12, hierro, vitamina D.',
+          'de':
+              'Verfolge Nährstoffe, die in pflanzlichen Ernährungsformen oft fehlen: Protein, B12, Eisen, Vitamin D.',
         });
       case 'vegetarian':
         return _t({
-          'en': 'Avoid meat and seafood while allowing dairy, eggs, and honey when they fit your plan.',
-          'pl': 'Unikaj mięsa i owoców morza, dopuszczając nabiał, jaja i miód, gdy pasują do planu.',
-          'nl': 'Vermijd vlees en zeevruchten en sta zuivel, eieren en honing toe wanneer ze in je plan passen.',
-          'es': 'Evita la carne y el marisco, permitiendo lácteos, huevos y miel cuando encajen en tu plan.',
-          'de': 'Verzichte auf Fleisch und Meeresfrüchte und erlaube Milchprodukte, Eier und Honig, wenn sie zu deinem Plan passen.',
+          'en':
+              'Avoid meat and seafood while allowing dairy, eggs, and honey when they fit your plan.',
+          'pl':
+              'Unikaj mięsa i owoców morza, dopuszczając nabiał, jaja i miód, gdy pasują do planu.',
+          'nl':
+              'Vermijd vlees en zeevruchten en sta zuivel, eieren en honing toe wanneer ze in je plan passen.',
+          'es':
+              'Evita la carne y el marisco, permitiendo lácteos, huevos y miel cuando encajen en tu plan.',
+          'de':
+              'Verzichte auf Fleisch und Meeresfrüchte und erlaube Milchprodukte, Eier und Honig, wenn sie zu deinem Plan passen.',
         });
       case 'pescatarian':
         return _t({
-          'en': 'Vegetarian-style eating that includes fish and seafood for omega-3 fats, iodine, selenium, and complete protein.',
-          'pl': 'Sposób odżywiania w stylu wegetariańskim z rybami i owocami morza dla kwasów omega-3, jodu, selenu i pełnowartościowego białka.',
-          'nl': 'Vegetarisch eten met vis en zeevruchten voor omega 3-vetten, jodium, selenium en complete eiwitten.',
-          'es': 'Alimentación de estilo vegetariano que incluye pescado y marisco para grasas omega-3, yodo, selenio y proteína completa.',
-          'de': 'Vegetarische Ernährung, die Fisch und Meeresfrüchte für Omega-3-Fette, Jod, Selen und vollständiges Protein einschließt.',
+          'en':
+              'Vegetarian-style eating that includes fish and seafood for omega-3 fats, iodine, selenium, and complete protein.',
+          'pl':
+              'Sposób odżywiania w stylu wegetariańskim z rybami i owocami morza dla kwasów omega-3, jodu, selenu i pełnowartościowego białka.',
+          'nl':
+              'Vegetarisch eten met vis en zeevruchten voor omega 3-vetten, jodium, selenium en complete eiwitten.',
+          'es':
+              'Alimentación de estilo vegetariano que incluye pescado y marisco para grasas omega-3, yodo, selenio y proteína completa.',
+          'de':
+              'Vegetarische Ernährung, die Fisch und Meeresfrüchte für Omega-3-Fette, Jod, Selen und vollständiges Protein einschließt.',
         });
       case 'mediterranean':
         return _t({
-          'en': 'A cardiometabolic pattern built around vegetables, legumes, whole grains, fruit, olive oil, nuts, fish, and modest dairy.',
-          'pl': 'Wzorzec kardiometaboliczny oparty na warzywach, roślinach strączkowych, pełnych ziarnach, owocach, oliwie, orzechach, rybach i niewielkiej ilości nabiału.',
-          'nl': 'Een cardiometabool patroon rond groenten, peulvruchten, volle granen, fruit, olijfolie, noten, vis en weinig zuivel.',
-          'es': 'Un patrón cardiometabólico basado en verduras, legumbres, cereales integrales, fruta, aceite de oliva, frutos secos, pescado y lácteos moderados.',
-          'de': 'Ein kardiometabolisches Muster mit Gemüse, Hülsenfrüchten, Vollkorn, Obst, Olivenöl, Nüssen, Fisch und wenig Milchprodukten.',
+          'en':
+              'A cardiometabolic pattern built around vegetables, legumes, whole grains, fruit, olive oil, nuts, fish, and modest dairy.',
+          'pl':
+              'Wzorzec kardiometaboliczny oparty na warzywach, roślinach strączkowych, pełnych ziarnach, owocach, oliwie, orzechach, rybach i niewielkiej ilości nabiału.',
+          'nl':
+              'Een cardiometabool patroon rond groenten, peulvruchten, volle granen, fruit, olijfolie, noten, vis en weinig zuivel.',
+          'es':
+              'Un patrón cardiometabólico basado en verduras, legumbres, cereales integrales, fruta, aceite de oliva, frutos secos, pescado y lácteos moderados.',
+          'de':
+              'Ein kardiometabolisches Muster mit Gemüse, Hülsenfrüchten, Vollkorn, Obst, Olivenöl, Nüssen, Fisch und wenig Milchprodukten.',
         });
       case 'weightLoss':
         return _t({
-          'en': 'Lose weight sustainably with a moderate calorie deficit and high protein.',
-          'pl': 'Chudnij trwale dzięki umiarkowanemu deficytowi kalorycznemu i wysokiemu spożyciu białka.',
+          'en':
+              'Lose weight sustainably with a moderate calorie deficit and high protein.',
+          'pl':
+              'Chudnij trwale dzięki umiarkowanemu deficytowi kalorycznemu i wysokiemu spożyciu białka.',
           'nl': 'Val duurzaam af met een matig calorietekort en veel eiwit.',
-          'es': 'Pierde peso de forma sostenible con un déficit calórico moderado y mucha proteína.',
-          'de': 'Nimm nachhaltig ab mit einem moderaten Kaloriendefizit und viel Protein.',
+          'es':
+              'Pierde peso de forma sostenible con un déficit calórico moderado y mucha proteína.',
+          'de':
+              'Nimm nachhaltig ab mit einem moderaten Kaloriendefizit und viel Protein.',
         });
       case 'keto':
         return _t({
-          'en': 'Enter and stay in ketosis. Keep daily carbs under 25 g while eating healthy fats.',
-          'pl': 'Wejdź i pozostań w ketozie. Utrzymuj dzienne węglowodany poniżej 25 g, jedząc zdrowe tłuszcze.',
-          'nl': 'Kom in ketose en blijf erin. Houd dagelijkse koolhydraten onder 25 g en eet gezonde vetten.',
-          'es': 'Entra y mantente en cetosis. Mantén los carbohidratos diarios por debajo de 25 g comiendo grasas saludables.',
-          'de': 'Komm in die Ketose und bleib dort. Halte die täglichen Kohlenhydrate unter 25 g und iss gesunde Fette.',
+          'en':
+              'Enter and stay in ketosis. Keep daily carbs under 25 g while eating healthy fats.',
+          'pl':
+              'Wejdź i pozostań w ketozie. Utrzymuj dzienne węglowodany poniżej 25 g, jedząc zdrowe tłuszcze.',
+          'nl':
+              'Kom in ketose en blijf erin. Houd dagelijkse koolhydraten onder 25 g en eet gezonde vetten.',
+          'es':
+              'Entra y mantente en cetosis. Mantén los carbohidratos diarios por debajo de 25 g comiendo grasas saludables.',
+          'de':
+              'Komm in die Ketose und bleib dort. Halte die täglichen Kohlenhydrate unter 25 g und iss gesunde Fette.',
         });
       case 'maintain':
         return _t({
@@ -5228,7 +5860,8 @@ class AppLocalizations {
       case 'low':
         return _t({
           'en': 'Lower lean mass or mostly sedentary right now.',
-          'pl': 'Niższa masa beztłuszczowa lub obecnie głównie siedzący tryb życia.',
+          'pl':
+              'Niższa masa beztłuszczowa lub obecnie głównie siedzący tryb życia.',
           'nl': 'Lagere vetvrije massa of momenteel vooral zittend.',
           'es': 'Masa magra baja o vida mayormente sedentaria ahora mismo.',
           'de': 'Geringere Magermasse oder derzeit überwiegend sitzend.',
@@ -5482,18 +6115,26 @@ class AppLocalizations {
 
   String get multipleServingsBolusWarning => _t({
         'en': 'Multiple servings: verify portion accuracy before bolusing.',
-        'pl': 'Wiele porcji: zweryfikuj dokładność porcji przed podaniem bolusa.',
-        'nl': 'Meerdere porties: controleer de portienauwkeurigheid vóór het bolussen.',
-        'es': 'Varias porciones: verifica la exactitud de la porción antes de administrar el bolo.',
+        'pl':
+            'Wiele porcji: zweryfikuj dokładność porcji przed podaniem bolusa.',
+        'nl':
+            'Meerdere porties: controleer de portienauwkeurigheid vóór het bolussen.',
+        'es':
+            'Varias porciones: verifica la exactitud de la porción antes de administrar el bolo.',
         'de': 'Mehrere Portionen: Prüfe die Portionsgenauigkeit vor dem Bolus.',
       });
 
   String get icrNotSetWarning => _t({
-        'en': 'Your ICR is not set. Bolus calculations will be inaccurate.\nGo to Settings → Diabetes to set your personal ICR.',
-        'pl': 'Twój wskaźnik ICR nie jest ustawiony. Obliczenia bolusa będą niedokładne.\nPrzejdź do Ustawienia → Cukrzyca, aby ustawić własny ICR.',
-        'nl': 'Je ICR is niet ingesteld. Bolusberekeningen zullen onnauwkeurig zijn.\nGa naar Instellingen → Diabetes om je persoonlijke ICR in te stellen.',
-        'es': 'Tu ICR no está configurado. Los cálculos del bolo serán inexactos.\nVe a Ajustes → Diabetes para configurar tu ICR personal.',
-        'de': 'Dein ICR ist nicht eingestellt. Bolusberechnungen werden ungenau sein.\nGehe zu Einstellungen → Diabetes, um deinen persönlichen ICR festzulegen.',
+        'en':
+            'Your ICR is not set. Bolus calculations will be inaccurate.\nGo to Settings → Diabetes to set your personal ICR.',
+        'pl':
+            'Twój wskaźnik ICR nie jest ustawiony. Obliczenia bolusa będą niedokładne.\nPrzejdź do Ustawienia → Cukrzyca, aby ustawić własny ICR.',
+        'nl':
+            'Je ICR is niet ingesteld. Bolusberekeningen zullen onnauwkeurig zijn.\nGa naar Instellingen → Diabetes om je persoonlijke ICR in te stellen.',
+        'es':
+            'Tu ICR no está configurado. Los cálculos del bolo serán inexactos.\nVe a Ajustes → Diabetes para configurar tu ICR personal.',
+        'de':
+            'Dein ICR ist nicht eingestellt. Bolusberechnungen werden ungenau sein.\nGehe zu Einstellungen → Diabetes, um deinen persönlichen ICR festzulegen.',
       });
 
   // ── Scan / voice / manual entry ──
@@ -5645,9 +6286,12 @@ class AppLocalizations {
   String get fullTransformNote => _t({
         'en': 'Full 4×4 transform stored for geometry reconstruction',
         'pl': 'Pełna transformacja 4×4 zapisana do rekonstrukcji geometrii',
-        'nl': 'Volledige 4×4-transformatie opgeslagen voor geometriereconstructie',
-        'es': 'Transformación 4×4 completa almacenada para la reconstrucción geométrica',
-        'de': 'Vollständige 4×4-Transformation für die Geometrierekonstruktion gespeichert',
+        'nl':
+            'Volledige 4×4-transformatie opgeslagen voor geometriereconstructie',
+        'es':
+            'Transformación 4×4 completa almacenada para la reconstrucción geométrica',
+        'de':
+            'Vollständige 4×4-Transformation für die Geometrierekonstruktion gespeichert',
       });
 
   String get mealNameOatmealHint => _t({
@@ -5717,11 +6361,16 @@ class AppLocalizations {
       });
 
   String isfHelp(String unitLabel) => _t({
-        'en': '1 unit of insulin lowers your blood glucose by how much ($unitLabel)? Used for correction doses.',
-        'pl': '1 jednostka insuliny obniża poziom glukozy o ile ($unitLabel)? Używane do dawek korekcyjnych.',
-        'nl': '1 eenheid insuline verlaagt je bloedglucose met hoeveel ($unitLabel)? Gebruikt voor correctiedoses.',
-        'es': '¿1 unidad de insulina reduce tu glucosa en cuánto ($unitLabel)? Se usa para dosis de corrección.',
-        'de': '1 Einheit Insulin senkt deinen Blutzucker um wie viel ($unitLabel)? Wird für Korrekturdosen verwendet.',
+        'en':
+            '1 unit of insulin lowers your blood glucose by how much ($unitLabel)? Used for correction doses.',
+        'pl':
+            '1 jednostka insuliny obniża poziom glukozy o ile ($unitLabel)? Używane do dawek korekcyjnych.',
+        'nl':
+            '1 eenheid insuline verlaagt je bloedglucose met hoeveel ($unitLabel)? Gebruikt voor correctiedoses.',
+        'es':
+            '¿1 unidad de insulina reduce tu glucosa en cuánto ($unitLabel)? Se usa para dosis de corrección.',
+        'de':
+            '1 Einheit Insulin senkt deinen Blutzucker um wie viel ($unitLabel)? Wird für Korrekturdosen verwendet.',
       });
 
   String get targetBloodGlucose => _t({
@@ -5741,11 +6390,16 @@ class AppLocalizations {
       });
 
   String get diabetesSafetyWarning => _t({
-        'en': 'Confirm your ICR, ISF and target with your healthcare provider and review them regularly — they change over time. Always measure your blood glucose correctly and double-check every dose before injecting.',
-        'pl': 'Potwierdź ICR, ISF i wartość docelową ze swoim lekarzem i regularnie je weryfikuj — zmieniają się z czasem. Zawsze prawidłowo mierz poziom glukozy i sprawdzaj każdą dawkę przed wstrzyknięciem.',
-        'nl': 'Bevestig je ICR, ISF en streefwaarde met je zorgverlener en controleer ze regelmatig — ze veranderen na verloop van tijd. Meet je bloedglucose altijd correct en controleer elke dosis vóór het injecteren.',
-        'es': 'Confirma tu ICR, ISF y objetivo con tu profesional de salud y revísalos con regularidad: cambian con el tiempo. Mide siempre tu glucosa correctamente y verifica cada dosis antes de inyectar.',
-        'de': 'Bestätige deinen ICR, ISF und Zielwert mit deinem medizinischen Fachpersonal und überprüfe sie regelmäßig — sie ändern sich mit der Zeit. Miss deinen Blutzucker immer korrekt und überprüfe jede Dosis vor dem Injizieren.',
+        'en':
+            'Confirm your ICR, ISF and target with your healthcare provider and review them regularly — they change over time. Always measure your blood glucose correctly and double-check every dose before injecting.',
+        'pl':
+            'Potwierdź ICR, ISF i wartość docelową ze swoim lekarzem i regularnie je weryfikuj — zmieniają się z czasem. Zawsze prawidłowo mierz poziom glukozy i sprawdzaj każdą dawkę przed wstrzyknięciem.',
+        'nl':
+            'Bevestig je ICR, ISF en streefwaarde met je zorgverlener en controleer ze regelmatig — ze veranderen na verloop van tijd. Meet je bloedglucose altijd correct en controleer elke dosis vóór het injecteren.',
+        'es':
+            'Confirma tu ICR, ISF y objetivo con tu profesional de salud y revísalos con regularidad: cambian con el tiempo. Mide siempre tu glucosa correctamente y verifica cada dosis antes de inyectar.',
+        'de':
+            'Bestätige deinen ICR, ISF und Zielwert mit deinem medizinischen Fachpersonal und überprüfe sie regelmäßig — sie ändern sich mit der Zeit. Miss deinen Blutzucker immer korrekt und überprüfe jede Dosis vor dem Injizieren.',
       });
 
   String get bolusCalculatorMode => _t({
@@ -5757,11 +6411,16 @@ class AppLocalizations {
       });
 
   String get bolusCalculatorModeHelp => _t({
-        'en': 'An optional, safety-gated insulin estimate. Off by default. Requires a settings survey, consent, and review every 90 days.',
-        'pl': 'Opcjonalne, zabezpieczone oszacowanie insuliny. Domyślnie wyłączone. Wymaga ankiety ustawień, zgody i przeglądu co 90 dni.',
-        'nl': 'Een optionele, beveiligde insulineschatting. Standaard uit. Vereist een instellingenquête, toestemming en een controle elke 90 dagen.',
-        'es': 'Una estimación de insulina opcional y con controles de seguridad. Desactivada por defecto. Requiere una encuesta de ajustes, consentimiento y revisión cada 90 días.',
-        'de': 'Eine optionale, sicherheitsgeprüfte Insulinschätzung. Standardmäßig aus. Erfordert eine Einstellungsumfrage, Zustimmung und Überprüfung alle 90 Tage.',
+        'en':
+            'An optional, safety-gated insulin estimate. Off by default. Requires a settings survey, consent, and review every 90 days.',
+        'pl':
+            'Opcjonalne, zabezpieczone oszacowanie insuliny. Domyślnie wyłączone. Wymaga ankiety ustawień, zgody i przeglądu co 90 dni.',
+        'nl':
+            'Een optionele, beveiligde insulineschatting. Standaard uit. Vereist een instellingenquête, toestemming en een controle elke 90 dagen.',
+        'es':
+            'Una estimación de insulina opcional y con controles de seguridad. Desactivada por defecto. Requiere una encuesta de ajustes, consentimiento y revisión cada 90 días.',
+        'de':
+            'Eine optionale, sicherheitsgeprüfte Insulinschätzung. Standardmäßig aus. Erfordert eine Einstellungsumfrage, Zustimmung und Überprüfung alle 90 Tage.',
       });
 
   String get premium => _t({
@@ -5874,7 +6533,8 @@ class AppLocalizations {
         'en': 'In-app purchases aren\'t available yet — coming soon.',
         'pl': 'Zakupy w aplikacji nie są jeszcze dostępne — wkrótce.',
         'nl': 'In-app-aankopen zijn nog niet beschikbaar — binnenkort.',
-        'es': 'Las compras dentro de la app aún no están disponibles — próximamente.',
+        'es':
+            'Las compras dentro de la app aún no están disponibles — próximamente.',
         'de': 'In-App-Käufe sind noch nicht verfügbar — demnächst.',
       });
 
@@ -5913,11 +6573,16 @@ class AppLocalizations {
       });
 
   String get badgeCollectionEmpty => _t({
-        'en': 'No badges yet. Log meals through the week to start earning them.',
-        'pl': 'Brak odznak. Zapisuj posiłki w ciągu tygodnia, aby zacząć je zdobywać.',
-        'nl': 'Nog geen badges. Log maaltijden door de week heen om ze te verdienen.',
-        'es': 'Aún no hay insignias. Registra comidas durante la semana para empezar a ganarlas.',
-        'de': 'Noch keine Abzeichen. Logge Mahlzeiten über die Woche, um sie zu verdienen.',
+        'en':
+            'No badges yet. Log meals through the week to start earning them.',
+        'pl':
+            'Brak odznak. Zapisuj posiłki w ciągu tygodnia, aby zacząć je zdobywać.',
+        'nl':
+            'Nog geen badges. Log maaltijden door de week heen om ze te verdienen.',
+        'es':
+            'Aún no hay insignias. Registra comidas durante la semana para empezar a ganarlas.',
+        'de':
+            'Noch keine Abzeichen. Logge Mahlzeiten über die Woche, um sie zu verdienen.',
       });
 
   String badgeCollectionCount(int earned, int total) => _t({
@@ -6002,10 +6667,12 @@ class AppLocalizations {
           }),
           subtitle: _t({
             'en': 'You used the app often enough to build a useful record.',
-            'pl': 'Używałeś aplikacji wystarczająco często, aby zbudować przydatny zapis.',
+            'pl':
+                'Używałeś aplikacji wystarczająco często, aby zbudować przydatny zapis.',
             'nl': 'Je gebruikte de app vaak genoeg voor een nuttig overzicht.',
             'es': 'Usaste la app lo suficiente para crear un registro útil.',
-            'de': 'Du hast die App oft genug für eine nützliche Aufzeichnung genutzt.',
+            'de':
+                'Du hast die App oft genug für eine nützliche Aufzeichnung genutzt.',
           }),
         );
       case 'protein_focus':
@@ -6020,8 +6687,10 @@ class AppLocalizations {
           subtitle: _t({
             'en': 'You stayed close to your protein target most of the week.',
             'pl': 'Przez większość tygodnia byłeś blisko celu białkowego.',
-            'nl': 'Je zat het grootste deel van de week dicht bij je eiwitdoel.',
-            'es': 'Estuviste cerca de tu objetivo de proteína casi toda la semana.',
+            'nl':
+                'Je zat het grootste deel van de week dicht bij je eiwitdoel.',
+            'es':
+                'Estuviste cerca de tu objetivo de proteína casi toda la semana.',
             'de': 'Du warst die meiste Woche nah an deinem Proteinziel.',
           }),
         );
@@ -6056,7 +6725,8 @@ class AppLocalizations {
             'pl': 'Osiągnąłeś szerokie pokrycie witamin i minerałów.',
             'nl': 'Je bereikte een brede vitamine- en mineralendekking.',
             'es': 'Alcanzaste una amplia cobertura de vitaminas y minerales.',
-            'de': 'Du hast eine breite Vitamin- und Mineralstoffabdeckung erreicht.',
+            'de':
+                'Du hast eine breite Vitamin- und Mineralstoffabdeckung erreicht.',
           }),
         );
       case 'hydration_rhythm':
@@ -6127,7 +6797,8 @@ class AppLocalizations {
       case 'balanced_plate':
         return _t({
           'en': 'Keep calories and protein balanced on 3 or more days.',
-          'pl': 'Utrzymaj zrównoważone kalorie i białko przez 3 lub więcej dni.',
+          'pl':
+              'Utrzymaj zrównoważone kalorie i białko przez 3 lub więcej dni.',
           'nl': 'Houd calorieën en eiwit in balans op 3 of meer dagen.',
           'es': 'Mantén calorías y proteína equilibradas 3 o más días.',
           'de': 'Halte Kalorien und Protein an 3 oder mehr Tagen ausgewogen.',
@@ -6135,10 +6806,14 @@ class AppLocalizations {
       case 'micronutrient_pro':
         return _t({
           'en': 'Reach broad vitamin and mineral coverage on 3 or more days.',
-          'pl': 'Osiągnij szerokie pokrycie witamin i minerałów przez 3 lub więcej dni.',
-          'nl': 'Bereik brede vitamine- en mineralendekking op 3 of meer dagen.',
-          'es': 'Alcanza amplia cobertura de vitaminas y minerales 3 o más días.',
-          'de': 'Erreiche an 3 oder mehr Tagen breite Vitamin- und Mineralstoffabdeckung.',
+          'pl':
+              'Osiągnij szerokie pokrycie witamin i minerałów przez 3 lub więcej dni.',
+          'nl':
+              'Bereik brede vitamine- en mineralendekking op 3 of meer dagen.',
+          'es':
+              'Alcanza amplia cobertura de vitaminas y minerales 3 o más días.',
+          'de':
+              'Erreiche an 3 oder mehr Tagen breite Vitamin- und Mineralstoffabdeckung.',
         });
       case 'hydration_rhythm':
         return _t({
@@ -6226,7 +6901,8 @@ class AppLocalizations {
             'pl': 'Zeskanuj co najmniej jeden posiłek przez 3 kolejne dni.',
             'nl': 'Scan minstens één maaltijd op 3 opeenvolgende dagen.',
             'es': 'Escanea al menos una comida durante 3 días seguidos.',
-            'de': 'Scanne an 3 aufeinanderfolgenden Tagen mindestens eine Mahlzeit.',
+            'de':
+                'Scanne an 3 aufeinanderfolgenden Tagen mindestens eine Mahlzeit.',
           }),
         );
       case 'hitGoal5Days':
@@ -6242,7 +6918,8 @@ class AppLocalizations {
             'en': 'Stay within 10% of your calorie goal for 5 days.',
             'pl': 'Utrzymaj się w granicach 10% celu kalorycznego przez 5 dni.',
             'nl': 'Blijf 5 dagen binnen 10% van je caloriedoel.',
-            'es': 'Mantente dentro del 10% de tu objetivo de calorías durante 5 días.',
+            'es':
+                'Mantente dentro del 10% de tu objetivo de calorías durante 5 días.',
             'de': 'Bleibe an 5 Tagen innerhalb von 10 % deines Kalorienziels.',
           }),
         );
@@ -6308,9 +6985,11 @@ class AppLocalizations {
           }),
           howTo: _t({
             'en': 'Keep all meals under GL 20 for 3 days.',
-            'pl': 'Utrzymaj wszystkie posiłki poniżej ładunku glikemicznego 20 przez 3 dni.',
+            'pl':
+                'Utrzymaj wszystkie posiłki poniżej ładunku glikemicznego 20 przez 3 dni.',
             'nl': 'Houd alle maaltijden onder GL 20 gedurende 3 dagen.',
-            'es': 'Mantén todas las comidas por debajo de CG 20 durante 3 días.',
+            'es':
+                'Mantén todas las comidas por debajo de CG 20 durante 3 días.',
             'de': 'Halte alle Mahlzeiten an 3 Tagen unter GL 20.',
           }),
         );
@@ -6339,10 +7018,14 @@ class AppLocalizations {
 
   String get noFoodLoggedTodayLong => _t({
         'en': 'No food logged yet today.\nScan or add food to start tracking!',
-        'pl': 'Nie zapisano dziś jeszcze jedzenia.\nZeskanuj lub dodaj jedzenie, aby zacząć śledzić!',
-        'nl': 'Nog geen eten gelogd vandaag.\nScan of voeg eten toe om te beginnen met bijhouden!',
-        'es': 'Aún no has registrado comida hoy.\n¡Escanea o añade comida para empezar a registrar!',
-        'de': 'Heute noch kein Essen geloggt.\nScanne oder füge Essen hinzu, um zu starten!',
+        'pl':
+            'Nie zapisano dziś jeszcze jedzenia.\nZeskanuj lub dodaj jedzenie, aby zacząć śledzić!',
+        'nl':
+            'Nog geen eten gelogd vandaag.\nScan of voeg eten toe om te beginnen met bijhouden!',
+        'es':
+            'Aún no has registrado comida hoy.\n¡Escanea o añade comida para empezar a registrar!',
+        'de':
+            'Heute noch kein Essen geloggt.\nScanne oder füge Essen hinzu, um zu starten!',
       });
 
   String get smartRecommendations => _t({
@@ -6479,15 +7162,80 @@ class AppLocalizations {
     final i = (month - 1) % 12;
     switch (_lang) {
       case 'pl':
-        return const ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'][i];
+        return const [
+          'Sty',
+          'Lut',
+          'Mar',
+          'Kwi',
+          'Maj',
+          'Cze',
+          'Lip',
+          'Sie',
+          'Wrz',
+          'Paź',
+          'Lis',
+          'Gru'
+        ][i];
       case 'nl':
-        return const ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'][i];
+        return const [
+          'jan',
+          'feb',
+          'mrt',
+          'apr',
+          'mei',
+          'jun',
+          'jul',
+          'aug',
+          'sep',
+          'okt',
+          'nov',
+          'dec'
+        ][i];
       case 'es':
-        return const ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][i];
+        return const [
+          'Ene',
+          'Feb',
+          'Mar',
+          'Abr',
+          'May',
+          'Jun',
+          'Jul',
+          'Ago',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dic'
+        ][i];
       case 'de':
-        return const ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'][i];
+        return const [
+          'Jan',
+          'Feb',
+          'Mär',
+          'Apr',
+          'Mai',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Okt',
+          'Nov',
+          'Dez'
+        ][i];
       default:
-        return const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i];
+        return const [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec'
+        ][i];
     }
   }
 
@@ -6538,50 +7286,107 @@ class AppLocalizations {
     final i = (weekday - 1) % 7;
     switch (_lang) {
       case 'pl':
-        return const ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela'][i];
+        return const [
+          'Poniedziałek',
+          'Wtorek',
+          'Środa',
+          'Czwartek',
+          'Piątek',
+          'Sobota',
+          'Niedziela'
+        ][i];
       case 'nl':
-        return const ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'][i];
+        return const [
+          'Maandag',
+          'Dinsdag',
+          'Woensdag',
+          'Donderdag',
+          'Vrijdag',
+          'Zaterdag',
+          'Zondag'
+        ][i];
       case 'es':
-        return const ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][i];
+        return const [
+          'Lunes',
+          'Martes',
+          'Miércoles',
+          'Jueves',
+          'Viernes',
+          'Sábado',
+          'Domingo'
+        ][i];
       case 'de':
-        return const ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][i];
+        return const [
+          'Montag',
+          'Dienstag',
+          'Mittwoch',
+          'Donnerstag',
+          'Freitag',
+          'Samstag',
+          'Sonntag'
+        ][i];
       default:
-        return const ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][i];
+        return const [
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday',
+          'Sunday'
+        ][i];
     }
   }
 
   // ── Voice / manual / recipes errors ──
 
   String get voiceErrNoMatch => _t({
-        'en': 'I didn\'t catch that. Tap the mic and clearly say the food and amount, e.g. "a banana" or "200 grams of chicken".',
-        'pl': 'Nie zrozumiałem. Dotknij mikrofonu i wyraźnie powiedz jedzenie i ilość, np. „banan" lub „200 gramów kurczaka".',
-        'nl': 'Ik verstond dat niet. Tik op de microfoon en zeg duidelijk het eten en de hoeveelheid, bijv. "een banaan" of "200 gram kip".',
-        'es': 'No lo entendí. Toca el micrófono y di claramente la comida y la cantidad, p. ej. "un plátano" o "200 gramos de pollo".',
-        'de': 'Das habe ich nicht verstanden. Tippe auf das Mikrofon und sage Essen und Menge deutlich, z. B. "eine Banane" oder "200 Gramm Hähnchen".',
+        'en':
+            'I didn\'t catch that. Tap the mic and clearly say the food and amount, e.g. "a banana" or "200 grams of chicken".',
+        'pl':
+            'Nie zrozumiałem. Dotknij mikrofonu i wyraźnie powiedz jedzenie i ilość, np. „banan" lub „200 gramów kurczaka".',
+        'nl':
+            'Ik verstond dat niet. Tik op de microfoon en zeg duidelijk het eten en de hoeveelheid, bijv. "een banaan" of "200 gram kip".',
+        'es':
+            'No lo entendí. Toca el micrófono y di claramente la comida y la cantidad, p. ej. "un plátano" o "200 gramos de pollo".',
+        'de':
+            'Das habe ich nicht verstanden. Tippe auf das Mikrofon und sage Essen und Menge deutlich, z. B. "eine Banane" oder "200 Gramm Hähnchen".',
       });
 
   String get voiceErrPermission => _t({
-        'en': 'Microphone or speech permission is off. Enable it in your phone settings to use voice logging.',
-        'pl': 'Uprawnienia mikrofonu lub mowy są wyłączone. Włącz je w ustawieniach telefonu, aby korzystać z logowania głosowego.',
-        'nl': 'Microfoon- of spraaktoestemming staat uit. Schakel deze in bij je telefooninstellingen om spraakloggen te gebruiken.',
-        'es': 'El permiso de micrófono o voz está desactivado. Actívalo en los ajustes del teléfono para usar el registro por voz.',
-        'de': 'Mikrofon- oder Sprachberechtigung ist aus. Aktiviere sie in den Telefoneinstellungen, um die Sprachaufzeichnung zu nutzen.',
+        'en':
+            'Microphone or speech permission is off. Enable it in your phone settings to use voice logging.',
+        'pl':
+            'Uprawnienia mikrofonu lub mowy są wyłączone. Włącz je w ustawieniach telefonu, aby korzystać z logowania głosowego.',
+        'nl':
+            'Microfoon- of spraaktoestemming staat uit. Schakel deze in bij je telefooninstellingen om spraakloggen te gebruiken.',
+        'es':
+            'El permiso de micrófono o voz está desactivado. Actívalo en los ajustes del teléfono para usar el registro por voz.',
+        'de':
+            'Mikrofon- oder Sprachberechtigung ist aus. Aktiviere sie in den Telefoneinstellungen, um die Sprachaufzeichnung zu nutzen.',
       });
 
   String get voiceErrNetwork => _t({
-        'en': 'Voice recognition needs a connection right now. Check your network and try again.',
-        'pl': 'Rozpoznawanie mowy wymaga teraz połączenia. Sprawdź sieć i spróbuj ponownie.',
-        'nl': 'Spraakherkenning heeft nu een verbinding nodig. Controleer je netwerk en probeer opnieuw.',
-        'es': 'El reconocimiento de voz necesita conexión ahora. Revisa tu red e inténtalo de nuevo.',
-        'de': 'Die Spracherkennung braucht gerade eine Verbindung. Prüfe dein Netzwerk und versuche es erneut.',
+        'en':
+            'Voice recognition needs a connection right now. Check your network and try again.',
+        'pl':
+            'Rozpoznawanie mowy wymaga teraz połączenia. Sprawdź sieć i spróbuj ponownie.',
+        'nl':
+            'Spraakherkenning heeft nu een verbinding nodig. Controleer je netwerk en probeer opnieuw.',
+        'es':
+            'El reconocimiento de voz necesita conexión ahora. Revisa tu red e inténtalo de nuevo.',
+        'de':
+            'Die Spracherkennung braucht gerade eine Verbindung. Prüfe dein Netzwerk und versuche es erneut.',
       });
 
   String get voiceErrBusy => _t({
         'en': 'The microphone is busy. Wait a moment, then try again.',
         'pl': 'Mikrofon jest zajęty. Poczekaj chwilę i spróbuj ponownie.',
         'nl': 'De microfoon is bezig. Wacht even en probeer opnieuw.',
-        'es': 'El micrófono está ocupado. Espera un momento e inténtalo de nuevo.',
-        'de': 'Das Mikrofon ist belegt. Warte einen Moment und versuche es erneut.',
+        'es':
+            'El micrófono está ocupado. Espera un momento e inténtalo de nuevo.',
+        'de':
+            'Das Mikrofon ist belegt. Warte einen Moment und versuche es erneut.',
       });
 
   String get voiceErrGeneric => _t({
@@ -6589,7 +7394,8 @@ class AppLocalizations {
         'pl': 'Nie udało się przetworzyć tego dźwięku. Spróbuj ponownie.',
         'nl': 'Ik kon die audio niet verwerken. Probeer het opnieuw.',
         'es': 'No pude procesar ese audio. Inténtalo de nuevo.',
-        'de': 'Ich konnte dieses Audio nicht verarbeiten. Bitte versuche es erneut.',
+        'de':
+            'Ich konnte dieses Audio nicht verarbeiten. Bitte versuche es erneut.',
       });
 
   String get voiceRecognitionUnavailable => _t({
@@ -6604,7 +7410,8 @@ class AppLocalizations {
         'en': 'Speech recognition is not available on this device.',
         'pl': 'Rozpoznawanie mowy nie jest dostępne na tym urządzeniu.',
         'nl': 'Spraakherkenning is niet beschikbaar op dit apparaat.',
-        'es': 'El reconocimiento de voz no está disponible en este dispositivo.',
+        'es':
+            'El reconocimiento de voz no está disponible en este dispositivo.',
         'de': 'Die Spracherkennung ist auf diesem Gerät nicht verfügbar.',
       });
 
@@ -6686,9 +7493,11 @@ class AppLocalizations {
 
   String get voicePermissionOffHint => _t({
         'en': 'Voice access is off. Tap the mic for help',
-        'pl': 'Dostęp głosowy jest wyłączony. Dotknij mikrofonu, aby uzyskać pomoc',
+        'pl':
+            'Dostęp głosowy jest wyłączony. Dotknij mikrofonu, aby uzyskać pomoc',
         'nl': 'Spraaktoegang staat uit. Tik op de microfoon voor hulp',
-        'es': 'El acceso por voz está desactivado. Toca el micrófono para obtener ayuda',
+        'es':
+            'El acceso por voz está desactivado. Toca el micrófono para obtener ayuda',
         'de': 'Sprachzugriff ist aus. Tippe auf das Mikrofon für Hilfe',
       });
 
@@ -6727,19 +7536,28 @@ class AppLocalizations {
       });
 
   String get barcodeProductNotFound => _t({
-        'en': 'Product not found in the OpenFoodFacts database. Try adding it manually.',
-        'pl': 'Nie znaleziono produktu w bazie OpenFoodFacts. Spróbuj dodać go ręcznie.',
-        'nl': 'Product niet gevonden in de OpenFoodFacts-database. Voeg het handmatig toe.',
-        'es': 'Producto no encontrado en la base de datos de OpenFoodFacts. Intenta añadirlo manualmente.',
-        'de': 'Produkt nicht in der OpenFoodFacts-Datenbank gefunden. Füge es manuell hinzu.',
+        'en':
+            'Product not found in the OpenFoodFacts database. Try adding it manually.',
+        'pl':
+            'Nie znaleziono produktu w bazie OpenFoodFacts. Spróbuj dodać go ręcznie.',
+        'nl':
+            'Product niet gevonden in de OpenFoodFacts-database. Voeg het handmatig toe.',
+        'es':
+            'Producto no encontrado en la base de datos de OpenFoodFacts. Intenta añadirlo manualmente.',
+        'de':
+            'Produkt nicht in der OpenFoodFacts-Datenbank gefunden. Füge es manuell hinzu.',
       });
 
   String get recipeLoadError => _t({
         'en': 'Couldn\'t load recipes. Pull down to refresh or try again.',
-        'pl': 'Nie udało się załadować przepisów. Pociągnij, aby odświeżyć, lub spróbuj ponownie.',
-        'nl': 'Kon recepten niet laden. Trek omlaag om te vernieuwen of probeer opnieuw.',
-        'es': 'No se pudieron cargar las recetas. Desliza para actualizar o inténtalo de nuevo.',
-        'de': 'Rezepte konnten nicht geladen werden. Zum Aktualisieren nach unten ziehen oder erneut versuchen.',
+        'pl':
+            'Nie udało się załadować przepisów. Pociągnij, aby odświeżyć, lub spróbuj ponownie.',
+        'nl':
+            'Kon recepten niet laden. Trek omlaag om te vernieuwen of probeer opnieuw.',
+        'es':
+            'No se pudieron cargar las recetas. Desliza para actualizar o inténtalo de nuevo.',
+        'de':
+            'Rezepte konnten nicht geladen werden. Zum Aktualisieren nach unten ziehen oder erneut versuchen.',
       });
 
   // ── Smart grocery / pantry ──
@@ -6753,11 +7571,16 @@ class AppLocalizations {
       });
 
   String get smartGrocerySubtitle => _t({
-        'en': 'Track what you have at home. Marking groceries as bought fills your pantry; logging food uses it up.',
-        'pl': 'Śledź, co masz w domu. Oznaczanie zakupów jako kupione uzupełnia spiżarnię; logowanie jedzenia ją zużywa.',
-        'nl': 'Houd bij wat je in huis hebt. Boodschappen als gekocht markeren vult je voorraad; eten loggen gebruikt het op.',
-        'es': 'Controla lo que tienes en casa. Marcar la compra como comprada llena tu despensa; registrar comida la consume.',
-        'de': 'Behalte im Blick, was du zu Hause hast. Als gekauft markierte Einkäufe füllen den Vorrat; Essen loggen verbraucht ihn.',
+        'en':
+            'Track what you have at home. Marking groceries as bought fills your pantry; logging food uses it up.',
+        'pl':
+            'Śledź, co masz w domu. Oznaczanie zakupów jako kupione uzupełnia spiżarnię; logowanie jedzenia ją zużywa.',
+        'nl':
+            'Houd bij wat je in huis hebt. Boodschappen als gekocht markeren vult je voorraad; eten loggen gebruikt het op.',
+        'es':
+            'Controla lo que tienes en casa. Marcar la compra como comprada llena tu despensa; registrar comida la consume.',
+        'de':
+            'Behalte im Blick, was du zu Hause hast. Als gekauft markierte Einkäufe füllen den Vorrat; Essen loggen verbraucht ihn.',
       });
 
   String get pantrySectionTitle => _t({
@@ -6769,11 +7592,16 @@ class AppLocalizations {
       });
 
   String get pantryEmptyHint => _t({
-        'en': 'Nothing here yet. Mark grocery items as bought to fill your pantry.',
-        'pl': 'Jeszcze nic tu nie ma. Oznacz produkty jako kupione, aby uzupełnić spiżarnię.',
-        'nl': 'Nog niets hier. Markeer boodschappen als gekocht om je voorraad te vullen.',
-        'es': 'Aún no hay nada. Marca productos como comprados para llenar tu despensa.',
-        'de': 'Noch nichts hier. Markiere Einkäufe als gekauft, um deinen Vorrat zu füllen.',
+        'en':
+            'Nothing here yet. Mark grocery items as bought to fill your pantry.',
+        'pl':
+            'Jeszcze nic tu nie ma. Oznacz produkty jako kupione, aby uzupełnić spiżarnię.',
+        'nl':
+            'Nog niets hier. Markeer boodschappen als gekocht om je voorraad te vullen.',
+        'es':
+            'Aún no hay nada. Marca productos como comprados para llenar tu despensa.',
+        'de':
+            'Noch nichts hier. Markiere Einkäufe als gekauft, um deinen Vorrat zu füllen.',
       });
 
   String pantryItemsCount(int n) => _t({
@@ -6859,11 +7687,16 @@ class AppLocalizations {
       });
 
   String get foodGroupBalanceSubtitle => _t({
-        'en': 'See how your fruit, veg, protein and more compare to daily targets.',
-        'pl': 'Zobacz, jak owoce, warzywa, białko i inne wypadają wobec dziennych celów.',
-        'nl': 'Zie hoe je fruit, groente, eiwit en meer zich verhouden tot dagdoelen.',
-        'es': 'Mira cómo tus frutas, verduras, proteína y más se comparan con los objetivos diarios.',
-        'de': 'Sieh, wie Obst, Gemüse, Protein und mehr im Vergleich zu den Tageszielen stehen.',
+        'en':
+            'See how your fruit, veg, protein and more compare to daily targets.',
+        'pl':
+            'Zobacz, jak owoce, warzywa, białko i inne wypadają wobec dziennych celów.',
+        'nl':
+            'Zie hoe je fruit, groente, eiwit en meer zich verhouden tot dagdoelen.',
+        'es':
+            'Mira cómo tus frutas, verduras, proteína y más se comparan con los objetivos diarios.',
+        'de':
+            'Sieh, wie Obst, Gemüse, Protein und mehr im Vergleich zu den Tageszielen stehen.',
       });
 
   String get periodToday => _t({
@@ -6892,10 +7725,13 @@ class AppLocalizations {
 
   String get foodGroupGuidanceNote => _t({
         'en': 'General healthy-eating guidance, not medical advice.',
-        'pl': 'Ogólne wskazówki dotyczące zdrowego odżywiania, nie porada medyczna.',
+        'pl':
+            'Ogólne wskazówki dotyczące zdrowego odżywiania, nie porada medyczna.',
         'nl': 'Algemene richtlijn voor gezond eten, geen medisch advies.',
-        'es': 'Orientación general de alimentación saludable, no consejo médico.',
-        'de': 'Allgemeine Empfehlung zur gesunden Ernährung, kein medizinischer Rat.',
+        'es':
+            'Orientación general de alimentación saludable, no consejo médico.',
+        'de':
+            'Allgemeine Empfehlung zur gesunden Ernährung, kein medizinischer Rat.',
       });
 
   /// Localized name of a [FoodGroup] (id = FoodGroup.name).
@@ -7054,18 +7890,30 @@ class AppLocalizations {
 
   String get couldNotReadReceipt => _t({
         'en': 'Could not read the receipt. Try a clearer, well-lit photo.',
-        'pl': 'Nie udało się odczytać paragonu. Spróbuj wyraźniejszego, dobrze oświetlonego zdjęcia.',
-        'nl': 'Kon de bon niet lezen. Probeer een scherpere, goed verlichte foto.',
-        'es': 'No se pudo leer el recibo. Prueba una foto más nítida y bien iluminada.',
-        'de': 'Kassenbon konnte nicht gelesen werden. Versuche ein schärferes, gut beleuchtetes Foto.',
+        'pl':
+            'Nie udało się odczytać paragonu. Spróbuj wyraźniejszego, dobrze oświetlonego zdjęcia.',
+        'nl':
+            'Kon de bon niet lezen. Probeer een scherpere, goed verlichte foto.',
+        'es':
+            'No se pudo leer el recibo. Prueba una foto más nítida y bien iluminada.',
+        'de':
+            'Kassenbon konnte nicht gelesen werden. Versuche ein schärferes, gut beleuchtetes Foto.',
       });
 
   String addedNToHomeStock(int n) => _t({
-        'en': n == 1 ? '$n item added to your home stock' : '$n items added to your home stock',
+        'en': n == 1
+            ? '$n item added to your home stock'
+            : '$n items added to your home stock',
         'pl': '$n dodano do zapasów w domu',
-        'nl': n == 1 ? '$n item toegevoegd aan je voorraad' : '$n items toegevoegd aan je voorraad',
-        'es': n == 1 ? '$n artículo añadido a tu despensa' : '$n artículos añadidos a tu despensa',
-        'de': n == 1 ? '$n Artikel zum Vorrat hinzugefügt' : '$n Artikel zum Vorrat hinzugefügt',
+        'nl': n == 1
+            ? '$n item toegevoegd aan je voorraad'
+            : '$n items toegevoegd aan je voorraad',
+        'es': n == 1
+            ? '$n artículo añadido a tu despensa'
+            : '$n artículos añadidos a tu despensa',
+        'de': n == 1
+            ? '$n Artikel zum Vorrat hinzugefügt'
+            : '$n Artikel zum Vorrat hinzugefügt',
       });
 
   String get removeFromHomeIngredients => _t({
@@ -7077,11 +7925,19 @@ class AppLocalizations {
       });
 
   String homeIngredientsRemoved(int n) => _t({
-        'en': n == 1 ? '$n ingredient used from your home stock' : '$n ingredients used from your home stock',
+        'en': n == 1
+            ? '$n ingredient used from your home stock'
+            : '$n ingredients used from your home stock',
         'pl': '$n składników zużyto z zapasów w domu',
-        'nl': n == 1 ? '$n ingrediënt gebruikt uit je voorraad' : '$n ingrediënten gebruikt uit je voorraad',
-        'es': n == 1 ? '$n ingrediente usado de tu despensa' : '$n ingredientes usados de tu despensa',
-        'de': n == 1 ? '$n Zutat aus dem Vorrat verbraucht' : '$n Zutaten aus dem Vorrat verbraucht',
+        'nl': n == 1
+            ? '$n ingrediënt gebruikt uit je voorraad'
+            : '$n ingrediënten gebruikt uit je voorraad',
+        'es': n == 1
+            ? '$n ingrediente usado de tu despensa'
+            : '$n ingredientes usados de tu despensa',
+        'de': n == 1
+            ? '$n Zutat aus dem Vorrat verbraucht'
+            : '$n Zutaten aus dem Vorrat verbraucht',
       });
 
   String get noHomeIngredientsToRemove => _t({
@@ -7206,9 +8062,11 @@ class AppLocalizations {
 
   String get groceryScanMealFirst => _t({
         'en': 'Scan a meal first to get personalised suggestions.',
-        'pl': 'Najpierw zeskanuj posiłek, aby otrzymać spersonalizowane sugestie.',
+        'pl':
+            'Najpierw zeskanuj posiłek, aby otrzymać spersonalizowane sugestie.',
         'nl': 'Scan eerst een maaltijd voor persoonlijke suggesties.',
-        'es': 'Escanea una comida primero para recibir sugerencias personalizadas.',
+        'es':
+            'Escanea una comida primero para recibir sugerencias personalizadas.',
         'de': 'Scanne zuerst eine Mahlzeit für personalisierte Vorschläge.',
       });
 
@@ -7221,19 +8079,28 @@ class AppLocalizations {
       });
 
   String groceryPhotoScanComplete(int added, int updated, String found) => _t({
-        'en': 'Photo scan complete: +$added new, $updated updated. Found: $found',
-        'pl': 'Skan zdjęcia gotowy: +$added nowych, $updated zaktualizowanych. Znaleziono: $found',
-        'nl': 'Fotoscan voltooid: +$added nieuw, $updated bijgewerkt. Gevonden: $found',
-        'es': 'Escaneo de foto completo: +$added nuevos, $updated actualizados. Encontrado: $found',
-        'de': 'Fotoscan abgeschlossen: +$added neu, $updated aktualisiert. Gefunden: $found',
+        'en':
+            'Photo scan complete: +$added new, $updated updated. Found: $found',
+        'pl':
+            'Skan zdjęcia gotowy: +$added nowych, $updated zaktualizowanych. Znaleziono: $found',
+        'nl':
+            'Fotoscan voltooid: +$added nieuw, $updated bijgewerkt. Gevonden: $found',
+        'es':
+            'Escaneo de foto completo: +$added nuevos, $updated actualizados. Encontrado: $found',
+        'de':
+            'Fotoscan abgeschlossen: +$added neu, $updated aktualisiert. Gefunden: $found',
       });
 
   String get noRecipesForSlot => _t({
-        'en': 'No recipes match this slot. Try adjusting your goal or dietary filters.',
-        'pl': 'Brak przepisów pasujących do tego miejsca. Zmień cel lub filtry dietetyczne.',
+        'en':
+            'No recipes match this slot. Try adjusting your goal or dietary filters.',
+        'pl':
+            'Brak przepisów pasujących do tego miejsca. Zmień cel lub filtry dietetyczne.',
         'nl': 'Geen recepten voor dit vak. Pas je doel of dieetfilters aan.',
-        'es': 'No hay recetas para este espacio. Ajusta tu objetivo o filtros dietéticos.',
-        'de': 'Keine passenden Rezepte für diesen Slot. Passe dein Ziel oder deine Diätfilter an.',
+        'es':
+            'No hay recetas para este espacio. Ajusta tu objetivo o filtros dietéticos.',
+        'de':
+            'Keine passenden Rezepte für diesen Slot. Passe dein Ziel oder deine Diätfilter an.',
       });
 
   // ── Barcode scanner (native UI) ──
@@ -7263,11 +8130,16 @@ class AppLocalizations {
       });
 
   String get barcodeNotFoundBody => _t({
-        'en': 'No nutrition data found for this barcode. Try a different product.',
-        'pl': 'Nie znaleziono danych odżywczych dla tego kodu. Spróbuj innego produktu.',
-        'nl': 'Geen voedingswaarden gevonden voor deze streepjescode. Probeer een ander product.',
-        'es': 'No se encontraron datos nutricionales para este código. Prueba con otro producto.',
-        'de': 'Keine Nährwertdaten für diesen Barcode gefunden. Versuche ein anderes Produkt.',
+        'en':
+            'No nutrition data found for this barcode. Try a different product.',
+        'pl':
+            'Nie znaleziono danych odżywczych dla tego kodu. Spróbuj innego produktu.',
+        'nl':
+            'Geen voedingswaarden gevonden voor deze streepjescode. Probeer een ander product.',
+        'es':
+            'No se encontraron datos nutricionales para este código. Prueba con otro producto.',
+        'de':
+            'Keine Nährwertdaten für diesen Barcode gefunden. Versuche ein anderes Produkt.',
       });
 
   String get barcodeScanAgain => _t({
@@ -7287,11 +8159,16 @@ class AppLocalizations {
       });
 
   String get deleteAccountConfirmBody => _t({
-        'en': 'This will permanently delete your account and all synced data. Local data on this device will be kept.\n\nThis cannot be undone.',
-        'pl': 'Spowoduje to trwałe usunięcie konta i wszystkich zsynchronizowanych danych. Dane lokalne na tym urządzeniu zostaną zachowane.\n\nTej operacji nie można cofnąć.',
-        'nl': 'Hiermee worden je account en alle gesynchroniseerde gegevens permanent verwijderd. Lokale gegevens op dit apparaat blijven behouden.\n\nDit kan niet ongedaan worden gemaakt.',
-        'es': 'Esto eliminará permanentemente tu cuenta y todos los datos sincronizados. Los datos locales de este dispositivo se conservarán.\n\nEsto no se puede deshacer.',
-        'de': 'Dadurch werden dein Konto und alle synchronisierten Daten dauerhaft gelöscht. Lokale Daten auf diesem Gerät bleiben erhalten.\n\nDies kann nicht rückgängig gemacht werden.',
+        'en':
+            'This will permanently delete your account and all synced data. Local data on this device will be kept.\n\nThis cannot be undone.',
+        'pl':
+            'Spowoduje to trwałe usunięcie konta i wszystkich zsynchronizowanych danych. Dane lokalne na tym urządzeniu zostaną zachowane.\n\nTej operacji nie można cofnąć.',
+        'nl':
+            'Hiermee worden je account en alle gesynchroniseerde gegevens permanent verwijderd. Lokale gegevens op dit apparaat blijven behouden.\n\nDit kan niet ongedaan worden gemaakt.',
+        'es':
+            'Esto eliminará permanentemente tu cuenta y todos los datos sincronizados. Los datos locales de este dispositivo se conservarán.\n\nEsto no se puede deshacer.',
+        'de':
+            'Dadurch werden dein Konto und alle synchronisierten Daten dauerhaft gelöscht. Lokale Daten auf diesem Gerät bleiben erhalten.\n\nDies kann nicht rückgängig gemacht werden.',
       });
 
   String get continueLabel => _t({
@@ -7359,11 +8236,16 @@ class AppLocalizations {
       });
 
   String get peopleCountHelp => _t({
-        'en': 'Set how many people each planned day cooks for. Grocery amounts are multiplied accordingly.',
-        'pl': 'Ustaw, dla ilu osób gotujesz każdego zaplanowanego dnia. Ilości na liście zakupów zostaną odpowiednio przeliczone.',
-        'nl': 'Stel in voor hoeveel personen je elke geplande dag kookt. De boodschappenhoeveelheden worden dienovereenkomstig vermenigvuldigd.',
-        'es': 'Indica para cuántas personas cocinas cada día planificado. Las cantidades de la compra se multiplican en consecuencia.',
-        'de': 'Lege fest, für wie viele Personen du an jedem geplanten Tag kochst. Die Einkaufsmengen werden entsprechend multipliziert.',
+        'en':
+            'Set how many people each planned day cooks for. Grocery amounts are multiplied accordingly.',
+        'pl':
+            'Ustaw, dla ilu osób gotujesz każdego zaplanowanego dnia. Ilości na liście zakupów zostaną odpowiednio przeliczone.',
+        'nl':
+            'Stel in voor hoeveel personen je elke geplande dag kookt. De boodschappenhoeveelheden worden dienovereenkomstig vermenigvuldigd.',
+        'es':
+            'Indica para cuántas personas cocinas cada día planificado. Las cantidades de la compra se multiplican en consecuencia.',
+        'de':
+            'Lege fest, für wie viele Personen du an jedem geplanten Tag kochst. Die Einkaufsmengen werden entsprechend multipliziert.',
       });
 
   String get setAllDays => _t({
@@ -7508,10 +8390,12 @@ class AppLocalizations {
 
   String get enableMealBolusDesc => _t({
         'en': 'Covers the carbs in a meal using your carb ratios.',
-        'pl': 'Pokrywa węglowodany w posiłku na podstawie Twoich przeliczników.',
+        'pl':
+            'Pokrywa węglowodany w posiłku na podstawie Twoich przeliczników.',
         'nl': 'Dekt de koolhydraten in een maaltijd op basis van je ratio\'s.',
         'es': 'Cubre los carbohidratos de una comida usando tus ratios.',
-        'de': 'Deckt die Kohlenhydrate einer Mahlzeit anhand deiner Faktoren ab.',
+        'de':
+            'Deckt die Kohlenhydrate einer Mahlzeit anhand deiner Faktoren ab.',
       });
 
   String get enableCorrectionDose => _t({
@@ -7708,10 +8592,13 @@ class AppLocalizations {
 
   String get missingComponent => _t({
         'en': 'at least one calculator component (meal bolus or correction)',
-        'pl': 'co najmniej jeden składnik kalkulatora (bolus na posiłek lub korekcja)',
+        'pl':
+            'co najmniej jeden składnik kalkulatora (bolus na posiłek lub korekcja)',
         'nl': 'ten minste één rekenonderdeel (maaltijdbolus of correctie)',
-        'es': 'al menos un componente de la calculadora (bolo de comida o corrección)',
-        'de': 'mindestens eine Rechner-Komponente (Mahlzeitenbolus oder Korrektur)',
+        'es':
+            'al menos un componente de la calculadora (bolo de comida o corrección)',
+        'de':
+            'mindestens eine Rechner-Komponente (Mahlzeitenbolus oder Korrektur)',
       });
 
   String get missingMaxBolus => _t({
@@ -7796,11 +8683,16 @@ class AppLocalizations {
       });
 
   String reviewKeepsSafe(int days) => _t({
-        'en': 'Reviewing your settings regularly keeps the calculator safe. Confirming marks them current for the next $days days.',
-        'pl': 'Regularny przegląd ustawień utrzymuje bezpieczeństwo kalkulatora. Potwierdzenie oznacza je jako aktualne na kolejne $days dni.',
-        'nl': 'Door je instellingen regelmatig te controleren blijft de rekenmodule veilig. Bevestigen markeert ze als actueel voor de komende $days dagen.',
-        'es': 'Revisar tus ajustes con regularidad mantiene la calculadora segura. Confirmar los marca como vigentes durante los próximos $days días.',
-        'de': 'Regelmäßiges Überprüfen deiner Einstellungen hält den Rechner sicher. Mit dem Bestätigen gelten sie für die nächsten $days Tage als aktuell.',
+        'en':
+            'Reviewing your settings regularly keeps the calculator safe. Confirming marks them current for the next $days days.',
+        'pl':
+            'Regularny przegląd ustawień utrzymuje bezpieczeństwo kalkulatora. Potwierdzenie oznacza je jako aktualne na kolejne $days dni.',
+        'nl':
+            'Door je instellingen regelmatig te controleren blijft de rekenmodule veilig. Bevestigen markeert ze als actueel voor de komende $days dagen.',
+        'es':
+            'Revisar tus ajustes con regularidad mantiene la calculadora segura. Confirmar los marca como vigentes durante los próximos $days días.',
+        'de':
+            'Regelmäßiges Überprüfen deiner Einstellungen hält den Rechner sicher. Mit dem Bestätigen gelten sie für die nächsten $days Tage als aktuell.',
       });
 
   String get reviewStatusCurrent => _t({
@@ -7814,9 +8706,11 @@ class AppLocalizations {
   String get reviewStatusCurrentDetail => _t({
         'en': 'Your settings are reviewed and the calculator is available.',
         'pl': 'Twoje ustawienia są sprawdzone, a kalkulator jest dostępny.',
-        'nl': 'Je instellingen zijn gecontroleerd en de rekenmodule is beschikbaar.',
+        'nl':
+            'Je instellingen zijn gecontroleerd en de rekenmodule is beschikbaar.',
         'es': 'Tus ajustes están revisados y la calculadora está disponible.',
-        'de': 'Deine Einstellungen sind überprüft und der Rechner ist verfügbar.',
+        'de':
+            'Deine Einstellungen sind überprüft und der Rechner ist verfügbar.',
       });
 
   String get reviewStatusSnoozed => _t({
@@ -7828,11 +8722,16 @@ class AppLocalizations {
       });
 
   String get reviewStatusSnoozedDetail => _t({
-        'en': 'A review is due. The reminder is snoozed, but the calculator stays disabled until you review.',
-        'pl': 'Przegląd jest wymagany. Przypomnienie jest odłożone, ale kalkulator pozostaje wyłączony do czasu przeglądu.',
-        'nl': 'Een controle is nodig. De herinnering is uitgesteld, maar de rekenmodule blijft uitgeschakeld tot je controleert.',
-        'es': 'Hay una revisión pendiente. El recordatorio está pospuesto, pero la calculadora permanece desactivada hasta que la revises.',
-        'de': 'Eine Überprüfung ist fällig. Die Erinnerung ist verschoben, aber der Rechner bleibt deaktiviert, bis du überprüfst.',
+        'en':
+            'A review is due. The reminder is snoozed, but the calculator stays disabled until you review.',
+        'pl':
+            'Przegląd jest wymagany. Przypomnienie jest odłożone, ale kalkulator pozostaje wyłączony do czasu przeglądu.',
+        'nl':
+            'Een controle is nodig. De herinnering is uitgesteld, maar de rekenmodule blijft uitgeschakeld tot je controleert.',
+        'es':
+            'Hay una revisión pendiente. El recordatorio está pospuesto, pero la calculadora permanece desactivada hasta que la revises.',
+        'de':
+            'Eine Überprüfung ist fällig. Die Erinnerung ist verschoben, aber der Rechner bleibt deaktiviert, bis du überprüfst.',
       });
 
   String get reviewStatusOverdue => _t({
@@ -7844,11 +8743,16 @@ class AppLocalizations {
       });
 
   String get reviewStatusOverdueDetail => _t({
-        'en': 'Your settings review is overdue. Bolus calculations are disabled until you review and confirm.',
-        'pl': 'Przegląd ustawień jest zaległy. Obliczenia bolusa są wyłączone do czasu przeglądu i potwierdzenia.',
-        'nl': 'Je instellingencontrole is te laat. Bolusberekeningen zijn uitgeschakeld tot je controleert en bevestigt.',
-        'es': 'La revisión de tus ajustes está vencida. Los cálculos de bolo están desactivados hasta que revises y confirmes.',
-        'de': 'Die Überprüfung deiner Einstellungen ist überfällig. Bolusberechnungen sind deaktiviert, bis du überprüfst und bestätigst.',
+        'en':
+            'Your settings review is overdue. Bolus calculations are disabled until you review and confirm.',
+        'pl':
+            'Przegląd ustawień jest zaległy. Obliczenia bolusa są wyłączone do czasu przeglądu i potwierdzenia.',
+        'nl':
+            'Je instellingencontrole is te laat. Bolusberekeningen zijn uitgeschakeld tot je controleert en bevestigt.',
+        'es':
+            'La revisión de tus ajustes está vencida. Los cálculos de bolo están desactivados hasta que revises y confirmes.',
+        'de':
+            'Die Überprüfung deiner Einstellungen ist überfällig. Bolusberechnungen sind deaktiviert, bis du überprüfst und bestätigst.',
       });
 
   String get reviewStatusNotCompleted => _t({
@@ -7861,10 +8765,14 @@ class AppLocalizations {
 
   String get reviewStatusNotCompletedDetail => _t({
         'en': 'Complete the insulin settings survey to use the calculator.',
-        'pl': 'Wypełnij ankietę ustawień insuliny, aby korzystać z kalkulatora.',
-        'nl': 'Vul de vragenlijst voor insuline-instellingen in om de rekenmodule te gebruiken.',
-        'es': 'Completa el cuestionario de ajustes de insulina para usar la calculadora.',
-        'de': 'Fülle den Fragebogen zu Insulineinstellungen aus, um den Rechner zu nutzen.',
+        'pl':
+            'Wypełnij ankietę ustawień insuliny, aby korzystać z kalkulatora.',
+        'nl':
+            'Vul de vragenlijst voor insuline-instellingen in om de rekenmodule te gebruiken.',
+        'es':
+            'Completa el cuestionario de ajustes de insulina para usar la calculadora.',
+        'de':
+            'Fülle den Fragebogen zu Insulineinstellungen aus, um den Rechner zu nutzen.',
       });
 
   String reviewStatusLabel(String label) => _t({
@@ -7884,11 +8792,16 @@ class AppLocalizations {
       });
 
   String get bolusDisabledUntilReview => _t({
-        'en': 'For safety, the bolus calculator is disabled until you review and confirm your insulin settings.',
-        'pl': 'Ze względów bezpieczeństwa kalkulator bolusa jest wyłączony do czasu przeglądu i potwierdzenia ustawień insuliny.',
-        'nl': 'Voor de veiligheid is de bolusrekenmodule uitgeschakeld tot je je insuline-instellingen controleert en bevestigt.',
-        'es': 'Por seguridad, la calculadora de bolo está desactivada hasta que revises y confirmes tus ajustes de insulina.',
-        'de': 'Aus Sicherheitsgründen ist der Bolusrechner deaktiviert, bis du deine Insulineinstellungen überprüfst und bestätigst.',
+        'en':
+            'For safety, the bolus calculator is disabled until you review and confirm your insulin settings.',
+        'pl':
+            'Ze względów bezpieczeństwa kalkulator bolusa jest wyłączony do czasu przeglądu i potwierdzenia ustawień insuliny.',
+        'nl':
+            'Voor de veiligheid is de bolusrekenmodule uitgeschakeld tot je je insuline-instellingen controleert en bevestigt.',
+        'es':
+            'Por seguridad, la calculadora de bolo está desactivada hasta que revises y confirmes tus ajustes de insulina.',
+        'de':
+            'Aus Sicherheitsgründen ist der Bolusrechner deaktiviert, bis du deine Insulineinstellungen überprüfst und bestätigst.',
       });
 
   String get reviewNow => _t({
@@ -7965,11 +8878,16 @@ class AppLocalizations {
       });
 
   String get highRiskFeature => _t({
-        'en': 'High-risk feature. This calculator can suggest insulin doses from your settings. A wrong dose can be dangerous. It is not a medical device and does not replace your care plan.',
-        'pl': 'Funkcja wysokiego ryzyka. Ten kalkulator może sugerować dawki insuliny na podstawie Twoich ustawień. Błędna dawka może być niebezpieczna. To nie jest wyrób medyczny i nie zastępuje Twojego planu leczenia.',
-        'nl': 'Functie met hoog risico. Deze rekenmodule kan insulinedoses voorstellen op basis van je instellingen. Een verkeerde dosis kan gevaarlijk zijn. Het is geen medisch hulpmiddel en vervangt je zorgplan niet.',
-        'es': 'Función de alto riesgo. Esta calculadora puede sugerir dosis de insulina a partir de tus ajustes. Una dosis incorrecta puede ser peligrosa. No es un dispositivo médico y no sustituye tu plan de tratamiento.',
-        'de': 'Hochrisiko-Funktion. Dieser Rechner kann anhand deiner Einstellungen Insulindosen vorschlagen. Eine falsche Dosis kann gefährlich sein. Es ist kein Medizinprodukt und ersetzt nicht deinen Behandlungsplan.',
+        'en':
+            'High-risk feature. This calculator can suggest insulin doses from your settings. A wrong dose can be dangerous. It is not a medical device and does not replace your care plan.',
+        'pl':
+            'Funkcja wysokiego ryzyka. Ten kalkulator może sugerować dawki insuliny na podstawie Twoich ustawień. Błędna dawka może być niebezpieczna. To nie jest wyrób medyczny i nie zastępuje Twojego planu leczenia.',
+        'nl':
+            'Functie met hoog risico. Deze rekenmodule kan insulinedoses voorstellen op basis van je instellingen. Een verkeerde dosis kan gevaarlijk zijn. Het is geen medisch hulpmiddel en vervangt je zorgplan niet.',
+        'es':
+            'Función de alto riesgo. Esta calculadora puede sugerir dosis de insulina a partir de tus ajustes. Una dosis incorrecta puede ser peligrosa. No es un dispositivo médico y no sustituye tu plan de tratamiento.',
+        'de':
+            'Hochrisiko-Funktion. Dieser Rechner kann anhand deiner Einstellungen Insulindosen vorschlagen. Eine falsche Dosis kann gefährlich sein. Es ist kein Medizinprodukt und ersetzt nicht deinen Behandlungsplan.',
       });
 
   // ── Bolus calculator card ──
@@ -8030,11 +8948,16 @@ class AppLocalizations {
       });
 
   String get bolusUnavailableUntilReview => _t({
-        'en': 'Bolus estimate is unavailable until you review and confirm your insulin settings.',
-        'pl': 'Szacowany bolus jest niedostępny do czasu przeglądu i potwierdzenia ustawień insuliny.',
-        'nl': 'Bolusschatting is niet beschikbaar tot je je insuline-instellingen controleert en bevestigt.',
-        'es': 'La estimación de bolo no está disponible hasta que revises y confirmes tus ajustes de insulina.',
-        'de': 'Die Bolusschätzung ist nicht verfügbar, bis du deine Insulineinstellungen überprüfst und bestätigst.',
+        'en':
+            'Bolus estimate is unavailable until you review and confirm your insulin settings.',
+        'pl':
+            'Szacowany bolus jest niedostępny do czasu przeglądu i potwierdzenia ustawień insuliny.',
+        'nl':
+            'Bolusschatting is niet beschikbaar tot je je insuline-instellingen controleert en bevestigt.',
+        'es':
+            'La estimación de bolo no está disponible hasta que revises y confirmes tus ajustes de insulina.',
+        'de':
+            'Die Bolusschätzung ist nicht verfügbar, bis du deine Insulineinstellungen überprüfst und bestätigst.',
       });
 
   String get estimatedBolusLabel => _t({
@@ -8042,7 +8965,8 @@ class AppLocalizations {
         'pl': 'Szacowany bolus na podstawie zapisanych ustawień:',
         'nl': 'Geschatte bolus op basis van je opgeslagen instellingen:',
         'es': 'Bolo estimado según tus ajustes guardados:',
-        'de': 'Geschätzter Bolus basierend auf deinen gespeicherten Einstellungen:',
+        'de':
+            'Geschätzter Bolus basierend auf deinen gespeicherten Einstellungen:',
       });
 
   String bolusUnitsValue(String value) => _t({
@@ -8191,11 +9115,16 @@ class AppLocalizations {
       });
 
   String get enterDoseDesc => _t({
-        'en': 'Enter the dose you actually took. This is used for insulin-on-board calculations and your records.',
-        'pl': 'Wpisz dawkę, którą faktycznie przyjąłeś/aś. Służy do obliczeń insuliny aktywnej i Twoich zapisów.',
-        'nl': 'Voer de dosis in die je echt hebt genomen. Dit wordt gebruikt voor IOB-berekeningen en je registratie.',
-        'es': 'Introduce la dosis que realmente tomaste. Se usa para los cálculos de insulina activa y tu historial.',
-        'de': 'Gib die tatsächlich genommene Dosis ein. Sie wird für IOB-Berechnungen und deine Aufzeichnungen verwendet.',
+        'en':
+            'Enter the dose you actually took. This is used for insulin-on-board calculations and your records.',
+        'pl':
+            'Wpisz dawkę, którą faktycznie przyjąłeś/aś. Służy do obliczeń insuliny aktywnej i Twoich zapisów.',
+        'nl':
+            'Voer de dosis in die je echt hebt genomen. Dit wordt gebruikt voor IOB-berekeningen en je registratie.',
+        'es':
+            'Introduce la dosis que realmente tomaste. Se usa para los cálculos de insulina activa y tu historial.',
+        'de':
+            'Gib die tatsächlich genommene Dosis ein. Sie wird für IOB-Berechnungen und deine Aufzeichnungen verwendet.',
       });
 
   String get unitsTaken => _t({
@@ -8248,43 +9177,68 @@ class AppLocalizations {
 
   // ── Diabetes safety copy ──
   String get diabetesGeneralDisclaimer => _t({
-        'en': 'This insulin estimate is calculated from settings you entered. It is not a substitute for medical advice. Incorrect settings, carb counts, glucose readings, or insulin history can cause dangerous low or high glucose. Always follow your diabetes care plan.',
-        'pl': 'Ten szacunek insuliny jest obliczany na podstawie wprowadzonych ustawień. Nie zastępuje porady lekarskiej. Błędne ustawienia, liczby węglowodanów, odczyty glikemii lub historia insuliny mogą powodować niebezpieczną hipo- lub hiperglikemię. Zawsze przestrzegaj swojego planu leczenia cukrzycy.',
-        'nl': 'Deze insulineschatting is berekend op basis van de instellingen die je hebt ingevoerd. Het is geen vervanging voor medisch advies. Onjuiste instellingen, koolhydraattellingen, glucosewaarden of insulinegeschiedenis kunnen gevaarlijke lage of hoge glucose veroorzaken. Volg altijd je diabeteszorgplan.',
-        'es': 'Esta estimación de insulina se calcula a partir de los ajustes que introdujiste. No sustituye el consejo médico. Unos ajustes, recuentos de carbohidratos, lecturas de glucosa o historial de insulina incorrectos pueden provocar una glucosa peligrosamente baja o alta. Sigue siempre tu plan de tratamiento de la diabetes.',
-        'de': 'Diese Insulinschätzung wird aus den von dir eingegebenen Einstellungen berechnet. Sie ersetzt keine ärztliche Beratung. Falsche Einstellungen, Kohlenhydratangaben, Glukosewerte oder Insulinverläufe können gefährlich niedrige oder hohe Glukosewerte verursachen. Befolge stets deinen Diabetes-Behandlungsplan.',
+        'en':
+            'This insulin estimate is calculated from settings you entered. It is not a substitute for medical advice. Incorrect settings, carb counts, glucose readings, or insulin history can cause dangerous low or high glucose. Always follow your diabetes care plan.',
+        'pl':
+            'Ten szacunek insuliny jest obliczany na podstawie wprowadzonych ustawień. Nie zastępuje porady lekarskiej. Błędne ustawienia, liczby węglowodanów, odczyty glikemii lub historia insuliny mogą powodować niebezpieczną hipo- lub hiperglikemię. Zawsze przestrzegaj swojego planu leczenia cukrzycy.',
+        'nl':
+            'Deze insulineschatting is berekend op basis van de instellingen die je hebt ingevoerd. Het is geen vervanging voor medisch advies. Onjuiste instellingen, koolhydraattellingen, glucosewaarden of insulinegeschiedenis kunnen gevaarlijke lage of hoge glucose veroorzaken. Volg altijd je diabeteszorgplan.',
+        'es':
+            'Esta estimación de insulina se calcula a partir de los ajustes que introdujiste. No sustituye el consejo médico. Unos ajustes, recuentos de carbohidratos, lecturas de glucosa o historial de insulina incorrectos pueden provocar una glucosa peligrosamente baja o alta. Sigue siempre tu plan de tratamiento de la diabetes.',
+        'de':
+            'Diese Insulinschätzung wird aus den von dir eingegebenen Einstellungen berechnet. Sie ersetzt keine ärztliche Beratung. Falsche Einstellungen, Kohlenhydratangaben, Glukosewerte oder Insulinverläufe können gefährlich niedrige oder hohe Glukosewerte verursachen. Befolge stets deinen Diabetes-Behandlungsplan.',
       });
 
   String get diabetesBeforeEnabling => _t({
-        'en': 'Only use this feature if your insulin-to-carb ratio, correction factor, target glucose, and insulin action duration were provided by your clinician, diabetes educator, pump, or official care plan.',
-        'pl': 'Korzystaj z tej funkcji tylko wtedy, gdy Twój przelicznik insulina-węglowodany, współczynnik korekcyjny, docelowa glikemia i czas działania insuliny zostały podane przez lekarza, edukatora diabetologicznego, pompę lub oficjalny plan leczenia.',
-        'nl': 'Gebruik deze functie alleen als je insuline-koolhydraatratio, correctiefactor, streefglucose en werkingsduur van insuline zijn opgegeven door je arts, diabetesverpleegkundige, pomp of officieel zorgplan.',
-        'es': 'Usa esta función solo si tu ratio insulina-carbohidratos, factor de corrección, glucosa objetivo y duración de acción de la insulina fueron proporcionados por tu médico, educador en diabetes, bomba o plan de tratamiento oficial.',
-        'de': 'Nutze diese Funktion nur, wenn dein Insulin-KH-Faktor, Korrekturfaktor, Zielglukose und Insulinwirkdauer von deinem Arzt, Diabetesberater, deiner Pumpe oder einem offiziellen Behandlungsplan stammen.',
+        'en':
+            'Only use this feature if your insulin-to-carb ratio, correction factor, target glucose, and insulin action duration were provided by your clinician, diabetes educator, pump, or official care plan.',
+        'pl':
+            'Korzystaj z tej funkcji tylko wtedy, gdy Twój przelicznik insulina-węglowodany, współczynnik korekcyjny, docelowa glikemia i czas działania insuliny zostały podane przez lekarza, edukatora diabetologicznego, pompę lub oficjalny plan leczenia.',
+        'nl':
+            'Gebruik deze functie alleen als je insuline-koolhydraatratio, correctiefactor, streefglucose en werkingsduur van insuline zijn opgegeven door je arts, diabetesverpleegkundige, pomp of officieel zorgplan.',
+        'es':
+            'Usa esta función solo si tu ratio insulina-carbohidratos, factor de corrección, glucosa objetivo y duración de acción de la insulina fueron proporcionados por tu médico, educador en diabetes, bomba o plan de tratamiento oficial.',
+        'de':
+            'Nutze diese Funktion nur, wenn dein Insulin-KH-Faktor, Korrekturfaktor, Zielglukose und Insulinwirkdauer von deinem Arzt, Diabetesberater, deiner Pumpe oder einem offiziellen Behandlungsplan stammen.',
       });
 
   String get diabetesRegulatoryNotice => _t({
-        'en': 'Depending on where you live, an insulin calculator may be regulated as medical-device software. This feature is provided for informational support only and has not been cleared or certified as a medical device.',
-        'pl': 'W zależności od miejsca zamieszkania kalkulator insuliny może być regulowany jako oprogramowanie wyrobu medycznego. Ta funkcja służy wyłącznie celom informacyjnym i nie została dopuszczona ani certyfikowana jako wyrób medyczny.',
-        'nl': 'Afhankelijk van waar je woont, kan een insulinerekenmachine gereguleerd zijn als software voor medische hulpmiddelen. Deze functie is alleen bedoeld als informatieve ondersteuning en is niet goedgekeurd of gecertificeerd als medisch hulpmiddel.',
-        'es': 'Según dónde vivas, una calculadora de insulina puede estar regulada como software de dispositivo médico. Esta función se ofrece solo como apoyo informativo y no ha sido autorizada ni certificada como dispositivo médico.',
-        'de': 'Je nach Wohnort kann ein Insulinrechner als Medizinprodukte-Software reguliert sein. Diese Funktion dient nur zur informativen Unterstützung und ist nicht als Medizinprodukt zugelassen oder zertifiziert.',
+        'en':
+            'Depending on where you live, an insulin calculator may be regulated as medical-device software. This feature is provided for informational support only and has not been cleared or certified as a medical device.',
+        'pl':
+            'W zależności od miejsca zamieszkania kalkulator insuliny może być regulowany jako oprogramowanie wyrobu medycznego. Ta funkcja służy wyłącznie celom informacyjnym i nie została dopuszczona ani certyfikowana jako wyrób medyczny.',
+        'nl':
+            'Afhankelijk van waar je woont, kan een insulinerekenmachine gereguleerd zijn als software voor medische hulpmiddelen. Deze functie is alleen bedoeld als informatieve ondersteuning en is niet goedgekeurd of gecertificeerd als medisch hulpmiddel.',
+        'es':
+            'Según dónde vivas, una calculadora de insulina puede estar regulada como software de dispositivo médico. Esta función se ofrece solo como apoyo informativo y no ha sido autorizada ni certificada como dispositivo médico.',
+        'de':
+            'Je nach Wohnort kann ein Insulinrechner als Medizinprodukte-Software reguliert sein. Diese Funktion dient nur zur informativen Unterstützung und ist nicht als Medizinprodukt zugelassen oder zertifiziert.',
       });
 
   String get diabetesSettingsSourceConfirmation => _t({
-        'en': 'I understand this app does not replace medical advice. I confirm that the insulin settings I entered are from my clinician, insulin pump, diabetes educator, or official diabetes care plan. I understand incorrect settings can cause dangerous low or high blood glucose.',
-        'pl': 'Rozumiem, że ta aplikacja nie zastępuje porady lekarskiej. Potwierdzam, że wprowadzone ustawienia insuliny pochodzą od mojego lekarza, pompy insulinowej, edukatora diabetologicznego lub oficjalnego planu leczenia cukrzycy. Rozumiem, że błędne ustawienia mogą powodować niebezpieczną hipo- lub hiperglikemię.',
-        'nl': 'Ik begrijp dat deze app geen vervanging is voor medisch advies. Ik bevestig dat de insuline-instellingen die ik heb ingevoerd afkomstig zijn van mijn arts, insulinepomp, diabetesverpleegkundige of officieel diabeteszorgplan. Ik begrijp dat onjuiste instellingen gevaarlijk lage of hoge bloedglucose kunnen veroorzaken.',
-        'es': 'Entiendo que esta app no sustituye el consejo médico. Confirmo que los ajustes de insulina que introduje provienen de mi médico, bomba de insulina, educador en diabetes o plan de tratamiento oficial. Entiendo que unos ajustes incorrectos pueden provocar una glucosa peligrosamente baja o alta.',
-        'de': 'Mir ist bewusst, dass diese App keine ärztliche Beratung ersetzt. Ich bestätige, dass die von mir eingegebenen Insulineinstellungen von meinem Arzt, meiner Insulinpumpe, meinem Diabetesberater oder einem offiziellen Behandlungsplan stammen. Mir ist bewusst, dass falsche Einstellungen gefährlich niedrige oder hohe Blutzuckerwerte verursachen können.',
+        'en':
+            'I understand this app does not replace medical advice. I confirm that the insulin settings I entered are from my clinician, insulin pump, diabetes educator, or official diabetes care plan. I understand incorrect settings can cause dangerous low or high blood glucose.',
+        'pl':
+            'Rozumiem, że ta aplikacja nie zastępuje porady lekarskiej. Potwierdzam, że wprowadzone ustawienia insuliny pochodzą od mojego lekarza, pompy insulinowej, edukatora diabetologicznego lub oficjalnego planu leczenia cukrzycy. Rozumiem, że błędne ustawienia mogą powodować niebezpieczną hipo- lub hiperglikemię.',
+        'nl':
+            'Ik begrijp dat deze app geen vervanging is voor medisch advies. Ik bevestig dat de insuline-instellingen die ik heb ingevoerd afkomstig zijn van mijn arts, insulinepomp, diabetesverpleegkundige of officieel diabeteszorgplan. Ik begrijp dat onjuiste instellingen gevaarlijk lage of hoge bloedglucose kunnen veroorzaken.',
+        'es':
+            'Entiendo que esta app no sustituye el consejo médico. Confirmo que los ajustes de insulina que introduje provienen de mi médico, bomba de insulina, educador en diabetes o plan de tratamiento oficial. Entiendo que unos ajustes incorrectos pueden provocar una glucosa peligrosamente baja o alta.',
+        'de':
+            'Mir ist bewusst, dass diese App keine ärztliche Beratung ersetzt. Ich bestätige, dass die von mir eingegebenen Insulineinstellungen von meinem Arzt, meiner Insulinpumpe, meinem Diabetesberater oder einem offiziellen Behandlungsplan stammen. Mir ist bewusst, dass falsche Einstellungen gefährlich niedrige oder hohe Blutzuckerwerte verursachen können.',
       });
 
   String get diabetesFinalResponsibility => _t({
-        'en': 'I understand this is calculated from my saved settings and I am responsible for confirming my dose.',
-        'pl': 'Rozumiem, że jest to obliczane na podstawie moich zapisanych ustawień i odpowiadam za potwierdzenie swojej dawki.',
-        'nl': 'Ik begrijp dat dit wordt berekend op basis van mijn opgeslagen instellingen en dat ik verantwoordelijk ben voor het bevestigen van mijn dosis.',
-        'es': 'Entiendo que esto se calcula a partir de mis ajustes guardados y que soy responsable de confirmar mi dosis.',
-        'de': 'Mir ist bewusst, dass dies aus meinen gespeicherten Einstellungen berechnet wird und ich für die Bestätigung meiner Dosis verantwortlich bin.',
+        'en':
+            'I understand this is calculated from my saved settings and I am responsible for confirming my dose.',
+        'pl':
+            'Rozumiem, że jest to obliczane na podstawie moich zapisanych ustawień i odpowiadam za potwierdzenie swojej dawki.',
+        'nl':
+            'Ik begrijp dat dit wordt berekend op basis van mijn opgeslagen instellingen en dat ik verantwoordelijk ben voor het bevestigen van mijn dosis.',
+        'es':
+            'Entiendo que esto se calcula a partir de mis ajustes guardados y que soy responsable de confirmar mi dosis.',
+        'de':
+            'Mir ist bewusst, dass dies aus meinen gespeicherten Einstellungen berechnet wird und ich für die Bestätigung meiner Dosis verantwortlich bin.',
       });
 
   // ── Bolus block reasons ──
@@ -8292,172 +9246,271 @@ class AppLocalizations {
     switch (key) {
       case 'calculatorDisabled':
         return _t({
-          'en': 'Bolus Calculator Mode is turned off. Enable it in diabetes settings.',
-          'pl': 'Tryb kalkulatora bolusa jest wyłączony. Włącz go w ustawieniach cukrzycy.',
-          'nl': 'Bolusrekenmodus is uitgeschakeld. Schakel deze in bij diabetesinstellingen.',
-          'es': 'El modo calculadora de bolo está desactivado. Actívalo en los ajustes de diabetes.',
-          'de': 'Der Bolusrechner-Modus ist ausgeschaltet. Aktiviere ihn in den Diabetes-Einstellungen.',
+          'en':
+              'Bolus Calculator Mode is turned off. Enable it in diabetes settings.',
+          'pl':
+              'Tryb kalkulatora bolusa jest wyłączony. Włącz go w ustawieniach cukrzycy.',
+          'nl':
+              'Bolusrekenmodus is uitgeschakeld. Schakel deze in bij diabetesinstellingen.',
+          'es':
+              'El modo calculadora de bolo está desactivado. Actívalo en los ajustes de diabetes.',
+          'de':
+              'Der Bolusrechner-Modus ist ausgeschaltet. Aktiviere ihn in den Diabetes-Einstellungen.',
         });
       case 'surveyIncomplete':
         return _t({
-          'en': 'Complete the Diabetes Insulin Settings Survey before using the calculator.',
+          'en':
+              'Complete the Diabetes Insulin Settings Survey before using the calculator.',
           'pl': 'Wypełnij ankietę ustawień insuliny przed użyciem kalkulatora.',
-          'nl': 'Vul de vragenlijst voor insuline-instellingen in voordat je de rekenmodule gebruikt.',
-          'es': 'Completa el cuestionario de ajustes de insulina antes de usar la calculadora.',
-          'de': 'Fülle den Fragebogen zu Insulineinstellungen aus, bevor du den Rechner verwendest.',
+          'nl':
+              'Vul de vragenlijst voor insuline-instellingen in voordat je de rekenmodule gebruikt.',
+          'es':
+              'Completa el cuestionario de ajustes de insulina antes de usar la calculadora.',
+          'de':
+              'Fülle den Fragebogen zu Insulineinstellungen aus, bevor du den Rechner verwendest.',
         });
       case 'consentMissing':
         return _t({
-          'en': 'You must accept the safety confirmation before using the calculator.',
-          'pl': 'Musisz zaakceptować potwierdzenie bezpieczeństwa przed użyciem kalkulatora.',
-          'nl': 'Je moet de veiligheidsbevestiging accepteren voordat je de rekenmodule gebruikt.',
-          'es': 'Debes aceptar la confirmación de seguridad antes de usar la calculadora.',
-          'de': 'Du musst die Sicherheitsbestätigung akzeptieren, bevor du den Rechner verwendest.',
+          'en':
+              'You must accept the safety confirmation before using the calculator.',
+          'pl':
+              'Musisz zaakceptować potwierdzenie bezpieczeństwa przed użyciem kalkulatora.',
+          'nl':
+              'Je moet de veiligheidsbevestiging accepteren voordat je de rekenmodule gebruikt.',
+          'es':
+              'Debes aceptar la confirmación de seguridad antes de usar la calculadora.',
+          'de':
+              'Du musst die Sicherheitsbestätigung akzeptieren, bevor du den Rechner verwendest.',
         });
       case 'settingsStale':
         return _t({
-          'en': 'Your insulin settings have not been reviewed in over 90 days. For safety, bolus calculations are disabled until you review and confirm your settings.',
-          'pl': 'Twoje ustawienia insuliny nie były przeglądane od ponad 90 dni. Ze względów bezpieczeństwa obliczenia bolusa są wyłączone do czasu przeglądu i potwierdzenia ustawień.',
-          'nl': 'Je insuline-instellingen zijn al meer dan 90 dagen niet gecontroleerd. Voor de veiligheid zijn bolusberekeningen uitgeschakeld tot je je instellingen controleert en bevestigt.',
-          'es': 'Tus ajustes de insulina no se han revisado en más de 90 días. Por seguridad, los cálculos de bolo están desactivados hasta que revises y confirmes tus ajustes.',
-          'de': 'Deine Insulineinstellungen wurden seit über 90 Tagen nicht überprüft. Aus Sicherheitsgründen sind Bolusberechnungen deaktiviert, bis du deine Einstellungen überprüfst und bestätigst.',
+          'en':
+              'Your insulin settings have not been reviewed in over 90 days. For safety, bolus calculations are disabled until you review and confirm your settings.',
+          'pl':
+              'Twoje ustawienia insuliny nie były przeglądane od ponad 90 dni. Ze względów bezpieczeństwa obliczenia bolusa są wyłączone do czasu przeglądu i potwierdzenia ustawień.',
+          'nl':
+              'Je insuline-instellingen zijn al meer dan 90 dagen niet gecontroleerd. Voor de veiligheid zijn bolusberekeningen uitgeschakeld tot je je instellingen controleert en bevestigt.',
+          'es':
+              'Tus ajustes de insulina no se han revisado en más de 90 días. Por seguridad, los cálculos de bolo están desactivados hasta que revises y confirmes tus ajustes.',
+          'de':
+              'Deine Insulineinstellungen wurden seit über 90 Tagen nicht überprüft. Aus Sicherheitsgründen sind Bolusberechnungen deaktiviert, bis du deine Einstellungen überprüfst und bestätigst.',
         });
       case 'surveyOverdue':
         return _t({
-          'en': 'Your insulin settings review is overdue. For safety, bolus calculations are disabled until you review and confirm them.',
-          'pl': 'Przegląd ustawień insuliny jest zaległy. Ze względów bezpieczeństwa obliczenia bolusa są wyłączone do czasu ich przeglądu i potwierdzenia.',
-          'nl': 'De controle van je insuline-instellingen is te laat. Voor de veiligheid zijn bolusberekeningen uitgeschakeld tot je ze controleert en bevestigt.',
-          'es': 'La revisión de tus ajustes de insulina está vencida. Por seguridad, los cálculos de bolo están desactivados hasta que los revises y confirmes.',
-          'de': 'Die Überprüfung deiner Insulineinstellungen ist überfällig. Aus Sicherheitsgründen sind Bolusberechnungen deaktiviert, bis du sie überprüfst und bestätigst.',
+          'en':
+              'Your insulin settings review is overdue. For safety, bolus calculations are disabled until you review and confirm them.',
+          'pl':
+              'Przegląd ustawień insuliny jest zaległy. Ze względów bezpieczeństwa obliczenia bolusa są wyłączone do czasu ich przeglądu i potwierdzenia.',
+          'nl':
+              'De controle van je insuline-instellingen is te laat. Voor de veiligheid zijn bolusberekeningen uitgeschakeld tot je ze controleert en bevestigt.',
+          'es':
+              'La revisión de tus ajustes de insulina está vencida. Por seguridad, los cálculos de bolo están desactivados hasta que los revises y confirmes.',
+          'de':
+              'Die Überprüfung deiner Insulineinstellungen ist überfällig. Aus Sicherheitsgründen sind Bolusberechnungen deaktiviert, bis du sie überprüfst und bestätigst.',
         });
       case 'glucoseUnitMissing':
         return _t({
-          'en': 'Your blood-glucose unit is not set. Set mg/dL or mmol/L in settings.',
-          'pl': 'Jednostka glikemii nie jest ustawiona. Ustaw mg/dL lub mmol/L w ustawieniach.',
-          'nl': 'Je bloedglucose-eenheid is niet ingesteld. Stel mg/dL of mmol/L in bij instellingen.',
-          'es': 'Tu unidad de glucosa no está configurada. Configura mg/dL o mmol/L en los ajustes.',
-          'de': 'Deine Blutzuckereinheit ist nicht festgelegt. Stelle mg/dL oder mmol/L in den Einstellungen ein.',
+          'en':
+              'Your blood-glucose unit is not set. Set mg/dL or mmol/L in settings.',
+          'pl':
+              'Jednostka glikemii nie jest ustawiona. Ustaw mg/dL lub mmol/L w ustawieniach.',
+          'nl':
+              'Je bloedglucose-eenheid is niet ingesteld. Stel mg/dL of mmol/L in bij instellingen.',
+          'es':
+              'Tu unidad de glucosa no está configurada. Configura mg/dL o mmol/L en los ajustes.',
+          'de':
+              'Deine Blutzuckereinheit ist nicht festgelegt. Stelle mg/dL oder mmol/L in den Einstellungen ein.',
         });
       case 'icrMissingForTimeBlock':
         return _t({
-          'en': 'No insulin-to-carb ratio is configured for the current time. Meal bolus cannot be calculated.',
-          'pl': 'Brak skonfigurowanego przelicznika insulina-węglowodany dla bieżącej pory. Nie można obliczyć bolusa na posiłek.',
-          'nl': 'Er is geen insuline-koolhydraatratio ingesteld voor het huidige tijdstip. Maaltijdbolus kan niet worden berekend.',
-          'es': 'No hay un ratio insulina-carbohidratos configurado para la hora actual. No se puede calcular el bolo de comida.',
-          'de': 'Für die aktuelle Uhrzeit ist kein Insulin-KH-Faktor konfiguriert. Der Mahlzeitenbolus kann nicht berechnet werden.',
+          'en':
+              'No insulin-to-carb ratio is configured for the current time. Meal bolus cannot be calculated.',
+          'pl':
+              'Brak skonfigurowanego przelicznika insulina-węglowodany dla bieżącej pory. Nie można obliczyć bolusa na posiłek.',
+          'nl':
+              'Er is geen insuline-koolhydraatratio ingesteld voor het huidige tijdstip. Maaltijdbolus kan niet worden berekend.',
+          'es':
+              'No hay un ratio insulina-carbohidratos configurado para la hora actual. No se puede calcular el bolo de comida.',
+          'de':
+              'Für die aktuelle Uhrzeit ist kein Insulin-KH-Faktor konfiguriert. Der Mahlzeitenbolus kann nicht berechnet werden.',
         });
       case 'isfMissingForTimeBlock':
         return _t({
-          'en': 'No correction factor is configured for the current time. Correction bolus cannot be calculated.',
-          'pl': 'Brak skonfigurowanego współczynnika korekcyjnego dla bieżącej pory. Nie można obliczyć bolusa korekcyjnego.',
-          'nl': 'Er is geen correctiefactor ingesteld voor het huidige tijdstip. Correctiebolus kan niet worden berekend.',
-          'es': 'No hay un factor de corrección configurado para la hora actual. No se puede calcular el bolo de corrección.',
-          'de': 'Für die aktuelle Uhrzeit ist kein Korrekturfaktor konfiguriert. Der Korrekturbolus kann nicht berechnet werden.',
+          'en':
+              'No correction factor is configured for the current time. Correction bolus cannot be calculated.',
+          'pl':
+              'Brak skonfigurowanego współczynnika korekcyjnego dla bieżącej pory. Nie można obliczyć bolusa korekcyjnego.',
+          'nl':
+              'Er is geen correctiefactor ingesteld voor het huidige tijdstip. Correctiebolus kan niet worden berekend.',
+          'es':
+              'No hay un factor de corrección configurado para la hora actual. No se puede calcular el bolo de corrección.',
+          'de':
+              'Für die aktuelle Uhrzeit ist kein Korrekturfaktor konfiguriert. Der Korrekturbolus kann nicht berechnet werden.',
         });
       case 'targetGlucoseMissing':
         return _t({
-          'en': 'No target glucose is configured. Correction bolus cannot be calculated.',
-          'pl': 'Brak skonfigurowanej docelowej glikemii. Nie można obliczyć bolusa korekcyjnego.',
-          'nl': 'Er is geen streefglucose ingesteld. Correctiebolus kan niet worden berekend.',
-          'es': 'No hay glucosa objetivo configurada. No se puede calcular el bolo de corrección.',
-          'de': 'Es ist keine Zielglukose konfiguriert. Der Korrekturbolus kann nicht berechnet werden.',
+          'en':
+              'No target glucose is configured. Correction bolus cannot be calculated.',
+          'pl':
+              'Brak skonfigurowanej docelowej glikemii. Nie można obliczyć bolusa korekcyjnego.',
+          'nl':
+              'Er is geen streefglucose ingesteld. Correctiebolus kan niet worden berekend.',
+          'es':
+              'No hay glucosa objetivo configurada. No se puede calcular el bolo de corrección.',
+          'de':
+              'Es ist keine Zielglukose konfiguriert. Der Korrekturbolus kann nicht berechnet werden.',
         });
       case 'actionDurationMissing':
         return _t({
-          'en': 'Insulin action duration is not set, so insulin-on-board cannot be calculated.',
-          'pl': 'Czas działania insuliny nie jest ustawiony, więc nie można obliczyć insuliny aktywnej.',
-          'nl': 'Werkingsduur van insuline is niet ingesteld, dus insuline-on-board kan niet worden berekend.',
-          'es': 'La duración de acción de la insulina no está configurada, por lo que no se puede calcular la insulina activa.',
-          'de': 'Die Insulinwirkdauer ist nicht festgelegt, daher kann das Insulin-on-Board nicht berechnet werden.',
+          'en':
+              'Insulin action duration is not set, so insulin-on-board cannot be calculated.',
+          'pl':
+              'Czas działania insuliny nie jest ustawiony, więc nie można obliczyć insuliny aktywnej.',
+          'nl':
+              'Werkingsduur van insuline is niet ingesteld, dus insuline-on-board kan niet worden berekend.',
+          'es':
+              'La duración de acción de la insulina no está configurada, por lo que no se puede calcular la insulina activa.',
+          'de':
+              'Die Insulinwirkdauer ist nicht festgelegt, daher kann das Insulin-on-Board nicht berechnet werden.',
         });
       case 'maxBolusMissing':
         return _t({
-          'en': 'No maximum single bolus is configured. Calculation is disabled for safety.',
-          'pl': 'Brak skonfigurowanego maksymalnego pojedynczego bolusa. Obliczenia są wyłączone ze względów bezpieczeństwa.',
-          'nl': 'Er is geen maximale enkele bolus ingesteld. Berekening is uitgeschakeld voor de veiligheid.',
-          'es': 'No hay un bolo único máximo configurado. El cálculo está desactivado por seguridad.',
-          'de': 'Es ist kein maximaler Einzelbolus konfiguriert. Die Berechnung ist aus Sicherheitsgründen deaktiviert.',
+          'en':
+              'No maximum single bolus is configured. Calculation is disabled for safety.',
+          'pl':
+              'Brak skonfigurowanego maksymalnego pojedynczego bolusa. Obliczenia są wyłączone ze względów bezpieczeństwa.',
+          'nl':
+              'Er is geen maximale enkele bolus ingesteld. Berekening is uitgeschakeld voor de veiligheid.',
+          'es':
+              'No hay un bolo único máximo configurado. El cálculo está desactivado por seguridad.',
+          'de':
+              'Es ist kein maximaler Einzelbolus konfiguriert. Die Berechnung ist aus Sicherheitsgründen deaktiviert.',
         });
       case 'minIncrementMissing':
         return _t({
-          'en': 'No bolus rounding increment is configured. Calculation is disabled.',
-          'pl': 'Brak skonfigurowanego kroku zaokrąglania bolusa. Obliczenia są wyłączone.',
-          'nl': 'Er is geen afrondingsstap voor de bolus ingesteld. Berekening is uitgeschakeld.',
-          'es': 'No hay un incremento de redondeo de bolo configurado. El cálculo está desactivado.',
-          'de': 'Es ist kein Rundungsschritt für den Bolus konfiguriert. Die Berechnung ist deaktiviert.',
+          'en':
+              'No bolus rounding increment is configured. Calculation is disabled.',
+          'pl':
+              'Brak skonfigurowanego kroku zaokrąglania bolusa. Obliczenia są wyłączone.',
+          'nl':
+              'Er is geen afrondingsstap voor de bolus ingesteld. Berekening is uitgeschakeld.',
+          'es':
+              'No hay un incremento de redondeo de bolo configurado. El cálculo está desactivado.',
+          'de':
+              'Es ist kein Rundungsschritt für den Bolus konfiguriert. Die Berechnung ist deaktiviert.',
         });
       case 'currentGlucoseMissing':
         return _t({
           'en': 'A current glucose reading is required for a correction bolus.',
-          'pl': 'Aktualny odczyt glikemii jest wymagany do bolusa korekcyjnego.',
+          'pl':
+              'Aktualny odczyt glikemii jest wymagany do bolusa korekcyjnego.',
           'nl': 'Een huidige glucosemeting is vereist voor een correctiebolus.',
-          'es': 'Se requiere una lectura de glucosa actual para un bolo de corrección.',
-          'de': 'Für einen Korrekturbolus ist ein aktueller Glukosewert erforderlich.',
+          'es':
+              'Se requiere una lectura de glucosa actual para un bolo de corrección.',
+          'de':
+              'Für einen Korrekturbolus ist ein aktueller Glukosewert erforderlich.',
         });
       case 'glucoseReadingStale':
         return _t({
-          'en': 'Your glucose reading is too old. Enter a fresh reading for a correction bolus.',
-          'pl': 'Twój odczyt glikemii jest zbyt stary. Wprowadź świeży odczyt do bolusa korekcyjnego.',
-          'nl': 'Je glucosemeting is te oud. Voer een verse meting in voor een correctiebolus.',
-          'es': 'Tu lectura de glucosa es demasiado antigua. Introduce una lectura reciente para un bolo de corrección.',
-          'de': 'Dein Glukosewert ist zu alt. Gib für einen Korrekturbolus einen aktuellen Wert ein.',
+          'en':
+              'Your glucose reading is too old. Enter a fresh reading for a correction bolus.',
+          'pl':
+              'Twój odczyt glikemii jest zbyt stary. Wprowadź świeży odczyt do bolusa korekcyjnego.',
+          'nl':
+              'Je glucosemeting is te oud. Voer een verse meting in voor een correctiebolus.',
+          'es':
+              'Tu lectura de glucosa es demasiado antigua. Introduce una lectura reciente para un bolo de corrección.',
+          'de':
+              'Dein Glukosewert ist zu alt. Gib für einen Korrekturbolus einen aktuellen Wert ein.',
         });
       case 'mealCarbsMissingOrInvalid':
         return _t({
           'en': 'Enter a valid carbohydrate amount for this meal.',
           'pl': 'Wprowadź prawidłową ilość węglowodanów dla tego posiłku.',
-          'nl': 'Voer een geldige hoeveelheid koolhydraten in voor deze maaltijd.',
-          'es': 'Introduce una cantidad de carbohidratos válida para esta comida.',
+          'nl':
+              'Voer een geldige hoeveelheid koolhydraten in voor deze maaltijd.',
+          'es':
+              'Introduce una cantidad de carbohidratos válida para esta comida.',
           'de': 'Gib eine gültige Kohlenhydratmenge für diese Mahlzeit ein.',
         });
       case 'iobRequiredButUnavailable':
         return _t({
-          'en': 'Insulin-on-board is required by your settings but cannot be calculated. Calculation is disabled.',
-          'pl': 'Twoje ustawienia wymagają insuliny aktywnej, ale nie można jej obliczyć. Obliczenia są wyłączone.',
-          'nl': 'Insuline-on-board is vereist door je instellingen maar kan niet worden berekend. Berekening is uitgeschakeld.',
-          'es': 'Tus ajustes requieren insulina activa, pero no se puede calcular. El cálculo está desactivado.',
-          'de': 'Deine Einstellungen erfordern Insulin-on-Board, das jedoch nicht berechnet werden kann. Die Berechnung ist deaktiviert.',
+          'en':
+              'Insulin-on-board is required by your settings but cannot be calculated. Calculation is disabled.',
+          'pl':
+              'Twoje ustawienia wymagają insuliny aktywnej, ale nie można jej obliczyć. Obliczenia są wyłączone.',
+          'nl':
+              'Insuline-on-board is vereist door je instellingen maar kan niet worden berekend. Berekening is uitgeschakeld.',
+          'es':
+              'Tus ajustes requieren insulina activa, pero no se puede calcular. El cálculo está desactivado.',
+          'de':
+              'Deine Einstellungen erfordern Insulin-on-Board, das jedoch nicht berechnet werden kann. Die Berechnung ist deaktiviert.',
         });
       case 'glucoseBelowHypoThreshold':
         return _t({
-          'en': 'Your glucose is below your configured low threshold. This app cannot recommend insulin. Follow your hypoglycemia care plan.',
-          'pl': 'Twoja glikemia jest poniżej ustawionego progu niskiego. Ta aplikacja nie może zalecać insuliny. Postępuj zgodnie z planem leczenia hipoglikemii.',
-          'nl': 'Je glucose ligt onder je ingestelde lage drempel. Deze app kan geen insuline aanbevelen. Volg je hypoglykemie-zorgplan.',
-          'es': 'Tu glucosa está por debajo del umbral bajo que configuraste. Esta app no puede recomendar insulina. Sigue tu plan de tratamiento de la hipoglucemia.',
-          'de': 'Deine Glukose liegt unter deiner eingestellten Niedrigschwelle. Diese App kann kein Insulin empfehlen. Befolge deinen Hypoglykämie-Behandlungsplan.',
+          'en':
+              'Your glucose is below your configured low threshold. This app cannot recommend insulin. Follow your hypoglycemia care plan.',
+          'pl':
+              'Twoja glikemia jest poniżej ustawionego progu niskiego. Ta aplikacja nie może zalecać insuliny. Postępuj zgodnie z planem leczenia hipoglikemii.',
+          'nl':
+              'Je glucose ligt onder je ingestelde lage drempel. Deze app kan geen insuline aanbevelen. Volg je hypoglykemie-zorgplan.',
+          'es':
+              'Tu glucosa está por debajo del umbral bajo que configuraste. Esta app no puede recomendar insulina. Sigue tu plan de tratamiento de la hipoglucemia.',
+          'de':
+              'Deine Glukose liegt unter deiner eingestellten Niedrigschwelle. Diese App kann kein Insulin empfehlen. Befolge deinen Hypoglykämie-Behandlungsplan.',
         });
       case 'glucoseImplausible':
         return _t({
-          'en': 'The glucose value looks out of range. Calculation is disabled for safety.',
-          'pl': 'Wartość glikemii wydaje się poza zakresem. Obliczenia są wyłączone ze względów bezpieczeństwa.',
-          'nl': 'De glucosewaarde lijkt buiten bereik. Berekening is uitgeschakeld voor de veiligheid.',
-          'es': 'El valor de glucosa parece estar fuera de rango. El cálculo está desactivado por seguridad.',
-          'de': 'Der Glukosewert scheint außerhalb des Bereichs zu liegen. Die Berechnung ist aus Sicherheitsgründen deaktiviert.',
+          'en':
+              'The glucose value looks out of range. Calculation is disabled for safety.',
+          'pl':
+              'Wartość glikemii wydaje się poza zakresem. Obliczenia są wyłączone ze względów bezpieczeństwa.',
+          'nl':
+              'De glucosewaarde lijkt buiten bereik. Berekening is uitgeschakeld voor de veiligheid.',
+          'es':
+              'El valor de glucosa parece estar fuera de rango. El cálculo está desactivado por seguridad.',
+          'de':
+              'Der Glukosewert scheint außerhalb des Bereichs zu liegen. Die Berechnung ist aus Sicherheitsgründen deaktiviert.',
         });
       case 'carbsImplausible':
         return _t({
-          'en': 'The carbohydrate amount looks out of range. Calculation is disabled for safety.',
-          'pl': 'Ilość węglowodanów wydaje się poza zakresem. Obliczenia są wyłączone ze względów bezpieczeństwa.',
-          'nl': 'De hoeveelheid koolhydraten lijkt buiten bereik. Berekening is uitgeschakeld voor de veiligheid.',
-          'es': 'La cantidad de carbohidratos parece estar fuera de rango. El cálculo está desactivado por seguridad.',
-          'de': 'Die Kohlenhydratmenge scheint außerhalb des Bereichs zu liegen. Die Berechnung ist aus Sicherheitsgründen deaktiviert.',
+          'en':
+              'The carbohydrate amount looks out of range. Calculation is disabled for safety.',
+          'pl':
+              'Ilość węglowodanów wydaje się poza zakresem. Obliczenia są wyłączone ze względów bezpieczeństwa.',
+          'nl':
+              'De hoeveelheid koolhydraten lijkt buiten bereik. Berekening is uitgeschakeld voor de veiligheid.',
+          'es':
+              'La cantidad de carbohidratos parece estar fuera de rango. El cálculo está desactivado por seguridad.',
+          'de':
+              'Die Kohlenhydratmenge scheint außerhalb des Bereichs zu liegen. Die Berechnung ist aus Sicherheitsgründen deaktiviert.',
         });
       case 'settingInvalid':
         return _t({
-          'en': 'One of your saved insulin settings is invalid. Review your settings.',
-          'pl': 'Jedno z zapisanych ustawień insuliny jest nieprawidłowe. Przejrzyj swoje ustawienia.',
-          'nl': 'Een van je opgeslagen insuline-instellingen is ongeldig. Controleer je instellingen.',
-          'es': 'Uno de tus ajustes de insulina guardados no es válido. Revisa tus ajustes.',
-          'de': 'Eine deiner gespeicherten Insulineinstellungen ist ungültig. Überprüfe deine Einstellungen.',
+          'en':
+              'One of your saved insulin settings is invalid. Review your settings.',
+          'pl':
+              'Jedno z zapisanych ustawień insuliny jest nieprawidłowe. Przejrzyj swoje ustawienia.',
+          'nl':
+              'Een van je opgeslagen insuline-instellingen is ongeldig. Controleer je instellingen.',
+          'es':
+              'Uno de tus ajustes de insulina guardados no es válido. Revisa tus ajustes.',
+          'de':
+              'Eine deiner gespeicherten Insulineinstellungen ist ungültig. Überprüfe deine Einstellungen.',
         });
       case 'maxBolusExceeded':
       default:
         return _t({
-          'en': 'The calculated amount exceeds your configured maximum single bolus. This calculation is blocked. Follow your care plan or contact your clinician.',
-          'pl': 'Obliczona ilość przekracza Twój maksymalny pojedynczy bolus. To obliczenie jest zablokowane. Postępuj zgodnie z planem leczenia lub skontaktuj się z lekarzem.',
-          'nl': 'De berekende hoeveelheid overschrijdt je ingestelde maximale enkele bolus. Deze berekening is geblokkeerd. Volg je zorgplan of neem contact op met je arts.',
-          'es': 'La cantidad calculada supera tu bolo único máximo configurado. Este cálculo está bloqueado. Sigue tu plan de tratamiento o contacta con tu médico.',
-          'de': 'Die berechnete Menge überschreitet deinen eingestellten maximalen Einzelbolus. Diese Berechnung ist blockiert. Befolge deinen Behandlungsplan oder wende dich an deinen Arzt.',
+          'en':
+              'The calculated amount exceeds your configured maximum single bolus. This calculation is blocked. Follow your care plan or contact your clinician.',
+          'pl':
+              'Obliczona ilość przekracza Twój maksymalny pojedynczy bolus. To obliczenie jest zablokowane. Postępuj zgodnie z planem leczenia lub skontaktuj się z lekarzem.',
+          'nl':
+              'De berekende hoeveelheid overschrijdt je ingestelde maximale enkele bolus. Deze berekening is geblokkeerd. Volg je zorgplan of neem contact op met je arts.',
+          'es':
+              'La cantidad calculada supera tu bolo único máximo configurado. Este cálculo está bloqueado. Sigue tu plan de tratamiento o contacta con tu médico.',
+          'de':
+              'Die berechnete Menge überschreitet deinen eingestellten maximalen Einzelbolus. Diese Berechnung ist blockiert. Befolge deinen Behandlungsplan oder wende dich an deinen Arzt.',
         });
     }
   }
@@ -8467,44 +9520,69 @@ class AppLocalizations {
     switch (key) {
       case 'glucoseBelowTargetNoCorrection':
         return _t({
-          'en': 'Your glucose is below target, so no correction insulin was added.',
-          'pl': 'Twoja glikemia jest poniżej celu, więc nie dodano insuliny korekcyjnej.',
-          'nl': 'Je glucose ligt onder het streefdoel, dus er is geen correctie-insuline toegevoegd.',
-          'es': 'Tu glucosa está por debajo del objetivo, por lo que no se añadió insulina de corrección.',
-          'de': 'Deine Glukose liegt unter dem Zielwert, daher wurde kein Korrekturinsulin hinzugefügt.',
+          'en':
+              'Your glucose is below target, so no correction insulin was added.',
+          'pl':
+              'Twoja glikemia jest poniżej celu, więc nie dodano insuliny korekcyjnej.',
+          'nl':
+              'Je glucose ligt onder het streefdoel, dus er is geen correctie-insuline toegevoegd.',
+          'es':
+              'Tu glucosa está por debajo del objetivo, por lo que no se añadió insulina de corrección.',
+          'de':
+              'Deine Glukose liegt unter dem Zielwert, daher wurde kein Korrekturinsulin hinzugefügt.',
         });
       case 'glucoseAboveHyperThreshold':
         return _t({
-          'en': 'Your glucose is above your configured high threshold. Follow your diabetes care plan and consider checking ketones or contacting a clinician if instructed by your care plan.',
-          'pl': 'Twoja glikemia jest powyżej ustawionego progu wysokiego. Postępuj zgodnie z planem leczenia cukrzycy i rozważ sprawdzenie ketonów lub kontakt z lekarzem, jeśli tak zaleca Twój plan.',
-          'nl': 'Je glucose ligt boven je ingestelde hoge drempel. Volg je diabeteszorgplan en overweeg ketonen te controleren of een arts te raadplegen als je zorgplan dat aangeeft.',
-          'es': 'Tu glucosa está por encima del umbral alto que configuraste. Sigue tu plan de tratamiento de la diabetes y considera comprobar las cetonas o contactar con un médico si tu plan lo indica.',
-          'de': 'Deine Glukose liegt über deiner eingestellten Hochschwelle. Befolge deinen Diabetes-Behandlungsplan und ziehe in Betracht, Ketone zu prüfen oder einen Arzt zu kontaktieren, wenn dein Plan dies vorsieht.',
+          'en':
+              'Your glucose is above your configured high threshold. Follow your diabetes care plan and consider checking ketones or contacting a clinician if instructed by your care plan.',
+          'pl':
+              'Twoja glikemia jest powyżej ustawionego progu wysokiego. Postępuj zgodnie z planem leczenia cukrzycy i rozważ sprawdzenie ketonów lub kontakt z lekarzem, jeśli tak zaleca Twój plan.',
+          'nl':
+              'Je glucose ligt boven je ingestelde hoge drempel. Volg je diabeteszorgplan en overweeg ketonen te controleren of een arts te raadplegen als je zorgplan dat aangeeft.',
+          'es':
+              'Tu glucosa está por encima del umbral alto que configuraste. Sigue tu plan de tratamiento de la diabetes y considera comprobar las cetonas o contactar con un médico si tu plan lo indica.',
+          'de':
+              'Deine Glukose liegt über deiner eingestellten Hochschwelle. Befolge deinen Diabetes-Behandlungsplan und ziehe in Betracht, Ketone zu prüfen oder einen Arzt zu kontaktieren, wenn dein Plan dies vorsieht.',
         });
       case 'iobMayBeInaccurate':
         return _t({
-          'en': 'You logged recent insulin. This estimate subtracts calculated insulin-on-board, but IOB may be inaccurate. Be careful about insulin stacking and follow your care plan.',
-          'pl': 'Zapisałeś/aś niedawną insulinę. Ten szacunek odejmuje obliczoną insulinę aktywną, ale IOB może być niedokładne. Uważaj na nakładanie się dawek insuliny i przestrzegaj planu leczenia.',
-          'nl': 'Je hebt recent insuline geregistreerd. Deze schatting trekt berekende insuline-on-board af, maar IOB kan onnauwkeurig zijn. Wees voorzichtig met insulinestapeling en volg je zorgplan.',
-          'es': 'Registraste insulina reciente. Esta estimación resta la insulina activa calculada, pero la IOB puede ser imprecisa. Ten cuidado con la acumulación de insulina y sigue tu plan de tratamiento.',
-          'de': 'Du hast kürzlich Insulin erfasst. Diese Schätzung zieht berechnetes Insulin-on-Board ab, aber das IOB kann ungenau sein. Achte auf Insulin-Stacking und befolge deinen Behandlungsplan.',
+          'en':
+              'You logged recent insulin. This estimate subtracts calculated insulin-on-board, but IOB may be inaccurate. Be careful about insulin stacking and follow your care plan.',
+          'pl':
+              'Zapisałeś/aś niedawną insulinę. Ten szacunek odejmuje obliczoną insulinę aktywną, ale IOB może być niedokładne. Uważaj na nakładanie się dawek insuliny i przestrzegaj planu leczenia.',
+          'nl':
+              'Je hebt recent insuline geregistreerd. Deze schatting trekt berekende insuline-on-board af, maar IOB kan onnauwkeurig zijn. Wees voorzichtig met insulinestapeling en volg je zorgplan.',
+          'es':
+              'Registraste insulina reciente. Esta estimación resta la insulina activa calculada, pero la IOB puede ser imprecisa. Ten cuidado con la acumulación de insulina y sigue tu plan de tratamiento.',
+          'de':
+              'Du hast kürzlich Insulin erfasst. Diese Schätzung zieht berechnetes Insulin-on-Board ab, aber das IOB kann ungenau sein. Achte auf Insulin-Stacking und befolge deinen Behandlungsplan.',
         });
       case 'carbsUnusuallyHigh':
         return _t({
-          'en': 'The carbohydrate amount is unusually high. Please double-check it before relying on this estimate.',
-          'pl': 'Ilość węglowodanów jest niezwykle wysoka. Sprawdź ją dokładnie przed poleganiem na tym szacunku.',
-          'nl': 'De hoeveelheid koolhydraten is ongewoon hoog. Controleer dit goed voordat je op deze schatting vertrouwt.',
-          'es': 'La cantidad de carbohidratos es inusualmente alta. Compruébala bien antes de fiarte de esta estimación.',
-          'de': 'Die Kohlenhydratmenge ist ungewöhnlich hoch. Bitte überprüfe sie genau, bevor du dich auf diese Schätzung verlässt.',
+          'en':
+              'The carbohydrate amount is unusually high. Please double-check it before relying on this estimate.',
+          'pl':
+              'Ilość węglowodanów jest niezwykle wysoka. Sprawdź ją dokładnie przed poleganiem na tym szacunku.',
+          'nl':
+              'De hoeveelheid koolhydraten is ongewoon hoog. Controleer dit goed voordat je op deze schatting vertrouwt.',
+          'es':
+              'La cantidad de carbohidratos es inusualmente alta. Compruébala bien antes de fiarte de esta estimación.',
+          'de':
+              'Die Kohlenhydratmenge ist ungewöhnlich hoch. Bitte überprüfe sie genau, bevor du dich auf diese Schätzung verlässt.',
         });
       case 'estimateZeroOrNegative':
       default:
         return _t({
-          'en': 'Calculated insulin need is zero or negative after considering current glucose and insulin-on-board. Follow your care plan.',
-          'pl': 'Obliczone zapotrzebowanie na insulinę wynosi zero lub jest ujemne po uwzględnieniu aktualnej glikemii i insuliny aktywnej. Postępuj zgodnie z planem leczenia.',
-          'nl': 'De berekende insulinebehoefte is nul of negatief na het meewegen van huidige glucose en insuline-on-board. Volg je zorgplan.',
-          'es': 'La necesidad de insulina calculada es cero o negativa tras considerar la glucosa actual y la insulina activa. Sigue tu plan de tratamiento.',
-          'de': 'Der berechnete Insulinbedarf ist nach Berücksichtigung der aktuellen Glukose und des Insulin-on-Board null oder negativ. Befolge deinen Behandlungsplan.',
+          'en':
+              'Calculated insulin need is zero or negative after considering current glucose and insulin-on-board. Follow your care plan.',
+          'pl':
+              'Obliczone zapotrzebowanie na insulinę wynosi zero lub jest ujemne po uwzględnieniu aktualnej glikemii i insuliny aktywnej. Postępuj zgodnie z planem leczenia.',
+          'nl':
+              'De berekende insulinebehoefte is nul of negatief na het meewegen van huidige glucose en insuline-on-board. Volg je zorgplan.',
+          'es':
+              'La necesidad de insulina calculada es cero o negativa tras considerar la glucosa actual y la insulina activa. Sigue tu plan de tratamiento.',
+          'de':
+              'Der berechnete Insulinbedarf ist nach Berücksichtigung der aktuellen Glukose und des Insulin-on-Board null oder negativ. Befolge deinen Behandlungsplan.',
         });
     }
   }
@@ -8540,10 +9618,14 @@ class AppLocalizations {
       case 'blocksOverlap':
         return _t({
           'en': 'Your $lbl time blocks overlap. Fix them before continuing.',
-          'pl': 'Twoje bloki czasowe ($lbl) nakładają się. Popraw je przed kontynuacją.',
-          'nl': 'Je $lbl-tijdblokken overlappen. Corrigeer ze voordat je doorgaat.',
-          'es': 'Tus bloques horarios de $lbl se solapan. Corrígelos antes de continuar.',
-          'de': 'Deine $lbl-Zeitblöcke überschneiden sich. Korrigiere sie, bevor du fortfährst.',
+          'pl':
+              'Twoje bloki czasowe ($lbl) nakładają się. Popraw je przed kontynuacją.',
+          'nl':
+              'Je $lbl-tijdblokken overlappen. Corrigeer ze voordat je doorgaat.',
+          'es':
+              'Tus bloques horarios de $lbl se solapan. Corrígelos antes de continuar.',
+          'de':
+              'Deine $lbl-Zeitblöcke überschneiden sich. Korrigiere sie, bevor du fortfährst.',
         });
       case 'targetOutOfRange':
         return _t({
@@ -8558,7 +9640,8 @@ class AppLocalizations {
           'en': 'Insulin action duration is outside a safe range.',
           'pl': 'Czas działania insuliny jest poza bezpiecznym zakresem.',
           'nl': 'Werkingsduur van insuline valt buiten een veilig bereik.',
-          'es': 'La duración de acción de la insulina está fuera de un rango seguro.',
+          'es':
+              'La duración de acción de la insulina está fuera de un rango seguro.',
           'de': 'Die Insulinwirkdauer liegt außerhalb eines sicheren Bereichs.',
         });
       case 'maxBolusOutOfRange':
@@ -8567,7 +9650,8 @@ class AppLocalizations {
           'pl': 'Maksymalny pojedynczy bolus jest poza bezpiecznym zakresem.',
           'nl': 'Maximale enkele bolus valt buiten een veilig bereik.',
           'es': 'El bolo único máximo está fuera de un rango seguro.',
-          'de': 'Der maximale Einzelbolus liegt außerhalb eines sicheren Bereichs.',
+          'de':
+              'Der maximale Einzelbolus liegt außerhalb eines sicheren Bereichs.',
         });
       case 'incrementUnsupported':
         return _t({
@@ -8575,7 +9659,8 @@ class AppLocalizations {
           'pl': 'Krok zaokrąglania bolusa nie jest obsługiwaną wartością.',
           'nl': 'Afrondingsstap voor de bolus is geen ondersteunde waarde.',
           'es': 'El incremento de redondeo de bolo no es un valor admitido.',
-          'de': 'Der Rundungsschritt für den Bolus ist kein unterstützter Wert.',
+          'de':
+              'Der Rundungsschritt für den Bolus ist kein unterstützter Wert.',
         });
       case 'thresholdsInverted':
         return _t({
@@ -8607,16 +9692,22 @@ class AppLocalizations {
           'pl': 'Ilość węglowodanów wydaje się poza zakresem.',
           'nl': 'De hoeveelheid koolhydraten lijkt buiten bereik.',
           'es': 'La cantidad de carbohidratos parece estar fuera de rango.',
-          'de': 'Die Kohlenhydratmenge scheint außerhalb des Bereichs zu liegen.',
+          'de':
+              'Die Kohlenhydratmenge scheint außerhalb des Bereichs zu liegen.',
         });
       case 'carbsUnusuallyHigh':
       default:
         return _t({
-          'en': 'The carbohydrate amount is unusually high. Please double-check it.',
-          'pl': 'Ilość węglowodanów jest niezwykle wysoka. Sprawdź ją dokładnie.',
-          'nl': 'De hoeveelheid koolhydraten is ongewoon hoog. Controleer dit goed.',
-          'es': 'La cantidad de carbohidratos es inusualmente alta. Compruébala bien.',
-          'de': 'Die Kohlenhydratmenge ist ungewöhnlich hoch. Bitte überprüfe sie genau.',
+          'en':
+              'The carbohydrate amount is unusually high. Please double-check it.',
+          'pl':
+              'Ilość węglowodanów jest niezwykle wysoka. Sprawdź ją dokładnie.',
+          'nl':
+              'De hoeveelheid koolhydraten is ongewoon hoog. Controleer dit goed.',
+          'es':
+              'La cantidad de carbohidratos es inusualmente alta. Compruébala bien.',
+          'de':
+              'Die Kohlenhydratmenge ist ungewöhnlich hoch. Bitte überprüfe sie genau.',
         });
     }
   }
@@ -8640,49 +9731,181 @@ class AppLocalizations {
   String nutrientName(String key) {
     switch (key) {
       case 'calories':
-        return _t({'en': 'Calories', 'pl': 'Kalorie', 'nl': 'Calorieën', 'es': 'Calorías', 'de': 'Kalorien'});
+        return _t({
+          'en': 'Calories',
+          'pl': 'Kalorie',
+          'nl': 'Calorieën',
+          'es': 'Calorías',
+          'de': 'Kalorien'
+        });
       case 'protein':
-        return _t({'en': 'Protein', 'pl': 'Białko', 'nl': 'Eiwitten', 'es': 'Proteínas', 'de': 'Protein'});
+        return _t({
+          'en': 'Protein',
+          'pl': 'Białko',
+          'nl': 'Eiwitten',
+          'es': 'Proteínas',
+          'de': 'Protein'
+        });
       case 'carbohydrates':
-        return _t({'en': 'Carbohydrates', 'pl': 'Węglowodany', 'nl': 'Koolhydraten', 'es': 'Carbohidratos', 'de': 'Kohlenhydrate'});
+        return _t({
+          'en': 'Carbohydrates',
+          'pl': 'Węglowodany',
+          'nl': 'Koolhydraten',
+          'es': 'Carbohidratos',
+          'de': 'Kohlenhydrate'
+        });
       case 'fat':
-        return _t({'en': 'Fat', 'pl': 'Tłuszcz', 'nl': 'Vetten', 'es': 'Grasas', 'de': 'Fett'});
+        return _t({
+          'en': 'Fat',
+          'pl': 'Tłuszcz',
+          'nl': 'Vetten',
+          'es': 'Grasas',
+          'de': 'Fett'
+        });
       case 'dietaryFiber':
-        return _t({'en': 'Dietary Fiber', 'pl': 'Błonnik', 'nl': 'Vezels', 'es': 'Fibra', 'de': 'Ballaststoffe'});
+        return _t({
+          'en': 'Dietary Fiber',
+          'pl': 'Błonnik',
+          'nl': 'Vezels',
+          'es': 'Fibra',
+          'de': 'Ballaststoffe'
+        });
       case 'vitaminA':
-        return _t({'en': 'Vitamin A', 'pl': 'Witamina A', 'nl': 'Vitamine A', 'es': 'Vitamina A', 'de': 'Vitamin A'});
+        return _t({
+          'en': 'Vitamin A',
+          'pl': 'Witamina A',
+          'nl': 'Vitamine A',
+          'es': 'Vitamina A',
+          'de': 'Vitamin A'
+        });
       case 'vitaminC':
-        return _t({'en': 'Vitamin C', 'pl': 'Witamina C', 'nl': 'Vitamine C', 'es': 'Vitamina C', 'de': 'Vitamin C'});
+        return _t({
+          'en': 'Vitamin C',
+          'pl': 'Witamina C',
+          'nl': 'Vitamine C',
+          'es': 'Vitamina C',
+          'de': 'Vitamin C'
+        });
       case 'vitaminD':
-        return _t({'en': 'Vitamin D', 'pl': 'Witamina D', 'nl': 'Vitamine D', 'es': 'Vitamina D', 'de': 'Vitamin D'});
+        return _t({
+          'en': 'Vitamin D',
+          'pl': 'Witamina D',
+          'nl': 'Vitamine D',
+          'es': 'Vitamina D',
+          'de': 'Vitamin D'
+        });
       case 'vitaminE':
-        return _t({'en': 'Vitamin E', 'pl': 'Witamina E', 'nl': 'Vitamine E', 'es': 'Vitamina E', 'de': 'Vitamin E'});
+        return _t({
+          'en': 'Vitamin E',
+          'pl': 'Witamina E',
+          'nl': 'Vitamine E',
+          'es': 'Vitamina E',
+          'de': 'Vitamin E'
+        });
       case 'vitaminK':
-        return _t({'en': 'Vitamin K', 'pl': 'Witamina K', 'nl': 'Vitamine K', 'es': 'Vitamina K', 'de': 'Vitamin K'});
+        return _t({
+          'en': 'Vitamin K',
+          'pl': 'Witamina K',
+          'nl': 'Vitamine K',
+          'es': 'Vitamina K',
+          'de': 'Vitamin K'
+        });
       case 'folateB9':
-        return _t({'en': 'Folate (B9)', 'pl': 'Foliany (B9)', 'nl': 'Foliumzuur (B9)', 'es': 'Folato (B9)', 'de': 'Folat (B9)'});
+        return _t({
+          'en': 'Folate (B9)',
+          'pl': 'Foliany (B9)',
+          'nl': 'Foliumzuur (B9)',
+          'es': 'Folato (B9)',
+          'de': 'Folat (B9)'
+        });
       case 'vitaminB12':
-        return _t({'en': 'Vitamin B12', 'pl': 'Witamina B12', 'nl': 'Vitamine B12', 'es': 'Vitamina B12', 'de': 'Vitamin B12'});
+        return _t({
+          'en': 'Vitamin B12',
+          'pl': 'Witamina B12',
+          'nl': 'Vitamine B12',
+          'es': 'Vitamina B12',
+          'de': 'Vitamin B12'
+        });
       case 'calcium':
-        return _t({'en': 'Calcium', 'pl': 'Wapń', 'nl': 'Calcium', 'es': 'Calcio', 'de': 'Kalzium'});
+        return _t({
+          'en': 'Calcium',
+          'pl': 'Wapń',
+          'nl': 'Calcium',
+          'es': 'Calcio',
+          'de': 'Kalzium'
+        });
       case 'iron':
-        return _t({'en': 'Iron', 'pl': 'Żelazo', 'nl': 'IJzer', 'es': 'Hierro', 'de': 'Eisen'});
+        return _t({
+          'en': 'Iron',
+          'pl': 'Żelazo',
+          'nl': 'IJzer',
+          'es': 'Hierro',
+          'de': 'Eisen'
+        });
       case 'magnesium':
-        return _t({'en': 'Magnesium', 'pl': 'Magnez', 'nl': 'Magnesium', 'es': 'Magnesio', 'de': 'Magnesium'});
+        return _t({
+          'en': 'Magnesium',
+          'pl': 'Magnez',
+          'nl': 'Magnesium',
+          'es': 'Magnesio',
+          'de': 'Magnesium'
+        });
       case 'potassium':
-        return _t({'en': 'Potassium', 'pl': 'Potas', 'nl': 'Kalium', 'es': 'Potasio', 'de': 'Kalium'});
+        return _t({
+          'en': 'Potassium',
+          'pl': 'Potas',
+          'nl': 'Kalium',
+          'es': 'Potasio',
+          'de': 'Kalium'
+        });
       case 'sodium':
-        return _t({'en': 'Sodium', 'pl': 'Sód', 'nl': 'Natrium', 'es': 'Sodio', 'de': 'Natrium'});
+        return _t({
+          'en': 'Sodium',
+          'pl': 'Sód',
+          'nl': 'Natrium',
+          'es': 'Sodio',
+          'de': 'Natrium'
+        });
       case 'zinc':
-        return _t({'en': 'Zinc', 'pl': 'Cynk', 'nl': 'Zink', 'es': 'Zinc', 'de': 'Zink'});
+        return _t({
+          'en': 'Zinc',
+          'pl': 'Cynk',
+          'nl': 'Zink',
+          'es': 'Zinc',
+          'de': 'Zink'
+        });
       case 'omega3':
-        return _t({'en': 'Omega-3 (EPA+DHA+ALA)', 'pl': 'Omega-3 (EPA+DHA+ALA)', 'nl': 'Omega-3 (EPA+DHA+ALA)', 'es': 'Omega-3 (EPA+DHA+ALA)', 'de': 'Omega-3 (EPA+DHA+ALA)'});
+        return _t({
+          'en': 'Omega-3 (EPA+DHA+ALA)',
+          'pl': 'Omega-3 (EPA+DHA+ALA)',
+          'nl': 'Omega-3 (EPA+DHA+ALA)',
+          'es': 'Omega-3 (EPA+DHA+ALA)',
+          'de': 'Omega-3 (EPA+DHA+ALA)'
+        });
       case 'selenium':
-        return _t({'en': 'Selenium', 'pl': 'Selen', 'nl': 'Selenium', 'es': 'Selenio', 'de': 'Selen'});
+        return _t({
+          'en': 'Selenium',
+          'pl': 'Selen',
+          'nl': 'Selenium',
+          'es': 'Selenio',
+          'de': 'Selen'
+        });
       case 'iodine':
-        return _t({'en': 'Iodine', 'pl': 'Jod', 'nl': 'Jodium', 'es': 'Yodo', 'de': 'Jod'});
+        return _t({
+          'en': 'Iodine',
+          'pl': 'Jod',
+          'nl': 'Jodium',
+          'es': 'Yodo',
+          'de': 'Jod'
+        });
       case 'chromium':
-        return _t({'en': 'Chromium', 'pl': 'Chrom', 'nl': 'Chroom', 'es': 'Cromo', 'de': 'Chrom'});
+        return _t({
+          'en': 'Chromium',
+          'pl': 'Chrom',
+          'nl': 'Chroom',
+          'es': 'Cromo',
+          'de': 'Chrom'
+        });
       default:
         return key;
     }
@@ -8866,11 +10089,16 @@ class AppLocalizations {
       });
 
   String get scanFrameInstruction => _t({
-        'en': 'Only food inside the frame is recognised and used for the 3D model.',
-        'pl': 'Rozpoznawane i używane do modelu 3D jest tylko jedzenie wewnątrz ramki.',
-        'nl': 'Alleen eten binnen het kader wordt herkend en gebruikt voor het 3D-model.',
-        'es': 'Solo se reconoce y usa para el modelo 3D la comida dentro del marco.',
-        'de': 'Nur Essen innerhalb des Rahmens wird erkannt und für das 3D-Modell verwendet.',
+        'en':
+            'Only food inside the frame is recognised and used for the 3D model.',
+        'pl':
+            'Rozpoznawane i używane do modelu 3D jest tylko jedzenie wewnątrz ramki.',
+        'nl':
+            'Alleen eten binnen het kader wordt herkend en gebruikt voor het 3D-model.',
+        'es':
+            'Solo se reconoce y usa para el modelo 3D la comida dentro del marco.',
+        'de':
+            'Nur Essen innerhalb des Rahmens wird erkannt und für das 3D-Modell verwendet.',
       });
 
   String get scanFoodDetected => _t({
@@ -8931,10 +10159,14 @@ class AppLocalizations {
 
   String scanUnmeasuredFoods(String foods) => _t({
         'en': '$foods: volume not measured; excluded from nutrition.',
-        'pl': '$foods: objętość niezmierzona; pominięto w wartościach odżywczych.',
-        'nl': '$foods: volume niet gemeten; niet meegerekend in voedingswaarden.',
-        'es': '$foods: volumen no medido; no incluido en los valores nutricionales.',
-        'de': '$foods: Volumen nicht gemessen; nicht in den Nährwerten enthalten.',
+        'pl':
+            '$foods: objętość niezmierzona; pominięto w wartościach odżywczych.',
+        'nl':
+            '$foods: volume niet gemeten; niet meegerekend in voedingswaarden.',
+        'es':
+            '$foods: volumen no medido; no incluido en los valores nutricionales.',
+        'de':
+            '$foods: Volumen nicht gemessen; nicht in den Nährwerten enthalten.',
       });
 
   String get scanSideRecaptureGuidance => _t({
@@ -8966,9 +10198,11 @@ class AppLocalizations {
   String get scanMeasuredFoodsLogged => _t({
         'en': 'Only measured foods were saved to today’s diary.',
         'pl': 'W dzisiejszym dzienniku zapisano tylko zmierzone produkty.',
-        'nl': 'Alleen gemeten producten zijn in het dagboek van vandaag opgeslagen.',
+        'nl':
+            'Alleen gemeten producten zijn in het dagboek van vandaag opgeslagen.',
         'es': 'Solo se han guardado los alimentos medidos en el diario de hoy.',
-        'de': 'Nur gemessene Lebensmittel wurden im heutigen Tagebuch gespeichert.',
+        'de':
+            'Nur gemessene Lebensmittel wurden im heutigen Tagebuch gespeichert.',
       });
 
   String get scanTutorialTitle => _t({
@@ -9010,12 +10244,14 @@ class AppLocalizations {
         'pl': 'Trzymaj telefon płasko, ok. 30 cm nad talerzem, a całe jedzenie '
             'w kole. Zdjęcie zrobi się automatycznie, gdy telefon będzie '
             'poziomo i nieruchomo.',
-        'nl': 'Houd de telefoon plat, ongeveer 30 cm boven het bord, en houd al '
-            'het eten binnen de cirkel. De foto wordt automatisch gemaakt '
-            'zodra de telefoon recht en stil is.',
-        'es': 'Sostén el teléfono en horizontal, a unos 30 cm sobre el plato, y '
-            'mantén toda la comida dentro del círculo. La foto se toma '
-            'automáticamente cuando el teléfono esté nivelado y quieto.',
+        'nl':
+            'Houd de telefoon plat, ongeveer 30 cm boven het bord, en houd al '
+                'het eten binnen de cirkel. De foto wordt automatisch gemaakt '
+                'zodra de telefoon recht en stil is.',
+        'es':
+            'Sostén el teléfono en horizontal, a unos 30 cm sobre el plato, y '
+                'mantén toda la comida dentro del círculo. La foto se toma '
+                'automáticamente cuando el teléfono esté nivelado y quieto.',
         'de': 'Halte das Handy flach, etwa 30 cm über dem Teller, und behalte '
             'das ganze Essen im Kreis. Das Foto wird automatisch aufgenommen, '
             'sobald das Handy gerade und ruhig ist.',
@@ -9025,31 +10261,35 @@ class AppLocalizations {
         'en': 'Lower the phone to plate height and hold it upright, facing the '
             'food straight on, with the food inside the frame. A level side '
             'photo gives the most accurate height.',
-        'pl': 'Opuść telefon na wysokość talerza i trzymaj go pionowo, na wprost '
-            'jedzenia, z jedzeniem w ramce. Prosto zrobione zdjęcie z boku '
-            'daje najdokładniejszą wysokość.',
+        'pl':
+            'Opuść telefon na wysokość talerza i trzymaj go pionowo, na wprost '
+                'jedzenia, z jedzeniem w ramce. Prosto zrobione zdjęcie z boku '
+                'daje najdokładniejszą wysokość.',
         'nl': 'Laat de telefoon zakken tot bordhoogte en houd hem rechtop, recht '
             'voor het eten, met het eten binnen het kader. Een rechte zijfoto '
             'geeft de meest nauwkeurige hoogte.',
         'es': 'Baja el teléfono a la altura del plato y sostenlo vertical, de '
             'frente a la comida, con la comida dentro del marco. Una foto '
             'lateral nivelada da la altura más precisa.',
-        'de': 'Senke das Handy auf Tellerhöhe und halte es aufrecht, direkt vor '
-            'dem Essen, mit dem Essen im Rahmen. Ein gerades Seitenfoto '
-            'liefert die genaueste Höhe.',
+        'de':
+            'Senke das Handy auf Tellerhöhe und halte es aufrecht, direkt vor '
+                'dem Essen, mit dem Essen im Rahmen. Ein gerades Seitenfoto '
+                'liefert die genaueste Höhe.',
       });
 
   String get scanTutorialResultsBody => _t({
-        'en': 'The AI builds a 3D model of your food and estimates its calories '
-            'and macros. You can edit every item afterwards.',
+        'en':
+            'The AI builds a 3D model of your food and estimates its calories '
+                'and macros. You can edit every item afterwards.',
         'pl': 'AI tworzy model 3D jedzenia i szacuje kalorie oraz '
             'makroskładniki. Każdą pozycję możesz potem edytować.',
         'nl': 'De AI bouwt een 3D-model van je eten en schat de calorieën en '
             "macro's. Je kunt elk item daarna aanpassen.",
         'es': 'La IA crea un modelo 3D de tu comida y estima sus calorías y '
             'macros. Después puedes editar cada elemento.',
-        'de': 'Die KI erstellt ein 3D-Modell deines Essens und schätzt Kalorien '
-            'und Makros. Du kannst jeden Eintrag danach bearbeiten.',
+        'de':
+            'Die KI erstellt ein 3D-Modell deines Essens und schätzt Kalorien '
+                'und Makros. Du kannst jeden Eintrag danach bearbeiten.',
       });
 }
 

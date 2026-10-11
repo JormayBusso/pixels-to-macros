@@ -1,6 +1,7 @@
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import 'dart:convert';
 import 'dart:io';
@@ -33,6 +34,7 @@ import 'health_service.dart';
 ///   • benchmarks      – per-scan performance timing data
 class DatabaseService {
   DatabaseService._();
+  DatabaseService.forTesting(Database database) : _database = database;
   static final DatabaseService instance = DatabaseService._();
 
   Database? _database;
@@ -51,7 +53,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 48,
+      version: 49,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -162,7 +164,8 @@ class DatabaseService {
         last_weekly_badge_recap_week TEXT NOT NULL DEFAULT '',
         premium_unlocked         INTEGER NOT NULL DEFAULT 0,
         premium_theme_light      INTEGER NOT NULL DEFAULT 0,
-        health_sync_enabled      INTEGER NOT NULL DEFAULT 0
+        health_sync_enabled      INTEGER NOT NULL DEFAULT 0,
+        extra_accuracy           INTEGER NOT NULL DEFAULT 1
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
@@ -767,7 +770,14 @@ class DatabaseService {
       // Cached on-device (Apple Translation) recipe translations.
       await _createRecipeTranslationTable(db);
     }
+    if (oldVersion < 49) {
+      await migrateExtraAccuracy(db);
+    }
   }
+
+  @visibleForTesting
+  static Future<void> migrateExtraAccuracy(DatabaseExecutor db) => db.execute(
+      'ALTER TABLE user_preferences ADD COLUMN extra_accuracy INTEGER NOT NULL DEFAULT 1');
 
   /// Cache of on-device recipe translations, one row per (recipe_id, lang).
   /// [name] is filled when list cards are translated; [ingredients] (JSON list
@@ -802,7 +812,8 @@ class DatabaseService {
       final chunk = ids.sublist(i, (i + 500).clamp(0, ids.length));
       final rows = await db.query(
         'recipe_translations',
-        where: 'lang = ? AND recipe_id IN (${List.filled(chunk.length, '?').join(',')})',
+        where:
+            'lang = ? AND recipe_id IN (${List.filled(chunk.length, '?').join(',')})',
         whereArgs: [lang, ...chunk],
       );
       for (final row in rows) {
@@ -5158,6 +5169,58 @@ class DatabaseService {
     return cleaned;
   }
 
+  Future<void> updateApproximatePortion({
+    required ScanResult scan,
+    required DetectedFood food,
+    required String label,
+    required double grams,
+    required double calories,
+    bool perMl = false,
+  }) async {
+    if (!scan.isApproximate ||
+        scan.id == null ||
+        food.id == null ||
+        !grams.isFinite ||
+        grams <= 0 ||
+        !calories.isFinite ||
+        calories < 0) {
+      throw ArgumentError('invalid_approximate_portion');
+    }
+    final db = await database;
+    await db.transaction((txn) async {
+      final rows = await txn.query('scan_results',
+          columns: ['model_objects_json'],
+          where: 'id = ?',
+          whereArgs: [scan.id]);
+      final metadata =
+          jsonDecode(rows.single['model_objects_json'] as String) as List;
+      final object = metadata.whereType<Map>().firstWhere((object) =>
+          object['food_index'] == scan.foods.indexOf(food) ||
+          (object['food_index'] == null && object['label'] == food.label));
+      object['label'] = label;
+      object['portion_amount'] = grams;
+      object['portion_unit'] = perMl ? 'ml' : 'g';
+      if (perMl) {
+        object.remove('weight_g');
+      } else {
+        object['weight_g'] = grams;
+      }
+      await txn.update(
+          'detected_foods',
+          {
+            'label': label,
+            'volume_cm3': 0,
+            'calories_min': calories,
+            'calories_max': calories,
+          },
+          where: 'id = ? AND scan_id = ?',
+          whereArgs: [food.id, scan.id]);
+      await txn.update(
+          'scan_results', {'model_objects_json': jsonEncode(metadata)},
+          where: 'id = ?', whereArgs: [scan.id]);
+    });
+  }
+
   Future<void> updateDetectedFood(
     int foodId, {
     required String label,
@@ -5305,8 +5368,8 @@ class DatabaseService {
   /// Count of stored exemplars (for diagnostics / tests).
   Future<int> countFoodExemplars() async {
     final db = await database;
-    final result = await db
-        .rawQuery('SELECT COUNT(*) AS c FROM food_label_exemplars');
+    final result =
+        await db.rawQuery('SELECT COUNT(*) AS c FROM food_label_exemplars');
     return (result.first['c'] as int?) ?? 0;
   }
 
@@ -5619,6 +5682,57 @@ class DatabaseService {
   Future<int> insertPantryItem(PantryItem item) async {
     final db = await database;
     return db.insert('pantry_items', item.toMap());
+  }
+
+  /// Atomically apply reviewed observations without counting repeat photos as
+  /// purchases. Receipt purchases explicitly use the additive mode.
+  Future<List<PantryItem>> saveReviewedPantryItems(
+    List<PantryItem> items, {
+    bool observations = true,
+  }) async {
+    final db = await database;
+    return db.transaction((txn) async {
+      final rows = await txn.query('pantry_items');
+      final existing = {
+        for (final row in rows)
+          PantryItem.normalizeKey(PantryItem.fromMap(row).name):
+              PantryItem.fromMap(row),
+      };
+      for (final item in items) {
+        if (item.name.trim().isEmpty ||
+            !item.quantity.isFinite ||
+            item.quantity <= 0) {
+          throw ArgumentError('Invalid reviewed pantry item');
+        }
+        final key = PantryItem.normalizeKey(item.name);
+        final previous = existing[key];
+        if (previous == null) {
+          final id = await txn.insert('pantry_items', item.toMap());
+          existing[key] = item.copyWith(id: id);
+          continue;
+        }
+        final sameUnit = (previous.unit ?? '') == (item.unit ?? '');
+        if (!sameUnit) {
+          throw ArgumentError('Stock units differ; review the existing unit');
+        }
+        final current = previous.available ? previous.quantity : 0.0;
+        final quantity = !sameUnit
+            ? previous.quantity
+            : observations
+                ? (current > item.quantity ? current : item.quantity)
+                : current + item.quantity;
+        final updated = previous.copyWith(
+          quantity: quantity,
+          available: quantity > 0,
+          category: previous.category ?? item.category,
+          updatedAt: DateTime.now(),
+        );
+        await txn.update('pantry_items', updated.toMap(),
+            where: 'id = ?', whereArgs: [previous.id]);
+        existing[key] = updated;
+      }
+      return existing.values.toList();
+    });
   }
 
   Future<void> updatePantryItem(PantryItem item) async {

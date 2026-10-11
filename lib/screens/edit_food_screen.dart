@@ -18,9 +18,11 @@ class EditFoodScreen extends ConsumerStatefulWidget {
     this.needsUserLabel = false,
     this.candidateLabels = const [],
     this.labelEmbedding = const [],
+    this.approximateScan,
   });
   final int scanId;
   final DetectedFood food;
+  final ScanResult? approximateScan;
 
   /// When true the detected label is an unconfirmed guess: the screen opens
   /// with a prominent prompt asking the user to enter/confirm the real food,
@@ -62,7 +64,9 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
         : widget.food.label;
     _labelCtrl = TextEditingController(text: initialLabel);
     _weightCtrl = TextEditingController(
-      text: widget.food.volumeCm3.round().toString(),
+      text: (widget.approximateScan?.reviewedPortionFor(widget.food) ??
+              widget.food.volumeCm3)
+          .toStringAsFixed(0),
     );
     _calMinCtrl =
         TextEditingController(text: widget.food.caloriesMin.round().toString());
@@ -93,6 +97,26 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
     final label = _labelCtrl.text.trim();
     final foodData = _foodForLabel(label);
     final grams = _parsePositiveDouble(_weightCtrl.text);
+    if (widget.approximateScan != null) {
+      if (foodData == null || grams == null || widget.food.id == null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content:
+                Text(AppLocalizations.of(context).scanPortionReviewInvalid)));
+        return;
+      }
+      await DatabaseService.instance.updateApproximatePortion(
+        scan: widget.approximateScan!,
+        food: widget.food,
+        label: foodData.label,
+        grams: grams,
+        calories: grams / 100 * foodData.kcalPer100g,
+        perMl: foodData.perMl,
+      );
+      await ref.read(historyProvider.notifier).load();
+      await ref.read(dailyIntakeProvider.notifier).load();
+      if (mounted) Navigator.of(context).pop(true);
+      return;
+    }
     final volumeCm3 = grams == null
         ? widget.food.volumeCm3
         : grams / _averageDensity(foodData);
@@ -192,8 +216,10 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${grams.toStringAsFixed(grams >= 10 ? 0 : 1)} g • '
-                    '${volume.toStringAsFixed(1)} cm³ volume',
+                    widget.approximateScan != null
+                        ? '${grams.toStringAsFixed(0)} g/ml • ${AppLocalizations.of(context).approximateEstimate}'
+                        : '${grams.toStringAsFixed(grams >= 10 ? 0 : 1)} g • '
+                            '${volume.toStringAsFixed(1)} cm³ volume',
                     style: TextStyle(
                       fontSize: 13,
                       color: context.appMutedTextColor,
@@ -336,10 +362,13 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
   }
 
   double _currentWeightG([FoodData? foodData]) {
+    final reviewed = widget.approximateScan?.reviewedPortionFor(widget.food);
+    if (reviewed != null) return reviewed;
     return widget.food.volumeCm3 * _averageDensity(foodData ?? _foodForLabel());
   }
 
   double _currentVolumeCm3() {
+    if (widget.approximateScan != null) return 0;
     final grams = _parsePositiveDouble(_weightCtrl.text);
     if (grams == null) return widget.food.volumeCm3;
     return grams / _averageDensity(_foodForLabel());

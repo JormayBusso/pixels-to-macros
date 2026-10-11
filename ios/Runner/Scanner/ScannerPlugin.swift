@@ -53,7 +53,7 @@ final class ScannerPlugin {
         result: @escaping FlutterResult
     ) {
         if inferenceInFlight,
-           ["beginScan", "captureTopFrame", "captureSideFrame", "startRecording", "runVideoInference"].contains(call.method) {
+           ["beginScan", "captureTopFrame", "captureSideFrame", "startRecording", "runVideoInference", "recognizePantryPhoto"].contains(call.method) {
             result(FlutterError(code: "SCAN_BUSY", message: "Scan inference is still running", details: nil))
             return
         }
@@ -133,6 +133,7 @@ final class ScannerPlugin {
             result(nil)
 
         case "runVideoInference":
+            let approximate = (call.arguments as? [String: Any])?["scan_mode"] as? String == "approximate"
             inferenceInFlight = true
             recorder.stopRecording()
             // On-device exemplar learning: Dart passes the user's locally-stored
@@ -162,8 +163,13 @@ final class ScannerPlugin {
                 var objcException: NSException? = nil
                 let ok = tryCatchObjC({
                     do {
-                        jsonResult = try pipeline.runVideoScan(recorder: recorder)
-                        lastVideoPLY = pointCloudExporter.exportFromRecorder(recorder: recorder)
+                        if approximate {
+                            lastVideoPLY = nil
+                            jsonResult = try pipeline.runApproximateScan(recorder: recorder)
+                        } else {
+                            jsonResult = try pipeline.runVideoScan(recorder: recorder)
+                            lastVideoPLY = pointCloudExporter.exportFromRecorder(recorder: recorder)
+                        }
                     } catch {
                         swiftError = error
                     }
@@ -184,6 +190,31 @@ final class ScannerPlugin {
                     safeResult(ScannerPlugin.flutterError(for: err))
                 } else {
                     safeResult(FlutterError(code: "VIDEO_INFERENCE_FAILED", message: "Unknown error", details: nil))
+                }
+            }
+
+        case "recognizePantryPhoto":
+            guard let args = call.arguments as? [String: Any],
+                  let path = args["image_path"] as? String, path.hasPrefix("/"),
+                  FileManager.default.fileExists(atPath: path) else {
+                result(FlutterError(code: "PANTRY_IMAGE_INVALID", message: "A local image file is required", details: nil))
+                return
+            }
+            inferenceInFlight = true
+            DispatchQueue.global(qos: .userInitiated).async {
+                let value: Any = autoreleasepool {
+                    guard let buffer = pantryImageBuffer(path: path) else {
+                        return FlutterError(code: "PANTRY_IMAGE_INVALID", message: "Image could not be decoded", details: nil)
+                    }
+                    do {
+                        return try InferencePipeline().recognizePantryPhoto(pixelBuffer: buffer)
+                    } catch {
+                        return FlutterError(code: "PANTRY_INFERENCE_FAILED", message: error.localizedDescription, details: nil)
+                    }
+                }
+                DispatchQueue.main.async {
+                    inferenceInFlight = false
+                    result(value)
                 }
             }
 
@@ -379,10 +410,53 @@ final class ScannerPlugin {
                     code: "SIDE_VIEW_REQUIRED",
                     message: InferencePipeline.PipelineError.sideViewRequiredMessage,
                     details: reason)
+            case .containerPortionReviewRequired(let reason):
+                return FlutterError(code: "CONTAINER_PORTION_REVIEW_REQUIRED",
+                    message: "Container hides the food portion", details: reason)
             default:
                 break
             }
         }
         return FlutterError(code: "VIDEO_INFERENCE_FAILED", message: error.localizedDescription, details: nil)
+    }
+
+    static func pantryImageBuffer(path: String) -> CVPixelBuffer? {
+        guard let image = UIImage(contentsOfFile: path) else { return nil }
+        return pantryImageBuffer(image: image)
+    }
+
+    static func pantryImageBuffer(image: UIImage) -> CVPixelBuffer? {
+        guard let cgImage = image.cgImage,
+              cgImage.width > 0, cgImage.height > 0,
+              Double(cgImage.width) * Double(cgImage.height) <= 60_000_000 else { return nil }
+        let rotated = [.left, .leftMirrored, .right, .rightMirrored].contains(image.imageOrientation)
+        let pixelsWide = CGFloat(rotated ? cgImage.height : cgImage.width)
+        let pixelsHigh = CGFloat(rotated ? cgImage.width : cgImage.height)
+        let scale = min(1, 1600 / max(pixelsWide, pixelsHigh))
+        let size = CGSize(width: max(1, (pixelsWide * scale).rounded()),
+                          height: max(1, (pixelsHigh * scale).rounded()))
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let upright = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+        guard let pixels = upright.cgImage else { return nil }
+        var buffer: CVPixelBuffer?
+        let attributes: [CFString: Any] = [
+            kCVPixelBufferCGImageCompatibilityKey: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: true]
+        guard CVPixelBufferCreate(kCFAllocatorDefault, pixels.width, pixels.height,
+            kCVPixelFormatType_32BGRA, attributes as CFDictionary, &buffer) == kCVReturnSuccess,
+              let buffer else { return nil }
+        CVPixelBufferLockBaseAddress(buffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
+        guard let base = CVPixelBufferGetBaseAddress(buffer),
+              let context = CGContext(data: base, width: pixels.width, height: pixels.height,
+                bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) else { return nil }
+        context.draw(pixels, in: CGRect(x: 0, y: 0, width: pixels.width, height: pixels.height))
+        return buffer
     }
 }

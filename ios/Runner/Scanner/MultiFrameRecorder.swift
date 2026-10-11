@@ -165,6 +165,10 @@ final class MultiFrameRecorder {
     @discardableResult
     func captureTopFrame(from sessionManager: ARSessionManager) -> Bool {
         guard let arFrame = sessionManager.latestFrame else { return false }
+        guard case .normal = arFrame.camera.trackingState else {
+            print("[CAPTUREPAIR] top rejected reason=tracking_not_normal")
+            return false
+        }
         // A replacement top invalidates every observation tied to the old top.
         sideFrame = nil
         sideImagePath = nil
@@ -178,7 +182,7 @@ final class MultiFrameRecorder {
         let meshes = arFrame.anchors.compactMap { $0 as? ARMeshAnchor }
         if !meshes.isEmpty { meshAnchors = meshes }
 
-        if let d = sessionManager.cameraToTableDistanceMeters() {
+        if let d = sessionManager.cameraToTableDistanceMeters(frame: arFrame) {
             tableDistanceCm = Double(d) * 100.0
             print("[SCAN] dual-photo top: ARKit table distance \(String(format: "%.1f", tableDistanceCm ?? 0)) cm")
         }
@@ -226,6 +230,13 @@ final class MultiFrameRecorder {
             sideImagePath = nil
             lightFrames = []
             print("[CAPTUREPAIR] side rejected id=\(captureID) reason=missing_top_or_session_changed_or_stale_frame")
+            return false
+        }
+        guard case .normal = arFrame.camera.trackingState else {
+            sideFrame = nil
+            sideImagePath = nil
+            lightFrames = []
+            print("[CAPTUREPAIR] side rejected reason=tracking_not_normal")
             return false
         }
         currentPitch = arFrame.camera.eulerAngles.x
@@ -318,12 +329,11 @@ final class MultiFrameRecorder {
         let meshes = arFrame.anchors.compactMap { $0 as? ARMeshAnchor }
         if !meshes.isEmpty { meshAnchors = meshes }
 
-        // Lock the metric camera-to-table distance the first time a horizontal
-        // plane is detected while still in the top-view phase — this matches the
-        // top frame used for the footprint area, giving a consistent scale.
-        if tableDistanceCm == nil,
+        // Only the chosen top frame may supply its supporting plane. A later
+        // frame must not retroactively calibrate a different camera pose.
+        if topFrame == nil,
            MultiFrameRecorder.isLikelyTopView(pitch: currentPitch),
-           let d = sessionManager.cameraToTableDistanceMeters() {
+           let d = sessionManager.cameraToTableDistanceMeters(frame: arFrame) {
             tableDistanceCm = Double(d) * 100.0
             print("[SCAN] ARKit table distance locked: \(String(format: "%.1f", tableDistanceCm ?? 0)) cm")
         }

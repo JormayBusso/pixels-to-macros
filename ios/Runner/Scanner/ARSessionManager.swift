@@ -148,26 +148,50 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
     }
 
     /// Vertical distance (meters) from the camera down to the nearest detected
-    /// horizontal plane below it (the table / plate surface), or `nil` if no
-    /// usable plane has been found yet. ARKit's world is gravity-aligned
-    /// (+Y up), so the distance is simply `cameraY - planeY` for the highest
-    /// horizontal plane below the camera. This is the most reliable metric
-    /// scale source on non-LiDAR devices and works at any hold distance.
-    func cameraToTableDistanceMeters() -> Float? {
-        guard let frame = session?.currentFrame else { return nil }
+    /// horizontal supporting plane intersected by the captured camera ray,
+    /// or `nil` for stale tracking, invalid range or an unsupported footprint.
+    func cameraToTableDistanceMeters(frame capturedFrame: ARFrame? = nil) -> Float? {
+        guard let current = session?.currentFrame else { return nil }
+        let frame = capturedFrame ?? current
+        guard case .normal = frame.camera.trackingState else {
+            print("[PlaneMeasurement] timestamp=\(frame.timestamp) reason=tracking_not_normal")
+            return nil
+        }
         let cameraY = frame.camera.transform.columns.3.y
         var bestY: Float?
+        var selectedPlane: ARPlaneAnchor?
         for anchor in frame.anchors {
-            guard let plane = anchor as? ARPlaneAnchor,
-                  plane.alignment == .horizontal else { continue }
+            guard let plane = anchor as? ARPlaneAnchor else { continue }
+            let support = FrameCaptureService.SupportingPlane(
+                transform: plane.transform,
+                boundary: plane.geometry.boundaryVertices)
+            var supportsFood = true
+            if ARPlaneAnchor.isClassificationSupported {
+                switch plane.classification {
+                case .floor, .ceiling, .wall: supportsFood = false
+                default: break
+                }
+            }
+            let validation = support.distance(camera: frame.camera.transform, timestamp: frame.timestamp,
+                currentTimestamp: current.timestamp, horizontal: plane.alignment == .horizontal,
+                supportsFood: supportsFood)
+            print("[PlaneMeasurement] timestamp=\(frame.timestamp) source=captured_frame currentTimestamp=\(current.timestamp) planeID=\(plane.identifier) classification=\(plane.classification) reason=\(validation.reason)")
+            guard validation.meters != nil else { continue }
             let planeY = plane.transform.columns.3.y
             // Only consider surfaces below the camera (where the food sits).
             guard planeY < cameraY - 0.02 else { continue }
             // Prefer the highest such plane (table top, not the floor below it).
-            if bestY == nil || planeY > bestY! { bestY = planeY }
+            if bestY == nil || planeY > bestY! {
+                bestY = planeY
+                selectedPlane = plane
+            }
         }
-        guard let y = bestY else { return nil }
+        guard let y = bestY else {
+            print("[PlaneMeasurement] timestamp=\(frame.timestamp) source=session_currentFrame reason=no_horizontal_plane_below_camera cameraY=\(cameraY)")
+            return nil
+        }
         let d = cameraY - y
+        print("[PlaneMeasurement] timestamp=\(frame.timestamp) source=captured_frame planeID=\(selectedPlane?.identifier.uuidString ?? "none") cameraY=\(cameraY) planeY=\(y) verticalDistanceM=\(d) normal=\(selectedPlane?.transform.columns.1.description ?? "none") selection=highest_valid_support footprintContainment=accepted")
         // Sanity clamp: plated food is scanned at ~8–80 cm.
         guard d > 0.05, d < 1.0 else { return nil }
         return d

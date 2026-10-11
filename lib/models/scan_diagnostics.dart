@@ -38,6 +38,9 @@ class FoodDiagnostic {
     this.debug,
     this.volumeStatus,
     this.sideMissingReason,
+    this.measurementProvenance,
+    this.portionAmount,
+    this.portionUnit,
   });
 
   final String label;
@@ -46,6 +49,7 @@ class FoodDiagnostic {
   final ScanVolumeStatus? volumeStatus;
   final String? sideMissingReason;
   bool get hasMeasuredVolume =>
+      volumeStatus != ScanVolumeStatus.estimated &&
       ScanVolumeStatus.hasUsableVolume(volumeStatus, volumeCm3);
   final String? scaleSource;
   final double? rawVolumeCm3;
@@ -71,6 +75,9 @@ class FoodDiagnostic {
   final bool? fallbackUsed;
   final bool? estimated;
   final String? debug;
+  final String? measurementProvenance;
+  final double? portionAmount;
+  final String? portionUnit;
 
   static double? _d(Object? v) => (v is num) ? v.toDouble() : null;
   static int? _i(Object? v) => (v is num) ? v.toInt() : null;
@@ -107,6 +114,9 @@ class FoodDiagnostic {
       fallbackUsed: _b(m['fallback_used']),
       estimated: _b(m['estimated']),
       debug: m['debug'] as String?,
+      measurementProvenance: m['measurement_provenance'] as String?,
+      portionAmount: _d(m['portion_amount']),
+      portionUnit: m['portion_unit'] as String?,
     );
   }
 
@@ -186,13 +196,19 @@ class ScanDiagnostics {
       b.writeln(f.hasMeasuredVolume
           ? '    volume:    ${f.volumeCm3.toStringAsFixed(1)} cm³'
               '${f.rawVolumeCm3 != null ? ' (raw ${f.rawVolumeCm3!.toStringAsFixed(1)})' : ''}'
-          : '    volume:    unmeasured (nutrition excluded)');
+          : f.scanMode == 'approximate'
+              ? '    volume:    unavailable (reviewed portion nutrition estimated)'
+              : '    volume:    unmeasured (nutrition excluded)');
       b.writeln(
           '    volume_measured: ${f.volumeStatus?.name ?? 'legacy_unknown'}'
           '${f.sideMissingReason != null ? ' side_missing_reason=${f.sideMissingReason}' : ''}');
       if (f.hasMeasuredVolume && f.weightG != null) {
         b.writeln('    weight:    ${f.weightG!.toStringAsFixed(0)} g'
             '${f.densityGCm3 != null ? ' @ ${f.densityGCm3} g/cm³' : ''}');
+      }
+      if (f.scanMode == 'approximate' && f.portionAmount != null) {
+        b.writeln(
+            '    portion:   estimated ${f.portionAmount} ${f.portionUnit} (user reviewed)');
       }
       if (f.footprintAreaCm2 != null || f.heightCm != null) {
         b.writeln(
@@ -219,6 +235,9 @@ class ScanDiagnostics {
             '    guardrail: softened (≤ ${f.guardrailUpperCm3 ?? '-'} cm³)');
       }
       if (f.debug != null) b.writeln('    debug:     ${f.debug}');
+      if (f.measurementProvenance != null) {
+        b.writeln('    provenance: ${f.measurementProvenance}');
+      }
     }
     return b.toString();
   }

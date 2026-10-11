@@ -21,6 +21,35 @@ import simd
 ///      the current Model I/O build.
 final class Food3DExporter {
 
+    static func validDisplayObject(_ object: DepthFusion.Food3DObject) -> Bool {
+        guard !object.vertices.isEmpty, object.faces.count >= 12, object.faces.count % 3 == 0,
+              object.colors.count == object.vertices.count * 3,
+              object.uvs.count == object.vertices.count,
+              object.uvs.allSatisfy({ $0.x.isFinite && $0.y.isFinite }),
+              object.volumeCm3.isFinite, object.volumeCm3 > 0 else { return false }
+        let volume = DepthFusion.signedDisplayVolume(vertices: object.vertices, faces: object.faces)
+        guard volume.isFinite, volume > 0,
+              abs(volume - object.volumeCm3) <= max(0.0001, volume * 0.00001) else { return false }
+        struct Edge: Hashable { let a: SIMD3<Float>; let b: SIMD3<Float> }
+        func less(_ a: SIMD3<Float>, _ b: SIMD3<Float>) -> Bool {
+            if a.x != b.x { return a.x < b.x }
+            if a.y != b.y { return a.y < b.y }
+            return a.z < b.z
+        }
+        var balance: [Edge: Int] = [:]
+        for i in Swift.stride(from: 0, to: object.faces.count, by: 3) {
+            let triangle = object.faces[i..<i + 3].map { object.vertices[$0] }
+            for j in 0..<3 {
+                let a = triangle[j], b = triangle[(j + 1) % 3]
+                guard a != b else { return false }
+                let forward = less(a, b)
+                let edge = Edge(a: forward ? a : b, b: forward ? b : a)
+                balance[edge, default: 0] += forward ? 1 : -1
+            }
+        }
+        return balance.values.allSatisfy { $0 == 0 }
+    }
+
     /// Try to export `objects` to a 3-D scene file in the app's Documents
     /// directory. Returns the URL on success, `nil` on failure (caller logs).
     func export(
@@ -31,7 +60,7 @@ final class Food3DExporter {
         topCoverage: [[UInt8]]? = nil,
         sideCoverage: [[UInt8]]? = nil
     ) -> URL? {
-        guard !objects.isEmpty else { return nil }
+        guard !objects.isEmpty, objects.allSatisfy(Self.validDisplayObject) else { return nil }
 
         let docs = FileManager.default.urls(
             for: .documentDirectory,

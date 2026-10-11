@@ -883,9 +883,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                             fontWeight: FontWeight.w600),
                                       ),
                                       subtitle: Text(
-                                        hasModel
-                                            ? '${_timeAgo(context, scan.timestamp)} • ${AppLocalizations.of(context).scan3dModelTag}'
-                                            : _timeAgo(context, scan.timestamp),
+                                        scan.isApproximate
+                                            ? '${_timeAgo(context, scan.timestamp)} • ${AppLocalizations.of(context).approximateEstimate}'
+                                            : hasModel
+                                                ? '${_timeAgo(context, scan.timestamp)} • ${AppLocalizations.of(context).scan3dModelTag}'
+                                                : _timeAgo(
+                                                    context, scan.timestamp),
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: context.appMutedTextColor,

@@ -143,17 +143,20 @@ class NativeBridge {
   /// the device.
   Future<List<Map<String, dynamic>>> runVideoInference({
     List<Map<String, dynamic>> userExemplars = const [],
+    bool extraAccuracy = true,
   }) async {
     debugPrint('[SCAN] NativeBridge.runVideoInference() called '
         '(exemplars=${userExemplars.length})');
     try {
-      final raw = await _channel
-          .invokeMethod<String>(
-            'runVideoInference',
-            {'user_exemplars': userExemplars},
-          )
-          .timeout(const Duration(seconds: 75));
-      debugPrint('[SCAN] NativeBridge.runVideoInference() raw=${raw?.substring(0, (raw.length > 200 ? 200 : raw.length))}');
+      final raw = await _channel.invokeMethod<String>(
+        'runVideoInference',
+        {
+          'user_exemplars': userExemplars,
+          'scan_mode': extraAccuracy ? 'strict' : 'approximate',
+        },
+      ).timeout(const Duration(seconds: 75));
+      debugPrint(
+          '[SCAN] NativeBridge.runVideoInference() raw=${raw?.substring(0, (raw.length > 200 ? 200 : raw.length))}');
       if (raw == null) return [];
       final list = jsonDecode(raw) as List;
       return list.cast<Map<String, dynamic>>();
@@ -235,7 +238,8 @@ class NativeBridge {
   /// viewer can address the same objects by `id`.
   Future<List<Map<String, dynamic>>> getModel3DObjects() async {
     try {
-      final raw = await _channel.invokeMethod<List<dynamic>>('getModel3DObjects');
+      final raw =
+          await _channel.invokeMethod<List<dynamic>>('getModel3DObjects');
       if (raw == null) return const [];
       return raw
           .whereType<Map>()
@@ -284,8 +288,7 @@ class NativeBridge {
 
   // ── Live food glow (camera preview) ──────────────────────────────────────
 
-  final _liveGlowChannel =
-      const MethodChannel('com.pixelstomacros/live_glow');
+  final _liveGlowChannel = const MethodChannel('com.pixelstomacros/live_glow');
 
   /// Starts throttled on-device food detection on the live AR preview and
   /// draws the "AI glow" natively on the detected food.
@@ -318,8 +321,8 @@ class NativeBridge {
   /// Switches the glow's capture ROI (see [startLiveGlow]).
   Future<void> updateLiveGlowRoi({required bool sideView}) async {
     try {
-      await _liveGlowChannel.invokeMethod<void>(
-          'updateRoi', {'roi': _liveGlowRoi(sideView)});
+      await _liveGlowChannel
+          .invokeMethod<void>('updateRoi', {'roi': _liveGlowRoi(sideView)});
     } catch (e) {
       debugPrint('[LiveGlow] updateRoi failed: $e');
     }

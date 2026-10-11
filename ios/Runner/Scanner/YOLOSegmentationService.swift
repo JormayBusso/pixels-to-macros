@@ -167,11 +167,11 @@ final class YOLOSegmentationService {
 
     /// Live-only gates run before NMS and mask assembly; saved capture keeps
     /// its original thresholds, object limits and label fallback.
-    func segmentForLivePreview(pixelBuffer: CVPixelBuffer) throws -> [SegmentedObject] {
-        try segment(pixelBuffer: pixelBuffer, livePreview: true)
+    func segmentForLivePreview(pixelBuffer: CVPixelBuffer, roi: LiveGlowGridROI? = nil) throws -> [SegmentedObject] {
+        try segment(pixelBuffer: pixelBuffer, livePreview: true, roi: roi)
     }
 
-    private func segment(pixelBuffer: CVPixelBuffer, livePreview: Bool) throws -> [SegmentedObject] {
+    private func segment(pixelBuffer: CVPixelBuffer, livePreview: Bool, roi: LiveGlowGridROI? = nil) throws -> [SegmentedObject] {
         try ensureLoaded()
         guard let visionModel = model else { throw YOLOSegmentationError.modelNotFound }
 
@@ -218,10 +218,23 @@ final class YOLOSegmentationService {
         guard let det = detArray, let proto = protoArray else {
             throw YOLOSegmentationError.unexpectedOutput
         }
+        if livePreview {
+            let shape = det.shape.map { $0.intValue }
+            guard shape.count == 3, hasMetadataLabels,
+                  shape[1] - 4 - protoCount == labels.count,
+                  (0..<labels.count).allSatisfy({ labels[$0] != nil })
+            else {
+                print("[LiveGlow] invalid_live_label_metadata resource=\(loadedResource ?? "-")")
+                throw YOLOSegmentationError.unexpectedOutput
+            }
+        }
 
-        let detections = decode(det: det, livePreview: livePreview)
+        let protoShape = proto.shape.map { $0.intValue }
+        let liveModelSize = protoShape.count == 4
+            ? CGSize(width: protoShape[3] * 4, height: protoShape[2] * 4) : .zero
+        let detections = decode(det: det, livePreview: livePreview, roi: roi, modelSize: liveModelSize)
         let kept = nonMaxSuppression(detections, limit: livePreview ? 8 : maxObjects)
-        return rasterise(kept, proto: proto, targetW: targetW, targetH: targetH)
+        return rasterise(kept, proto: proto, targetW: targetW, targetH: targetH, livePreview: livePreview)
     }
 
     // MARK: – Decode
@@ -236,7 +249,8 @@ final class YOLOSegmentationService {
         var coeffs: [Float]
     }
 
-    private func decode(det: MLMultiArray, livePreview: Bool) -> [Detection] {
+    private func decode(det: MLMultiArray, livePreview: Bool, roi: LiveGlowGridROI?,
+                        modelSize: CGSize) -> [Detection] {
         let shape = det.shape.map { $0.intValue } // [1, C, A]
         guard shape.count == 3 else { return [] }
         let strides = det.strides.map { $0.intValue }
@@ -285,6 +299,12 @@ final class YOLOSegmentationService {
             let cy = read(1 * strideChannel + anchorOffset)
             let w = read(2 * strideChannel + anchorOffset)
             let h = read(3 * strideChannel + anchorOffset)
+            if livePreview, let roi {
+                guard modelSize.width > 0, modelSize.height > 0,
+                      roi.contains(x: CGFloat(cx) * CGFloat(LiveFoodDetector.grid) / modelSize.width,
+                                   y: CGFloat(cy) * CGFloat(LiveFoodDetector.grid) / modelSize.height)
+                else { continue }
+            }
 
             var coeffs = [Float](repeating: 0, count: protoCount)
             for k in 0..<protoCount {
@@ -342,7 +362,8 @@ final class YOLOSegmentationService {
         _ detections: [Detection],
         proto: MLMultiArray,
         targetW: Int,
-        targetH: Int
+        targetH: Int,
+        livePreview: Bool
     ) -> [SegmentedObject] {
         guard !detections.isEmpty else { return [] }
         let shape = proto.shape.map { $0.intValue } // [1, 32, ph, pw]
@@ -423,6 +444,7 @@ final class YOLOSegmentationService {
                     count: targetH
                 )
                 var pixelCount = 0
+                var sumRow = 0, sumCol = 0
                 for r in ty0..<ty1 {
                     for c in tx0..<tx1 {
                         let protoY = (Float(r) + 0.5) * targetToProtoY
@@ -430,21 +452,29 @@ final class YOLOSegmentationService {
                         if Self.sigmoid(sampledLogit(protoY: protoY, protoX: protoX)) > maskThreshold {
                             mask[r][c] = 1
                             pixelCount += 1
+                            if livePreview { sumRow += r; sumCol += c }
                         }
                     }
                 }
 
                 guard pixelCount > 0 else { return }
-                // Drop disconnected speckle: keep only mask components that are a
+                // Saved captures drop disconnected speckle; live fill keeps every
+                // current component without another flood-fill pass.
+                // Keep only mask components that are a
                 // meaningful fraction of the dominant blob. This removes stray
                 // proto-bleed pixels that YOLO's low-res prototypes scatter along
                 // an edge WITHOUT low-pass smoothing the true silhouette (the
                 // exact outline the 3-D hull is built from is preserved).
-                guard let cleaned = Self.keepDominantComponents(
-                    &mask, y0: ty0, y1: ty1, x0: tx0, x1: tx1
-                ) else { return }
-                pixelCount = cleaned.pixelCount
-                let centroid = cleaned.centroid
+                let centroid: (row: Int, col: Int)
+                if livePreview {
+                    centroid = (sumRow / pixelCount, sumCol / pixelCount)
+                } else {
+                    guard let cleaned = Self.keepDominantComponents(
+                        &mask, y0: ty0, y1: ty1, x0: tx0, x1: tx1
+                    ) else { return }
+                    pixelCount = cleaned.pixelCount
+                    centroid = cleaned.centroid
+                }
                 let label = labels[detection.classIndex] ?? "others"
                 objects.append(SegmentedObject(
                     label: label,

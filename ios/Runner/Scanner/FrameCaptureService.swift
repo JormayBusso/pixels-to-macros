@@ -33,6 +33,71 @@ final class FrameCaptureService {
         let cameraTransform: simd_float4x4
         let cameraIntrinsics: simd_float3x3
         let timestamp: TimeInterval
+
+        func measurementProvenance(crop: CGRect) -> String {
+            let pose = cameraTransform
+            let transform = [pose.columns.0, pose.columns.1, pose.columns.2, pose.columns.3]
+                .flatMap { [$0.x, $0.y, $0.z, $0.w] }
+                .map { String(format: "%.6f", $0) }.joined(separator: ",")
+            return "timestamp=\(timestamp) image=\(CVPixelBufferGetWidth(pixelBuffer))x\(CVPixelBufferGetHeight(pixelBuffer)) " +
+                "cropTL=\(crop.minX),\(crop.minY),\(crop.width),\(crop.height) " +
+                "K=\(cameraIntrinsics.columns.0.x),\(cameraIntrinsics.columns.1.y),\(cameraIntrinsics.columns.2.x),\(cameraIntrinsics.columns.2.y) " +
+                "poseColumnMajor=[\(transform)] depth=\(depthBuffer != nil)"
+        }
+    }
+
+    struct SupportingPlane {
+        let transform: simd_float4x4
+        let boundary: [SIMD3<Float>]
+
+        func distance(camera: simd_float4x4, timestamp: TimeInterval,
+                      currentTimestamp: TimeInterval, horizontal: Bool,
+                      supportsFood: Bool = true) -> (meters: Float?, reason: String) {
+            guard MonocularVolumeEstimator.PhotoCalibration.validPose(camera),
+                  MonocularVolumeEstimator.PhotoCalibration.validPose(transform) else {
+                return (nil, "invalid_plane_or_camera_pose")
+            }
+            guard timestamp.isFinite, currentTimestamp.isFinite,
+                  currentTimestamp >= timestamp, currentTimestamp - timestamp <= 0.25 else {
+                return (nil, "stale_capture_frame")
+            }
+            let normal = SIMD3(transform.columns.1.x, transform.columns.1.y, transform.columns.1.z)
+            guard horizontal, normal.y.isFinite, abs(normal.y) > 0.99 else {
+                return (nil, "nonhorizontal_plane")
+            }
+            guard supportsFood else { return (nil, "nonfood_support_classification") }
+            let origin = SIMD3(camera.columns.3.x, camera.columns.3.y, camera.columns.3.z)
+            let direction = -SIMD3(camera.columns.2.x, camera.columns.2.y, camera.columns.2.z)
+            let planeOrigin = SIMD3(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z)
+            let distance = origin.y - planeOrigin.y
+            guard distance.isFinite, distance > 0.05, distance < 1 else {
+                return (nil, "plane_distance_out_of_range")
+            }
+            let denominator = simd_dot(direction, normal)
+            guard denominator.isFinite, denominator < -0.05 else {
+                return (nil, "plane_ray_parallel_or_away")
+            }
+            let t = simd_dot(planeOrigin - origin, normal) / denominator
+            guard t.isFinite, t > 0, t < 2 else { return (nil, "plane_ray_out_of_range") }
+            let hit = origin + direction * t
+            let local = transform.inverse * SIMD4(hit.x, hit.y, hit.z, 1)
+            guard local.x.isFinite, local.z.isFinite, boundary.count >= 3,
+                  boundary.allSatisfy({ $0.x.isFinite && $0.z.isFinite }) else {
+                return (nil, "invalid_plane_boundary")
+            }
+            var inside = false
+            var j = boundary.count - 1
+            for i in boundary.indices {
+                let a = boundary[i], b = boundary[j]
+                if (a.z > local.z) != (b.z > local.z),
+                   local.x < (b.x - a.x) * (local.z - a.z) / (b.z - a.z) + a.x {
+                    inside.toggle()
+                }
+                j = i
+            }
+            guard inside else { return (nil, "capture_ray_outside_plane_footprint") }
+            return (distance, "captured_horizontal_support")
+        }
     }
 
     // MARK: â€“ Storage (max 2 frames)

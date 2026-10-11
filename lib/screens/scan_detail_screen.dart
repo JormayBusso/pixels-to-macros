@@ -64,6 +64,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
 
   /// Estimate grams from volumeCm³ using density from FoodData.
   double _gramsFor(DetectedFood food) {
+    final reviewed = _scan.reviewedPortionFor(food);
+    if (reviewed != null) return reviewed;
     final fd = _foodFor(food.label);
     if (fd == null) return food.volumeCm3; // assume density ≈ 1.0
     final avgDensity = (fd.densityMin + fd.densityMax) / 2.0;
@@ -83,7 +85,10 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
     if (_scan.id == null) return;
     final edited = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => EditFoodScreen(scanId: _scan.id!, food: food),
+        builder: (_) => EditFoodScreen(
+            scanId: _scan.id!,
+            food: food,
+            approximateScan: _scan.isApproximate ? _scan : null),
       ),
     );
     if (edited == true) {
@@ -161,11 +166,12 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).scanDetails),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.view_in_ar),
-            tooltip: AppLocalizations.of(context).export3dPointCloud,
-            onPressed: _exportPLY,
-          ),
+          if (!_scan.isApproximate)
+            IconButton(
+              icon: const Icon(Icons.view_in_ar),
+              tooltip: AppLocalizations.of(context).export3dPointCloud,
+              onPressed: _exportPLY,
+            ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: AppTheme.red500),
             tooltip: AppLocalizations.of(context).deleteScan,
@@ -199,7 +205,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                           : AppTheme.gray900,
                     ),
                   ),
-                  if (!onlyUnmeasured)
+                  if (!onlyUnmeasured && !_scan.isApproximate)
                     Text(
                       '± ${margin.round()} kcal',
                       style: TextStyle(
@@ -207,13 +213,18 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
                         color: context.appMutedTextColor,
                       ),
                     ),
+                  if (_scan.isApproximate)
+                    Text(l10n.approximateScanMode,
+                        style: TextStyle(color: context.appMutedTextColor)),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _InfoChip(
                         icon: Icons.visibility,
-                        label: _scan.depthMode,
+                        label: _scan.isApproximate
+                            ? l10n.approximateEstimate
+                            : _scan.depthMode,
                       ),
                       const SizedBox(width: 12),
                       _InfoChip(
@@ -393,6 +404,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
             final row = _FoodDetailRow(
               food: f,
               grams: grams,
+              approximate: _scan.isApproximate,
               score: foodData == null
                   ? null
                   : FoodScoringService.scoreFood(
@@ -852,6 +864,7 @@ class _FoodDetailRow extends StatelessWidget {
     this.bolusUnits,
     required this.onEdit,
     required this.onGroundTruth,
+    this.approximate = false,
   });
   final DetectedFood food;
   final double grams;
@@ -859,6 +872,7 @@ class _FoodDetailRow extends StatelessWidget {
   final double? bolusUnits;
   final VoidCallback onEdit;
   final VoidCallback onGroundTruth;
+  final bool approximate;
 
   @override
   Widget build(BuildContext context) {
@@ -873,6 +887,7 @@ class _FoodDetailRow extends StatelessWidget {
         grams: grams,
         score: score,
         bolusUnits: bolusUnits,
+        approximate: approximate,
       ),
     );
   }
@@ -884,11 +899,13 @@ class _FoodDetailCard extends StatelessWidget {
     required this.grams,
     this.score,
     this.bolusUnits,
+    this.approximate = false,
   });
   final DetectedFood food;
   final double grams;
   final FoodScoreExplanation? score;
   final double? bolusUnits;
+  final bool approximate;
 
   /// Returns a color indicating uncertainty: green=low, amber=med, red=high.
   Color _uncertaintyColor(double margin, double avg, BuildContext context) {
@@ -938,7 +955,9 @@ class _FoodDetailCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${grams.toStringAsFixed(0)} g  •  ${food.volumeCm3.toStringAsFixed(1)} cm³',
+                          approximate
+                              ? '${grams.toStringAsFixed(0)} g/ml • ${AppLocalizations.of(context).approximateEstimate}'
+                              : '${grams.toStringAsFixed(0)} g  •  ${food.volumeCm3.toStringAsFixed(1)} cm³',
                           style: TextStyle(
                             fontSize: 12,
                             color: context.appMutedTextColor,
@@ -977,13 +996,14 @@ class _FoodDetailCard extends StatelessWidget {
                           color: context.primary700,
                         ),
                       ),
-                      Text(
-                        '± ${margin.round()}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: context.appMutedTextColor,
+                      if (!approximate)
+                        Text(
+                          '± ${margin.round()}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: context.appMutedTextColor,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(width: 4),
@@ -991,63 +1011,65 @@ class _FoodDetailCard extends StatelessWidget {
                 ],
               ),
               // ── Uncertainty bar ────────────────────────────────────────
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Text(
-                    '${food.caloriesMin.round()}',
-                    style: TextStyle(
-                        fontSize: 10, color: context.appMutedTextColor),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Background track
-                        Container(
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: AppTheme.gray100,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        // Uncertainty range
-                        FractionallySizedBox(
-                          widthFactor: avg > 0
-                              ? ((food.caloriesMax - food.caloriesMin) /
-                                      (food.caloriesMax * 1.2))
-                                  .clamp(0.05, 1.0)
-                              : 0.05,
-                          child: Container(
-                            height: 6,
+              if (!approximate) const SizedBox(height: 8),
+              if (!approximate)
+                Row(
+                  children: [
+                    Text(
+                      '${food.caloriesMin.round()}',
+                      style: TextStyle(
+                          fontSize: 10, color: context.appMutedTextColor),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Background track
+                          Container(
+                            height: 4,
                             decoration: BoxDecoration(
-                              color: uColor.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(3),
+                              color: AppTheme.gray100,
+                              borderRadius: BorderRadius.circular(2),
                             ),
                           ),
-                        ),
-                        // Center dot (average)
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: uColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 1.5),
+                          // Uncertainty range
+                          FractionallySizedBox(
+                            widthFactor: avg > 0
+                                ? ((food.caloriesMax - food.caloriesMin) /
+                                        (food.caloriesMax * 1.2))
+                                    .clamp(0.05, 1.0)
+                                : 0.05,
+                            child: Container(
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: uColor.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                          // Center dot (average)
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: uColor,
+                              shape: BoxShape.circle,
+                              border:
+                                  Border.all(color: Colors.white, width: 1.5),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${food.caloriesMax.round()}',
-                    style: TextStyle(
-                        fontSize: 10, color: context.appMutedTextColor),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${food.caloriesMax.round()}',
+                      style: TextStyle(
+                          fontSize: 10, color: context.appMutedTextColor),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),

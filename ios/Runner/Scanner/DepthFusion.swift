@@ -33,6 +33,7 @@ final class DepthFusion {
 
     /// Voxel values:  nil = empty, 0 = occupied-unlabelled, >0 = label index.
     private var grid: [VoxelKey: Int32] = [:]
+    private var measuredPoints: [VoxelKey: SIMD3<Float>] = [:]
     private var topInstanceByVoxel: [VoxelKey: Int] = [:]
 
     /// Label string → label index mapping (1-based).
@@ -94,6 +95,10 @@ final class DepthFusion {
         imageHeight: Int,
         stride:      Int = 3
     ) {
+        guard MonocularVolumeEstimator.PhotoCalibration.validPose(cameraTransform),
+              MonocularVolumeEstimator.PhotoCalibration.validImage(width: imageWidth, height: imageHeight,
+                crop: CGRect(x: 0, y: 0, width: 1, height: 1), intrinsics: cameraIntrinsics),
+              stride > 0 else { return }
         CVPixelBufferLockBaseAddress(depthBuffer, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(depthBuffer, .readOnly) }
 
@@ -147,6 +152,10 @@ final class DepthFusion {
                 let key = VoxelKey(x: vx, y: vy, z: vz)
                 if grid[key] == nil {
                     grid[key] = 0   // occupied, not yet labelled
+                }
+                let measured = SIMD3(pw.x, pw.y, pw.z)
+                if measuredPoints[key].map({ measured.y > $0.y }) ?? true {
+                    measuredPoints[key] = measured
                 }
             }
         }
@@ -563,6 +572,7 @@ final class DepthFusion {
 
     func reset() {
         grid.removeAll()
+        measuredPoints.removeAll()
         topInstanceByVoxel.removeAll()
         sideSilhouette = nil
         topProjection = nil
@@ -659,6 +669,140 @@ final class DepthFusion {
         /// can stay smooth, but monocular visual-hull meshes should not let
         /// top, side, and underside normals blur into a blanket-like shell.
         let preserveCreases: Bool
+    }
+
+    /// LiDAR dispatch uses measured world scale/support, never the monocular
+    /// calibration gate or the legacy filled/coarse voxel mesher.
+    func strictFoodObjects(
+        segments: [SegmentationService.SegmentedObject],
+        topFrame: FrameCaptureService.CapturedFrame,
+        sideFrame: FrameCaptureService.CapturedFrame?,
+        profiles: [MonocularVolumeEstimator.SideProfile],
+        topColor: CVPixelBuffer?, sideColor: CVPixelBuffer?
+    ) throws -> (objects: [Food3DObject], clusters: [FoodVoxelCluster]) {
+        guard let sideFrame else {
+            throw InferencePipeline.PipelineError.sideViewRequired("lidar_missing_side_capture")
+        }
+        guard let projection = topProjection else {
+            throw InferencePipeline.PipelineError.model3DExportFailed("lidar_missing_top_projection")
+        }
+        // A visible depth surface is not a measured container floor. Require the
+        // capture-associated support plane instead of assuming food starts at p05.
+        guard let plane = tablePlaneY else {
+            throw InferencePipeline.PipelineError.model3DExportFailed("no_measured_support_plane")
+        }
+        let estimator = MonocularVolumeEstimator()
+        var objects: [Food3DObject] = [], clusters: [FoodVoxelCluster] = []
+        var usedProfiles = Set<Int>()
+        for (index, segment) in segments.enumerated() {
+            let matches = profiles.enumerated().filter { $0.element.topSegmentIndex == index && !$0.element.sideShared }
+            guard matches.count == 1, let match = matches.first,
+                  !usedProfiles.contains(match.offset),
+                  var profile = estimator.usableSideProfile(match.element, for: segment.label, mode: .lidar) else {
+                throw InferencePipeline.PipelineError.sideViewRequired("lidar_food#\(index)_missing_independent_side_silhouette")
+            }
+            usedProfiles.insert(match.offset)
+            let calibration = MonocularVolumeEstimator.PhotoCalibration(
+                topTransform: projection.transform, topIntrinsics: projection.intrinsics,
+                topWidth: projection.imageWidth, topHeight: projection.imageHeight, topCrop: projection.plateRect,
+                sideTransform: sideFrame.cameraTransform, sideIntrinsics: sideFrame.cameraIntrinsics,
+                sideWidth: CVPixelBufferGetWidth(sideFrame.pixelBuffer),
+                sideHeight: CVPixelBufferGetHeight(sideFrame.pixelBuffer),
+                sideCrop: ScanMaskGeometry.centredSquareCrop(
+                    width: CVPixelBufferGetWidth(sideFrame.pixelBuffer),
+                    height: CVPixelBufferGetHeight(sideFrame.pixelBuffer)), tableY: plane)
+            let mask = segment.mask, mh = mask.count, mw = mask.first?.count ?? 0
+            guard mh > 0, mw > 0, mask.allSatisfy({ $0.count == mw }) else {
+                throw InferencePipeline.PipelineError.sideViewRequired("lidar_invalid_top_mask")
+            }
+            var r0 = mh, r1 = -1, c0 = mw, c1 = -1, rs = 0.0, cs = 0.0, count = 0
+            for r in mask.indices {
+                for c in mask[r].indices where mask[r][c] != 0 {
+                    r0 = min(r0, r); r1 = max(r1, r); c0 = min(c0, c); c1 = max(c1, c)
+                    rs += Double(r); cs += Double(c); count += 1
+                }
+            }
+            guard count > 0,
+                  let origin = calibration.topWorld(row: Double(r0) / Double(mh), column: Double(c0) / Double(mw)),
+                  let endX = calibration.topWorld(row: Double(r0) / Double(mh), column: Double(c1 + 1) / Double(mw)),
+                  let endZ = calibration.topWorld(row: Double(r1 + 1) / Double(mh), column: Double(c0) / Double(mw)),
+                  let centre = calibration.topWorld(row: (Double(r0 + r1 + 1) / 2) / Double(mh),
+                    column: (Double(c0 + c1 + 1) / 2) / Double(mw)) else {
+                throw InferencePipeline.PipelineError.sideViewRequired("lidar_invalid_capture_registration")
+            }
+            let height = calibration.silhouetteHeight(mask: profile.sourceMask, through: centre,
+                verticalUsesColumns: profile.textureHorizontalUsesRows)
+            guard let heightCm = height.heightCm else {
+                throw InferencePipeline.PipelineError.sideViewRequired("lidar_\(height.reason)")
+            }
+            // Independently recomputed LiDAR height supersedes a failed MONOCULAR
+            // height fit; exact assigned masks were never discarded by that fit.
+            profile.calibration = calibration
+            profile.calibrationFailure = nil
+            profile.measuredHeightCm = heightCm
+            profile.sourceBaseHeightM = height.baseM
+            let widthCm = Double(simd_length(endX - origin)) * 100
+            let depthCm = Double(simd_length(endZ - origin)) * 100
+            var ceilings: [Int: Double] = [:]
+            for (key, point) in measuredPoints where topInstanceByVoxel[key] == index {
+                guard let p = Self.projectToImage(point, worldToCamera: projection.transform.inverse,
+                        fx: projection.intrinsics.columns.0.x, fy: projection.intrinsics.columns.1.y,
+                        cx: projection.intrinsics.columns.2.x, cy: projection.intrinsics.columns.2.y) else { continue }
+                let c = Int(floor((Double(p.u) / Double(projection.imageWidth) - Double(projection.plateRect.minX)) /
+                    Double(projection.plateRect.width) * Double(mw)))
+                let r = Int(floor((Double(p.v) / Double(projection.imageHeight) - Double(projection.plateRect.minY)) /
+                    Double(projection.plateRect.height) * Double(mh)))
+                guard r >= 0, r < mh, c >= 0, c < mw, mask[r][c] != 0 else { continue }
+                let cell = r * mw + c
+                ceilings[cell] = max(ceilings[cell] ?? -Double.infinity, Double(point.y - plane - height.baseM) * 100)
+            }
+            let id = "\(segment.label.replacingOccurrences(of: " ", with: "_"))_\(index)"
+            let local = try estimator.sourceSilhouetteObject(
+                id: id, label: segment.label, instanceIndex: index, mask: mask,
+                widthCm: widthCm, depthCm: depthCm, heightCm: heightCm, topFrame: topFrame,
+                colorFrame: topColor, sideColorFrame: sideColor, profile: profile,
+                measuredCeilingCm: { ceilings[$0 * mw + $1] })
+            let offsetX = Float(cs / Double(count) / Double(mw) - 0.5) * 0.28
+            let offsetZ = Float(rs / Double(count) / Double(mh) - 0.5) * 0.28
+            let worldVertices = try local.vertices.map { v -> SIMD3<Float> in
+                let col = (Double(v.x - offsetX) / (widthCm / 100) + 0.5) * Double(c1 - c0 + 1) + Double(c0)
+                let row = (Double(v.z - offsetZ) / (depthCm / 100) + 0.5) * Double(r1 - r0 + 1) + Double(r0)
+                guard var world = calibration.topWorld(row: min(1, max(0, row / Double(mh))),
+                    column: min(1, max(0, col / Double(mw)))) else {
+                    throw InferencePipeline.PipelineError.sideViewRequired("lidar_vertex_registration_failed")
+                }
+                world.y += v.y + height.baseM
+                return world
+            }
+            let volume = Self.signedDisplayVolume(vertices: worldVertices, faces: local.faces)
+            guard volume.isFinite, volume > 0, local.colors.count == worldVertices.count * 3 else {
+                throw InferencePipeline.PipelineError.model3DExportFailed("lidar_invalid_display_mesh")
+            }
+            objects.append(Food3DObject(id: id, label: segment.label, instanceIndex: index,
+                vertices: worldVertices, faces: local.faces, colors: local.colors, uvs: local.uvs,
+                voxelCount: local.voxelCount, volumeCm3: volume, preserveCreases: true))
+            clusters.append(FoodVoxelCluster(id: id, label: segment.label, instanceIndex: index,
+                topSegmentIndex: index, voxelKeys: [], volumeCm3: volume,
+                sideCarved: true, heightSource: .sideSilhouette))
+            print("[DUALHULL] path=lidar food#\(index) source=source_pixel_silhouette_boundary measuredDepthColumns=\(ceilings.count) cells=\(local.voxelCount) volumeSource=display_mesh shapeAdded=false registration=top_plane_rays_side_plane_rays_transverse_symmetry")
+        }
+        return (objects, clusters)
+    }
+
+    static func signedDisplayVolume(vertices: [SIMD3<Float>], faces: [Int]) -> Double {
+        guard let first = vertices.first, faces.count % 3 == 0,
+              vertices.allSatisfy({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }),
+              faces.allSatisfy({ vertices.indices.contains($0) }) else { return .nan }
+        let origin = SIMD3<Double>(Double(first.x), Double(first.y), Double(first.z))
+        var volume = 0.0
+        for i in Swift.stride(from: 0, to: faces.count, by: 3) {
+            func relative(_ index: Int) -> SIMD3<Double> {
+                let v = vertices[index]
+                return SIMD3(Double(v.x), Double(v.y), Double(v.z)) - origin
+            }
+            volume += simd_dot(relative(faces[i]), simd_cross(relative(faces[i + 1]), relative(faces[i + 2]))) / 6
+        }
+        return volume * 1_000_000
     }
 
     /// Canonical clustering step. Performs (in order):

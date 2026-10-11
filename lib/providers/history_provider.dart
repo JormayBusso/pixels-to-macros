@@ -54,7 +54,8 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
       // volume × a typical food density (0.9 g/cm³ fallback, matching the rest
       // of the app); the pantry decrement is unit-aware so piece-counted items
       // still drop by one.
-      final grams = food.volumeCm3 > 0 ? food.volumeCm3 * 0.9 : null;
+      final grams = result.reviewedPortionFor(food) ??
+          (food.volumeCm3 > 0 ? food.volumeCm3 * 0.9 : null);
       await notifier.consume(food.label, grams: grams);
     }
   }

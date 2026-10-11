@@ -54,6 +54,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   /// True while a top/side photo is being committed — prevents double capture.
   bool _capturing = false;
+  bool? _captureExtraAccuracy;
+  bool get _extraAccuracy =>
+      _captureExtraAccuracy ?? ref.read(userPrefsProvider).extraAccuracy;
 
   Timer? _pitchTimer; // polls orientation + stability at ~12 fps
   double _stability = 0.0; // 0..1 from CoreMotion (1 = perfectly still)
@@ -93,22 +96,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   /// Stability (0..1) at/above which the phone is considered "still enough" to
   /// capture, and the number of consecutive aligned+stable polls required
-  /// before the shutter fires. Auto-capture is STRICT (see pitch tolerance
-  /// below), so we also demand a steadier hold for a crisp square-on frame.
+  /// before the shutter fires.
   static const double _stableThreshold = 0.45;
   static const double _softStableThreshold = 0.30;
   static const int _requiredHoldTicks = 4;
 
-  /// STRICT alignment. The auto-shutter fires ONLY when the phone is essentially
-  /// perfectly oriented — camera pointing exactly straight DOWN for the top view
-  /// (pitch -90°) and exactly HORIZONTAL for the side view (pitch 0°), both in
-  /// landscape. A square-on side view is what makes the measured food height
-  /// (and therefore the volume) accurate: any tilt foreshortens the silhouette
-  /// and inflates the height. `_perfectAlignRad` is the largest pitch error that
-  /// still counts as 100% aligned (~2.9°); the on-screen meter then falls off
-  /// over a ~22° band so it reads 99-100% only when the shot is truly square-on.
-  static const double _perfectAlignRad = 0.050; // ~2.9° = "100% aligned"
-  static const double _alignFalloffRad = 0.384; // ~22° meter falloff band
   static const double _topViewTargetRad =
       -1.5707963267948966; // -90° straight down
   static const double _sideViewTargetRad = 0.0; // 0° perfectly horizontal
@@ -131,6 +123,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ref.read(scanStateProvider.notifier).reset();
+        ref.read(scanResultProvider.notifier).reset();
         // Only start session immediately if no tutorial is shown.
         // If tutorial is shown, _startSession is called from _dismissTutorial.
         if (!_showTutorial) _startSession();
@@ -449,12 +442,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     if (state == ScanState.waitingForTopView || state == ScanState.captureTop) {
       tiltError = pitch - _topViewTargetRad;
       final error = tiltError.abs();
-      aligned = error <= _perfectAlignRad; // exactly straight down
+      aligned = ScanCaptureAlignment.isAligned(error);
       alignmentScore = _alignmentScoreFor(error);
     } else if (state == ScanState.moveSide || state == ScanState.captureSide) {
       tiltError = pitch - _sideViewTargetRad;
       final error = tiltError.abs();
-      aligned = error <= _perfectAlignRad; // exactly horizontal (two-sided)
+      aligned = ScanCaptureAlignment.isAligned(error);
       alignmentScore = _alignmentScoreFor(error);
     } else {
       aligned = false;
@@ -504,23 +497,17 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   double get _holdProgress =>
       (_stableHoldTicks / _requiredHoldTicks).clamp(0.0, 1.0);
 
-  /// Alignment meter (0..1): 1.0 only within [_perfectAlignRad] of the perfect
-  /// orientation, then linear down to 0 across [_alignFalloffRad]. This is what
-  /// the overlay shows as "top/side view: NN% aligned"; the auto-shutter itself
-  /// fires on the strict boolean (error <= _perfectAlignRad), not this meter.
-  double _alignmentScoreFor(double error) {
-    if (error <= _perfectAlignRad) return 1.0;
-    final t =
-        (error - _perfectAlignRad) / (_alignFalloffRad - _perfectAlignRad);
-    return (1.0 - t).clamp(0.0, 1.0).toDouble();
-  }
+  double _alignmentScoreFor(double error) => ScanCaptureAlignment.score(error);
 
   // ── Guided dual-photo capture ──────────────────────────────────────────────
 
   /// Commit the top-down photo, then advance to the side-view step.
   Future<void> _captureTop() async {
     if (_capturing || !mounted) return;
-    setState(() => _capturing = true);
+    setState(() {
+      _captureExtraAccuracy ??= ref.read(userPrefsProvider).extraAccuracy;
+      _capturing = true;
+    });
     _stableHoldTicks = 0;
     _hapticMedium();
     ref.read(scanStateProvider.notifier).topAligned(); // → captureTop (flash)
@@ -528,6 +515,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     bool ok = false;
     try {
       PerfMonitor.instance.start('record');
+      await _bridge.stopLiveGlow();
       ok = await _bridge.captureTopFrame();
       PerfMonitor.instance.end();
     } catch (e) {
@@ -546,6 +534,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     // Brief confirmation flash so the user sees the top shot landed.
     await Future<void>.delayed(const Duration(milliseconds: 450));
     if (!mounted) return;
+    if (!_extraAccuracy) {
+      await _restorePortrait();
+      if (!mounted) return;
+      setState(() {
+        _capturing = false;
+        _isInferenceRunning = true;
+      });
+      try {
+        await _runVideoInference();
+      } finally {
+        if (mounted) setState(() => _isInferenceRunning = false);
+      }
+      return;
+    }
     ref.read(scanStateProvider.notifier).topCaptured(); // → moveSide
     setState(() => _capturing = false);
   }
@@ -561,6 +563,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
     bool ok = false;
     try {
+      await _bridge.stopLiveGlow();
       ok = await _bridge.captureSideFrame();
     } catch (e) {
       DebugLog.instance.log('Scan', 'captureSideFrame error: $e');
@@ -610,7 +613,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
     ScanResultState? result;
     try {
-      await ref.read(scanResultProvider.notifier).runVideoScan();
+      await _bridge.stopLiveGlow();
+      await ref
+          .read(scanResultProvider.notifier)
+          .runVideoScan(extraAccuracy: _extraAccuracy);
       if (!mounted) return;
       result = ref.read(scanResultProvider);
     } catch (e) {
@@ -628,6 +634,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
     if (result == null ||
         (result.foods.isEmpty &&
+            !result.needsPortionReview &&
             !result.hasUnmeasuredFoods &&
             result.error == null)) {
       _hapticError();
@@ -645,7 +652,16 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         ref.read(scanStateProvider.notifier).modelFailed();
       }
     } else {
-      final successfulResult = result;
+      var successfulResult = result;
+      if (successfulResult.needsPortionReview) {
+        final accepted = await _reviewApproximatePortions(successfulResult);
+        if (!mounted) return;
+        if (!accepted) {
+          await _closeScan();
+          return;
+        }
+        successfulResult = ref.read(scanResultProvider);
+      }
       if (!mounted) return;
       DebugLog.instance.log(
           'Scan',
@@ -669,8 +685,144 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     }
   }
 
+  Future<bool> _reviewApproximatePortions(ScanResultState result) async {
+    final l10n = AppLocalizations.of(context);
+    final labels = [
+      for (final portion in result.portions)
+        TextEditingController(text: portion.label),
+    ];
+    final amounts = [
+      for (final portion in result.portions)
+        TextEditingController(text: portion.grams?.toStringAsFixed(0) ?? ''),
+    ];
+    var confirming = false;
+    var invalid = false;
+    try {
+      return await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => StatefulBuilder(
+              builder: (context, updateDialog) => PopScope(
+                canPop: !confirming,
+                child: AlertDialog(
+                  title: Text(l10n.reviewScanPortions),
+                  content: SizedBox(
+                    width: 420,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(l10n.approximatePortionHelp),
+                          for (var i = 0; i < labels.length; i++) ...[
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: labels[i],
+                              enabled: !confirming,
+                              decoration: InputDecoration(
+                                  labelText: l10n.scanFoodLabel),
+                            ),
+                            TextField(
+                              controller: amounts[i],
+                              enabled: !confirming,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                              decoration: InputDecoration(
+                                  labelText: l10n.scanPortionAmount),
+                            ),
+                          ],
+                          if (invalid)
+                            Text(l10n.scanPortionReviewInvalid,
+                                style: TextStyle(
+                                    color:
+                                        Theme.of(context).colorScheme.error)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: confirming
+                          ? null
+                          : () => Navigator.pop(context, false),
+                      child: Text(l10n.cancel),
+                    ),
+                    FilledButton(
+                      onPressed: confirming
+                          ? null
+                          : () async {
+                              updateDialog(() => confirming = true);
+                              var accepted = false;
+                              try {
+                                accepted = await ref
+                                    .read(scanResultProvider.notifier)
+                                    .confirmApproximatePortions([
+                                  for (var i = 0; i < labels.length; i++)
+                                    ApproximatePortion(
+                                      label: labels[i].text.trim(),
+                                      grams: double.tryParse(
+                                          amounts[i].text.replaceAll(',', '.')),
+                                    ),
+                                ]);
+                              } catch (e) {
+                                DebugLog.instance
+                                    .log('ApproximateReview', '$e');
+                              }
+                              if (!context.mounted) return;
+                              if (accepted) {
+                                Navigator.pop(context, true);
+                              } else {
+                                updateDialog(() {
+                                  confirming = false;
+                                  invalid = true;
+                                });
+                              }
+                            },
+                      child: Text(l10n.save),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ) ??
+          false;
+    } finally {
+      for (final controller in [...labels, ...amounts]) {
+        controller.dispose();
+      }
+    }
+  }
+
   Future<void> _saveScanResult(ScanResultState resultState) async {
     try {
+      if (resultState.approximate) {
+        if (resultState.needsPortionReview || resultState.foods.isEmpty) {
+          throw StateError('portion_review_required');
+        }
+        final paths = await _bridge.getScanCapturePaths();
+        final scan = ScanResult(
+          timestamp: DateTime.now(),
+          depthMode: 'approximate',
+          foods: resultState.foods,
+          imagePath: paths['topImagePath'] as String?,
+          topImagePath: paths['topImagePath'] as String?,
+          modelObjectsJson: jsonEncode(resultState.metadata),
+        );
+        final diagnostics = ScanDiagnostics.fromCapture(
+          depthMode: 'approximate',
+          nativeObjects: resultState.metadata,
+          timings: PerfMonitor.instance.allTimings,
+        );
+        ref.read(scanDiagnosticsProvider.notifier).add(diagnostics);
+        DebugLog.instance.log('ScanDiag', diagnostics.toReport());
+        await ref.read(historyProvider.notifier).addScan(scan);
+        if (!mounted) return;
+        await ref.read(dailyIntakeProvider.notifier).load();
+        await ref.read(streakProvider.notifier).load();
+        if (!mounted) return;
+        _savedScanResult = ref.read(historyProvider).scans.firstOrNull;
+        return;
+      }
       // Hard contract: a successful scan must have a real 3-D model file.
       final model3dPath = await _bridge.getModel3DPath();
       final capturePaths = await _bridge.getScanCapturePaths();
@@ -801,6 +953,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _sessionStarted = false;
     _sessionErrorDetail = null;
     _launched3DViewer = false;
+    _captureExtraAccuracy = null;
+    _savedScanResult = null;
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();
     _startSession();
@@ -813,17 +967,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       s == ScanState.captureTop ||
       s == ScanState.moveSide ||
       s == ScanState.captureSide;
-
-  /// Manual shutter fallback (tapping the capture dot) in case the auto-shutter
-  /// never fires — captures whichever photo the active step needs.
-  void _manualCapture() {
-    final state = ref.read(scanStateProvider);
-    if (state == ScanState.waitingForTopView) {
-      unawaited(_captureTop());
-    } else if (state == ScanState.moveSide) {
-      unawaited(_captureSide());
-    }
-  }
 
   // ── Build ───────────────────────────────────────────────────────────────
 
@@ -892,7 +1035,23 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 foodDetected: _foodDetected,
                 liveDetectionAvailable: _liveDetectionAvailable,
                 videoAspect: _videoAspect,
-                onManualCapture: _manualCapture,
+                lowLight: lowLight,
+                extraAccuracy: _captureExtraAccuracy ??
+                    ref.watch(userPrefsProvider
+                        .select((prefs) => prefs.extraAccuracy)),
+                onExtraAccuracyChanged:
+                    scanState == ScanState.waitingForTopView &&
+                            !_capturing &&
+                            _captureExtraAccuracy == null
+                        ? (value) {
+                            _stableHoldTicks = 0;
+                            unawaited(ref
+                                .read(userPrefsProvider.notifier)
+                                .update(ref
+                                    .read(userPrefsProvider)
+                                    .copyWith(extraAccuracy: value)));
+                          }
+                        : null,
               ),
             ),
 
@@ -903,7 +1062,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               right: 16,
               child: AiScanProcessingView(
                 height: 250,
-                label: l10n.building3dPreview,
+                label: _extraAccuracy
+                    ? l10n.building3dPreview
+                    : l10n.approximateEstimate,
               ),
             ),
 
@@ -932,7 +1093,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                   scanResult: scanResult,
                   sessionStarted: _sessionStarted,
                   sessionErrorDetail: _sessionErrorDetail,
-                  depthMode: _detectedDepthMode,
+                  depthMode:
+                      _extraAccuracy ? _detectedDepthMode : 'approximate',
                   timings: PerfMonitor.instance.allTimings,
                   onRetry: _retry,
                   onClose: () => unawaited(_closeScan()),
@@ -1011,50 +1173,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             ),
           ),
 
-          // ── Low-light hint — compact chip under the flash button ────
-          if (lowLight && captureChrome)
-            Positioned(
-              top: mq.padding.top + 66,
-              left: landscape ? railX - 66 : null,
-              right: landscape ? null : 14,
-              width: 132,
-              child: IgnorePointer(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: _cameraYellow.withValues(alpha: 0.55),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        CupertinoIcons.moon_fill,
-                        color: _cameraYellow,
-                        size: 14,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.lowLightScanWarning,
-                        textAlign: TextAlign.center,
-                        maxLines: 5,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          height: 1.25,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
           // ── Tutorial overlay (first scan) ───────────────────────────
           if (_showTutorial) ScanTutorialOverlay(onDismiss: _dismissTutorial),
         ],
@@ -1088,6 +1206,10 @@ class _BottomPanel extends StatelessWidget {
   final VoidCallback? onViewDetails;
 
   String _scanErrorTitle(AppLocalizations l10n) {
+    if (scanResult.failureKind ==
+        ScanFailureKind.containerPortionReviewRequired) {
+      return l10n.containerPortionReviewTitle;
+    }
     if (scanState == ScanState.depthFailed) {
       return l10n.cameraSessionFailedTitle;
     }
@@ -1103,6 +1225,10 @@ class _BottomPanel extends StatelessWidget {
   }
 
   String _scanErrorBody(AppLocalizations l10n) {
+    if (scanResult.failureKind ==
+        ScanFailureKind.containerPortionReviewRequired) {
+      return l10n.containerPortionReviewBody;
+    }
     if (scanResult.failureKind == ScanFailureKind.sideViewRequired) {
       return l10n.sideViewRequiredBody;
     }
@@ -1140,15 +1266,18 @@ class _BottomPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // ── Step indicator ────────────────────────────────────────
-          _StateProgressRow(state: scanState),
+          if (!scanResult.approximate && depthMode != 'approximate')
+            _StateProgressRow(state: scanState),
           const SizedBox(height: 16),
 
           // ── Processing ────────────────────────────────────────────
           if (scanState == ScanState.calculating) ...[
             Text(
-              depthMode == 'monocular_scale'
-                  ? l10n.generatingEstimated3dModel
-                  : l10n.buildingLidar3dModel,
+              depthMode == 'approximate'
+                  ? l10n.approximateEstimate
+                  : depthMode == 'monocular_scale'
+                      ? l10n.generatingEstimated3dModel
+                      : l10n.buildingLidar3dModel,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.7),
@@ -1165,7 +1294,12 @@ class _BottomPanel extends StatelessWidget {
 
           // ── Done → results + confidence ───────────────────────────
           if (scanState == ScanState.done) ...[
-            if (!scanResult.hasUnmeasuredFoods)
+            if (scanResult.approximate)
+              Text(
+                '${l10n.approximateEstimate} • ${scanResult.totalCaloriesMin.round()} kcal',
+                style: const TextStyle(color: Colors.white),
+              ),
+            if (!scanResult.hasUnmeasuredFoods && !scanResult.approximate)
               ConfidenceBadge(
                 caloriesMin: scanResult.totalCaloriesMin,
                 caloriesMax: scanResult.totalCaloriesMax,
@@ -1184,7 +1318,9 @@ class _BottomPanel extends StatelessWidget {
               children: [
                 _InfoChipDark(
                   icon: Icons.visibility,
-                  label: depthMode.replaceAll('_', ' '),
+                  label: scanResult.approximate
+                      ? l10n.approximateScanMode
+                      : depthMode.replaceAll('_', ' '),
                 ),
                 if (timings.isNotEmpty)
                   _InfoChipDark(

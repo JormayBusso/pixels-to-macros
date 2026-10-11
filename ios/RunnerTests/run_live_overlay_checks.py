@@ -27,6 +27,7 @@ subprocess.run(
     input="\n".join([
         "import Foundation\nimport CoreGraphics\nimport simd",
         declaration(preview, "enum LiveFoodOverlayPolicy"),
+        declaration(preview, "struct LiveGlowGridROI"),
         "enum LiveFoodDetector { static let grid = 160 }",
         dense, yolo,
     ]),
@@ -54,12 +55,12 @@ protocol FlutterPlatformViewFactory {}
 class FlutterStandardMessageCodec: NSObject, FlutterMessageCodec {
     static func sharedInstance() -> FlutterStandardMessageCodec { FlutterStandardMessageCodec() }
 }
-typealias FlutterResult = (Any?) -> Void
+typealias FlutterResult = @convention(block) (Any?) -> Void
 struct FlutterMethodCall { let method: String; let arguments: Any? }
 let FlutterMethodNotImplemented = NSObject()
 class FlutterMethodChannel {
     init(name: String, binaryMessenger: FlutterBinaryMessenger) {}
-    func setMethodCallHandler(_ handler: @escaping (FlutterMethodCall, FlutterResult) -> Void) {}
+    func setMethodCallHandler(_ handler: @escaping (FlutterMethodCall, @escaping FlutterResult) -> Void) {}
     func invokeMethod(_ method: String, arguments: Any?) {}
 }
 class HostMessenger: FlutterBinaryMessenger {}
@@ -84,10 +85,24 @@ extension Notification.Name {
 )
 print("PASS live preview/services typecheck (iOS SDK; Flutter/session host stubs)", flush=True)
 source = [
-    "import Foundation\nimport CoreGraphics\nimport simd",
+    "import Foundation\nimport CoreGraphics\nimport CoreML\nimport simd",
     declaration(preview, "enum LiveFoodOverlayPolicy"),
     declaration(preview, "struct LiveFoodFrameGate"),
     declaration(preview, "struct LiveGlowROI"),
+    declaration(preview, "struct LiveGlowGridROI"),
+    declaration(preview, "struct LiveFoodCrop"),
+    "enum LiveFoodDetector { static let grid = 160 }",
+    "final class LiveAccumulationHost {\nstatic let grid = 160\n"
+    + declaration(preview, "private func accumulate(").replace("private ", "")
+    + "\n}",
+    "final class LiveDrainHost {\n"
+    + declaration(preview, "func reset()")
+    + "\n"
+    + declaration(preview, "func drain(completion:")
+    + """
+var gate = LiveFoodFrameGate()
+let queue = DispatchQueue(label: "live-drain-check")
+}""",
     declaration(pipeline, "enum ScanMaskGeometry"),
     "final class SegmentationService {\n"
     + dense[dense.index("private static let miniLabelMap"):
@@ -105,6 +120,25 @@ source = [
     "enum YOLOLabels {\n"
     + declaration(yolo, "private static func parseNames").replace("private ", "")
     + "\n}",
+    "final class YOLODecode {\n"
+    + "\n".join(
+        declaration(yolo, marker).replace("private ", "")
+        for marker in ["private struct Detection", "private func decode(",
+                       "private static func makeReader", "private func rasterise(",
+                       "private static func sigmoid", "private static func keepDominantComponents",
+                       "private func clamp("]
+    )
+    + """
+var hasMetadataLabels = true
+var labels = [Int: String]()
+var liveLabelWarningIssued = false
+var loadedResource: String?
+typealias SegmentedObject = SegmentationService.SegmentedObject
+let protoCount = 32
+let maxPreNMS = 300
+let confThreshold: Float = 0.15
+let maskThreshold: Float = 0.5
+}""",
     r'''
 func check(_ name: String, _ body: () -> Void) {
     body()
@@ -141,6 +175,27 @@ check("late, nonfinite and future timestamps are rejected") {
     for timestamp in [0.6, 1.1, .nan, .infinity] {
         precondition(!LiveFoodOverlayPolicy.isFresh(timestamp: timestamp, now: 1))
     }
+    check("capture drain waits for in-flight serial work and invalidates its completion") {
+        let host = LiveDrainHost()
+        let token = host.gate.begin(at: 10)!
+        let workFinished = DispatchSemaphore(value: 0)
+        host.queue.async {
+            Thread.sleep(forTimeInterval: 0.01)
+            workFinished.signal()
+        }
+        var drained = false
+        host.drain {
+            precondition(workFinished.wait(timeout: .now()) == .success)
+            precondition(!host.gate.finish(token: token, timestamp: 10, now: 10.1))
+            drained = true
+        }
+        precondition(host.gate.busy && host.gate.begin(at: 11) == nil)
+        let deadline = Date().addingTimeInterval(1)
+        while !drained && Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        }
+        precondition(drained && !host.gate.busy)
+    }
     var gate = LiveFoodFrameGate()
     let token = gate.begin(at: 1)!
     precondition(!gate.finish(token: token, timestamp: 1, now: 1.4))
@@ -155,23 +210,93 @@ check("camera motion suppresses old contours") {
     let rotated = simd_float4x4(simd_quatf(angle: Float.pi / 40, axis: SIMD3(0, 1, 0)))
     precondition(!LiveFoodOverlayPolicy.cameraIsAligned(identity, rotated))
 }
-check("glow fields are smooth, bounded and empty for an empty mask") {
+check("exact fill preserves holes, components and empty support without a halo") {
     let g = 40
     var mask = [Float](repeating: 0, count: g * g)
     for y in 10..<30 { for x in 10..<30 { mask[y * g + x] = 1 } }
+    mask[20 * g + 20] = 0
+    mask[2 * g + 2] = 1
     let f = LiveFoodOverlayPolicy.glowFields(mask, grid: g)!
     for field in [f.fill, f.edge, f.core] {
         precondition(field.allSatisfy { $0 >= 0 && $0 <= 1 })
     }
-    var maxStep: Float = 0
-    for y in 0..<g { for x in 1..<g { maxStep = max(maxStep, abs(f.fill[y * g + x] - f.fill[y * g + x - 1])) } }
-    let ramp = (0..<g).filter { f.fill[20 * g + $0] > 0.03 && f.fill[20 * g + $0] < 0.97 }.count
-    precondition(maxStep < 0.9 && ramp >= 4)
-    precondition(f.fill[20 * g + 20] > 0.9 && f.fill[2 * g + 2] == 0)
-    precondition(f.edge[20 * g + 10] > 0.5 && f.edge[20 * g + 20] < 0.2)
+    precondition(f.fill == mask)
+    precondition(f.edge.allSatisfy { $0 == 0 } && f.core.allSatisfy { $0 == 0 })
     let empty = LiveFoodOverlayPolicy.glowFields([Float](repeating: 0, count: g * g), grid: g)!
     precondition(empty.fill.allSatisfy { $0 == 0 } && empty.edge.allSatisfy { $0 == 0 })
     precondition(LiveFoodOverlayPolicy.glowFields([], grid: g) == nil)
+}
+check("guide crop and inverse mapping preserve TOP and SIDE support") {
+    for rounded in [false, true] {
+        for columns in [false, true] {
+            let geometry = LiveGlowROI(roundedRect: rounded)
+                .geometry(side: 160, longAxisAlongColumns: columns)
+            let original = LiveGlowGridROI(rect: geometry.rect, radius: geometry.corner)
+            let crop = LiveFoodCrop(roi: original, grid: 160)
+            precondition(crop.rect.width == crop.rect.height && crop.rect.width <= 160)
+            let centre = crop.inputPoint(x: 80, y: 80, grid: 160)
+            precondition(abs(centre.x - 80) < 1e-9 && abs(centre.y - 80) < 1e-9)
+            for y in 0..<160 { for x in 0..<160 {
+                let p = crop.inputPoint(x: CGFloat(x) + 0.5, y: CGFloat(y) + 0.5, grid: 160)
+                precondition(original.contains(x: CGFloat(x) + 0.5, y: CGFloat(y) + 0.5)
+                    == crop.roi.contains(x: p.x, y: p.y))
+            } }
+            precondition(!original.contains(x: 1, y: 1))
+        }
+    }
+}
+check("production YOLO rejects background anchors BEFORE NMS but saved decode stays unchanged") {
+    let decoder = YOLODecode()
+    decoder.labels = Dictionary(uniqueKeysWithValues: (0..<103).map { ($0, "apple") })
+    let det = try! MLMultiArray(shape: [1, 139, 2], dataType: .float32)
+    for i in 0..<det.count { det[i] = 0 }
+    func put(_ channel: Int, _ anchor: Int, _ value: Float) {
+        det[channel * det.strides[1].intValue + anchor * det.strides[2].intValue] = NSNumber(value: value)
+    }
+    check("production YOLO live raster retains small components and holes, saved cleanup unchanged") {
+        let decoder = YOLODecode()
+        decoder.labels = [0: "apple"]
+        let proto = try! MLMultiArray(shape: [1, 32, 40, 40], dataType: .float32)
+        for i in 0..<proto.count { proto[i] = -10 }
+        for y in 5..<15 { for x in 5..<15 { proto[y * 40 + x] = 10 } }
+        for y in 8..<11 { for x in 8..<11 { proto[y * 40 + x] = -10 } }
+        proto[30 * 40 + 30] = 10
+        var coefficients = Array(repeating: Float(0), count: 32)
+        coefficients[0] = 1
+        let box = YOLODecode.Detection(x0: 0, y0: 0, x1: 160, y1: 160,
+                                      score: 0.8, classIndex: 0, coeffs: coefficients)
+        let live = decoder.rasterise([box], proto: proto, targetW: 160, targetH: 160, livePreview: true)[0]
+        let saved = decoder.rasterise([box], proto: proto, targetW: 160, targetH: 160, livePreview: false)[0]
+        precondition(live.mask[120][120] == 1 && saved.mask[120][120] == 0)
+        precondition(live.mask[37][37] == 0 && live.pixelCount > saved.pixelCount)
+    }
+    check("production foreground accumulation keeps large food and clips only the guide") {
+        let geometry = LiveGlowROI(roundedRect: false).geometry(side: 160, longAxisAlongColumns: true)
+        let roi = LiveGlowGridROI(rect: geometry.rect, radius: geometry.corner)
+        let crop = LiveFoodCrop(roi: roi, grid: 160)
+        let food = SegmentationService.SegmentedObject(label: "apple", classIndex: 25,
+            mask: Array(repeating: Array(repeating: UInt8(1), count: 160), count: 160),
+            pixelCount: 160 * 160, centroid: (80, 80), confidence: 0.8)
+        let host = LiveAccumulationHost()
+        var union = Array(repeating: Float(0), count: 160 * 160)
+        precondition(host.accumulate([food], crop: crop, roi: roi, into: &union) == 1)
+        for y in 0..<160 { for x in 0..<160 {
+            precondition((union[y * 160 + x] == 1)
+                == roi.contains(x: CGFloat(x) + 0.5, y: CGFloat(y) + 0.5))
+        } }
+    }
+    for a in 0..<2 {
+        put(0, a, a == 0 ? 20 : 320)
+        put(1, a, a == 0 ? 20 : 320)
+        put(2, a, 160); put(3, a, 160)
+        put(4, a, a == 0 ? 0.99 : 0.80)
+    }
+    let roi = LiveGlowGridROI(rect: CGRect(x: 20, y: 20, width: 120, height: 120), radius: 60)
+    let size = CGSize(width: 640, height: 640)
+    let live = decoder.decode(det: det, livePreview: true, roi: roi, modelSize: size)
+    let saved = decoder.decode(det: det, livePreview: false, roi: roi, modelSize: size)
+    precondition(live.count == 1 && live[0].score == Float(0.80))
+    precondition(saved.count == 2)
 }
 check("dense 104-class live labels correct YOLO JSON offset without changing saved mapping") {
     let service = SegmentationService()
