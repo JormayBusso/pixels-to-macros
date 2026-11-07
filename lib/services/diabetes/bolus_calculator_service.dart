@@ -34,7 +34,7 @@ class BolusCalculatorService {
     final blockers = <BolusBlockReason>[];
 
     // ── Gate 1: feature/consent/review state ────────────────────────────────
-    if (!settings.bolusCalculatorEnabled) {
+    if (!settings.bolusCalculatorEnabled || !settings.usesInsulin) {
       blockers.add(BolusBlockReason.calculatorDisabled);
     }
     if (settings.surveyLastCompletedAt == null) {
@@ -65,23 +65,35 @@ class BolusCalculatorService {
     if (maxBolus == null) blockers.add(BolusBlockReason.maxBolusMissing);
     if (increment == null) blockers.add(BolusBlockReason.minIncrementMissing);
 
-    // ── Gate 3: meal carbs ──────────────────────────────────────────────────
-    final carbsValidation =
-        DiabetesSafetyValidator.validateMealCarbs(input.mealCarbsG);
-    if (carbsValidation.hasErrors) {
-      // Distinguish "implausible" from "missing/invalid" for messaging.
-      final implausible = input.mealCarbsG.isFinite &&
-          input.mealCarbsG > DiabetesConstants.maxPlausibleMealCarbsG;
-      blockers.add(implausible
-          ? BolusBlockReason.carbsImplausible
-          : BolusBlockReason.mealCarbsMissingOrInvalid);
+    final minuteOfDay = now.hour * 60 + now.minute;
+    double? activeValue(List<InsulinTimeBlock> blocks) {
+      for (final block in blocks) {
+        if (block.startMinute <= minuteOfDay &&
+            block.endMinute >= minuteOfDay) {
+          final value = block.value;
+          return value.isFinite && value > 0 ? value : null;
+        }
+      }
+      return null;
     }
 
-    // Active ICR for the current time block (required for a meal bolus).
-    final minuteOfDay = now.hour * 60 + now.minute;
-    final icr = settings.icrForMinute(minuteOfDay);
-    if (icr == null || icr <= 0) {
-      blockers.add(BolusBlockReason.icrMissingForTimeBlock);
+    final icr = settings.mealBolusEnabled
+        ? activeValue(settings.icrBlocks)
+        : null;
+    if (settings.mealBolusEnabled) {
+      final carbsValidation =
+          DiabetesSafetyValidator.validateMealCarbs(input.mealCarbsG);
+      if (carbsValidation.hasErrors) {
+        // Distinguish "implausible" from "missing/invalid" for messaging.
+        final implausible = input.mealCarbsG.isFinite &&
+            input.mealCarbsG > DiabetesConstants.maxPlausibleMealCarbsG;
+        blockers.add(implausible
+            ? BolusBlockReason.carbsImplausible
+            : BolusBlockReason.mealCarbsMissingOrInvalid);
+      }
+      if (icr == null) {
+        blockers.add(BolusBlockReason.icrMissingForTimeBlock);
+      }
     }
 
     // ── Gate 4: correction (optional) ───────────────────────────────────────
@@ -94,7 +106,7 @@ class BolusCalculatorService {
       final glucose = input.currentGlucoseMgdl;
       final readingAt = input.glucoseReadingAt;
       final target = settings.targetGlucoseMgdl;
-      isf = settings.isfForMinute(minuteOfDay);
+      isf = activeValue(settings.isfBlocks);
 
       if (glucose == null) {
         blockers.add(BolusBlockReason.currentGlucoseMissing);
@@ -163,7 +175,7 @@ class BolusCalculatorService {
 
     // ── Compute (all gates passed) ──────────────────────────────────────────
     // Safe to use ! here: each was checked above.
-    final mealBolus = input.mealCarbsG / icr!;
+    final mealBolus = settings.mealBolusEnabled ? input.mealCarbsG / icr! : 0.0;
     final rawBolus = mealBolus + correction - iob;
 
     // Safety clamp at zero (display), with advisory.
@@ -184,12 +196,13 @@ class BolusCalculatorService {
 
     final rounded = _roundToIncrement(displayRaw, increment!);
 
-    if (input.mealCarbsG > DiabetesConstants.suspiciousMealCarbsG) {
+    if (settings.mealBolusEnabled &&
+        input.mealCarbsG > DiabetesConstants.suspiciousMealCarbsG) {
       warnings.add(BolusWarning.carbsUnusuallyHigh);
     }
 
     final breakdown = BolusBreakdown(
-      mealCarbsG: input.mealCarbsG,
+      mealCarbsG: settings.mealBolusEnabled ? input.mealCarbsG : 0,
       icrUsed: icr,
       mealBolusUnits: mealBolus,
       currentGlucoseMgdl: input.currentGlucoseMgdl,

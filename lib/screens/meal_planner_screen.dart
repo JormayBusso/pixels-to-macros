@@ -9,7 +9,6 @@ import '../core/grocery_packaging.dart';
 import '../models/custom_meal.dart';
 import '../models/dietary_restriction.dart';
 import '../models/food_data.dart';
-import '../models/meal_plan.dart';
 import '../models/nutrition_goal.dart';
 import '../models/recipe.dart';
 import '../providers/meal_planner_provider.dart';
@@ -71,12 +70,16 @@ Recipe _customMealToRecipe(CustomMeal meal, List<FoodData> foods) {
   );
 }
 
-/// The nutrition goal the weekly planner is currently planning for. Defaults to
-/// the user's global goal; can be overridden per session from the planner's
-/// goal chips. A null value means "All goals" (no eligibility filter — every
-/// recipe qualifies), exactly like the Recipes screen's "All goals" option.
-final plannerGoalProvider = StateProvider<NutritionGoalType?>(
-    (ref) => ref.read(userPrefsProvider).nutritionGoal);
+/// Planner goal overrides remain local to the planner. Without an override,
+/// the planner follows the user's current global goal; "All goals" is separate.
+final plannerGoalOverrideProvider =
+    StateProvider<NutritionGoalType?>((ref) => null);
+final plannerAllGoalsProvider = StateProvider<bool>((ref) => false);
+final plannerGoalProvider = Provider<NutritionGoalType?>((ref) {
+  if (ref.watch(plannerAllGoalsProvider)) return null;
+  return ref.watch(plannerGoalOverrideProvider) ??
+      ref.watch(userPrefsProvider.select((prefs) => prefs.nutritionGoal));
+});
 
 String _localizedGoalLabel(AppLocalizations l10n, NutritionGoalType goal) {
   return switch (goal) {
@@ -139,6 +142,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     // The planner can target any nutrition goal (defaults to the global one),
     // or "All goals" (null) for no filter. The AI autopilot + Smart Swap then
     // pick ONLY recipes eligible for the chosen goal.
+    final plannerGoalOverride = ref.watch(plannerGoalOverrideProvider);
     final plannerGoalRaw = ref.watch(plannerGoalProvider);
     final isAllGoals = plannerGoalRaw == null;
     // "All goals" maps to maintain for filtering (every recipe qualifies).
@@ -168,7 +172,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                 style:
                     const TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
             Text(
-              'Week ${plan.weekNumber}, ${plan.year}',
+              l10n.mealPlannerWeekLabel(plan.weekNumber, plan.year),
               style: TextStyle(fontSize: 11, color: context.appMutedTextColor),
             ),
           ],
@@ -176,7 +180,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         actions: [
           IconButton(
             tooltip: l10n.mealPlanAutopilot,
-            onPressed: () => _runAutopilot(context),
+            onPressed: plan.loading ? null : () => _runAutopilot(context),
             icon: const Icon(Icons.auto_awesome_outlined),
           ),
           if (plan.assignments.isNotEmpty)
@@ -247,6 +251,36 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     children: [
+                      if (plannerGoalOverride != null || isAllGoals)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(
+                              l10n.personalisedFor(
+                                _localizedGoalLabel(
+                                    l10n, prefs.nutritionGoal),
+                              ),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: context.appTextColor,
+                              ),
+                            ),
+                            selected: !isAllGoals &&
+                                plannerGoalRaw == prefs.nutritionGoal,
+                            showCheckmark: false,
+                            selectedColor: chipSelectedBg,
+                            backgroundColor: context.appSubtleFillColor,
+                            side: BorderSide(color: context.appBorderColor),
+                            onSelected: (_) {
+                              ref.read(plannerAllGoalsProvider.notifier).state =
+                                  false;
+                              ref
+                                  .read(plannerGoalOverrideProvider.notifier)
+                                  .state = null;
+                            },
+                          ),
+                        ),
                       Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: ChoiceChip(
@@ -269,9 +303,12 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                                 ? Colors.transparent
                                 : context.appBorderColor,
                           ),
-                          onSelected: (_) => ref
-                              .read(plannerGoalProvider.notifier)
-                              .state = null,
+                          onSelected: (_) {
+                            ref.read(plannerAllGoalsProvider.notifier).state =
+                                true;
+                            ref.read(plannerGoalOverrideProvider.notifier)
+                                .state = null;
+                          },
                         ),
                       ),
                       for (final g in NutritionGoalType.values)
@@ -297,9 +334,13 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                                   ? Colors.transparent
                                   : context.appBorderColor,
                             ),
-                            onSelected: (_) => ref
-                                .read(plannerGoalProvider.notifier)
-                                .state = g,
+                            onSelected: (_) {
+                              ref.read(plannerAllGoalsProvider.notifier).state =
+                                  false;
+                              ref
+                                  .read(plannerGoalOverrideProvider.notifier)
+                                  .state = g;
+                            },
                           ),
                         ),
                     ],
@@ -423,6 +464,28 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
 
   Future<void> _runAutopilot(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
+    final currentPlan = ref.read(mealPlanProvider);
+    if (currentPlan.loading) return;
+    if (currentPlan.assignments.isNotEmpty) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(l10n.mealPlanAutopilot),
+          content: Text(l10n.clearWeekPlan),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(l10n.mealPlanAutopilot),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !context.mounted) return;
+    }
     final prefs = ref.read(userPrefsProvider);
     final pantryMode = ref.read(pantryModeProvider);
     final pantryNames =

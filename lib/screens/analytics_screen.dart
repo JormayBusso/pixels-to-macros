@@ -79,66 +79,87 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                children: [
-                  _RangeSelector(active: _range, onSelect: _setRange),
-                  const SizedBox(height: 20),
-                  _CalorieTrendCard(
-                    state: analytics,
-                    goal: goal,
-                    selectedIndex: _selectedIndex,
-                    onSelect: (i) => setState(() => _selectedIndex = i),
-                  ),
-                  const SizedBox(height: 16),
-                  _StatTilesGrid(state: analytics, goal: goal),
-                  if (analytics.includesApproximateEstimates)
-                    Text(AppLocalizations.of(context).approximateEstimate,
-                        style: TextStyle(color: context.appMutedTextColor)),
-                  const SizedBox(height: 16),
-                  _MacroDonutCard(
-                    state: analytics,
-                    proteinTarget: proteinTarget,
-                    carbsTarget: carbsTarget,
-                    fatTarget: fatTarget,
-                  ),
-                  const SizedBox(height: 16),
-                  Card(
-                    child: ListTile(
-                      leading: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: context.primary100,
-                          borderRadius: BorderRadius.circular(10),
+              child: analytics.days.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                            height: MediaQuery.of(context).size.height * .35),
+                        Center(
+                          child: Text(
+                            analytics.error == null
+                                ? l10n.noDataYet
+                                : l10n.analyticsLoadError,
+                            style:
+                                TextStyle(color: context.appMutedTextColor),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                        child:
-                            Icon(Icons.eco_outlined, color: context.primary600),
-                      ),
-                      title: Text(
-                        AppLocalizations.of(context).foodGroupBalanceTitle,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      subtitle: Text(AppLocalizations.of(context)
-                          .foodGroupBalanceSubtitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const FoodGroupScreen(),
+                      ],
+                    )
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                      children: [
+                        _RangeSelector(active: _range, onSelect: _setRange),
+                        const SizedBox(height: 20),
+                        _CalorieTrendCard(
+                          state: analytics,
+                          goal: goal,
+                          selectedIndex: _selectedIndex,
+                          onSelect: (i) => setState(() => _selectedIndex = i),
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                        _StatTilesGrid(state: analytics, goal: goal),
+                        if (analytics.includesApproximateEstimates)
+                          Text(AppLocalizations.of(context).approximateEstimate,
+                              style:
+                                  TextStyle(color: context.appMutedTextColor)),
+                        const SizedBox(height: 16),
+                        _MacroDonutCard(
+                          state: analytics,
+                          proteinTarget: proteinTarget,
+                          carbsTarget: carbsTarget,
+                          fatTarget: fatTarget,
+                        ),
+                        const SizedBox(height: 16),
+                        Card(
+                          child: ListTile(
+                            leading: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: context.primary100,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(Icons.eco_outlined,
+                                  color: context.primary600),
+                            ),
+                            title: Text(
+                              AppLocalizations.of(context)
+                                  .foodGroupBalanceTitle,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            subtitle: Text(AppLocalizations.of(context)
+                                .foodGroupBalanceSubtitle),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const FoodGroupScreen(),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _WeekdayPatternCard(state: analytics, goal: goal),
+                        const SizedBox(height: 16),
+                        _InsightCard(state: analytics, goal: goal),
+                        const SizedBox(height: 16),
+                        _DayBreakdownCard(state: analytics, goal: goal),
+                        const SizedBox(height: 16),
+                        const _BadgeCollectionCard(),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _WeekdayPatternCard(state: analytics, goal: goal),
-                  const SizedBox(height: 16),
-                  _InsightCard(state: analytics, goal: goal),
-                  const SizedBox(height: 16),
-                  _DayBreakdownCard(state: analytics, goal: goal),
-                  const SizedBox(height: 16),
-                  const _BadgeCollectionCard(),
-                ],
-              ),
             ),
     );
   }

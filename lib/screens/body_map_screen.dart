@@ -34,7 +34,6 @@ class BodyMapScreen extends ConsumerStatefulWidget {
 }
 
 class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
-  _OrganRegion? _selected;
   late final Future<String> _rawSvgFuture;
   static const List<String> _requiredOrganIds = <String>[
     'brain',
@@ -352,7 +351,6 @@ class _BodyMapScreenState extends ConsumerState<BodyMapScreen> {
                                   rect: rect,
                                   child: GestureDetector(
                                     onTap: () {
-                                      setState(() => _selected = region);
                                       _showDetail(
                                           region, scores[region]!, foods, drv);
                                     },
@@ -755,21 +753,6 @@ extension on _OrganRegion {
         _OrganRegion.blood => 'veins', // SVG uses 'veins' for blood vessels
       };
 
-  String get label => switch (this) {
-        _OrganRegion.brain => 'Brain',
-        _OrganRegion.eyes => 'Eyes',
-        _OrganRegion.lungs => 'Lungs',
-        _OrganRegion.heart => 'Heart',
-        _OrganRegion.liver => 'Liver',
-        _OrganRegion.stomach => 'Stomach',
-        _OrganRegion.intestines => 'Intestines',
-        _OrganRegion.kidneys => 'Kidneys',
-        _OrganRegion.bones => 'Bones',
-        _OrganRegion.muscles => 'Muscles',
-        _OrganRegion.skin => 'Skin',
-        _OrganRegion.blood => 'Blood',
-      };
-
   IconData get icon => switch (this) {
         _OrganRegion.brain => Icons.psychology_outlined,
         _OrganRegion.eyes => Icons.visibility_outlined,
@@ -785,59 +768,6 @@ extension on _OrganRegion {
         _OrganRegion.blood => Icons.bloodtype_outlined,
       };
 
-  String get explanation => switch (this) {
-        _OrganRegion.brain =>
-          'B12 and folate keep nerves firing. Iron carries oxygen to brain tissue and supports focus and memory.',
-        _OrganRegion.eyes =>
-          'Vitamin A is essential for night vision. Vitamin C and zinc protect against age-related macular degeneration.',
-        _OrganRegion.lungs =>
-          'Antioxidants like vitamin C, E and A defend lung tissue against oxidative stress and inflammation.',
-        _OrganRegion.heart =>
-          'Potassium regulates heartbeat, magnesium relaxes blood vessels, and vitamin E protects cells from oxidative damage.',
-        _OrganRegion.liver =>
-          'The liver stores fat-soluble vitamins. Vitamin K supports clotting; B12 is processed and stored here.',
-        _OrganRegion.stomach =>
-          'Zinc maintains the stomach lining. B-vitamins support the production of digestive enzymes.',
-        _OrganRegion.intestines =>
-          'Dietary fiber feeds healthy gut bacteria. Magnesium and potassium keep intestinal muscles contracting smoothly.',
-        _OrganRegion.kidneys =>
-          'Potassium and magnesium balance helps the kidneys filter waste; staying hydrated reduces kidney load.',
-        _OrganRegion.bones =>
-          'Calcium builds bone density. Vitamin D drives calcium absorption. Vitamin K guides calcium into bone, not arteries.',
-        _OrganRegion.muscles =>
-          'Magnesium and potassium prevent cramps. Calcium triggers contraction. Adequate protein repairs muscle fibers.',
-        _OrganRegion.skin =>
-          'Vitamin C builds collagen, vitamin E shields against UV damage, and zinc accelerates wound healing.',
-        _OrganRegion.blood =>
-          'Iron is the core of haemoglobin. B12 and folate are required to produce healthy red blood cells.',
-      };
-
-  String get foodFocus => switch (this) {
-        _OrganRegion.brain =>
-          'Prioritise eggs, fish, dairy, lean meat, legumes, leafy greens, and iron-rich foods paired with vitamin C.',
-        _OrganRegion.eyes =>
-          'Look for carrots, sweet potato, spinach, bell pepper, citrus, eggs, shellfish, seeds, and zinc-rich proteins.',
-        _OrganRegion.lungs =>
-          'Colourful fruit, leafy greens, nuts, seeds, olive oil, and vitamin C-rich produce help cover antioxidant needs.',
-        _OrganRegion.heart =>
-          'Potassium-rich fruit and vegetables, legumes, nuts, seeds, whole grains, and magnesium-rich foods are most useful.',
-        _OrganRegion.liver =>
-          'Use eggs, leafy greens, fermented dairy, fish, nuts, seeds, and varied proteins to cover K, E, and B12.',
-        _OrganRegion.stomach =>
-          'Zinc-rich seafood, meat, legumes, dairy, eggs, and B-vitamin foods support the stomach lining and digestion.',
-        _OrganRegion.intestines =>
-          'Beans, lentils, oats, whole grains, vegetables, fruit, nuts, seeds, and enough fluids are the strongest levers.',
-        _OrganRegion.kidneys =>
-          'Hydration plus balanced potassium and magnesium from fruit, vegetables, legumes, and nuts supports filtering.',
-        _OrganRegion.bones =>
-          'Dairy or fortified alternatives, sardines, tofu, leafy greens, eggs, fish, and vitamin K vegetables support bone strength.',
-        _OrganRegion.muscles =>
-          'Pair protein with magnesium, potassium, and calcium from dairy, legumes, potatoes, bananas, nuts, and greens.',
-        _OrganRegion.skin =>
-          'Vitamin C fruit, nuts, seeds, avocado, olive oil, seafood, legumes, and zinc-rich proteins help collagen and repair.',
-        _OrganRegion.blood =>
-          'Iron, B12, and folate come from red meat, fish, eggs, dairy, legumes, spinach, fortified grains, and citrus pairings.',
-      };
 }
 
 String _statusMessage(AppLocalizations l10n, _OrganRegion region, double score) {

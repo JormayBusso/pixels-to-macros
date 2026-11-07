@@ -61,6 +61,13 @@ class PixelsToMacrosApp extends ConsumerWidget {
       return MaterialApp(
         navigatorKey: AppRecoveryService.navigatorKey,
         scaffoldMessengerKey: AppRecoveryService.scaffoldMessengerKey,
+        supportedLocales: AppLanguage.values.map((l) => l.locale),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: _RecoveryScreen(onRetry: () {
           // Force a full rebuild by invalidating providers
           ref.invalidate(themeProvider);
@@ -129,26 +136,25 @@ class _RecoveryScreen extends StatelessWidget {
                   color: Colors.orange,
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Something went wrong',
-                  style: TextStyle(
+                Text(
+                  AppLocalizations.of(context).recoveryTitle,
+                  style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'The app had trouble starting up.\n'
-                  'Tap below to try again — your data is safe.',
+                Text(
+                  AppLocalizations.of(context).recoveryMessage,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15, color: Colors.black54),
+                  style: const TextStyle(fontSize: 15, color: Colors.black54),
                 ),
                 const SizedBox(height: 32),
                 FilledButton.icon(
                   onPressed: onRetry,
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Try Again'),
+                  label: Text(AppLocalizations.of(context).recoveryRetry),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(200, 48),
                   ),

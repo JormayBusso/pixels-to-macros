@@ -264,11 +264,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 class _OnboardingScrollFrame extends StatelessWidget {
   const _OnboardingScrollFrame({
     required this.child,
-    this.padding = const EdgeInsets.symmetric(horizontal: 32),
   });
 
   final Widget child;
-  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -280,7 +278,7 @@ class _OnboardingScrollFrame extends StatelessWidget {
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: Padding(
-              padding: padding,
+              padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Center(child: child),
             ),
           ),
@@ -929,7 +927,7 @@ class _TargetSlider extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext _) {
     final activeColor = _activeColor;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

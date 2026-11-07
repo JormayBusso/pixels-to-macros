@@ -214,6 +214,35 @@ class AppLocalizations {
         'de': 'Laden...',
       });
 
+  String get recoveryTitle => _t({
+        'en': 'Something went wrong',
+        'nl': 'Er is iets misgegaan',
+        'es': 'Algo salió mal',
+        'de': 'Etwas ist schiefgelaufen',
+        'pl': 'Coś poszło nie tak',
+      });
+
+  String get recoveryMessage => _t({
+        'en':
+            'The app had trouble starting up.\nTap below to try again — your data is safe.',
+        'nl':
+            'De app kon niet goed opstarten.\nTik hieronder om het opnieuw te proberen — je gegevens zijn veilig.',
+        'es':
+            'La aplicación tuvo problemas al iniciarse.\nToca abajo para intentarlo de nuevo; tus datos están a salvo.',
+        'de':
+            'Die App konnte nicht richtig starten.\nTippe unten, um es erneut zu versuchen — deine Daten sind sicher.',
+        'pl':
+            'Aplikacja nie mogła się uruchomić.\nDotknij poniżej, aby spróbować ponownie — Twoje dane są bezpieczne.',
+      });
+
+  String get recoveryRetry => _t({
+        'en': 'Try Again',
+        'nl': 'Opnieuw proberen',
+        'es': 'Intentar de nuevo',
+        'de': 'Erneut versuchen',
+        'pl': 'Spróbuj ponownie',
+      });
+
   // ── Navigation / Tabs ──
 
   String get home => _t({
@@ -4504,6 +4533,14 @@ class AppLocalizations {
         'de': 'Lebensmittel bearbeiten',
       });
 
+  String editFoodTitle(String label) => _t({
+        'en': 'Edit "$label"',
+        'nl': 'Bewerk "$label"',
+        'es': 'Editar "$label"',
+        'de': '"$label" bearbeiten',
+        'pl': 'Edytuj „$label”',
+      });
+
   String get unsureFoodTitle => _t({
         'en': 'Not sure what this is',
         'pl': 'Nie wiemy, co to jest',
@@ -6137,6 +6174,27 @@ class AppLocalizations {
             'Dein ICR ist nicht eingestellt. Bolusberechnungen werden ungenau sein.\nGehe zu Einstellungen → Diabetes, um deinen persönlichen ICR festzulegen.',
       });
 
+  String get icrMissingTitle => _t({
+        'en': 'Personal ICR not set — bolus calculator unavailable',
+        'nl': 'Persoonlijke ICR ontbreekt — boluscalculator niet beschikbaar',
+        'es': 'Falta tu ICR personal: calculadora de bolos no disponible',
+        'de': 'Persönlicher ICR fehlt — Bolusrechner nicht verfügbar',
+        'pl': 'Brak osobistego ICR — kalkulator bolusa niedostępny',
+      });
+
+  String get icrMissingHelp => _t({
+        'en':
+            'Enter the ICR set by your diabetes care team in Settings → Diabetes. Calculator use also requires the insulin settings survey, consent, and regular review.',
+        'nl':
+            'Vul in Instellingen → Diabetes de ICR in die je diabetesteam heeft vastgesteld. Gebruik van de calculator vereist ook de vragenlijst over insuline-instellingen, toestemming en regelmatige controle.',
+        'es':
+            'Introduce en Ajustes → Diabetes el ICR indicado por tu equipo de atención a la diabetes. Para usar la calculadora también se requiere completar el cuestionario de ajustes de insulina, dar consentimiento y revisar los ajustes periódicamente.',
+        'de':
+            'Gib unter Einstellungen → Diabetes den von deinem Diabetes-Team festgelegten ICR ein. Für die Nutzung des Rechners sind außerdem der Fragebogen zu den Insulineinstellungen, deine Einwilligung und regelmäßige Überprüfungen erforderlich.',
+        'pl':
+            'W Ustawienia → Cukrzyca wpisz ICR ustalony przez Twój zespół diabetologiczny. Korzystanie z kalkulatora wymaga też wypełnienia ankiety ustawień insuliny, zgody i regularnego przeglądu ustawień.',
+      });
+
   // ── Scan / voice / manual entry ──
 
   String get editTooltip => _t({
@@ -7006,14 +7064,6 @@ class AppLocalizations {
         'nl': 'Je gegevens laden…',
         'es': 'Cargando tus datos…',
         'de': 'Deine Daten werden geladen…',
-      });
-
-  String editFoodTitle(String label) => _t({
-        'en': 'Edit "$label"',
-        'pl': 'Edytuj „$label"',
-        'nl': '"$label" bewerken',
-        'es': 'Editar "$label"',
-        'de': '"$label" bearbeiten',
       });
 
   String get noFoodLoggedTodayLong => _t({
@@ -10275,6 +10325,69 @@ class AppLocalizations {
             'Senke das Handy auf Tellerhöhe und halte es aufrecht, direkt vor '
                 'dem Essen, mit dem Essen im Rahmen. Ein gerades Seitenfoto '
                 'liefert die genaueste Höhe.',
+      });
+
+  String get recipeAllergyFilterNotice => _t({
+        'en':
+            'Allergy filters cannot guarantee a recipe is allergen-free. Check ingredients and labels.',
+        'nl':
+            'Allergiefilters garanderen niet dat een recept allergeenvrij is. Controleer ingrediënten en etiketten.',
+        'es':
+            'Los filtros de alergias no garantizan que una receta no contenga alérgenos. Comprueba los ingredientes y las etiquetas.',
+        'de':
+            'Allergiefilter garantieren nicht, dass ein Rezept frei von Allergenen ist. Prüfe Zutaten und Etiketten.',
+        'pl':
+            'Filtry alergii nie gwarantują, że przepis nie zawiera alergenów. Sprawdź składniki i etykiety.',
+      });
+
+  String recipeLogMealLabel(int calories, String? bolusUnits) => _t({
+        'en': bolusUnits == null
+            ? 'Log meal · $calories kcal'
+            : 'Log meal · $calories kcal · $bolusUnits U bolus',
+        'nl': bolusUnits == null
+            ? 'Maaltijd loggen · $calories kcal'
+            : 'Maaltijd loggen · $calories kcal · $bolusUnits E bolus',
+        'es': bolusUnits == null
+            ? 'Registrar comida · $calories kcal'
+            : 'Registrar comida · $calories kcal · bolo de $bolusUnits U',
+        'de': bolusUnits == null
+            ? 'Mahlzeit protokollieren · $calories kcal'
+            : 'Mahlzeit protokollieren · $calories kcal · $bolusUnits E Bolus',
+        'pl': bolusUnits == null
+            ? 'Zapisz posiłek · $calories kcal'
+            : 'Zapisz posiłek · $calories kcal · bolus $bolusUnits j.',
+      });
+
+  String mealPlannerWeekLabel(int weekNumber, int year) => _t({
+        'en': 'Week $weekNumber, $year',
+        'nl': 'Week $weekNumber, $year',
+        'es': 'Semana $weekNumber de $year',
+        'de': 'Woche $weekNumber · $year',
+        'pl': 'Tydzień $weekNumber, $year',
+      });
+
+  String get analyticsLoadError => _t({
+        'en': 'Could not load analytics. Please try again.',
+        'nl': 'Analytics kon niet worden geladen. Probeer het opnieuw.',
+        'es': 'No se pudieron cargar las estadísticas. Inténtalo de nuevo.',
+        'de': 'Analysen konnten nicht geladen werden. Bitte versuche es erneut.',
+        'pl': 'Nie udało się wczytać statystyk. Spróbuj ponownie.',
+      });
+
+  String get settingsValuesInvalid => _t({
+        'en': 'Enter valid calorie, macro, and water values.',
+        'nl': 'Voer geldige waarden voor calorieën, macro’s en water in.',
+        'es': 'Introduce valores válidos de calorías, macros y agua.',
+        'de': 'Gib gültige Werte für Kalorien, Makros und Wasser ein.',
+        'pl': 'Wpisz prawidłowe wartości kalorii, makroskładników i wody.',
+      });
+
+  String get diabetesManagement => _t({
+        'en': 'Diabetes management',
+        'nl': 'Diabetesbeheer',
+        'es': 'Control de la diabetes',
+        'de': 'Diabetesmanagement',
+        'pl': 'Zarządzanie cukrzycą',
       });
 
   String get scanTutorialResultsBody => _t({

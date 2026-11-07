@@ -12,6 +12,7 @@ import '../models/calc_info.dart';
 import '../models/nutrition_goal.dart';
 import '../models/recipe.dart';
 import '../models/scan_result.dart';
+import '../models/bolus_models.dart';
 import '../providers/daily_intake_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/pantry_provider.dart';
@@ -19,6 +20,7 @@ import '../providers/user_prefs_provider.dart';
 import '../providers/diabetes_provider.dart';
 import '../services/barcode_lookup_service.dart';
 import '../services/database_service.dart';
+import '../services/diabetes/bolus_calculator_service.dart';
 import '../services/ingredient_localizer.dart';
 import '../services/recipe_repository.dart';
 import '../services/recipe_translation_service.dart';
@@ -247,9 +249,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Recipes mentioning these ingredients are hidden in '
-                          'recipes, the meal planner and scan alerts. For severe '
-                          'allergies, always double-check ingredient labels.',
+                          AppLocalizations.of(context).recipeAllergyFilterNotice,
                           style: TextStyle(
                             fontSize: 11.5,
                             color: context.appMutedTextColor,
@@ -1446,9 +1446,14 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     });
   }
 
-  // Nutrition always shows 1 person's portion (recipe base serving)
+  // Scale recipe-per-serving nutrition values to the selected portion.
   double get _carbsForServing =>
-      widget.recipe.carbsPerServing(widget.recipe.servings);
+      widget.recipe.carbsPerServing(widget.recipe.servings) *
+      _selectedServings;
+
+  int get _caloriesForSelectedServings =>
+      widget.recipe.caloriesPerServing(widget.recipe.servings) *
+      _selectedServings;
 
   @override
   Widget build(BuildContext context) {
@@ -1468,20 +1473,24 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     final displaySteps = translatedSteps ?? r.steps;
     final prefs = ref.watch(userPrefsProvider);
     final insulin = ref.watch(insulinSettingsProvider);
+    final bolusAvailable = ref.watch(bolusCalculatorAvailableProvider);
     final isDiabetic = prefs.nutritionGoal == NutritionGoalType.diabetes;
-    // A suggested meal bolus is ONLY surfaced once the user has actually set
-    // up insulin settings (an ICR) AND accepted the medical-device agreements
-    // via the Bolus Calculator consent flow. Until then we never show or
-    // assume a bolus — no default ICR is invented.
-    final bolusConsented =
-        insulin.bolusCalculatorEnabled && insulin.userConfirmedAt != null;
     final nowMinute = DateTime.now().hour * 60 + DateTime.now().minute;
     final activeIcr = insulin.icrForMinute(nowMinute);
-    final icr = (activeIcr != null && activeIcr > 0)
-        ? activeIcr
-        : prefs.icrGramsPerUnit;
-    final showBolus = isDiabetic && bolusConsented && icr > 0;
-    final bolusUnits = showBolus ? _carbsForServing / icr : 0.0;
+    final icr = activeIcr != null && activeIcr > 0 ? activeIcr : 0.0;
+    final bolusResult = bolusAvailable && isDiabetic && r.hasMacros
+        ? BolusCalculatorService.calculate(
+            settings: insulin,
+            input: BolusInput(mealCarbsG: _carbsForServing),
+          )
+        : null;
+    final bolusBreakdown = bolusResult?.breakdown;
+    final showBolus =
+        bolusResult != null &&
+        bolusBreakdown != null &&
+        icr > 0;
+    final bolusUnits =
+        showBolus ? bolusBreakdown.roundedBolusUnits : 0.0;
     return Scaffold(
       backgroundColor: context.appPanelColor,
       body: CustomScrollView(
@@ -1733,17 +1742,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton.icon(
-                        onPressed: () => _logRecipe(
-                          context,
-                          isDiabetic: showBolus,
-                          bolusUnits: bolusUnits,
-                          icr: icr,
-                        ),
+                        onPressed: () => _logRecipe(context),
                         icon: const Icon(Icons.add_circle_outline, size: 18),
                         label: Text(
-                          showBolus
-                              ? 'Log Meal · ${r.caloriesPerServing(r.servings)} kcal · ${bolusUnits.toStringAsFixed(1)}U'
-                              : 'Log Meal · ${r.caloriesPerServing(r.servings)} kcal',
+                          AppLocalizations.of(context).recipeLogMealLabel(
+                            _caloriesForSelectedServings.round(),
+                            showBolus ? bolusUnits.toStringAsFixed(1) : null,
+                          ),
                         ),
                         style: FilledButton.styleFrom(
                           minimumSize: const Size.fromHeight(50),
@@ -1771,11 +1776,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 
   void _logRecipe(
-    BuildContext context, {
-    required bool isDiabetic,
-    required double bolusUnits,
-    required double icr,
-  }) {
+    BuildContext context,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1783,10 +1785,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       builder: (_) => _LogRecipeSheet(
         recipe: widget.recipe,
         servings: _selectedServings,
-        isDiabetic: isDiabetic,
-        bolusUnits: bolusUnits,
-        icr: icr,
-        carbsPerServing: _carbsForServing,
         onLogged: () {
           // Reload providers after logging
           ref.read(dailyIntakeProvider.notifier).load();
@@ -1801,19 +1799,11 @@ class _LogRecipeSheet extends ConsumerStatefulWidget {
   const _LogRecipeSheet({
     required this.recipe,
     required this.servings,
-    required this.isDiabetic,
-    required this.bolusUnits,
-    required this.icr,
-    required this.carbsPerServing,
     required this.onLogged,
   });
 
   final Recipe recipe;
   final int servings;
-  final bool isDiabetic;
-  final double bolusUnits;
-  final double icr;
-  final double carbsPerServing;
   final VoidCallback onLogged;
 
   @override
@@ -1981,9 +1971,9 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
   double _estimateGrams(
       String amount, int selected, int original, String name) {
     // Scale simple numeric amounts first (fractional support)
-    final fractionRegex = RegExp(r'^(\d+)\s+(\d+)/(\d+)(.*) ');
-    final simpleFraction = RegExp(r'^(\d+)/(\d+)(.*) ');
-    final numberRegex = RegExp(r'^(\d+\.?\d*)(.*) ');
+    final fractionRegex = RegExp(r'^(\d+)\s+(\d+)/(\d+)(.*)$');
+    final simpleFraction = RegExp(r'^(\d+)/(\d+)(.*)$');
+    final numberRegex = RegExp(r'^(\d+\.?\d*)(.*)$');
 
     String scaled = amount.trim();
     if (selected != original) {
@@ -2092,8 +2082,8 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
   String _scaleAmountLocal(String amount, int selected, int original) {
     if (selected == original) return amount;
     final ratio = selected / original;
-    final fractionRegex = RegExp(r'^(\d+)/(\d+)(.*) ');
-    final numberRegex = RegExp(r'^(\d+\.?\d*)(.*) ');
+    final fractionRegex = RegExp(r'^(\d+)/(\d+)(.*)$');
+    final numberRegex = RegExp(r'^(\d+\.?\d*)(.*)$');
     final fractionMatch = fractionRegex.firstMatch(amount);
     if (fractionMatch != null) {
       final num = int.parse(fractionMatch.group(1)!);
@@ -2333,41 +2323,6 @@ class _LogRecipeSheetState extends ConsumerState<_LogRecipeSheet> {
                 Text(
                     AppLocalizations.of(context).adjustGramsCookingFor(widget.servings),
                     style: TextStyle(color: context.appMutedTextColor)),
-                if (widget.isDiabetic) ...[
-                  const SizedBox(height: 10),
-                  // ICR-not-set warning
-                  if (widget.icr <= 0)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.red100.withValues(
-                          alpha: context.isPremiumTheme ? 0.18 : 1,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.red.shade300),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded,
-                              color: Colors.red.shade600, size: 20),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              AppLocalizations.of(context).icrNotSetWarning,
-                              style: const TextStyle(fontSize: 12, color: Colors.red),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  _BolusCard(
-                    carbsG: widget.carbsPerServing,
-                    bolusUnits: widget.bolusUnits,
-                    icr: widget.icr <= 0 ? 10.0 : widget.icr,
-                    glycemicIndex: widget.recipe.glycemicIndex,
-                  ),
-                ],
                 const SizedBox(height: 12),
                 Expanded(
                   child: ListView.separated(

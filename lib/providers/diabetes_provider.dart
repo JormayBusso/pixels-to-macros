@@ -33,8 +33,11 @@ class InsulinSettingsNotifier extends StateNotifier<InsulinSettings> {
   Future<void> setDiabetesEnabled(bool enabled) =>
       _save(state.copyWith(diabetesEnabled: enabled));
 
-  Future<void> setUsesInsulin(bool uses) =>
-      _save(state.copyWith(usesInsulin: uses));
+  Future<void> setUsesInsulin(bool uses) {
+    final next = state.copyWith(usesInsulin: uses);
+    if (!uses) state = next;
+    return _save(next);
+  }
 
   /// Enable Bolus Calculator Mode. The caller (consent screen) must already
   /// have collected explicit consent — this also records [userConfirmedAt].
@@ -86,10 +89,27 @@ final diabetesReviewReminderProvider = Provider<bool>((ref) {
 /// Whether the bolus calculator is currently available (enabled + reviewed).
 final bolusCalculatorAvailableProvider = Provider<bool>((ref) {
   final s = ref.watch(insulinSettingsProvider);
-  if (!s.bolusCalculatorEnabled) return false;
+  final now = DateTime.now();
+  if (!s.bolusCalculatorEnabled || !s.usesInsulin) return false;
   if (s.surveyLastCompletedAt == null) return false;
   if (s.userConfirmedAt == null) return false;
-  return DiabetesSurveyScheduler.allowsCalculation(s, DateTime.now());
+  if (!DiabetesSurveyScheduler.allowsCalculation(s, now)) return false;
+
+  final minuteOfDay = now.hour * 60 + now.minute;
+  double? activeValue(List<InsulinTimeBlock> blocks) {
+    for (final block in blocks) {
+      if (block.startMinute <= minuteOfDay &&
+          block.endMinute >= minuteOfDay) {
+        final value = block.value;
+        return value.isFinite && value > 0 ? value : null;
+      }
+    }
+    return null;
+  }
+
+  if (s.mealBolusEnabled && activeValue(s.icrBlocks) == null) return false;
+  if (s.correctionEnabled && activeValue(s.isfBlocks) == null) return false;
+  return true;
 });
 
 /// Confirmed insulin dose logs from the recent past (for IOB + history).

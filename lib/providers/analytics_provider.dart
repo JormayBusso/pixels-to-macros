@@ -30,11 +30,13 @@ class AnalyticsState {
   final bool loading;
   final List<DaySummary> days;
   final int rangeDays;
+  final Object? error;
 
   const AnalyticsState({
     this.loading = false,
     this.days = const [],
     this.rangeDays = 7,
+    this.error,
   });
 
   Iterable<DaySummary> get _logged => days.where((d) => !d.isEmpty);
@@ -109,66 +111,80 @@ class AnalyticsState {
 class AnalyticsNotifier extends StateNotifier<AnalyticsState> {
   AnalyticsNotifier() : super(const AnalyticsState());
 
+  int _loadGeneration = 0;
+
   Future<void> load({int rangeDays = 7}) async {
+    final generation = ++_loadGeneration;
     state = AnalyticsState(loading: true, rangeDays: rangeDays);
 
-    final allScans = await DatabaseService.instance.getAllScanResults();
-    final now = DateTime.now();
-    final days = <DaySummary>[];
+    try {
+      final allScans = await DatabaseService.instance.getAllScanResults();
+      final now = DateTime.now();
+      final days = <DaySummary>[];
 
-    // Pre-fetch food DB rows we need (one per distinct label across scans).
-    final labels = <String>{
-      for (final s in allScans)
-        for (final f in s.foods) f.label.toLowerCase(),
-    };
-    final foodCache = <String, dynamic>{};
-    for (final label in labels) {
-      foodCache[label] = await DatabaseService.instance.getFoodByLabel(label);
-    }
-
-    for (int i = 0; i < rangeDays; i++) {
-      final date =
-          DateTime(now.year, now.month, now.day).subtract(Duration(days: i));
-      final nextDate = date.add(const Duration(days: 1));
-
-      final dayScans = allScans
-          .where((s) =>
-              !s.timestamp.isBefore(date) && s.timestamp.isBefore(nextDate))
-          .toList();
-
-      double calSum = 0;
-      double pSum = 0;
-      double cSum = 0;
-      double fSum = 0;
-      for (final scan in dayScans) {
-        calSum += (scan.totalCaloriesMin + scan.totalCaloriesMax) / 2;
-        for (final food in scan.foods) {
-          final fd = foodCache[food.label.toLowerCase()];
-          if (fd != null && fd.kcalPer100g > 0) {
-            final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
-            final weightG = avgCal / (fd.kcalPer100g / 100);
-            pSum += weightG * fd.proteinPer100g / 100;
-            cSum += weightG * fd.carbsPer100g / 100;
-            fSum += weightG * fd.fatPer100g / 100;
-          }
-        }
+      // Pre-fetch food DB rows we need (one per distinct label across scans).
+      final labels = <String>{
+        for (final s in allScans)
+          for (final f in s.foods) f.label.toLowerCase(),
+      };
+      final foodCache = <String, dynamic>{};
+      for (final label in labels) {
+        foodCache[label] = await DatabaseService.instance.getFoodByLabel(label);
       }
 
-      days.add(DaySummary(
-        date: date,
-        caloriesAvg: calSum,
-        proteinG: pSum,
-        carbsG: cSum,
-        fatG: fSum,
-        scanCount: dayScans.length,
-        approximateScanCount: dayScans.where((s) => s.isApproximate).length,
-      ));
-    }
+      for (int i = 0; i < rangeDays; i++) {
+        final date =
+            DateTime(now.year, now.month, now.day).subtract(Duration(days: i));
+        final nextDate = date.add(const Duration(days: 1));
 
-    state = AnalyticsState(
-      days: days.reversed.toList(), // oldest first
-      rangeDays: rangeDays,
-    );
+        final dayScans = allScans
+            .where((s) =>
+                !s.timestamp.isBefore(date) && s.timestamp.isBefore(nextDate))
+            .toList();
+
+        double calSum = 0;
+        double pSum = 0;
+        double cSum = 0;
+        double fSum = 0;
+        for (final scan in dayScans) {
+          calSum += (scan.totalCaloriesMin + scan.totalCaloriesMax) / 2;
+          for (final food in scan.foods) {
+            final fd = foodCache[food.label.toLowerCase()];
+            if (fd != null && fd.kcalPer100g > 0) {
+              final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
+              final weightG = avgCal / (fd.kcalPer100g / 100);
+              pSum += weightG * fd.proteinPer100g / 100;
+              cSum += weightG * fd.carbsPer100g / 100;
+              fSum += weightG * fd.fatPer100g / 100;
+            }
+          }
+        }
+
+        days.add(DaySummary(
+          date: date,
+          caloriesAvg: calSum,
+          proteinG: pSum,
+          carbsG: cSum,
+          fatG: fSum,
+          scanCount: dayScans.length,
+          approximateScanCount: dayScans.where((s) => s.isApproximate).length,
+        ));
+      }
+
+      if (!mounted || generation != _loadGeneration) return;
+      state = AnalyticsState(
+        loading: false,
+        days: days.reversed.toList(), // oldest first
+        rangeDays: rangeDays,
+      );
+    } catch (error) {
+      if (!mounted || generation != _loadGeneration) return;
+      state = AnalyticsState(
+        loading: false,
+        rangeDays: rangeDays,
+        error: error,
+      );
+    }
   }
 }
 

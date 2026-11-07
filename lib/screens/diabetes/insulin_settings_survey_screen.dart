@@ -13,8 +13,9 @@ import 'bolus_setup_screen.dart' show kDiabetesBlue;
 ///
 /// Collects ONLY user-provided, clinician-sourced settings (the app never
 /// invents values). On save it validates everything; if valid and the
-/// confirmation checkbox is accepted, it marks the survey complete, records
-/// consent, sets the next 90-day review date, and enables the calculator.
+/// source consent collected by the setup screen is accepted, it marks the
+/// survey complete, records consent, sets the next 90-day review date, and
+/// enables the calculator.
 ///
 /// Time blocks: the spec's example uses three daily blocks. To keep entry
 /// simple we present three fixed windows (overnight/day/evening) and let the
@@ -42,7 +43,6 @@ class _InsulinSettingsSurveyScreenState
   bool _correctionEnabled = true;
   bool _mealBolusEnabled = true;
   bool _iobEnabled = false;
-  bool _confirmed = false;
 
   final _icrCtrls = [for (var i = 0; i < 3; i++) TextEditingController()];
   final _isfCtrls = [for (var i = 0; i < 3; i++) TextEditingController()];
@@ -180,10 +180,12 @@ class _InsulinSettingsSurveyScreenState
             title: Text(l10n.subtractIob),
             subtitle: Text(l10n.subtractIobSurveyDesc),
           ),
-          _section(l10n.glucoseTargetsSection(_unit.label)),
-          _numField(_targetCtrl, l10n.targetGlucoseField),
-          _numField(_hypoCtrl, l10n.lowHypoThreshold),
-          _numField(_hyperCtrl, l10n.highHyperThreshold),
+          if (_correctionEnabled) ...[
+            _section(l10n.glucoseTargetsSection(_unit.label)),
+            _numField(_targetCtrl, l10n.targetGlucoseField),
+            _numField(_hypoCtrl, l10n.lowHypoThreshold),
+            _numField(_hyperCtrl, l10n.highHyperThreshold),
+          ],
           if (_mealBolusEnabled) ...[
             _section(l10n.icrSection),
             for (var i = 0; i < _windows.length; i++)
@@ -195,29 +197,17 @@ class _InsulinSettingsSurveyScreenState
               _numField(_isfCtrls[i], _windowLabel(l10n, i)),
           ],
           _section(l10n.insulinActionLimits),
-          _numField(_diaCtrl, l10n.insulinActionDurationHours),
+          if (_iobEnabled) _numField(_diaCtrl, l10n.insulinActionDurationHours),
           _numField(_maxBolusCtrl, l10n.maxSingleBolusUnitsField),
           const SizedBox(height: 8),
           _incrementPicker(),
           const SizedBox(height: 16),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            activeColor: kDiabetesBlue,
-            controlAffinity: ListTileControlAffinity.leading,
-            value: _confirmed,
-            onChanged: (v) => setState(() => _confirmed = v ?? false),
-            title: Text(
-              l10n.diabetesSettingsSourceConfirmation,
-              style: const TextStyle(fontSize: 12, height: 1.4),
-            ),
-          ),
-          const SizedBox(height: 8),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: kDiabetesBlue,
               minimumSize: const Size.fromHeight(48),
             ),
-            onPressed: _confirmed ? _save : null,
+            onPressed: _save,
             child: Text(l10n.validateAndSaveSettings),
           ),
           const SizedBox(height: 24),
@@ -272,12 +262,15 @@ class _InsulinSettingsSurveyScreenState
       diabetesType: _type,
       glucoseUnit: _unit,
       usesCgm: _usesCgm,
-      targetGlucoseMgdl: _glucoseToMgdl(_targetCtrl),
-      hypoThresholdMgdl: _glucoseToMgdl(_hypoCtrl),
-      hyperThresholdMgdl: _glucoseToMgdl(_hyperCtrl),
-      icrBlocks: blocks(_icrCtrls, false),
-      isfBlocks: blocks(_isfCtrls, true),
-      insulinActionDurationHours: _parse(_diaCtrl),
+      targetGlucoseMgdl:
+          _correctionEnabled ? _glucoseToMgdl(_targetCtrl) : null,
+      hypoThresholdMgdl:
+          _correctionEnabled ? _glucoseToMgdl(_hypoCtrl) : null,
+      hyperThresholdMgdl:
+          _correctionEnabled ? _glucoseToMgdl(_hyperCtrl) : null,
+      icrBlocks: _mealBolusEnabled ? blocks(_icrCtrls, false) : const [],
+      isfBlocks: _correctionEnabled ? blocks(_isfCtrls, true) : const [],
+      insulinActionDurationHours: _iobEnabled ? _parse(_diaCtrl) : null,
       maxSingleBolusUnits: _parse(_maxBolusCtrl),
       minBolusIncrement: _increment,
       correctionEnabled: _correctionEnabled,

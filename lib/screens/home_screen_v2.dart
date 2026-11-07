@@ -181,7 +181,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Edit "${food.label}"',
+              l10n.editFoodTitle(food.label),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -541,7 +541,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'ICR not set — bolus cannot be calculated',
+                                AppLocalizations.of(context).icrMissingTitle,
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
@@ -550,7 +550,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Tap here to set your Insulin-to-Carb Ratio in Settings.',
+                                AppLocalizations.of(context).icrMissingHelp,
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: Colors.red.shade400,
