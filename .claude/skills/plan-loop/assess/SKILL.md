@@ -1,25 +1,38 @@
-# Assess
+# Verify
 
-Verifies `Status: delegated` todos. Assess is read-only: it records verdicts and never fixes code.
+Use [Plan Loop](../SKILL.md) for shared rules. Verify the actual outcome, not a PASS
+assertion or passing tests that leave acceptance criteria untested.
 
-## Dispatch
+## Evidence
 
-One reason-role subagent per batch, at the tier of the riskiest todo in it (LOW docs-only → cheap; anything with runtime change or MEDIUM → standard; HIGH → strong, assessed in its own batch). Standard reason (`gpt-6.1-sol`) cross-checks Sonnet's implementation.
+Keep one compact record per check batch: exact commands, cwd, true exit codes,
+criteria/scope, code-state fingerprint, and log/artifact paths. Include affected
+source, tests, config, dependencies, and relevant untracked files; add environment/
+input conditions when material. Hash only the verification scope, not unrelated
+workspace content.
 
-Give it: each todo's `Do` + `Done when`, the file list, and the delegate handoff. Instruct it to:
+Reuse passing evidence while those inputs remain current. Inspect referenced logs
+as needed; unsupported claims are missing evidence. Relevant edits/environment
+changes invalidate affected checks; shared helpers may invalidate several tasks.
+Combine related test selectors in one runner. Required checks stay mandatory.
 
-1. Check every `Done when` criterion literally against the current files and `git diff -- <files>`.
-2. Re-run each todo's check command(s) (`flutter analyze`, targeted `flutter test`, simulator `xcodebuild` for Swift) — never new tooling.
-3. Flag out-of-scope edits, missing l10n (§5), contrast/theming violations (§7), and, for MEDIUM/HIGH, failure paths and edge cases.
-4. Return per todo: `PASS` or `FAIL: <criterion> — <concrete reason>`, plus the commands run. A PASS needs every criterion met and every check green; missing evidence is a FAIL.
+## Validate and route
 
-## Record
+1. Check every criterion literally; demonstrate bug fail-to-pass where feasible
+   and preserve existing behavior. State when reproduction is unavailable.
+2. Run missing/stale focused lint/tests/build/integration checks using existing
+   tooling. Broaden only for an uncovered requirement, relevant edit, or failure.
+3. Review the scoped diff against the starting worktree: scope, call sites,
+   failure paths, compatibility, and applicable AGENTS.md invariants.
+4. Review directly when evidence fits this context. Substantial complex/high-risk
+   work gets independent review when separate context is warranted. Give the diff,
+   rubric, and existing evidence; request concrete defects, not speculative style
+   changes or duplicate tests. Follow explicit security-review routing when requested.
+   Repeat review only for relevant edits or unresolved findings.
+5. Record `locally-verified` with evidence references only when all required local
+   criteria/checks pass. Unavailable required local evidence -> `blocked`.
 
-- PASS → `Status: assessed`; append `assess=<tier>(<model>) PASS` to `Log`. HIGH-risk also gets `Approval: needed`.
-- FAIL → `Status: failed`; append `assess=<tier>(<model>) FAIL <reason>` to `Log`.
-
-## Next
-
-- Any `failed` → stop the chain, report the reasons, and propose the `plan` revision.
-- Any `Approval: needed` → ask the user to approve before codify.
-- Otherwise continue straight into `codify`.
+Defect -> repair the affected implementation and stale checks; keep `in_progress`.
+Contract change -> Understand. Pending device criteria are not `done`, but may
+proceed to [Deliver](../codify/SKILL.md) for installation and observation.
+**Ready:** local evidence passes, findings resolved, delivery obligations named.

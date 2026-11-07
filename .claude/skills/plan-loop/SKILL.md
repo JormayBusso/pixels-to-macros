@@ -1,49 +1,81 @@
 ---
 name: plan-loop
-description: Runs a Plan -> Delegate -> Assess -> Codify delivery loop that researches the specific problem first and routes every task to the best agent for it. Use when the user types PLAN in all-caps, or wants work planned, delegated, executed, and closed out as a repeating loop.
+description: PLAN runs a verification-first delivery loop with difficulty-based tiers and selective delegation. Also use when explicitly requested.
 ---
 
 # Plan Loop
 
-A closed **PDCA** loop — **Plan -> Delegate -> Assess -> Codify** — circling until every todo is green and codified. Fires on all-caps `PLAN`; lowercase "plan" is ordinary conversation.
+**Understand -> Implement -> Verify -> Deliver.** Trigger: standalone uppercase
+`PLAN`, not lowercase "plan". Research, recommendation, and plan-only requests
+end with that deliverable; implementation requires implementation intent.
 
-## Thin orchestrator (the cost rule)
+## Fast path
 
-The main session is the most expensive seat: every tool call re-sends its whole context. So the main session is a **dispatcher**, and all legwork happens inside subagents whose context is thrown away afterwards.
+For one bounded LOW-risk change: establish criteria, edit, run required checks,
+and report directly. Skip phase-file loads, plan artifacts, SQL bookkeeping,
+and extra agents unless complexity or missing evidence requires them.
+Repository instructions, authorization, and deployment requirements still apply.
 
-- The main session touches only `plan.md`, subagent handoffs, and `git status --short` / `git diff --stat`. Source reads, searches, edits, builds, tests, and diff review all run inside a subagent.
-- Each subagent returns a **handoff** of at most ~150 words: verdict, files changed, commands run with pass/fail, open questions. The main session acts on the handoff and trusts it; a doubt becomes a narrower follow-up subagent.
-- Subagent prompts carry the todo, the relevant file paths, and the AGENTS.md § numbers that apply. Point at sections by number (`follow AGENTS.md §5, §9`); quote only the one rule that is easy to miss.
-- Background agents: dispatch, then end the turn and wait for the completion notification; read each result once.
-- Load each phase file once per loop and keep it in context.
+## Token discipline
 
-## Model tiers
+- One owner per coupled change. Delegate only substantial separable work that
+  warrants its own context or independent judgment; parallel tools come first.
+- Load only the active phase and needed references, once. Search scoped files
+  and identifiers, batch independent reads, and request bounded output.
+- Reuse verified research and worker findings. Investigate only decision-relevant
+  gaps; stop searching when the contract and implementation are supported.
+- Worker prompt: objective/IDs, paths, constraints, criteria/checks, stopping
+  condition. Omit unrelated history. Handoff: verdict, changes, evidence, blockers;
+  aim for 100 words on success, expand only for necessary failure detail.
+- Save verbose logs outside the conversation; return exit codes and useful
+  excerpts. Recover missing detail from those logs rather than rerunning work.
+- Background agents need independent foreground work. Read known results after
+  completion notification, without polling. Retain same-task context for repairs.
+- Reuse valid check evidence under Verify. Stop after required criteria pass:
+  no speculative cleanup, coverage chasing, redundant reviewers, or full-suite
+  repetition without a new requirement, relevant change, or unresolved failure.
 
-Single source of truth; phases reference it. Pass `model` + `reasoning_effort` on every `task` call — the subagent default is the session's (expensive) model.
+## Difficulty and model tiers
 
-| Tier | implement role | reason role | Effort | Fallback |
-| --- | --- | --- | --- | --- |
-| cheap | `claude-haiku-5.5` | `claude-haiku-5.5` | low | `gpt-6-luna` |
-| standard | `claude-sonnet-5.5` | `gpt-6.1-sol` | medium | the other standard model |
-| strong | `claude-opus-5.5` | `claude-opus-5.5` | high | `gpt-6.1-sol` (xhigh) |
+Difficulty is reasoning complexity; risk is the consequence of error. Choose per
+objective, not phase. Routine command execution does not need strong reasoning.
 
-Standard implement and reason use different vendors so assess **cross-checks** delegate. Choose the tier per todo, never per session. If a model is unavailable, use its fallback, then the closest same-tier model.
+| Tier | Difficulty | Preferred models | Starting effort |
+| --- | --- | --- | --- |
+| cheap | EASY: bounded lookup, mechanical edit, routine commands | `claude-haiku-5.5` up to 100K prompt tokens; `gpt-6-luna` above that only if quality is sufficient | low |
+| standard | MODERATE: established-module change, testable contract | `gpt-6.1-terra` for bounded work; `gpt-6.1-sol` for demanding work; `claude-sonnet-5.5` when task-specific evidence favors it | medium |
+| strong | HARD: novel algorithms, cross-module design, subtle correctness or substantial HIGH-risk reasoning | `claude-opus-5.5` | high |
 
-## Risk
+Honor configured model/effort defaults; task overrides require explicit current
+request or applicable user instructions. This table alone is not authorization.
+For authorized selection, check availability once and respect explicit constraints
+on fallbacks. Start difficult work at its tier; raise effort only for demonstrated
+need, not a leaderboard's maximum setting.
 
-- **LOW** — docs, comments, formatting, renames, simple test/config edits.
-- **MEDIUM** — focused bug fix or feature in an established module; several related files.
-- **HIGH** — auth/security/secrets, payments, DB schema or data migration, infra/CI/deploy, concurrency, public API, hard-to-verify algorithms (incl. the §9 scan pipeline), or a prior failure.
+**Dominance:** exclude demonstrably weaker choices at equal or lower expected
+whole-task cost under the same quality/context/modality/latency constraints.
+Include cache reads/writes, reasoning/output tokens, retries, and context repricing;
+neither vendor diversity nor an aggregate score proves task-level superiority.
+For prompts above 100K, alternative models, repricing, or ranking questions,
+read [cost/evidence](plan/SKILL%202.md); otherwise use the table without re-research.
 
-Uncertain → MEDIUM; uncertain about security/data/production → HIGH.
+Risk: LOW mechanical; MEDIUM established-module behavior; HIGH security, payments,
+data/migrations, production permissions, concurrency, public contracts, or hard-to-
+verify algorithms (including scans). Uncertain -> MEDIUM; security/data/production
+uncertainty -> HIGH. A failed command alone does not upgrade risk or model.
 
-## Phases
+## Full loop
 
-Run in order; on red from `assess`, loop back to `plan` (revise mode).
+1. [Understand](plan/SKILL.md): contract, evidence, exact task IDs/dependencies.
+2. [Implement](delegate/SKILL.md): smallest coherent change, appropriate owner.
+3. [Verify](assess/SKILL.md): literal criteria, current evidence, scoped review.
+4. [Deliver](codify/SKILL.md): required deployment, honest result, durable lessons.
 
-1. [plan/SKILL.md](plan/SKILL.md) — sharpen the prompt, research via subagents, write `plan.md`.
-2. [delegate/SKILL.md](delegate/SKILL.md) — one implement subagent per pending todo.
-3. [assess/SKILL.md](assess/SKILL.md) — one reason subagent checks the batch; mark green or red.
-4. [codify/SKILL.md](codify/SKILL.md) — commit + push each green todo; one deploy at the end.
+Repair the affected task without weakening criteria. After two repair attempts on
+the same failure without new evidence or measurable progress, report a blocker.
+Honor user-set resource limits. Measure credits per verified successful task,
+elapsed time, and repairs only when reported by the runtime; invent no metrics.
 
-**Completion:** every todo in `plan.md` is `codified` and the deploy reported real `rc=0` (or was skipped as non-app-bundle) — or the loop has stopped on a red/blocked todo or an approval gate.
+**Complete:** all this request's criteria and required delivery met. Git publication
+is separately authorized. Blockers, approval gates, and pending device-only
+confirmation are incomplete outcomes.

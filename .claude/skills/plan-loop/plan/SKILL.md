@@ -1,49 +1,33 @@
-# Plan
+# Understand
 
-Produces or revises `plan.md`, the one artifact the other phases read.
+Use [Plan Loop](../SKILL.md) for shared rules.
 
-## Step 1 — Sharpen the prompt
+1. Read applicable repository instructions and relevant code/tests. Capture the
+   starting worktree state to preserve unrelated changes.
+2. Define behavior, constraints/non-goals, and literal acceptance criteria.
+   For bugs, obtain a reproduction or state the available evidence.
+3. Research non-trivial external facts from current primary sources per AGENTS.md.
+   Reuse applicable session evidence; stop once remaining uncertainty cannot
+   affect the decision. A lookup is not automatically a research-agent task.
+4. Use existing patterns for low-impact details. Ask through the user-input tool
+   for material scope/design decisions or required authorization; record blockers.
 
-Rewrite the user's request (text after `PLAN`) into a precise task: action verbs, the constraints that matter (relevant AGENTS.md §s, LiDAR/non-LiDAR split for scan work), and checkable success criteria. Preserve intent; add structure only where it removes ambiguity; flag missing facts and contradictions instead of inventing them. A good prompt gets light edits.
+## Task state
 
-## Step 2 — Research (in subagents)
+For multi-step work, use existing `todos` and `todo_deps`, not a duplicate plan.
+Pass exact request-specific task IDs; preserve unrelated todos. Each description
+contains scope/paths/constraints, difficulty/risk/tier reason, owner, criteria/
+checks, dependencies/shared resources, and progress/evidence references.
 
-Dispatch `explore` subagents (cheap tier, parallel, one per independent question) to locate the files, current behaviour, and existing tests the work touches. Each returns file paths + line numbers + a ≤150-word answer. For external facts (APIs, research, EFSA figures), use one `research` subagent. The plan is built from these reports; re-reading the same files in the main session duplicates their cost.
+Dependency milestones distinguish locally verified output from actual delivery;
+the former can unblock implementation before final integrated deployment.
+Statuses: `pending`, `in_progress`, `done`, `blocked`; `done` requires the task's
+acceptance and delivery obligations. For cross-session handoff, use one named
+session artifact and its exact path, not modification-time selection.
 
-## Step 3 — Write `plan.md`
+**Ready:** actionable tasks have explicit contracts and prerequisite milestones;
+material unresolved decisions are blocked. Continue to [Implement](../delegate/SKILL.md),
+or return the requested research/plan-only deliverable.
 
-Location: session workspace `files/plan-<YYYY-MM-DD>.md` (suffix `-2`, `-3` if today's is still active). Later phases use the most recently modified `plan-*.md`.
-
-```md
-# Plan: <title>
-Status: active
-
-## Goal
-<1–3 sentences>
-
-## Prompt
-<the sharpened prompt; add "Missing:" lines only if something is genuinely missing>
-
-## Todos
-### [ ] <kebab-id>: <title>
-- Status: pending
-- Risk: LOW|MEDIUM|HIGH
-- Files: <paths from research>
-- Do: <self-contained instruction a subagent can run with no other context>
-- Done when: <concrete, checkable criteria + the exact check command(s)>
-- Log: <one line, appended by later phases>
-```
-
-- Statuses: `pending`, `delegated`, `assessed`, `failed`, `blocked`, `codified`.
-- Smallest set of todos that are each independently implementable and checkable; keep refactor, behaviour change, and migration in separate todos.
-- A todo with an open design question gets `Status: blocked` + the question.
-- Mark independent todos so delegate can run them in parallel (`Parallel: yes`), and list touched files so parallel agents never share a file.
-- Commits are codify's job; add no commit todos.
-
-## Revise mode
-
-When `assess` reports a `failed` todo (or a `blocked` question is answered): edit only that todo — rewrite `Do` / `Done when` from the failure reason, reset `Status: pending`, re-rate `Risk`. Leave other todos and the Prompt untouched unless the failure shows the task itself was wrong. Revise mode needs no new `PLAN`.
-
-## Hand off
-
-Tell the user: file path, the sharpened prompt in ≤3 lines, and one line per todo with its risk. Then continue straight into `delegate`.
+On repair, revise only the affected task and stale evidence. Criteria change only
+for a justified specification correction; material scope changes require approval.
