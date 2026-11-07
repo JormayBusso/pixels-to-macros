@@ -53,7 +53,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 49,
+      version: 50,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -773,11 +773,18 @@ class DatabaseService {
     if (oldVersion < 49) {
       await migrateExtraAccuracy(db);
     }
+    if (oldVersion < 50) {
+      await restoreExtraAccuracyDefault(db);
+    }
   }
 
   @visibleForTesting
   static Future<void> migrateExtraAccuracy(DatabaseExecutor db) => db.execute(
       'ALTER TABLE user_preferences ADD COLUMN extra_accuracy INTEGER NOT NULL DEFAULT 1');
+
+  @visibleForTesting
+  static Future<void> restoreExtraAccuracyDefault(DatabaseExecutor db) =>
+      db.execute('UPDATE user_preferences SET extra_accuracy = 1');
 
   /// Cache of on-device recipe translations, one row per (recipe_id, lang).
   /// [name] is filled when list cards are translated; [ingredients] (JSON list

@@ -1,13 +1,60 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixels_to_macros/core/app_localizations.dart';
 import 'package:pixels_to_macros/core/scan_state.dart';
+import 'package:pixels_to_macros/models/mascot_type.dart';
+import 'package:pixels_to_macros/services/native_bridge.dart';
+import 'package:pixels_to_macros/theme/app_theme.dart';
 import 'package:pixels_to_macros/widgets/dual_photo_capture_overlay.dart';
 
 void main() {
+  testWidgets('live glow receives the active theme and motion/ROI choices',
+      (tester) async {
+    const channel = MethodChannel('com.pixelstomacros/live_glow');
+    final calls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return null;
+    });
+    addTearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null));
+    for (final seed in AppColorSeed.values) {
+      for (final brightness in Brightness.values) {
+        late ScanChromePalette palette;
+        await tester.pumpWidget(MaterialApp(
+          theme: AppTheme.fromSeed(seed, brightness: brightness),
+          home: Builder(builder: (context) {
+            palette = ScanChromePalette.of(context);
+            return const SizedBox.shrink();
+          }),
+        ));
+        await tester.pumpAndSettle();
+        final sideView = brightness == Brightness.dark;
+        await NativeBridge.instance.startLiveGlow(
+          colors: palette.nativeColors,
+          premium: palette.premium,
+          reduceMotion: true,
+          sideView: sideView,
+        );
+        final args = calls.last.arguments as Map;
+        expect(calls.last.method, 'start');
+        expect(args['colors'], palette.nativeColors);
+        expect(args['premium'], seed.isPremium);
+        expect(args['reduceMotion'], isTrue);
+        expect(args['roi'], {'shape': sideView ? 'roundedRect' : 'circle'});
+        expect(palette.nativeColors.length,
+            seed.isPremium ? palette.gradient.length : 1);
+      }
+    }
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets(
       'approximate mode has an accessible switch and only a top step in all languages',
       (tester) async {

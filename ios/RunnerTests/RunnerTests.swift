@@ -1,10 +1,110 @@
 import Flutter
 import UIKit
 import XCTest
+import SceneKit
 import simd
 @testable import Runner
 
 class RunnerTests: XCTestCase {
+
+  func testSmallSilhouetteTrianglesUseTheirOwnTopAndSidePhotoColors() throws {
+    func image(_ color: [UInt8]) -> CVPixelBuffer {
+      var buffer: CVPixelBuffer?
+      XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, 64, 64,
+        kCVPixelFormatType_32BGRA, nil, &buffer), kCVReturnSuccess)
+      CVPixelBufferLockBaseAddress(buffer!, [])
+      let p = CVPixelBufferGetBaseAddress(buffer!)!.assumingMemoryBound(to: UInt8.self)
+      let bytes = CVPixelBufferGetBytesPerRow(buffer!)
+      for r in 0..<64 { for c in 0..<64 {
+        let off = r * bytes + c * 4
+        p[off] = color[2]; p[off + 1] = color[1]; p[off + 2] = color[0]; p[off + 3] = 255
+      } }
+      CVPixelBufferUnlockBaseAddress(buffer!, [])
+      return buffer!
+    }
+    let top = image([240, 30, 20]), side = image([20, 40, 220])
+    let mask = [[UInt8]](repeating: [UInt8](repeating: 1, count: 64), count: 64)
+    let frame = FrameCaptureService.CapturedFrame(pixelBuffer: top, depthBuffer: nil,
+      cameraTransform: matrix_identity_float4x4, cameraIntrinsics: matrix_identity_float3x3, timestamp: 1)
+    var profile = hullProfile(mask)
+    // A calibrated profile still uses the exact raster registration of its hull.
+    profile.calibration = MonocularVolumeEstimator.PhotoCalibration(
+      topTransform: matrix_identity_float4x4, topIntrinsics: matrix_identity_float3x3,
+      topWidth: 64, topHeight: 64, topCrop: CGRect(x: 0, y: 0, width: 1, height: 1),
+      sideTransform: matrix_identity_float4x4, sideIntrinsics: matrix_identity_float3x3,
+      sideWidth: 64, sideHeight: 64, sideCrop: CGRect(x: 0, y: 0, width: 1, height: 1), tableY: 0)
+    let object = try MonocularVolumeEstimator().sourceSilhouetteObject(
+      id: "small", label: "fixture", instanceIndex: 0, mask: mask,
+      widthCm: 2, depthCm: 2, heightCm: 2, topFrame: frame, colorFrame: top,
+      sideColorFrame: side, profile: profile)
+    var sideFaces = 0, topFaces = 0
+    for i in stride(from: 0, to: object.faces.count, by: 3) {
+      let triangle = Array(object.faces[i..<i + 3])
+      let n = simd_normalize(simd_cross(object.vertices[triangle[1]] - object.vertices[triangle[0]],
+        object.vertices[triangle[2]] - object.vertices[triangle[0]]))
+      let expected: [UInt8] = abs(n.y) < 0.5 ? [20, 40, 220] : [240, 30, 20]
+      for v in triangle {
+        XCTAssertEqual(Array(object.colors[v * 3..<v * 3 + 3]), expected)
+      }
+      if abs(n.y) < 0.5 { sideFaces += 1 } else { topFaces += 1 }
+    }
+    XCTAssertTrue(sideFaces > 0 && topFaces > 0)
+    XCTAssertEqual(object.volumeCm3, 8, accuracy: 0.0001)
+    XCTAssertTrue(profile.maskSnappedUV(SIMD2(1, 1), maxRadius: 0).found)
+    XCTAssertFalse(profile.maskSnappedUV(SIMD2(1.01, 1), maxRadius: 0).found)
+  }
+
+  func testViewerNormalsDoNotMergeThinOpposingSurfacesOrDiscardSmallFaces() {
+    let a: Float = 0.00001
+    let positions = [
+      SCNVector3(0, 0, 0), SCNVector3(0, 0, a), SCNVector3(a, 0, 0),
+      SCNVector3(0, a, 0), SCNVector3(a, a, 0), SCNVector3(0, a, a),
+    ]
+    let normals = Scan3DViewerPlugin.computeSmoothNormals(positions: positions, indices: [0, 1, 2, 3, 4, 5])
+    for i in 0..<3 { XCTAssertEqual(Float(normals[i].y), 1, accuracy: 0.00001) }
+    for i in 3..<6 { XCTAssertEqual(Float(normals[i].y), -1, accuracy: 0.00001) }
+  }
+
+  func testBothStrictPathsRejectRotatedRasterRegistrationBeforeGeometry() throws {
+    var buffer: CVPixelBuffer?
+    XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, 64, 64,
+      kCVPixelFormatType_32BGRA, nil, &buffer), kCVReturnSuccess)
+    var topPose = matrix_identity_float4x4
+    topPose.columns.1 = SIMD4(0, 0, -1, 0)
+    topPose.columns.2 = SIMD4(0, 1, 0, 0)
+    topPose.columns.3 = SIMD4(0, 0.5, 0, 1)
+    let k = simd_float3x3(columns: (SIMD3(64, 0, 0), SIMD3(0, 64, 0), SIMD3(32, 32, 1)))
+    let top = FrameCaptureService.CapturedFrame(pixelBuffer: buffer!, depthBuffer: nil,
+      cameraTransform: topPose, cameraIntrinsics: k, timestamp: 1)
+    for axis in [SIMD3<Float>(0, 0, 1), SIMD3<Float>(0, 1, 0), SIMD3<Float>(1, 0, 0)] {
+      var sidePose = simd_float4x4(simd_quatf(angle: .pi / 4, axis: axis))
+      sidePose.columns.3 = SIMD4(0, 0.04, 0.5, 1)
+      let side = FrameCaptureService.CapturedFrame(pixelBuffer: buffer!, depthBuffer: nil,
+        cameraTransform: sidePose, cameraIntrinsics: k, timestamp: 2)
+      do {
+        _ = try MonocularVolumeEstimator().estimate(segments: [], topFrame: top,
+          sideFrame: side, maskWidth: 64, maskHeight: 64)
+        XCTFail("monocular must not reinterpret rotated pixels as physical axes")
+      } catch MonocularVolumeEstimator.EstimateError.sideViewRequired { }
+      do {
+        _ = try DepthFusion().strictFoodObjects(segments: [], topFrame: top,
+          sideFrame: side, profiles: [], topColor: nil, sideColor: nil)
+        XCTFail("LiDAR height calibration must not bypass raster alignment")
+      } catch InferencePipeline.PipelineError.sideViewRequired { }
+    }
+  }
+
+  func testApproximateRecognitionKeepsSeparateSameLabelPortionsButPantryDeduplicates() {
+    let segments = ["tomato", "tomato", "bowl", "unknown"].map {
+      SegmentationService.SegmentedObject(label: $0, classIndex: 1, mask: [[1]],
+        pixelCount: 1, centroid: (row: 0, col: 0), confidence: 0.9)
+    }
+    let payload = InferencePipeline.approximateRecognitionPayload(
+      InferencePipeline.approximateFoodRecognitionPayload(segments))
+    XCTAssertEqual(payload.compactMap { $0["label"] as? String }, ["tomato", "tomato"])
+    XCTAssertEqual(payload.compactMap { $0["id"] as? String }, ["approximate_0", "approximate_1"])
+    XCTAssertEqual(InferencePipeline.pantryRecognitionPayload(segments).count, 1)
+  }
 
   func testPantryUIKitDecoderNormalizesRotatedImageAndRejectsMissingFile() throws {
     XCTAssertNil(ScannerPlugin.pantryImageBuffer(path: "/nonexistent/pantry_fixture.png"))
@@ -1277,9 +1377,13 @@ class RunnerTests: XCTestCase {
       mask: mask, pixelCount: 58, centroid: (row: 3, col: 3), confidence: 0.9)
     var profile = hullProfile([[1, 0, 1, 1], [1, 1, 1, 1], [1, 1, 0, 1]])
     profile.measuredHeightCm = 0.003
+    var sidePose = matrix_identity_float4x4
+    sidePose.columns.3 = SIMD4(0, 0.04, 0.5, 1)
+    let sideFrame = FrameCaptureService.CapturedFrame(pixelBuffer: rgb, depthBuffer: nil,
+      cameraTransform: sidePose, cameraIntrinsics: k, timestamp: 2)
     for sideRGB in [nil, rgb] as [CVPixelBuffer?] {
       let result = try MonocularVolumeEstimator().estimate(segments: [segment],
-        topFrame: frame, sideFrame: frame, sideProfiles: [profile], maskWidth: 8, maskHeight: 8,
+        topFrame: frame, sideFrame: sideFrame, sideProfiles: [profile], maskWidth: 8, maskHeight: 8,
         preprocessedRGB: rgb, sidePreprocessedRGB: sideRGB, tableDistanceCm: 50,
         preprocessingPlate: PlateDetector.PlateResult(rect: CGRect(x: 0, y: 0, width: 1, height: 1),
           diameterPx: 0, detected: false))

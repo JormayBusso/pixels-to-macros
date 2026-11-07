@@ -51,10 +51,23 @@ void main() {
         'ALTER TABLE user_preferences ADD COLUMN extra_accuracy INTEGER NOT NULL DEFAULT 1');
     final source =
         File('lib/services/database_service.dart').readAsStringSync();
-    expect(source, contains('version: 49'));
+    expect(source, contains('version: 50'));
     expect(source, contains('if (oldVersion < 49)'));
     expect(source,
         contains('extra_accuracy           INTEGER NOT NULL DEFAULT 1'));
+  });
+
+  test('existing installs restore extra accuracy ON once at version50',
+      () async {
+    final db = _MigrationDatabase();
+    await DatabaseService.restoreExtraAccuracyDefault(db);
+    expect(db.sql, 'UPDATE user_preferences SET extra_accuracy = 1');
+    final source =
+        File('lib/services/database_service.dart').readAsStringSync();
+    expect(source, contains('if (oldVersion < 50)'));
+    expect(source, contains('await restoreExtraAccuracyDefault(db)'));
+    final chosenOff = const UserPreferences().copyWith(extraAccuracy: false);
+    expect(UserPreferences.fromMap(chosenOff.toMap()).extraAccuracy, isFalse);
   });
 
   test(
@@ -160,6 +173,39 @@ void main() {
           const ApproximatePortion(label: 'rice', grams: 120),
         ]),
         isTrue);
+  });
+
+  test('separate same-label portions keep their own reviewed amount in history',
+      () async {
+    final notifier = ScanResultNotifier(
+      runInference: () async => [
+        {'id': 'approximate_0', 'label': 'rice'},
+        {'id': 'approximate_1', 'label': 'rice'},
+      ],
+      lookupFood: (_) async => rice,
+      lookupPortion: (_) async => null,
+    );
+    addTearDown(notifier.dispose);
+    await notifier.runVideoScan(extraAccuracy: false);
+    expect(notifier.state.portions.length, 2);
+    expect(
+      await notifier.confirmApproximatePortions([
+        const ApproximatePortion(label: 'rice', grams: 100),
+        const ApproximatePortion(label: 'rice', grams: 200),
+      ]),
+      isTrue,
+    );
+    final scan = ScanResult(
+      timestamp: DateTime(2026),
+      depthMode: 'approximate',
+      foods: notifier.state.foods,
+      modelObjectsJson: jsonEncode(notifier.state.metadata),
+    );
+    final restored = ScanResult.fromMap(scan.toMap(), foods: [
+      for (final food in scan.foods) DetectedFood.fromMap(food.toMap()),
+    ]);
+    expect(restored.foods.map(restored.reviewedPortionFor), [100, 200]);
+    expect(restored.totalCaloriesMin, 390);
   });
 
   test('strict default still rejects missing side atomically after an estimate',

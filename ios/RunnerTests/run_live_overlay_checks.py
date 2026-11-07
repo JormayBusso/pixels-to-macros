@@ -210,21 +210,33 @@ check("camera motion suppresses old contours") {
     let rotated = simd_float4x4(simd_quatf(angle: Float.pi / 40, axis: SIMD3(0, 1, 0)))
     precondition(!LiveFoodOverlayPolicy.cameraIsAligned(identity, rotated))
 }
-check("exact fill preserves holes, components and empty support without a halo") {
+check("display glow has a feathered fill and soft rim/halo without changing food support") {
     let g = 40
     var mask = [Float](repeating: 0, count: g * g)
     for y in 10..<30 { for x in 10..<30 { mask[y * g + x] = 1 } }
     mask[20 * g + 20] = 0
     mask[2 * g + 2] = 1
+    let original = mask
     let f = LiveFoodOverlayPolicy.glowFields(mask, grid: g)!
     for field in [f.fill, f.edge, f.core] {
         precondition(field.allSatisfy { $0 >= 0 && $0 <= 1 })
     }
-    precondition(f.fill == mask)
-    precondition(f.edge.allSatisfy { $0 == 0 } && f.core.allSatisfy { $0 == 0 })
+    precondition(mask == original && mask[20 * g + 20] == 0)
+    precondition(f.fill[15 * g + 15] > 0.99)
+    precondition(f.fill[10 * g + 20] > 0 && f.fill[10 * g + 20] < 1)
+    precondition(f.fill[9 * g + 20] > 0 && f.fill[9 * g + 20] < 1)
+    precondition(f.edge[9 * g + 20] > f.edge[15 * g + 15])
+    precondition(f.edge[5 * g + 20] > 0)
+    precondition(f.core[10 * g + 20] > f.core[15 * g + 15])
+    precondition(f.fill[39 * g + 39] == 0 && f.edge[39 * g + 39] == 0)
+    let image = LiveFoodOverlayPolicy.alphaImage(f.fill, g)!
+    precondition(image.shouldInterpolate)
     let empty = LiveFoodOverlayPolicy.glowFields([Float](repeating: 0, count: g * g), grid: g)!
-    precondition(empty.fill.allSatisfy { $0 == 0 } && empty.edge.allSatisfy { $0 == 0 })
+    precondition([empty.fill, empty.edge, empty.core].allSatisfy { $0.allSatisfy { $0 == 0 } })
     precondition(LiveFoodOverlayPolicy.glowFields([], grid: g) == nil)
+    precondition(LiveFoodOverlayPolicy.alphaImage([], g) == nil)
+    let invalid = LiveFoodOverlayPolicy.glowFields([.nan, .infinity, -1, 0], grid: 2)!
+    precondition([invalid.fill, invalid.edge, invalid.core].allSatisfy { $0.allSatisfy { $0 == 0 } })
 }
 check("guide crop and inverse mapping preserve TOP and SIDE support") {
     for rounded in [false, true] {

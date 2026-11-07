@@ -3320,24 +3320,24 @@ class AppLocalizations {
       });
 
   String get sideViewRequiredTitle => _t({
-        'en': "The side photo didn't show your food",
-        'pl': 'Zdjęcie z boku nie pokazało jedzenia',
-        'nl': 'De zijfoto toonde je eten niet',
-        'es': 'La foto lateral no mostró tu comida',
-        'de': 'Das Seitenfoto hat dein Essen nicht gezeigt',
+        'en': 'The food views could not be matched',
+        'pl': 'Nie udało się dopasować widoków jedzenia',
+        'nl': 'De beelden van het eten konden niet worden gekoppeld',
+        'es': 'No se pudieron relacionar las vistas de la comida',
+        'de': 'Die Ansichten des Essens konnten nicht zugeordnet werden',
       });
 
   String get sideViewRequiredBody => _t({
         'en':
-            "We couldn't see the food clearly in the side photo. Hold the phone level at the height of the food, with the whole food in frame, then retake both photos.",
+            'Retake both photos without moving the food. Capture straight down first. Keep the same screen orientation, move toward the edge of the plate without twisting the phone, then lower it for a level side photo with all food visible.',
         'pl':
-            'Nie widzieliśmy wyraźnie jedzenia na zdjęciu z boku. Trzymaj telefon poziomo na wysokości jedzenia, tak aby całe jedzenie było w kadrze, a następnie zrób oba zdjęcia ponownie.',
+            'Zrób oba zdjęcia ponownie bez poruszania jedzenia. Najpierw sfotografuj je pionowo z góry. Zachowaj tę samą orientację ekranu, przesuń telefon ku krawędzi talerza bez skręcania, a następnie obniż go, aby zrobić poziome zdjęcie z boku z całym jedzeniem w kadrze.',
         'nl':
-            'We konden het eten niet duidelijk zien op de zijfoto. Houd de telefoon waterpas op de hoogte van het eten, met al het eten in beeld, en maak daarna beide foto\'s opnieuw.',
+            'Maak beide foto\'s opnieuw zonder het eten te verplaatsen. Fotografeer eerst recht van boven. Houd dezelfde schermoriëntatie, beweeg naar de rand van het bord zonder de telefoon te verdraaien en laat hem zakken voor een waterpas zijfoto met al het eten in beeld.',
         'es':
-            'No pudimos ver la comida con claridad en la foto lateral. Sostén el móvil nivelado a la altura de la comida, con toda la comida en el encuadre, y vuelve a hacer ambas fotos.',
+            'Repite ambas fotos sin mover la comida. Primero fotografía desde arriba, en vertical. Mantén la misma orientación de pantalla, acércate al borde del plato sin girar el móvil y bájalo para una foto lateral nivelada con toda la comida visible.',
         'de':
-            'Auf dem Seitenfoto war das Essen nicht klar zu erkennen. Halte das Handy waagerecht auf Höhe des Essens, sodass das ganze Essen im Bild ist, und mache dann beide Fotos erneut.',
+            'Mache beide Fotos erneut, ohne das Essen zu bewegen. Fotografiere zuerst senkrecht von oben. Behalte die Bildschirmausrichtung bei, bewege das Handy zum Tellerrand, ohne es zu verdrehen, und senke es für ein waagerechtes Seitenfoto mit dem gesamten Essen im Bild.',
       });
 
   String get sideViewRequiredRetake => _t({

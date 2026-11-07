@@ -1,8 +1,8 @@
 """Execute production Swift on the host, not full-app AR/ML/ModelIO export.
 
 Plate detection is fixture-injected; AR/ML inference and segmentation/matching
-entry points are not executed. Height statements are extracted verbatim after profile construction; todo02
-checks the repaired occupied-column endpoints rather than requiring HEAD parity.
+entry points are not executed. Height statements are extracted verbatim after
+profile construction and checked against known metric fixtures.
 Todo03 executes the full monocular estimator, reconstruction/color methods and
 real sidecar serializer. The ModelIO export wrapper and disabled MonoDepth are
 stubbed; no USDZ/texture-bake integration or full-app XCTest pass is implied.
@@ -39,22 +39,9 @@ plate = (scanner / "PlateDetector.swift").read_text()
 baker = (scanner / "Food3DTextureBaker.swift").read_text()
 exporter = (scanner / "Food3DExporter.swift").read_text()
 mono_depth = (scanner / "MonoDepthService.swift").read_text()
-baseline_pipeline = subprocess.run(
-    ["git", "show", "HEAD:ios/Runner/Scanner/InferencePipeline.swift"],
-    cwd=root, text=True, capture_output=True, check=True,
-).stdout
-baseline_monocular = subprocess.run(
-    ["git", "show", "HEAD:ios/Runner/Scanner/MonocularVolumeEstimator.swift"],
-    cwd=root, text=True, capture_output=True, check=True,
-).stdout
 # Explicit boundaries exclude profile construction, matching and subsequent logs.
 height_block = statements(
     pipeline, "            let bottomUV = profile.sourceUV(",
-    '            print("[SIDEMATCH] top#\\(topIndex)(\\(top.label)) ← sides',
-)
-baseline_height_block = statements(
-    baseline_pipeline,
-    "            if let calibration,\n               let centre = calibration.topWorld(",
     '            print("[SIDEMATCH] top#\\(topIndex)(\\(top.label)) ← sides',
 )
 host_tests = re.findall(r"func (test\w+)\(", tests)
@@ -62,7 +49,7 @@ host_tests = re.findall(r"func (test\w+)\(", tests)
 # macOS extraction harness.
 host_tests = [name for name in host_tests if not name.startswith("testPantryUIKit")]
 source = [
-    "import Foundation\nimport CoreGraphics\nimport CoreVideo\nimport CoreImage\nimport Accelerate\nimport simd",
+    "import Foundation\nimport CoreGraphics\nimport CoreVideo\nimport CoreImage\nimport Accelerate\nimport simd\nimport SceneKit",
     """func XCTAssertTrue(_ x: Bool) { precondition(x) }
 func XCTAssertFalse(_ x: Bool) { precondition(!x) }
 func XCTAssertNotNil<T>(_ x: T?) { precondition(x != nil) }
@@ -148,6 +135,7 @@ func XCTAssertEqual(_ a: Double, _ b: Double, accuracy: Double) {
             "static func containerReviewReason(",
             "static func pantryRecognitionPayload(",
             "static func approximateRecognitionPayload(",
+            "static func approximateFoodRecognitionPayload(",
             "func sideProfileAxes(",
             "func uncalibratedAspectFailure(",
             "func makeSideProfile(",
@@ -183,20 +171,9 @@ func XCTAssertEqual(_ a: Double, _ b: Double, accuracy: Double) {
                 result.fallbackReason, result.provenance)
     }
     \n}""",
-    "final class BaselineScale {\n"
-    + "\n".join(declaration(baseline_monocular, marker) for marker in [
-        "private struct ScaleEstimate", "private func estimateScale(",
-        "private func logScaleValidation("])
-    + "\n" + re.search(r"    private let guidedDistanceCm:[^\n]+", baseline_monocular).group(0)
-    + """
-    private let plateDetector = PlateDetector()
-    func source(frame: FrameCaptureService.CapturedFrame,
-                plate: PlateDetector.PlateResult, distance: Double?) -> String {
-        plateDetector.fixture = plate
-        return estimateScale(topFrame: frame, maskWidth: 640, maskHeight: 640,
-                             tableDistanceCm: distance).source
-    }
-    \n}""",
+    "final class Scan3DViewerPlugin {\n"
+    + declaration((scanner / "Scan3DViewerPlugin.swift").read_text(), "static func computeSmoothNormals(")
+    + "\n}",
     "class RunnerTests {\n"
     + "\n".join(declaration(tests, f"func {name}(") for name in host_tests)
     + "\n" + declaration(tests, "private func side(")
@@ -226,11 +203,6 @@ func currentHeight(profile: inout MonocularVolumeEstimator.SideProfile,
     let tops = [descriptor]
     let sideList = "0(fixture)[0.2,0.8]single"
     """ + height_block + "\n}",
-    """
-func baselineHeight(profile: inout MonocularVolumeEstimator.SideProfile,
-                    calibration: MonocularVolumeEstimator.PhotoCalibration?,
-                    top: SegmentationService.SegmentedObject) {
-    """ + baseline_height_block + "\n}",
     r"""
 func fixtureBuffer(width: Int, height: Int) -> CVPixelBuffer {
     var buffer: CVPixelBuffer?
@@ -334,13 +306,11 @@ for detected in [false, true] {
     let plate = PlateDetector.PlateResult(
         rect: CGRect(x: 0.25, y: 0, width: 0.5, height: 1),
         diameterPx: detected ? 220 : 0, detected: detected)
-    XCTAssertEqual(BaselineScale().source(frame: regressionFrame, plate: plate, distance: 10),
-                   "intrinsic_guided")
     let current = MonocularVolumeEstimator().estimateScale(topFrame: regressionFrame,
         maskWidth: 640, maskHeight: 640, tableDistanceCm: 10, preprocessingPlate: plate)
     XCTAssertEqual(current.source, detected ? "plate_diameter" : "arkit_plane")
 }
-fputs("PASS baselineScaleRegressions HEAD discards valid 10cm plane/plate against assumed 22cm; current preserves sources\n", stderr)
+fputs("PASS scaleRegressions valid 10cm plane/plate preserves metric sources\n", stderr)
 
 let heightK = simd_float3x3(columns: (
     SIMD3(200, 0, 0), SIMD3(0, 200, 0), SIMD3(100, 50, 1)))
@@ -366,18 +336,15 @@ for x in [Float(-0.06), Float(0.06)] {
 let heightSegment = SegmentationService.SegmentedObject(label: "fixture", classIndex: 1,
     mask: heightMask, pixelCount: heightMask.flatMap { $0 }.filter { $0 != 0 }.count,
     centroid: (row: 50, col: 100), confidence: 1)
-var oldHeightProfile = InferencePipeline().makeSideProfile(segment: heightSegment,
+var repairedProfile = InferencePipeline().makeSideProfile(segment: heightSegment,
     axes: (true, .columns, false, true), imageWidth: 200, imageHeight: 100)!
-baselineHeight(profile: &oldHeightProfile, calibration: heightCalibration, top: heightSegment)
 let repairedHeight = heightCalibration.silhouetteHeight(
     mask: heightMask, through: SIMD3(0, 0, 0), verticalUsesColumns: true)
 XCTAssertEqual(repairedHeight.heightCm!, 6, accuracy: 0.5)
-var repairedProfile = oldHeightProfile
 currentHeight(profile: &repairedProfile, calibration: heightCalibration, top: heightSegment,
               axes: (true, .columns, false, true), pieceMask: heightMask)
 XCTAssertEqual(repairedProfile.measuredHeightCm!, 6, accuracy: 0.5)
-XCTAssertTrue(oldHeightProfile.measuredHeightCm! > 8)
-fputs("PASS baselineHeightRegression rolled disconnected 6cm silhouette: HEAD bbox ray >8cm; occupied endpoints within 0.5cm raster bound\n", stderr)
+fputs("PASS heightRegression rolled disconnected 6cm silhouette: occupied endpoints within 0.5cm raster bound\n", stderr)
 
 func checkHeightFixture(_ name: String, reason: String, axes: InferencePipeline.SideProfileAxes) {
     var topPose = matrix_identity_float4x4
@@ -405,9 +372,7 @@ func checkHeightFixture(_ name: String, reason: String, axes: InferencePipeline.
         segment: top, axes: axes, imageWidth: 5, imageHeight: 5)!
     profile.calibration = calibration
     profile.sourceMask = pieceMask
-    var baseline = profile
     currentHeight(profile: &profile, calibration: calibration, top: top, axes: axes, pieceMask: pieceMask)
-    baselineHeight(profile: &baseline, calibration: calibration, top: top)
     XCTAssertTrue(profile.measurementProvenance.hasPrefix("heightReason=\(reason) bottomUV="))
     XCTAssertTrue(profile.measurementProvenance.contains("upperUV="))
     XCTAssertTrue(profile.measurementProvenance.contains("verticalAxis=rows verticalIndexIncreasesUp=false topAxis=columns reversed=false"))
@@ -416,8 +381,6 @@ func checkHeightFixture(_ name: String, reason: String, axes: InferencePipeline.
     if name == "valid" {
         XCTAssertEqual(profile.measuredHeightCm!, 15, accuracy: 0.00001)
         XCTAssertEqual(profile.sourceBaseHeightM, -0.035, accuracy: 0.000001)
-        XCTAssertEqual(profile.measuredHeightCm, baseline.measuredHeightCm)
-        XCTAssertEqual(profile.sourceBaseHeightM, baseline.sourceBaseHeightM)
     } else {
         XCTAssertNil(profile.measuredHeightCm)
         XCTAssertEqual(profile.sourceBaseHeightM, 0)

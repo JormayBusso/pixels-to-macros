@@ -52,6 +52,28 @@ final class MonocularVolumeEstimator {
                 intrinsics.columns.0.x > 1 && intrinsics.columns.1.y > 1
         }
 
+        static func silhouetteAxisFailure(top: simd_float4x4, side: simd_float4x4) -> String? {
+            guard validPose(top), validPose(side) else { return "invalid_capture_pose" }
+            let tolerance = Float.pi / 30
+            let aligned = cos(tolerance) - 0.00001
+            // Metric height calibration does not rectify a rotated raster mask.
+            guard abs(side.columns.2.y) <= sin(tolerance) + 0.00001,
+                  top.columns.2.y >= aligned,
+                  max(abs(side.columns.0.y), abs(side.columns.1.y)) >= aligned else {
+                return "aspect_requires_level_side_and_top"
+            }
+            let horizontal = abs(side.columns.0.y) > abs(side.columns.1.y)
+                ? -SIMD3(side.columns.1.x, 0, side.columns.1.z)
+                : SIMD3(side.columns.0.x, 0, side.columns.0.z)
+            let columns = SIMD3(top.columns.0.x, 0, top.columns.0.z)
+            let rows = -SIMD3(top.columns.1.x, 0, top.columns.1.z)
+            guard max(abs(simd_dot(simd_normalize(horizontal), simd_normalize(columns))),
+                      abs(simd_dot(simd_normalize(horizontal), simd_normalize(rows)))) >= aligned else {
+                return "aspect_top_axis_misaligned"
+            }
+            return nil
+        }
+
         func topWorld(row: Double, column: Double) -> SIMD3<Float>? {
             guard Self.validPose(topTransform),
                   Self.validImage(width: topWidth, height: topHeight, crop: topCrop, intrinsics: topIntrinsics),
@@ -271,11 +293,11 @@ final class MonocularVolumeEstimator {
             let h = sourceMask.count
             let w = sourceMask.first?.count ?? 0
             guard h > 0, w > 0 else { return (uv, false, false) }
-            guard uv.x.isFinite, uv.y.isFinite, uv.x >= 0, uv.x < 1, uv.y >= 0, uv.y < 1 else {
+            guard uv.x.isFinite, uv.y.isFinite, uv.x >= 0, uv.x <= 1, uv.y >= 0, uv.y <= 1 else {
                 return (uv, false, false)
             }
-            let column = Int(floor(Double(uv.x) * Double(w)))
-            let row = Int(floor(Double(uv.y) * Double(h)))
+            let column = min(w - 1, Int(floor(Double(uv.x) * Double(w))))
+            let row = min(h - 1, Int(floor(Double(uv.y) * Double(h))))
             guard let hit = ScanMaskGeometry.nearestSetPixel(
                 in: sourceMask, row: row, column: column, maxRadius: maxRadius
             ) else { return (uv, false, false) }
@@ -368,6 +390,12 @@ final class MonocularVolumeEstimator {
     ) throws -> Result {
         guard sideFrame != nil else {
             throw EstimateError.sideViewRequired("missing_side_capture")
+        }
+        if let sideFrame,
+           let reason = PhotoCalibration.silhouetteAxisFailure(
+                top: topFrame.cameraTransform, side: sideFrame.cameraTransform) {
+            print("[AXISMEASUREMENT] path=monocular rejected=\(reason) action=retake")
+            throw EstimateError.sideViewRequired(reason)
         }
         if let failed = sideProfiles.first(where: { $0.calibrationFailure != nil }) {
             print("[HEIGHTMEASUREMENT] rejected reason=\(failed.calibrationFailure ?? "invalid_side_calibration") action=retake")
@@ -1483,7 +1511,7 @@ final class MonocularVolumeEstimator {
                    b >= 0, b < vertices.count,
                    c >= 0, c < vertices.count {
                     let n = simd_cross(vertices[b] - vertices[a], vertices[c] - vertices[a])
-                    if simd_length(n) > 0.000001 {
+                    if n.x.isFinite, n.y.isFinite, n.z.isFinite, simd_length(n) > 0 {
                         accum[a] += n
                         accum[b] += n
                         accum[c] += n
@@ -1493,7 +1521,7 @@ final class MonocularVolumeEstimator {
             }
             for idx in 0..<accum.count {
                 let len = simd_length(accum[idx])
-                if len > 0.000001 { normals[idx] = accum[idx] / len }
+                if len.isFinite, len > 0 { normals[idx] = accum[idx] / len }
             }
             return normals
         }
@@ -1557,13 +1585,12 @@ final class MonocularVolumeEstimator {
         var vertexMaskPositions: [(row: Double, col: Double)] = []
         vertexMaskPositions.reserveCapacity(vertices.count)
         for p in vertices { vertexMaskPositions.append(maskPosition(for: p)) }
-        let colors = sampledVertexColors(
+        let colors = sideColorFrame == nil ? sampledVertexColors(
             bgra: sharedBGRA,
             sideBGRA: sharedSideBGRA,
             solidMask: mask,
             positions: vertexMaskPositions,
             heightFractions: vertices.map { Double(max(0, min(1, $0.y / max(h, 0.0001)))) },
-            heightsM: vertices.map { $0.y },
             normals: normals,
             baseColor: color,
             label: label,
@@ -1571,7 +1598,7 @@ final class MonocularVolumeEstimator {
             sideProfile: sideProfile,
             maskWidth: maskWidth,
             maskHeight: maskHeight
-        )
+        ) : []
 
         // Seam-split for the TOP+SIDE photo atlas. A shared-vertex mesh cannot
         // be atlased directly: triangles on the top/side boundary would straddle
@@ -1590,7 +1617,6 @@ final class MonocularVolumeEstimator {
         if sideColorFrame != nil {
             let topU0 = Food3DTextureBaker.atlasTopU0, topU1 = Food3DTextureBaker.atlasTopU1
             let sideU0 = Food3DTextureBaker.atlasSideU0, sideU1 = Food3DTextureBaker.atlasSideU1
-            let colorStride = vertices.isEmpty ? 3 : max(1, colors.count / vertices.count)
             @inline(__always) func topUV(_ p: SIMD3<Float>) -> SIMD2<Float> {
                 let colNorm = clamp01(((p.x - offsetX) / max(0.0001, 2.0 * rx)) + 0.5)
                 let rowNorm = clamp01(((p.z - offsetZ) / max(0.0001, 2.0 * rz)) + 0.5)
@@ -1610,11 +1636,7 @@ final class MonocularVolumeEstimator {
                 // side tile is the side frame scaled WITHOUT rotation, exactly
                 // like the top tile, so u follows x and v = 1 − row (same as
                 // `topUV`). Snapped to the exact side-mask pixel when available.
-                let pos = maskPosition(for: p)
-                let raw = sp.calibration != nil
-                    ? sp.projectedUV(row: pos.row / Double(maskHeight), column: pos.col / Double(maskWidth), heightM: p.y)
-                    : sp.sourceUV(axisU: axisU, heightFraction: hf)
-                guard let raw else { return topUV(p) }
+                let raw = sp.sourceUV(axisU: axisU, heightFraction: hf)
                 let snap = sp.sourceMask.isEmpty ? (uv: raw, inMask: false, found: false) : sp.maskSnappedUV(raw, maxRadius: 2)
                 atlasSideVerts += 1
                 if snap.inMask { atlasSideInMask += 1 }
@@ -1623,7 +1645,7 @@ final class MonocularVolumeEstimator {
                                     1.0 - clamp01(uv.y))
             }
             var nv = [SIMD3<Float>](); nv.reserveCapacity(faces.count)
-            var nc = [UInt8](); nc.reserveCapacity(faces.count * colorStride)
+            var faceNormals = [SIMD3<Float>](); faceNormals.reserveCapacity(faces.count)
             var nu = [SIMD2<Float>](); nu.reserveCapacity(faces.count)
             var nf = [Int](); nf.reserveCapacity(faces.count)
             var t = 0
@@ -1632,28 +1654,28 @@ final class MonocularVolumeEstimator {
                 t += 3
                 guard i0 >= 0, i0 < vertices.count, i1 >= 0, i1 < vertices.count,
                       i2 >= 0, i2 < vertices.count else { continue }
-                let avgNy = (normals[i0].y + normals[i1].y + normals[i2].y) / 3.0
-                let isSide = sideProfile != nil && avgNy < 0.45 && avgNy > -0.35
-                for v in [i0, i1, i2] {
+                let faceNormal = simd_normalize(simd_cross(
+                    vertices[i1] - vertices[i0], vertices[i2] - vertices[i0]))
+                let isSide = sideProfile != nil && faceNormal.y < 0.45 && faceNormal.y > -0.35
+                let triangle = [i0, i1, i2]
+                for v in triangle {
                     nf.append(nv.count)
                     nv.append(vertices[v])
-                    let cBase = v * colorStride
-                    for k in 0..<colorStride {
-                        // Fall back to the segment's own dominant food colour
-                        // (never a fixed grey `200`) when a per-vertex colour
-                        // index runs past the sampled array, so an out-of-bounds
-                        // vertex still reads as food, not institutional grey.
-                        nc.append(cBase + k < colors.count
-                            ? colors[cBase + k]
-                            : (k < color.count ? color[k] : 200))
-                    }
+                    faceNormals.append(faceNormal)
                     nu.append(isSide ? sideUV(vertices[v]) : topUV(vertices[v]))
                 }
             }
             if nf.count >= 3 {
                 outVertices = nv
                 outFaces = nf
-                outColors = nc
+                // Seam copies sample their own face's photo in one buffer pass.
+                outColors = sampledVertexColors(
+                    bgra: sharedBGRA, sideBGRA: sharedSideBGRA, solidMask: mask,
+                    positions: nv.map { maskPosition(for: $0) },
+                    heightFractions: nv.map { Double(clamp01($0.y / h)) },
+                    normals: faceNormals,
+                    baseColor: color, label: label, footprint: footprint,
+                    sideProfile: sideProfile, maskWidth: maskWidth, maskHeight: maskHeight)
                 outUVs = nu
                 print("[MonocularEstimator] atlas seam-split \(label): welded=\(vertices.count)v/\(faces.count / 3)f -> unwelded=\(nv.count)v")
                 if sideProfile != nil {
@@ -1737,7 +1759,6 @@ final class MonocularVolumeEstimator {
         solidMask: [[UInt8]],
         positions: [(row: Double, col: Double)],
         heightFractions: [Double],
-        heightsM: [Float],
         normals: [SIMD3<Float>],
         baseColor: [UInt8],
         label: String,
@@ -1867,24 +1888,21 @@ final class MonocularVolumeEstimator {
                 let axisU: Double
                 if sideProfile.topAxis == .columns {
                     axisU = (pos.col - Double(footprint.minCol)) /
-                        Double(max(1, footprint.maxCol - footprint.minCol))
+                        Double(max(1, footprint.maxCol - footprint.minCol + 1))
                 } else {
                     axisU = (pos.row - Double(footprint.minRow)) /
-                        Double(max(1, footprint.maxRow - footprint.minRow))
+                        Double(max(1, footprint.maxRow - footprint.minRow + 1))
                 }
-                let projected = sideProfile.projectedUV(
-                    row: pos.row / Double(maskHeight), column: pos.col / Double(maskWidth),
-                    heightM: i < heightsM.count ? heightsM[i] : 0)
-                let uv = sideProfile.calibration != nil ? projected : sideProfile.sourceUV(
+                // The hull is registered by mask extents, not perspective rays.
+                // Its side colors must use that same registration.
+                let uv = sideProfile.sourceUV(
                     axisU: axisU, heightFraction: i < heightFractions.count ? heightFractions[i] : 0.5)
                 sideVertexCount += 1
                 // `uv` is (x = column, y = row) in the side frame. Snap it to
                 // the exact side-mask pixel (or the nearest in-mask pixel) so a
                 // side face only ever takes the food's own side-photo colour.
-                let snap = uv.map {
-                    sideMaskAvailable ? sideProfile.maskSnappedUV($0, maxRadius: 2)
-                        : (uv: $0, inMask: false, found: true)
-                } ?? (uv: SIMD2<Float>(0, 0), inMask: false, found: false)
+                let snap = sideMaskAvailable ? sideProfile.maskSnappedUV(uv, maxRadius: 2)
+                    : (uv: uv, inMask: false, found: true)
                 if snap.inMask { sideInMaskCount += 1 }
                 var sidePixel: (Double, Double, Double)?
                 if snap.found {
@@ -1919,7 +1937,7 @@ final class MonocularVolumeEstimator {
             let avg = sideColoredCount > 0
                 ? "rgb(\(Int(sideSumR / Double(sideColoredCount))),\(Int(sideSumG / Double(sideColoredCount))),\(Int(sideSumB / Double(sideColoredCount))))"
                 : "none"
-            print("[SIDECOLOR] path=monocular food=\(label) projection=\(sideProfile?.calibration == nil ? "uncalibrated_mask_bounds" : "captured_pose_intrinsics") sideVerts=\(sideVertexCount)/\(positions.count) inMask=\(pct(sideInMaskCount))% fallbackTop=\(pct(sideFallbackTopCount))% avgSide=\(avg) base=rgb(\(Int(baseR)),\(Int(baseG)),\(Int(baseB))) sideMask=\(sideMaskAvailable) sideFrame=\(sideWidth)x\(sideHeight) whiteFood=\(baseIsNearWhite)")
+            print("[SIDECOLOR] food=\(label) projection=registered_source_mask sideVerts=\(sideVertexCount)/\(positions.count) inMask=\(pct(sideInMaskCount))% fallbackTop=\(pct(sideFallbackTopCount))% avgSide=\(avg) base=rgb(\(Int(baseR)),\(Int(baseG)),\(Int(baseB))) sideMask=\(sideMaskAvailable) sideFrame=\(sideWidth)x\(sideHeight) whiteFood=\(baseIsNearWhite)")
         }
         return out
     }

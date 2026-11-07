@@ -468,7 +468,7 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
             guard object.positions.count >= 3, object.indices.count >= 3 else { continue }
 
             let positionSource = SCNGeometrySource(vertices: object.positions)
-            let normals = computeSmoothNormals(
+            let normals = Self.computeSmoothNormals(
                 positions: object.positions, indices: object.indices
             )
             let normalSource = SCNGeometrySource(normals: normals)
@@ -512,21 +512,21 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
     /// Area-weighted smooth per-vertex normals from the triangle list. Smooth
     /// shading reads as a rounded food surface, matching the USD export (which
     /// used a moderate crease threshold) closely enough for the inline viewer.
-    private func computeSmoothNormals(
+    static func computeSmoothNormals(
         positions: [SCNVector3], indices: [UInt32]
     ) -> [SCNVector3] {
         // Weld by position first: meshes unwelded for texture atlasing (see
         // MonocularVolumeEstimator seam-split) duplicate seam vertices, so
         // accumulating per index alone would shade them faceted. Sharing a
         // normal bucket across coincident positions keeps the surface smooth.
-        var repIndex = [SIMD3<Int>: Int]()
+        var repIndex = [SIMD3<UInt32>: Int]()
         repIndex.reserveCapacity(positions.count)
         var rep = [Int](repeating: 0, count: positions.count)
-        @inline(__always) func key(_ p: SCNVector3) -> SIMD3<Int> {
-            SIMD3<Int>(
-                Int((Float(p.x) * 10000).rounded()),
-                Int((Float(p.y) * 10000).rounded()),
-                Int((Float(p.z) * 10000).rounded())
+        @inline(__always) func key(_ p: SCNVector3) -> SIMD3<UInt32> {
+            SIMD3<UInt32>(
+                p.x == 0 ? 0 : Float(p.x).bitPattern,
+                p.y == 0 ? 0 : Float(p.y).bitPattern,
+                p.z == 0 ? 0 : Float(p.z).bitPattern
             )
         }
         for idx in 0..<positions.count {
@@ -550,7 +550,7 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
         return (0..<positions.count).map { idx in
             let v = accum[rep[idx]]
             let length = simd_length(v)
-            let unit = length > 1e-8 ? v / length : SIMD3<Float>(0, 1, 0)
+            let unit = length.isFinite && length > 0 ? v / length : SIMD3<Float>(0, 1, 0)
             return SCNVector3(unit.x, unit.y, unit.z)
         }
     }

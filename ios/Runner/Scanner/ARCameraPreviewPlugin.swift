@@ -15,7 +15,7 @@ import UIKit
 /// ≈30 fps and pushed to the display layer as CMSampleBuffers.
 ///
 /// The view also hosts the live "AI glow": a throttled on-device food detector
-/// (see `LiveFoodDetector`) whose exact live mask is drawn as translucent themed layers
+/// (see `LiveFoodDetector`) whose live mask is feathered into translucent themed layers
 /// exactly over the aspect-fit preview (see `LiveGlowLayers`). It is driven
 /// from Flutter over `com.pixelstomacros/live_glow` (see
 /// `LiveFoodGlowController`).
@@ -495,7 +495,7 @@ final class LiveFoodGlowController {
                 reduceMotion: args["reduceMotion"] as? Bool ?? false)
             roi = Self.parseRoi(args["roi"])
             if !enabled {
-                print("[LiveGlow] start premium=\(style.premium) reduceMotion=\(style.reduceMotion)")
+                print("[LiveGlow] start premium=\(style.premium) reduceMotion=\(style.reduceMotion) render=soft_food_glow sampling=linear")
             }
             enabled = true
             applyToViews()
@@ -690,17 +690,31 @@ enum LiveFoodOverlayPolicy {
         return translation <= 0.01 && abs(simd_dot(rotationA.vector, rotationB.vector)) >= cos(Float.pi / 120)
     }
 
-    /// Exact current support: holes and disconnected components stay empty.
+    /// Spatial feathering is display-only; detection keeps the raw current mask.
     static func glowFields(_ mask: [Float], grid g: Int)
         -> (fill: [Float], edge: [Float], core: [Float])? {
         let n = g * g
         guard g > 0, mask.count == n else { return nil }
-        var fill = [Float](repeating: 0, count: n)
+        var support = [Float](repeating: 0, count: n)
         for i in 0..<n {
-            fill[i] = mask[i].isFinite && mask[i] > 0.5 ? 1 : 0
+            support[i] = mask[i].isFinite && mask[i] > 0.5 ? 1 : 0
         }
-        let empty = [Float](repeating: 0, count: n)
-        return (fill, empty, empty)
+        var fill = support
+        var halo = support
+        // Three box passes approximate a Gaussian without filtering ML geometry.
+        for _ in 0..<3 {
+            fill = boxBlur(fill, g, 1)
+            halo = boxBlur(halo, g, 3)
+        }
+        var edge = [Float](repeating: 0, count: n)
+        var core = [Float](repeating: 0, count: n)
+        for i in 0..<n {
+            fill[i] = max(0, min(1, fill[i]))
+            let wide = max(0, min(1, halo[i]))
+            edge[i] = 4 * wide * (1 - wide)
+            core[i] = 4 * fill[i] * (1 - fill[i])
+        }
+        return (fill, edge, core)
     }
 
     /// Separable box blur with clamped edges (running sums, O(n)).
@@ -731,9 +745,10 @@ enum LiveFoodOverlayPolicy {
 
     /// Premultiplied white RGBA image whose alpha is `values` (0…1).
     static func alphaImage(_ values: [Float], _ g: Int) -> CGImage? {
+        guard g > 0, values.count == g * g else { return nil }
         var bytes = [UInt8](repeating: 0, count: g * g * 4)
         for i in 0..<(g * g) {
-            let a = UInt8(max(0, min(255, values[i] * 255)))
+            let a = UInt8(values[i].isFinite ? max(0, min(255, values[i] * 255)) : 0)
             let o = i * 4
             bytes[o] = a
             bytes[o + 1] = a
@@ -746,7 +761,7 @@ enum LiveFoodOverlayPolicy {
             bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: g * 4,
             space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-            provider: provider, decode: nil, shouldInterpolate: false,
+            provider: provider, decode: nil, shouldInterpolate: true,
             intent: .defaultIntent)
     }
 }
@@ -786,7 +801,7 @@ struct LiveFoodFrameGate {
 /// camera buffer released right after a small square copy is made (so ARKit's
 /// frame pool is never starved). Backends, in order: the bundled YOLO-seg
 /// food model, then the dense food segmenter. No class-agnostic fallback.
-/// Current masks become exact alpha images without temporal smearing.
+/// Current masks become soft display alpha images without temporal smearing.
 final class LiveFoodDetector {
 
     static let grid = 160
@@ -1148,8 +1163,8 @@ private final class LiveGlowLayers {
         crop.addSublayer(coreContainer)
         for mask in [fillMask, shimmerMask, edgeMask, coreMask] {
             mask.contentsGravity = .resize
-            mask.magnificationFilter = .nearest
-            mask.minificationFilter = .nearest
+            mask.magnificationFilter = .linear
+            mask.minificationFilter = .linear
         }
         apply(style: style)
     }
@@ -1246,15 +1261,18 @@ private final class LiveGlowLayers {
         for layer in [shimmer, edgeSource, edgeContainer] as [CALayer] {
             layer.removeAllAnimations()
         }
-        edgeContainer.isHidden = true
-        coreContainer.isHidden = true
+        edgeContainer.isHidden = false
+        edgeContainer.opacity = style.premium ? 0.48 : 0.38
+        coreContainer.isHidden = false
+        coreContainer.opacity = style.premium ? 0.28 : 0.20
+        coreContainer.backgroundColor = accent.mixed(with: .white, amount: 0.20).cgColor
 
         if style.premium {
             fillSource.type = .axial
             fillSource.startPoint = CGPoint(x: 0, y: 0)
             fillSource.endPoint = CGPoint(x: 1, y: 1)
             fillSource.colors = (colors.count > 1 ? colors : [accent, accent])
-                .map { $0.withAlphaComponent(0.22).cgColor }
+                .map { $0.withAlphaComponent(0.16).cgColor }
             fillSource.backgroundColor = nil
 
             edgeSource.type = .conic
@@ -1264,16 +1282,14 @@ private final class LiveGlowLayers {
                 $0.mixed(with: .white, amount: 0.12).cgColor
             }
             edgeSource.backgroundColor = nil
-            coreContainer.opacity = 0.55
         } else {
             fillSource.colors = nil
-            fillSource.backgroundColor = accent.withAlphaComponent(0.20).cgColor
+            fillSource.backgroundColor = accent.withAlphaComponent(0.14).cgColor
             edgeSource.colors = nil
             edgeSource.backgroundColor = accent.mixed(with: .white, amount: 0.25).cgColor
-            coreContainer.isHidden = true
         }
 
-        let shimmerAlpha: CGFloat = style.premium ? 0.30 : 0.16
+        let shimmerAlpha: CGFloat = style.premium ? 0.16 : 0.10
         shimmer.type = .axial
         shimmer.startPoint = CGPoint(x: 0, y: 0.35)
         shimmer.endPoint = CGPoint(x: 1, y: 0.65)
@@ -1303,7 +1319,7 @@ private final class LiveGlowLayers {
         set(fillMask, fill)
         set(shimmerMask, fill)
         set(edgeMask, edge)
-        if style.premium { set(coreMask, core) }
+        set(coreMask, core)
     }
 
     /// Never blend previous support into a new camera frame.

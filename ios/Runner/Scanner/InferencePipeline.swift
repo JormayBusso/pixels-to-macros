@@ -187,19 +187,62 @@ final class InferencePipeline {
 
     /// Still-photo recognition is deliberately independent of AR/scale/volume.
     func recognizePantryPhoto(pixelBuffer: CVPixelBuffer) throws -> [[String: Any]] {
+        Self.pantryRecognitionPayload(try recognizePhotoSegments(
+            pixelBuffer: pixelBuffer, crop: CGRect(x: 0, y: 0, width: 1, height: 1)))
+    }
+
+    private func recognizePhotoSegments(
+        pixelBuffer: CVPixelBuffer, crop: CGRect,
+        roiShape: ScanMaskGeometry.ROIShape? = nil
+    ) throws -> [SegmentationService.SegmentedObject] {
+        refinementCandidatesByKey.removeAll()
+        confirmedLabelKeys.removeAll()
+        segmentEmbeddingsByKey.removeAll()
+        labelSourceByKey.removeAll()
         guard let rgb = preprocessor.preprocess(pixelBuffer: pixelBuffer,
-            plateRect: CGRect(x: 0, y: 0, width: 1, height: 1)) else {
+            plateRect: crop) else {
             throw PipelineError.preprocessingFailed
         }
+        let input: CVPixelBuffer
+        if let roiShape {
+            guard let masked = captureROIFrame(from: rgb, shape: roiShape) else {
+                throw PipelineError.preprocessingFailed
+            }
+            input = masked
+        } else { input = rgb }
         var segments = try yoloSegmentationService.isAvailable
-            ? yoloSegmentationService.segment(pixelBuffer: rgb)
-            : segmentationService.segment(pixelBuffer: rgb)
-        segments = mergeOverlappingInstances(segments, view: "pantry")
-        segments = refineLabelsWithClassifier(segments: segments, frame: rgb,
+            ? yoloSegmentationService.segment(pixelBuffer: input)
+            : segmentationService.segment(pixelBuffer: input)
+        if let roiShape { segments = constrainToCaptureROI(segments, shape: roiShape) }
+        segments = mergeOverlappingInstances(segments, view: "photo")
+        if roiShape != nil {
+            segments = splitDisconnectedInstances(segments,
+                maskWidth: preprocessor.modelInputWidth, maskHeight: preprocessor.modelInputHeight)
+        }
+        segments = refineLabelsWithClassifier(segments: segments, frame: input,
             maskWidth: preprocessor.modelInputWidth, maskHeight: preprocessor.modelInputHeight)
-        segments = refineLabelsWithOpenVocab(segments: segments, frame: rgb,
+        if roiShape != nil {
+            segments = demoteColorContradictingProduce(segments: segments, frame: input,
+                maskWidth: preprocessor.modelInputWidth, maskHeight: preprocessor.modelInputHeight)
+        }
+        segments = refineLabelsWithOpenVocab(segments: segments, frame: input,
             maskWidth: preprocessor.modelInputWidth, maskHeight: preprocessor.modelInputHeight)
-        return Self.pantryRecognitionPayload(segments)
+        if roiShape != nil {
+            segments = applyColorSanity(segments: segments, frame: input,
+                maskWidth: preprocessor.modelInputWidth, maskHeight: preprocessor.modelInputHeight)
+            segments = applyUserExemplarLabels(segments)
+            segments = mergeOverlappingInstances(segments, view: "photo_refined")
+        }
+        return segments
+    }
+
+    static func approximateFoodRecognitionPayload(
+        _ segments: [SegmentationService.SegmentedObject]
+    ) -> [[String: Any]] {
+        segments.compactMap { segment in
+            guard let recognized = pantryRecognitionPayload([segment]).first else { return nil }
+            return recognized
+        }
     }
 
     static func approximateRecognitionPayload(_ recognized: [[String: Any]]) -> [[String: Any]] {
@@ -221,9 +264,12 @@ final class InferencePipeline {
         lastModel3DPath = nil
         lastModel3DObjects = []
         guard let top = recorder.topFrame else { throw PipelineError.preprocessingFailed }
+        let crop = ScanMaskGeometry.centredSquareCrop(
+            width: CVPixelBufferGetWidth(top.pixelBuffer), height: CVPixelBufferGetHeight(top.pixelBuffer))
         let objects = Self.approximateRecognitionPayload(
-            try recognizePantryPhoto(pixelBuffer: top.pixelBuffer))
-        print("[APPROXIMATE] top-only foods=\(objects.count) volume=unavailable model=none")
+            Self.approximateFoodRecognitionPayload(try recognizePhotoSegments(
+                pixelBuffer: top.pixelBuffer, crop: crop, roiShape: .circle)))
+        print("[APPROXIMATE] top-only foods=\(objects.count) crop=centred_square roi=circle instances=separate volume=unavailable model=none")
         let data = try JSONSerialization.data(withJSONObject: objects)
         return String(data: data, encoding: .utf8) ?? "[]"
     }
@@ -624,8 +670,7 @@ final class InferencePipeline {
                         print("[HEIGHTMEASUREMENT] rejected reason=\(reason) action=retake")
                         throw PipelineError.sideViewRequired(reason)
                     }
-                    if recorder.tableDistanceCm == nil,
-                       let reason = uncalibratedAspectFailure(top: topFrame, side: sideFrame) {
+                    if let reason = uncalibratedAspectFailure(top: topFrame, side: sideFrame) {
                         print("[HEIGHTMEASUREMENT] rejected reason=\(reason) action=retake")
                         throw PipelineError.sideViewRequired(reason)
                     }
@@ -1604,27 +1649,8 @@ final class InferencePipeline {
     func uncalibratedAspectFailure(
         top: FrameCaptureService.CapturedFrame, side: FrameCaptureService.CapturedFrame
     ) -> String? {
-        typealias Calibration = MonocularVolumeEstimator.PhotoCalibration
-        guard Calibration.validPose(top.cameraTransform), Calibration.validPose(side.cameraTransform) else {
-            return "invalid_capture_pose"
-        }
-        let sideT = side.cameraTransform, topT = top.cameraTransform
-        // Aspect × top axis assumes level SIDE and orthogonal TOP image axes.
-        // Outside this geometry it is not a gravity-corrected measurement.
-        guard abs(sideT.columns.2.y) < 0.2, topT.columns.2.y > 0.98,
-              max(abs(sideT.columns.0.y), abs(sideT.columns.1.y)) > 0.98 else {
-            return "aspect_requires_level_side_and_top"
-        }
-        let horizontal = abs(sideT.columns.0.y) > abs(sideT.columns.1.y)
-            ? -SIMD3(sideT.columns.1.x, 0, sideT.columns.1.z)
-            : SIMD3(sideT.columns.0.x, 0, sideT.columns.0.z)
-        let columns = SIMD3(topT.columns.0.x, 0, topT.columns.0.z)
-        let rows = -SIMD3(topT.columns.1.x, 0, topT.columns.1.z)
-        guard max(abs(simd_dot(simd_normalize(horizontal), simd_normalize(columns))),
-                  abs(simd_dot(simd_normalize(horizontal), simd_normalize(rows)))) > 0.98 else {
-            return "aspect_top_axis_misaligned"
-        }
-        return nil
+        MonocularVolumeEstimator.PhotoCalibration.silhouetteAxisFailure(
+            top: top.cameraTransform, side: side.cameraTransform)
     }
 
     func makeSideProfile(

@@ -24,6 +24,9 @@ by the live-only gates.
 - The current food mask should have a soft fill/edge/core glow without
   historical-mask blending or trails. This live-only blur never alters the
   saved segmentation or reconstructed silhouette.
+  The live masks use spatial feathering and linear magnification rather than
+  enlarged hard pixels. Free themes use their accent; premium themes use their
+  gradient. Reduce Motion keeps the static halo but disables the shimmer.
 - Paste `[LiveGlow] backend=`, `infer=`, `drop_stale`, `roi` and any
   `label_map_rejected` logs. Frames older than 350 ms or displaced by more than
   1 cm / 3° are not displayed. A slow model can therefore yield fewer/no live
@@ -208,6 +211,32 @@ without presenting zero calories/weight as a measured portion; show a localized
 (en/nl/es/de/pl) level-side recapture prompt and distinguish missing capture,
 occlusion/unmatched masks, and unavailable calibration. Native diagnostics alone
 do not provide that user-facing explanation.
+
+## November 2026 source-mask color and alignment checks
+
+- Both strict hardware paths require a downward TOP and level SIDE capture,
+  with gravity and the matched horizontal image axis aligned within 6 degrees.
+  Calibration measures height but does not rectify rotated raster masks. An
+  unsupported rotation now requires retaking both photos rather than generating
+  a distorted hull; keep the screen orientation and do not twist the phone.
+- Side colors and atlas UVs use the same registered source-mask extents as the
+  hull. Each seam copy samples its triangle's own photo, and tiny valid triangles
+  keep their normal. Viewer normal welding joins exact positions only; no
+  geometry smoothing, height floor or silhouette alteration is introduced.
+- Extra accuracy remains default-ON, including legacy preferences; an explicit
+  OFF choice remains persisted. The version-50 upgrade re-enables it once on
+  existing installs that saved OFF; subsequent choices stay persisted.
+  OFF uses the guide's centered square/circle,
+  keeps separate same-label food portions, and applies crop-level recognition
+  refinements and existing local exemplars. Portion review is still mandatory;
+  there is no measured volume or 3D export.
+- Re-scan one whole tomato and one genuinely flat portion three times. Inspect
+  the original side outline, measured height, side colors and repeatability.
+  Paste `[AXISMEASUREMENT]`, `[HEIGHTMEASUREMENT]`, `[MASKMEASUREMENT]`,
+  `[SIDEMATCH]`, `[DUALHULL]`, `[SIDECOLOR]`, `[ScaleValidation]`,
+  `[MonocularEstimator] visual-hull` and `[Scan3DViewer]` logs; also test OFF and
+  include `[APPROXIMATE]` output. Host fixtures and builds do not confirm these
+  device-only results.
 
 ## Record results
 

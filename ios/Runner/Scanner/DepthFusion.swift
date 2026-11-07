@@ -683,6 +683,11 @@ final class DepthFusion {
         guard let sideFrame else {
             throw InferencePipeline.PipelineError.sideViewRequired("lidar_missing_side_capture")
         }
+        if let reason = MonocularVolumeEstimator.PhotoCalibration.silhouetteAxisFailure(
+                top: topFrame.cameraTransform, side: sideFrame.cameraTransform) {
+            print("[AXISMEASUREMENT] path=lidar rejected=\(reason) action=retake")
+            throw InferencePipeline.PipelineError.sideViewRequired(reason)
+        }
         guard let projection = topProjection else {
             throw InferencePipeline.PipelineError.model3DExportFailed("lidar_missing_top_projection")
         }
