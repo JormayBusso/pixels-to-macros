@@ -423,6 +423,94 @@ class RunnerTests: XCTestCase {
       preprocessingPlate: invalidCrop).fallbackReason, "invalid_preprocessing_crop")
   }
 
+  func testKnownPlateDiameterOverridesOnlyDetectedPlateAndPreservesDefault() {
+    var buffer: CVPixelBuffer?
+    XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, 1000, 500,
+      kCVPixelFormatType_32BGRA, nil, &buffer), kCVReturnSuccess)
+    var pose = matrix_identity_float4x4
+    pose.columns.1 = SIMD4(0, 0, -1, 0)
+    pose.columns.2 = SIMD4(0, 1, 0, 0)
+    pose.columns.3 = SIMD4(0, 0.1, 0, 1)
+    let k = simd_float3x3(columns: (
+      SIMD3(1000, 0, 0), SIMD3(0, 1000, 0), SIMD3(500, 250, 1)))
+    let frame = FrameCaptureService.CapturedFrame(pixelBuffer: buffer!, depthBuffer: nil,
+      cameraTransform: pose, cameraIntrinsics: k, timestamp: 10)
+    let estimator = MonocularVolumeEstimator()
+    let plate = PlateDetector.PlateResult(
+      rect: CGRect(x: 0.25, y: 0, width: 0.5, height: 1), diameterPx: 220, detected: true)
+
+    let assumed = estimator.estimateScale(topFrame: frame, maskWidth: 640, maskHeight: 640,
+      preprocessingPlate: plate)
+    XCTAssertEqual(assumed.source, "plate_diameter")
+    XCTAssertEqual(assumed.columnPixelsPerCm, 220 * 640 / (500 * 26), accuracy: 0.0001)
+    XCTAssertTrue(assumed.provenance.contains("plateDiameterSource=assumed_default"))
+    XCTAssertTrue(assumed.provenance.contains("plateDiameterApplied=true"))
+
+    let entered = estimator.estimateScale(topFrame: frame, maskWidth: 640, maskHeight: 640,
+      preprocessingPlate: plate, knownPlateDiameterCm: 20)
+    XCTAssertEqual(entered.source, "plate_diameter")
+    XCTAssertEqual(entered.columnPixelsPerCm, 220 * 640 / (500 * 20), accuracy: 0.0001)
+    XCTAssertTrue(entered.provenance.contains("plateDiameterSource=user_entered"))
+
+    let undetected = PlateDetector.PlateResult(rect: plate.rect, diameterPx: 220, detected: false)
+    let plane = estimator.estimateScale(topFrame: frame, maskWidth: 640, maskHeight: 640,
+      tableDistanceCm: 10, preprocessingPlate: undetected, knownPlateDiameterCm: 20)
+    XCTAssertEqual(plane.source, "arkit_plane")
+    XCTAssertEqual(plane.columnPixelsPerCm, 128, accuracy: 0.001)
+    XCTAssertTrue(plane.provenance.contains("plateDiameterApplied=false"))
+
+    let rejectedPlateCandidate = estimator.estimateScale(
+      topFrame: frame, maskWidth: 640, maskHeight: 640, tableDistanceCm: 10,
+      preprocessingPlate: plate, knownPlateDiameterCm: 100)
+    XCTAssertEqual(rejectedPlateCandidate.source, "arkit_plane")
+    XCTAssertTrue(rejectedPlateCandidate.provenance.contains("plateCandidate={invalid_or_out_of_range}"))
+    XCTAssertTrue(rejectedPlateCandidate.provenance.contains("plateDiameterSource=user_entered"))
+    XCTAssertTrue(rejectedPlateCandidate.provenance.contains("plateDiameterApplied=false"))
+  }
+
+  func testInvalidKnownPlateDiameterIsRejectedByChannelAndScale() throws {
+    XCTAssertNil(try ScannerPlugin.validatedPlateDiameterCm(from: nil))
+    XCTAssertNil(try ScannerPlugin.validatedPlateDiameterCm(
+      from: ["plate_diameter_cm": NSNull()]))
+    XCTAssertEqual(try ScannerPlugin.validatedPlateDiameterCm(
+      from: ["plate_diameter_cm": NSNumber(value: 20)]), 20)
+
+    let invalidArguments: [[String: Any]] = [
+      ["plate_diameter_cm": NSNumber(value: 0)],
+      ["plate_diameter_cm": NSNumber(value: -1)],
+      ["plate_diameter_cm": NSNumber(value: Double.nan)],
+      ["plate_diameter_cm": NSNumber(value: Double.infinity)],
+      ["plate_diameter_cm": NSNumber(value: true)],
+      ["plate_diameter_cm": "20"],
+    ]
+    for arguments in invalidArguments {
+      XCTAssertThrowsError(try ScannerPlugin.validatedPlateDiameterCm(from: arguments))
+    }
+
+    var buffer: CVPixelBuffer?
+    XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, 1000, 500,
+      kCVPixelFormatType_32BGRA, nil, &buffer), kCVReturnSuccess)
+    let frame = FrameCaptureService.CapturedFrame(pixelBuffer: buffer!, depthBuffer: nil,
+      cameraTransform: matrix_identity_float4x4,
+      cameraIntrinsics: simd_float3x3(columns: (
+        SIMD3(1000, 0, 0), SIMD3(0, 1000, 0), SIMD3(500, 250, 1))),
+      timestamp: 10)
+    let invalidScale = MonocularVolumeEstimator().estimateScale(
+      topFrame: frame, maskWidth: 640, maskHeight: 640,
+      preprocessingPlate: PlateDetector.PlateResult(
+        rect: CGRect(x: 0.25, y: 0, width: 0.5, height: 1), diameterPx: 220, detected: true),
+      knownPlateDiameterCm: .nan)
+    XCTAssertEqual(invalidScale.source, "calibration_invalid")
+    XCTAssertEqual(invalidScale.fallbackReason, "invalid_plate_diameter_cm")
+    XCTAssertFalse(invalidScale.pixelsPerCm.isFinite)
+    XCTAssertTrue(invalidScale.provenance.contains("plateDiameterApplied=false"))
+  }
+
+  func testLiDARPathDropsKnownPlateDiameterBeforeMetricReconstruction() {
+    XCTAssertNil(InferencePipeline.monocularPlateDiameterCm(20, hasDepthData: true))
+    XCTAssertEqual(InferencePipeline.monocularPlateDiameterCm(20, hasDepthData: false), 20)
+  }
+
   func testOccupiedSideEndpointsDoNotMeasureEmptyBoundingBoxCorners() {
     let k = simd_float3x3(columns: (
       SIMD3(200, 0, 0), SIMD3(0, 200, 0), SIMD3(100, 50, 1)))

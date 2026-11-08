@@ -55,6 +55,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   /// True while a top/side photo is being committed — prevents double capture.
   bool _capturing = false;
   bool? _captureExtraAccuracy;
+  double? _capturePlateDiameterCm;
   bool get _extraAccuracy =>
       _captureExtraAccuracy ?? ref.read(userPrefsProvider).extraAccuracy;
 
@@ -505,7 +506,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   Future<void> _captureTop() async {
     if (_capturing || !mounted) return;
     setState(() {
-      _captureExtraAccuracy ??= ref.read(userPrefsProvider).extraAccuracy;
+      if (_captureExtraAccuracy == null) {
+        final prefs = ref.read(userPrefsProvider);
+        _captureExtraAccuracy = prefs.extraAccuracy;
+        _capturePlateDiameterCm = prefs.plateDiameterCm;
+      }
       _capturing = true;
     });
     _stableHoldTicks = 0;
@@ -616,7 +621,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       await _bridge.stopLiveGlow();
       await ref
           .read(scanResultProvider.notifier)
-          .runVideoScan(extraAccuracy: _extraAccuracy);
+          .runVideoScan(
+            extraAccuracy: _extraAccuracy,
+            plateDiameterCm: _capturePlateDiameterCm,
+          );
       if (!mounted) return;
       result = ref.read(scanResultProvider);
     } catch (e) {
@@ -954,6 +962,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _sessionErrorDetail = null;
     _launched3DViewer = false;
     _captureExtraAccuracy = null;
+    _capturePlateDiameterCm = null;
     _savedScanResult = null;
     ref.read(scanStateProvider.notifier).reset();
     ref.read(scanResultProvider.notifier).reset();

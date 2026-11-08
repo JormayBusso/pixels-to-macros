@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/food_data.dart';
 import '../services/database_service.dart';
 
 /// Daily summary row for analytics: average calories + macro grams + scan count.
@@ -109,7 +110,11 @@ class AnalyticsState {
 }
 
 class AnalyticsNotifier extends StateNotifier<AnalyticsState> {
-  AnalyticsNotifier() : super(const AnalyticsState());
+  AnalyticsNotifier({DatabaseService? database})
+      : _database = database ?? DatabaseService.instance,
+        super(const AnalyticsState());
+
+  final DatabaseService _database;
 
   int _loadGeneration = 0;
 
@@ -118,19 +123,11 @@ class AnalyticsNotifier extends StateNotifier<AnalyticsState> {
     state = AnalyticsState(loading: true, rangeDays: rangeDays);
 
     try {
-      final allScans = await DatabaseService.instance.getAllScanResults();
+      final allScans = await _database.getAllScanResults();
       final now = DateTime.now();
       final days = <DaySummary>[];
 
-      // Pre-fetch food DB rows we need (one per distinct label across scans).
-      final labels = <String>{
-        for (final s in allScans)
-          for (final f in s.foods) f.label.toLowerCase(),
-      };
-      final foodCache = <String, dynamic>{};
-      for (final label in labels) {
-        foodCache[label] = await DatabaseService.instance.getFoodByLabel(label);
-      }
+      final foodCache = <(String, int?, String?), FoodData?>{};
 
       for (int i = 0; i < rangeDays; i++) {
         final date =
@@ -149,7 +146,18 @@ class AnalyticsNotifier extends StateNotifier<AnalyticsState> {
         for (final scan in dayScans) {
           calSum += (scan.totalCaloriesMin + scan.totalCaloriesMax) / 2;
           for (final food in scan.foods) {
-            final fd = foodCache[food.label.toLowerCase()];
+            final key = (
+              food.label.toLowerCase(),
+              food.nutritionFoodId,
+              food.nutritionFoodLabel,
+            );
+            if (!foodCache.containsKey(key)) {
+              foodCache[key] = await _database.getFoodForNutrition(
+                food,
+                legacyAliasFirst: false,
+              );
+            }
+            final fd = foodCache[key];
             if (fd != null && fd.kcalPer100g > 0) {
               final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
               final weightG = avgCal / (fd.kcalPer100g / 100);

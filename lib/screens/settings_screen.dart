@@ -1250,6 +1250,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 24),
         _TitledSection(
+          title: l10n.knownPlateDiameter,
+          children: const [PlateDiameterSetting()],
+        ),
+        const SizedBox(height: 24),
+        _TitledSection(
           title: l10n.debug,
           children: [
             Card(
@@ -1339,6 +1344,110 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ],
         ),
       ],
+    );
+  }
+}
+
+class PlateDiameterSetting extends ConsumerStatefulWidget {
+  const PlateDiameterSetting({super.key});
+
+  @override
+  ConsumerState<PlateDiameterSetting> createState() =>
+      _PlateDiameterSettingState();
+}
+
+class _PlateDiameterSettingState extends ConsumerState<PlateDiameterSetting> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: ref.read(userPrefsProvider).plateDiameterCm?.toString() ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final diameter = UserPreferences.parsePlateDiameterCm(_controller.text);
+    await ref.read(userPrefsProvider.notifier).update(
+          ref.read(userPrefsProvider).copyWith(plateDiameterCm: diameter),
+        );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context).settingsSaved)),
+    );
+  }
+
+  Future<void> _reset() async {
+    _formKey.currentState!.reset();
+    _controller.clear();
+    await ref.read(userPrefsProvider.notifier).update(
+          ref.read(userPrefsProvider).copyWith(plateDiameterCm: null),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.knownPlateDiameterHelp,
+              style: TextStyle(color: context.appMutedTextColor),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _controller,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              style: TextStyle(color: context.appTextColor),
+              decoration: InputDecoration(
+                labelText: l10n.knownPlateDiameter,
+                labelStyle: TextStyle(color: context.appMutedTextColor),
+                hintText: l10n.assumedPlateDiameter,
+                hintStyle: TextStyle(color: context.appMutedTextColor),
+              ),
+              validator: (value) {
+                try {
+                  UserPreferences.parsePlateDiameterCm(value ?? '');
+                  return null;
+                } on FormatException {
+                  return l10n.plateDiameterInvalid;
+                }
+              },
+              onFieldSubmitted: (_) => unawaited(_save()),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                ElevatedButton(
+                  onPressed: _save,
+                  child: Text(l10n.save),
+                ),
+                TextButton(
+                  onPressed: _reset,
+                  child: Text(l10n.resetPlateDiameter),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

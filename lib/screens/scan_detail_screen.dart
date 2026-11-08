@@ -33,8 +33,9 @@ import 'scan_3d_viewer_screen.dart';
 
 /// Detail view for a single scan result.
 class ScanDetailScreen extends ConsumerStatefulWidget {
-  const ScanDetailScreen({super.key, required this.scan});
+  const ScanDetailScreen({super.key, required this.scan, this.database});
   final ScanResult scan;
+  final DatabaseService? database;
 
   @override
   ConsumerState<ScanDetailScreen> createState() => _ScanDetailScreenState();
@@ -42,7 +43,8 @@ class ScanDetailScreen extends ConsumerStatefulWidget {
 
 class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
   late ScanResult _scan;
-  Map<String, FoodData> _foodMap = const {};
+  Map<DetectedFood, FoodData?> _foodMap = const {};
+  bool _loadingFoodMap = true;
 
   @override
   void initState() {
@@ -52,21 +54,27 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
   }
 
   Future<void> _loadFoodMap() async {
-    final foods = await DatabaseService.instance.getAllFoods();
-    if (!mounted) return;
+    final scan = _scan;
+    final database = widget.database ?? DatabaseService.instance;
+    final foods = await Future.wait(scan.foods.map(
+      (food) => database.getFoodForNutrition(food, legacyAliasFirst: false),
+    ));
+    if (!mounted || !identical(scan, _scan)) return;
     setState(() {
-      _foodMap = {for (final f in foods) f.label.toLowerCase(): f};
+      _foodMap = {
+        for (var i = 0; i < scan.foods.length; i++) scan.foods[i]: foods[i],
+      };
+      _loadingFoodMap = false;
     });
   }
 
-  /// Look up the FoodData for a detected label (case-insensitive).
-  FoodData? _foodFor(String label) => _foodMap[label.toLowerCase()];
+  FoodData? _foodFor(DetectedFood food) => _foodMap[food];
 
   /// Estimate grams from volumeCm³ using density from FoodData.
   double _gramsFor(DetectedFood food) {
     final reviewed = _scan.reviewedPortionFor(food);
     if (reviewed != null) return reviewed;
-    final fd = _foodFor(food.label);
+    final fd = _foodFor(food);
     if (fd == null) return food.volumeCm3; // assume density ≈ 1.0
     final avgDensity = (fd.densityMin + fd.densityMax) / 2.0;
     return food.volumeCm3 * avgDensity;
@@ -76,8 +84,13 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
     await ref.read(historyProvider.notifier).load();
     final history = ref.read(historyProvider);
     final updated = history.scans.where((s) => s.id == _scan.id).firstOrNull;
-    if (updated != null) {
-      setState(() => _scan = updated);
+    if (updated != null && mounted) {
+      setState(() {
+        _scan = updated;
+        _foodMap = const {};
+        _loadingFoodMap = true;
+      });
+      await _loadFoodMap();
     }
   }
 
@@ -146,7 +159,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
     // Total carbs across the meal — only computed when needed.
     double totalCarbsG = 0;
     for (final f in _scan.foods) {
-      final fd = _foodFor(f.label);
+      final fd = _foodFor(f);
       if (isDiabetic && fd != null) {
         totalCarbsG += fd.carbsPer100g * _gramsFor(f) / 100.0;
       }
@@ -317,7 +330,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
               double mealCarbs = 0;
               double mealSodium = 0;
               for (final f in _scan.foods) {
-                final fd = _foodMap[f.label.toLowerCase()];
+                final fd = _foodFor(f);
                 if (fd == null) continue;
                 final g = _gramsFor(f);
                 mealProtein += fd.proteinPer100g * g / 100;
@@ -354,9 +367,14 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           // Bolus Calculator Mode. The banner prompts a 90-day review; the
           // card only shows an estimate when the calculator is available.
           const DiabetesReviewReminderBanner(),
-          if (!hasUnmeasured)
+          if (!hasUnmeasured && !_loadingFoodMap)
             BolusCalculatorCard(
-                initialCarbsG: totalCarbsG > 0 ? totalCarbsG : null),
+              key: ObjectKey(_scan),
+              initialCarbsG: _scan.foods.every((f) => _foodFor(f) != null) &&
+                      totalCarbsG > 0
+                  ? totalCarbsG
+                  : null,
+            ),
 
           // ── GL Thermometer (diabetes goal only) ───────────────────────
           if (isDiabetic && _scan.foods.isNotEmpty && !hasUnmeasured) ...[
@@ -370,7 +388,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
             GlucoseSpikeCard(
               mealItems: _scan.foods
                   .map((f) {
-                    final fd = _foodMap[f.label.toLowerCase()];
+                    final fd = _foodFor(f);
                     if (fd == null) return null;
                     final g = _gramsFor(f);
                     return MealItemInput(
@@ -400,7 +418,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
           const SizedBox(height: 8),
           ..._scan.foods.map((f) {
             final grams = _gramsFor(f);
-            final foodData = _foodMap[f.label.toLowerCase()];
+            final foodData = _foodFor(f);
             final row = _FoodDetailRow(
               food: f,
               grams: grams,
@@ -1227,7 +1245,7 @@ class _GlThermometerCard extends StatelessWidget {
   });
 
   final ScanResult scan;
-  final Map<String, FoodData> foodMap;
+  final Map<DetectedFood, FoodData?> foodMap;
   final double Function(DetectedFood) gramsForFood;
 
   @override
@@ -1235,7 +1253,7 @@ class _GlThermometerCard extends StatelessWidget {
     // Compute total GL for the meal.
     double totalGL = 0;
     for (final f in scan.foods) {
-      final fd = foodMap[f.label.toLowerCase()];
+      final fd = foodMap[f];
       if (fd != null) totalGL += fd.glForGrams(gramsForFood(f));
     }
 

@@ -31,6 +31,8 @@ enum UserGender {
 
 /// User preferences stored in SQLite.
 class UserPreferences {
+  static const _unchangedPlateDiameter = Object();
+
   final int? id;
   final String name;
   final int dailyCalorieGoal;
@@ -107,6 +109,8 @@ class UserPreferences {
   /// the daily calorie target (adaptive coaching instead of a fixed number).
   final bool healthSyncEnabled;
   final bool extraAccuracy;
+  /// Null keeps the native assumed 26 cm plate diameter.
+  final double? plateDiameterCm;
 
   const UserPreferences({
     this.id,
@@ -142,9 +146,13 @@ class UserPreferences {
     this.premiumThemeLight = false,
     this.healthSyncEnabled = false,
     this.extraAccuracy = true,
+    this.plateDiameterCm,
   });
 
   Map<String, dynamic> toMap() {
+    if (!isValidPlateDiameterCm(plateDiameterCm)) {
+      throw ArgumentError.value(plateDiameterCm, 'plateDiameterCm');
+    }
     return {
       if (id != null) 'id': id,
       'name': name,
@@ -180,6 +188,7 @@ class UserPreferences {
       'premium_theme_light': premiumThemeLight ? 1 : 0,
       'health_sync_enabled': healthSyncEnabled ? 1 : 0,
       'extra_accuracy': extraAccuracy ? 1 : 0,
+      'plate_diameter_cm': plateDiameterCm,
     };
   }
 
@@ -226,6 +235,7 @@ class UserPreferences {
       premiumThemeLight: (map['premium_theme_light'] as int?) == 1,
       healthSyncEnabled: (map['health_sync_enabled'] as int?) == 1,
       extraAccuracy: (map['extra_accuracy'] as int?) != 0,
+      plateDiameterCm: _storedPlateDiameter(map['plate_diameter_cm']),
     );
   }
 
@@ -262,6 +272,7 @@ class UserPreferences {
     bool? premiumThemeLight,
     bool? healthSyncEnabled,
     bool? extraAccuracy,
+    Object? plateDiameterCm = _unchangedPlateDiameter,
   }) {
     return UserPreferences(
       id: id,
@@ -302,6 +313,35 @@ class UserPreferences {
       premiumThemeLight: premiumThemeLight ?? this.premiumThemeLight,
       healthSyncEnabled: healthSyncEnabled ?? this.healthSyncEnabled,
       extraAccuracy: extraAccuracy ?? this.extraAccuracy,
+      plateDiameterCm: identical(plateDiameterCm, _unchangedPlateDiameter)
+          ? this.plateDiameterCm
+          : _checkedPlateDiameter(plateDiameterCm),
     );
+  }
+
+  static bool isValidPlateDiameterCm(double? value) =>
+      value == null || (value.isFinite && value > 0);
+
+  static double? parsePlateDiameterCm(String input) {
+    final text = input.trim();
+    if (text.isEmpty) return null;
+    final value = double.tryParse(text.replaceAll(',', '.'));
+    if (value == null || !isValidPlateDiameterCm(value)) {
+      throw const FormatException('Invalid plate diameter');
+    }
+    return value;
+  }
+
+  static double? _storedPlateDiameter(Object? value) {
+    final diameter = value is num ? value.toDouble() : null;
+    return isValidPlateDiameterCm(diameter) ? diameter : null;
+  }
+
+  static double? _checkedPlateDiameter(Object? value) {
+    if (value == null) return null;
+    if (value is num && isValidPlateDiameterCm(value.toDouble())) {
+      return value.toDouble();
+    }
+    throw ArgumentError.value(value, 'plateDiameterCm');
   }
 }

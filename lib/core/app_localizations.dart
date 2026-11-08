@@ -48,6 +48,51 @@ class AppLocalizations {
         'de': 'Extra Genauigkeit',
         'pl': 'Większa dokładność',
       });
+  String get knownPlateDiameter => _t({
+        'en': 'Known plate diameter (cm)',
+        'nl': 'Bekende borddiameter (cm)',
+        'es': 'Diámetro conocido del plato (cm)',
+        'de': 'Bekannter Tellerdurchmesser (cm)',
+        'pl': 'Znana średnica talerza (cm)',
+      });
+  String get knownPlateDiameterHelp => _t({
+        'en':
+            'Optional: enter the measured outer diameter of your circular plate. Without a value, non-LiDAR 3D scans assume 26 cm when a plate is detected. Not used for LiDAR or one-photo estimates.',
+        'nl':
+            'Optioneel: voer de gemeten buitendiameter van je ronde bord in. Zonder waarde gaan 3D-scans zonder LiDAR uit van 26 cm wanneer een bord wordt gedetecteerd. Niet gebruikt voor LiDAR of schattingen met één foto.',
+        'es':
+            'Opcional: introduce el diámetro exterior medido de tu plato circular. Sin un valor, los escaneos 3D sin LiDAR suponen 26 cm al detectar un plato. No se usa con LiDAR ni en estimaciones de una foto.',
+        'de':
+            'Optional: Gib den gemessenen Außendurchmesser deines runden Tellers ein. Ohne Wert nehmen 3D-Scans ohne LiDAR bei erkanntem Teller 26 cm an. Nicht für LiDAR oder Schätzungen mit einem Foto verwendet.',
+        'pl':
+            'Opcjonalnie: podaj zmierzoną zewnętrzną średnicę okrągłego talerza. Bez wartości skany 3D bez LiDAR zakładają 26 cm po wykryciu talerza. Nie dotyczy LiDAR ani szacunków z jednego zdjęcia.',
+      });
+  String get assumedPlateDiameter => _t({
+        'en': 'Default: 26 cm (assumed)',
+        'nl': 'Standaard: 26 cm (aangenomen)',
+        'es': 'Predeterminado: 26 cm (supuesto)',
+        'de': 'Standard: 26 cm (angenommen)',
+        'pl': 'Domyślnie: 26 cm (założenie)',
+      });
+  String get resetPlateDiameter => _t({
+        'en': 'Use default (26 cm)',
+        'nl': 'Gebruik standaard (26 cm)',
+        'es': 'Usar valor predeterminado (26 cm)',
+        'de': 'Standard verwenden (26 cm)',
+        'pl': 'Użyj domyślnej wartości (26 cm)',
+      });
+  String get plateDiameterInvalid => _t({
+        'en':
+            'Enter a finite diameter greater than 0 cm, or leave blank to use the default.',
+        'nl':
+            'Voer een eindige diameter groter dan 0 cm in, of laat leeg voor de standaardwaarde.',
+        'es':
+            'Introduce un diámetro finito mayor que 0 cm, o déjalo vacío para usar el valor predeterminado.',
+        'de':
+            'Gib einen endlichen Durchmesser größer als 0 cm ein oder lasse das Feld für den Standardwert leer.',
+        'pl':
+            'Podaj skończoną średnicę większą niż 0 cm lub pozostaw pole puste, aby użyć wartości domyślnej.',
+      });
   String get strictScanMode => _t({
         'en': 'Two photos · strict 3D',
         'nl': 'Twee foto’s · strikte 3D',

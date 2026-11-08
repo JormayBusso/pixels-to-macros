@@ -19,10 +19,12 @@ class EditFoodScreen extends ConsumerStatefulWidget {
     this.candidateLabels = const [],
     this.labelEmbedding = const [],
     this.approximateScan,
+    this.database,
   });
   final int scanId;
   final DetectedFood food;
   final ScanResult? approximateScan;
+  final DatabaseService? database;
 
   /// When true the detected label is an unconfirmed guess: the screen opens
   /// with a prominent prompt asking the user to enter/confirm the real food,
@@ -46,6 +48,7 @@ class EditFoodScreen extends ConsumerStatefulWidget {
 }
 
 class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
+  DatabaseService get _database => widget.database ?? DatabaseService.instance;
   late TextEditingController _labelCtrl;
   late TextEditingController _weightCtrl;
   late TextEditingController _calMinCtrl;
@@ -53,6 +56,7 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
   List<FoodData> _suggestions = [];
   bool _showSuggestions = false;
   bool _weightTouched = false;
+  FoodData? _recalculatedFood;
 
   @override
   void initState() {
@@ -76,7 +80,7 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
   }
 
   Future<void> _loadSuggestions() async {
-    final foods = await DatabaseService.instance.getAllFoods();
+    final foods = await _database.getAllFoods();
     if (!mounted) return;
     setState(() {
       _suggestions = foods;
@@ -104,7 +108,7 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
                 Text(AppLocalizations.of(context).scanPortionReviewInvalid)));
         return;
       }
-      await DatabaseService.instance.updateApproximatePortion(
+      await _database.updateApproximatePortion(
         scan: widget.approximateScan!,
         food: widget.food,
         label: foodData.label,
@@ -124,16 +128,17 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
     final calMax = double.tryParse(_calMaxCtrl.text) ?? widget.food.caloriesMax;
 
     if (widget.food.id != null) {
-      await DatabaseService.instance.updateDetectedFood(
+      await _database.updateDetectedFood(
         widget.food.id!,
         label: label,
         caloriesMin: calMin,
         caloriesMax: calMax,
         volumeCm3: volumeCm3,
+        recalculatedFood: _recalculatedFood,
       );
     } else {
       // No id yet — this is a newly added ingredient.
-      await DatabaseService.instance.insertDetectedFood(
+      await _database.insertDetectedFood(
         widget.scanId,
         DetectedFood(
           label: label,
@@ -156,7 +161,7 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
     if (widget.needsUserLabel &&
         label.isNotEmpty &&
         widget.labelEmbedding.isNotEmpty) {
-      await DatabaseService.instance.insertFoodExemplar(
+      await _database.insertFoodExemplar(
         label: label,
         embedding: widget.labelEmbedding,
         sourceScanId: widget.scanId,
@@ -383,9 +388,11 @@ class _EditFoodScreenState extends ConsumerState<EditFoodScreen> {
     FoodData? foodData,
     bool notify = true,
   }) {
+    _recalculatedFood = null;
     final grams = _parsePositiveDouble(_weightCtrl.text);
     final food = foodData ?? _foodForLabel();
     if (grams != null && food != null && food.kcalPer100g > 0) {
+      _recalculatedFood = food;
       final kcal = food.kcalPer100g * grams / 100.0;
       _calMinCtrl.text = (kcal * 0.95).round().toString();
       _calMaxCtrl.text = (kcal * 1.05).round().toString();

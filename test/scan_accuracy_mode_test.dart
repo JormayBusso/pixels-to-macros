@@ -1,16 +1,26 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:pixels_to_macros/core/app_localizations.dart';
 import 'package:pixels_to_macros/core/constants.dart';
+import 'package:pixels_to_macros/core/scan_state.dart';
 import 'package:pixels_to_macros/models/food_data.dart';
 import 'package:pixels_to_macros/models/scan_diagnostics.dart';
 import 'package:pixels_to_macros/models/scan_result.dart';
 import 'package:pixels_to_macros/models/user_preferences.dart';
 import 'package:pixels_to_macros/providers/analytics_provider.dart';
 import 'package:pixels_to_macros/providers/scan_result_provider.dart';
+import 'package:pixels_to_macros/providers/scan_state_provider.dart';
+import 'package:pixels_to_macros/providers/user_prefs_provider.dart';
+import 'package:pixels_to_macros/screens/scan_screen.dart';
+import 'package:pixels_to_macros/screens/settings_screen.dart';
 import 'package:pixels_to_macros/services/database_service.dart';
 import 'package:pixels_to_macros/services/native_bridge.dart';
 
@@ -26,6 +36,20 @@ class _MigrationDatabase extends Fake implements DatabaseExecutor {
   @override
   Future<void> execute(String sql, [List<Object?>? arguments]) async {
     this.sql = sql;
+  }
+}
+
+class _MemoryUserPrefsNotifier extends UserPrefsNotifier {
+  _MemoryUserPrefsNotifier(UserPreferences preferences) {
+    state = preferences;
+  }
+
+  Map<String, dynamic>? saved;
+
+  @override
+  Future<void> update(UserPreferences prefs) async {
+    saved = prefs.toMap();
+    state = UserPreferences.fromMap(saved!);
   }
 }
 
@@ -51,7 +75,7 @@ void main() {
         'ALTER TABLE user_preferences ADD COLUMN extra_accuracy INTEGER NOT NULL DEFAULT 1');
     final source =
         File('lib/services/database_service.dart').readAsStringSync();
-    expect(source, contains('version: 50'));
+    expect(source, contains('version: 52'));
     expect(source, contains('if (oldVersion < 49)'));
     expect(source,
         contains('extra_accuracy           INTEGER NOT NULL DEFAULT 1'));
@@ -69,6 +93,282 @@ void main() {
     final chosenOff = const UserPreferences().copyWith(extraAccuracy: false);
     expect(UserPreferences.fromMap(chosenOff.toMap()).extraAccuracy, isFalse);
   });
+
+  test('plate diameter is nullable for legacy rows and resets explicitly', () {
+    expect(const UserPreferences().plateDiameterCm, isNull);
+    expect(UserPreferences.fromMap({}).plateDiameterCm, isNull);
+    final custom = const UserPreferences().copyWith(plateDiameterCm: 24.5);
+    expect(custom.toMap()['plate_diameter_cm'], 24.5);
+    expect(UserPreferences.fromMap(custom.toMap()).plateDiameterCm, 24.5);
+    expect(custom.copyWith(name: 'A').plateDiameterCm, 24.5);
+    final reset = custom.copyWith(plateDiameterCm: null);
+    expect(reset.toMap()['plate_diameter_cm'], isNull);
+    expect(UserPreferences.fromMap(reset.toMap()).plateDiameterCm, isNull);
+    expect(custom.copyWith(plateDiameterCm: 25).plateDiameterCm, 25.0);
+    for (final value in [0.0, -1.0, double.nan, double.infinity]) {
+      expect(() => custom.copyWith(plateDiameterCm: value), throwsArgumentError);
+      expect(
+        UserPreferences.fromMap({'plate_diameter_cm': value}).plateDiameterCm,
+        isNull,
+      );
+      expect(
+        () => UserPreferences(plateDiameterCm: value).toMap(),
+        throwsArgumentError,
+      );
+    }
+  });
+
+  test('plate input accepts positive decimals and blank, rejects unsafe values',
+      () {
+    expect(UserPreferences.parsePlateDiameterCm(' 24,5 '), 24.5);
+    expect(UserPreferences.parsePlateDiameterCm('26.25'), 26.25);
+    expect(UserPreferences.parsePlateDiameterCm('  '), isNull);
+    for (final input in [
+      '0', '-1', 'NaN', 'Infinity', '-Infinity', '1e999', 'abc', '26 cm',
+    ]) {
+      expect(() => UserPreferences.parsePlateDiameterCm(input),
+          throwsFormatException);
+    }
+  });
+
+  test('version51 adds a nullable plate diameter without backfilling legacy rows',
+      () async {
+    final db = _MigrationDatabase();
+    await DatabaseService.migratePlateDiameter(db);
+    expect(db.sql,
+        'ALTER TABLE user_preferences ADD COLUMN plate_diameter_cm REAL');
+    final source = File('lib/services/database_service.dart').readAsStringSync();
+    expect(source, contains('version: 52'));
+    expect(source, contains('if (oldVersion < 51)'));
+    expect(source, contains('await migratePlateDiameter(db)'));
+    expect(source, contains('plate_diameter_cm        REAL'));
+  });
+
+  test('bridge omits unset diameter and rejects invalid values before native',
+      () async {
+    const channel = MethodChannel(AppConstants.methodChannelName);
+    final calls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return '[]';
+    });
+    addTearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null));
+    await NativeBridge.instance.runVideoInference();
+    for (final value in [0.0, -1.0, double.nan, double.infinity]) {
+      await expectLater(
+        NativeBridge.instance.runVideoInference(plateDiameterCm: value),
+        throwsArgumentError,
+      );
+    }
+    expect(calls.length, 1);
+    expect((calls.single.arguments as Map).containsKey('plate_diameter_cm'),
+        isFalse);
+  });
+
+  for (final extraAccuracy in [true, false]) {
+    test('provider forwards plate diameter and exemplars in mode=$extraAccuracy',
+        () async {
+      const channel = MethodChannel(AppConstants.methodChannelName);
+      final calls = <MethodCall>[];
+      const exemplars = [
+        {'label': 'rice', 'embedding': [0.1, 0.2]},
+      ];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return '[]';
+      });
+      addTearDown(() => TestDefaultBinaryMessengerBinding
+          .instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null));
+      final notifier =
+          ScanResultNotifier(lookupExemplars: () async => exemplars);
+      addTearDown(notifier.dispose);
+      await notifier.runVideoScan(
+          extraAccuracy: extraAccuracy, plateDiameterCm: 24.5);
+      await notifier.runVideoScan(extraAccuracy: extraAccuracy);
+      expect((calls.first.arguments as Map)['plate_diameter_cm'], 24.5);
+      expect((calls.last.arguments as Map).containsKey('plate_diameter_cm'),
+          isFalse);
+      for (final call in calls) {
+        expect((call.arguments as Map)['user_exemplars'], exemplars);
+        expect((call.arguments as Map)['scan_mode'],
+            extraAccuracy ? 'strict' : 'approximate');
+      }
+    });
+  }
+
+  for (final language in ['en', 'nl', 'es', 'de', 'pl']) {
+    testWidgets('plate setting validates, saves and resets in $language',
+        (tester) async {
+      final prefs = _MemoryUserPrefsNotifier(const UserPreferences());
+      final container = ProviderContainer(overrides: [
+        userPrefsProvider.overrideWith((ref) => prefs),
+      ]);
+      addTearDown(container.dispose);
+      final l10n = AppLocalizations(Locale(language));
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          locale: Locale(language),
+          supportedLocales: [Locale(language)],
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: const Scaffold(
+            body: SingleChildScrollView(child: PlateDiameterSetting()),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.knownPlateDiameterHelp), findsOneWidget);
+      expect(find.text(l10n.assumedPlateDiameter), findsOneWidget);
+      await tester.enterText(find.byType(TextFormField), 'NaN');
+      await tester.tap(find.text(l10n.save));
+      await tester.pump();
+      expect(find.text(l10n.plateDiameterInvalid), findsOneWidget);
+      expect(prefs.saved, isNull);
+      await tester.enterText(find.byType(TextFormField), '24,5');
+      await tester.tap(find.text(l10n.save));
+      await tester.pump();
+      expect(prefs.saved!['plate_diameter_cm'], 24.5);
+      expect(prefs.state.plateDiameterCm, 24.5);
+      await tester.tap(find.text(l10n.resetPlateDiameter));
+      await tester.pump();
+      expect(prefs.saved!['plate_diameter_cm'], isNull);
+      expect(
+        tester.widget<TextFormField>(find.byType(TextFormField)).controller!.text,
+        isEmpty,
+      );
+      await tester.enterText(find.byType(TextFormField), '25');
+      await tester.tap(find.text(l10n.save));
+      await tester.pump();
+      await tester.enterText(find.byType(TextFormField), '');
+      await tester.tap(find.text(l10n.save));
+      await tester.pump();
+      expect(prefs.saved!['plate_diameter_cm'], isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  for (final extraAccuracy in [true, false]) {
+    for (final diameter in <double?>[null, 24.5]) {
+      testWidgets(
+          'capture snapshots mode=$extraAccuracy diameter=$diameter before top photo',
+          (tester) async {
+        const scanner = MethodChannel(AppConstants.methodChannelName);
+        const liveGlow = MethodChannel('com.pixelstomacros/live_glow');
+        const permissions =
+            MethodChannel('flutter.baseflow.com/permissions/methods');
+        final prefs = _MemoryUserPrefsNotifier(UserPreferences(
+          hasSeenScanTutorial: true,
+          extraAccuracy: extraAccuracy,
+          plateDiameterCm: diameter,
+        ));
+        final container = ProviderContainer(overrides: [
+          userPrefsProvider.overrideWith((ref) => prefs),
+          scanResultProvider.overrideWith(
+              (ref) => ScanResultNotifier(lookupExemplars: () async => [])),
+        ]);
+        addTearDown(container.dispose);
+        final calls = <MethodCall>[];
+        var topCaptures = 0;
+        var sideCaptures = 0;
+        final messenger = TestDefaultBinaryMessengerBinding
+            .instance.defaultBinaryMessenger;
+        messenger.setMockMethodCallHandler(permissions,
+            (_) async => {Permission.camera.value: 1});
+        messenger.setMockMethodCallHandler(SystemChannels.platform_views,
+            (_) async => null);
+        messenger.setMockMethodCallHandler(SystemChannels.platform,
+            (_) async => null);
+        messenger.setMockMethodCallHandler(liveGlow, (_) async => null);
+        messenger.setMockMethodCallHandler(scanner, (call) async {
+          switch (call.method) {
+            case 'startSession':
+              return 1;
+            case 'getDepthMode':
+              return 'monocular_scale';
+            case 'getPhonePitch':
+              final state = container.read(scanStateProvider);
+              return state == ScanState.moveSide ||
+                      state == ScanState.captureSide
+                  ? 0.0
+                  : -1.5707963267948966;
+            case 'getMotionStability':
+              return 1.0;
+            case 'getAmbientIntensity':
+              return 500.0;
+            case 'captureTopFrame':
+              topCaptures++;
+              await prefs.update(prefs.state.copyWith(
+                  extraAccuracy: !extraAccuracy, plateDiameterCm: 31.0));
+              return true;
+            case 'captureSideFrame':
+              sideCaptures++;
+              return true;
+            case 'runVideoInference':
+              calls.add(call);
+              return '[]';
+            default:
+              return null;
+          }
+        });
+        addTearDown(() {
+          messenger.setMockMethodCallHandler(scanner, null);
+          messenger.setMockMethodCallHandler(permissions, null);
+          messenger.setMockMethodCallHandler(SystemChannels.platform_views, null);
+          messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+          messenger.setMockMethodCallHandler(liveGlow, null);
+        });
+        await tester.pumpWidget(UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            localizationsDelegates: const [AppLocalizations.delegate],
+            home: const ScanScreen(),
+          ),
+        ));
+        for (var tick = 0; tick < 60 && calls.isEmpty; tick++) {
+          await tester.pump(const Duration(milliseconds: 80));
+        }
+        expect(calls.length, 1);
+        expect(topCaptures, 1);
+        expect(sideCaptures, extraAccuracy ? 1 : 0);
+        final arguments = calls.single.arguments as Map;
+        expect(arguments['scan_mode'], extraAccuracy ? 'strict' : 'approximate');
+        expect(arguments.containsKey('plate_diameter_cm'), diameter != null);
+        if (diameter != null) {
+          expect(arguments['plate_diameter_cm'], diameter);
+        }
+        final nextDiameter = diameter == null ? 31.0 : null;
+        await prefs.update(prefs.state.copyWith(plateDiameterCm: nextDiameter));
+        await tester.pump();
+        await tester.tap(find.text(AppLocalizations(const Locale('en')).retry));
+        for (var tick = 0; tick < 60 && calls.length < 2; tick++) {
+          await tester.pump(const Duration(milliseconds: 80));
+        }
+        expect(calls.length, 2);
+        expect(topCaptures, 2);
+        expect(sideCaptures, 1);
+        final retryArguments = calls.last.arguments as Map;
+        expect(retryArguments['scan_mode'],
+            extraAccuracy ? 'approximate' : 'strict');
+        expect(retryArguments.containsKey('plate_diameter_cm'),
+            nextDiameter != null);
+        if (nextDiameter != null) {
+          expect(retryArguments['plate_diameter_cm'], nextDiameter);
+        }
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
+    }
+  }
 
   test(
       'bridge sends explicit strict default or approximate without changing exemplars',

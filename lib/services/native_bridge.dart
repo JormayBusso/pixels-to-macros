@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../core/constants.dart';
+import '../models/user_preferences.dart';
 
 /// Thin wrapper around [MethodChannel] for communicating with the
 /// native Swift scanner pipeline.
@@ -144,7 +145,11 @@ class NativeBridge {
   Future<List<Map<String, dynamic>>> runVideoInference({
     List<Map<String, dynamic>> userExemplars = const [],
     bool extraAccuracy = true,
+    double? plateDiameterCm,
   }) async {
+    if (!UserPreferences.isValidPlateDiameterCm(plateDiameterCm)) {
+      throw ArgumentError.value(plateDiameterCm, 'plateDiameterCm');
+    }
     debugPrint('[SCAN] NativeBridge.runVideoInference() called '
         '(exemplars=${userExemplars.length})');
     try {
@@ -153,6 +158,7 @@ class NativeBridge {
         {
           'user_exemplars': userExemplars,
           'scan_mode': extraAccuracy ? 'strict' : 'approximate',
+          if (plateDiameterCm != null) 'plate_diameter_cm': plateDiameterCm,
         },
       ).timeout(const Duration(seconds: 75));
       debugPrint(

@@ -53,7 +53,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 50,
+      version: 52,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -117,6 +117,8 @@ class DatabaseService {
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         scan_id     INTEGER NOT NULL,
         label       TEXT    NOT NULL,
+        nutrition_food_id INTEGER,
+        nutrition_food_label TEXT,
         volume_cm3  REAL    NOT NULL,
         calories_min REAL   NOT NULL,
         calories_max REAL   NOT NULL,
@@ -165,7 +167,8 @@ class DatabaseService {
         premium_unlocked         INTEGER NOT NULL DEFAULT 0,
         premium_theme_light      INTEGER NOT NULL DEFAULT 0,
         health_sync_enabled      INTEGER NOT NULL DEFAULT 0,
-        extra_accuracy           INTEGER NOT NULL DEFAULT 1
+        extra_accuracy           INTEGER NOT NULL DEFAULT 1,
+        plate_diameter_cm        REAL
       )
     ''');
     await db.insert('user_preferences', const UserPreferences().toMap());
@@ -776,7 +779,23 @@ class DatabaseService {
     if (oldVersion < 50) {
       await restoreExtraAccuracyDefault(db);
     }
+    if (oldVersion < 51) {
+      await migratePlateDiameter(db);
+    }
+    if (oldVersion < 52) {
+      await migrateNutritionFoodIdentity(db);
+    }
   }
+
+  @visibleForTesting
+  static Future<void> migrateNutritionFoodIdentity(DatabaseExecutor db) async {
+    await db.execute('ALTER TABLE detected_foods ADD COLUMN nutrition_food_id INTEGER');
+    await db.execute('ALTER TABLE detected_foods ADD COLUMN nutrition_food_label TEXT');
+  }
+
+  @visibleForTesting
+  static Future<void> migratePlateDiameter(DatabaseExecutor db) => db.execute(
+      'ALTER TABLE user_preferences ADD COLUMN plate_diameter_cm REAL');
 
   @visibleForTesting
   static Future<void> migrateExtraAccuracy(DatabaseExecutor db) => db.execute(
@@ -4965,10 +4984,52 @@ class DatabaseService {
     return getFoodByLabel(match);
   }
 
+  Future<FoodData?> getFoodForNutrition(
+    DetectedFood food, {
+    bool legacyAliasFirst = true,
+  }) async {
+    if (food.nutritionFoodId != null || food.nutritionFoodLabel != null) {
+      if (food.nutritionFoodId == null ||
+          food.nutritionFoodId! <= 0 ||
+          food.nutritionFoodLabel == null) {
+        return null;
+      }
+      final db = await database;
+      final rows = await db.query(
+        'food_data',
+        where: 'id = ? AND label = ?',
+        whereArgs: [food.nutritionFoodId, food.nutritionFoodLabel],
+        limit: 1,
+      );
+      return rows.isEmpty ? null : FoodData.fromMap(rows.first);
+    }
+
+    const aliases = {'chicken duck': 'chicken'};
+    final label = legacyAliasFirst
+        ? aliases[food.label.toLowerCase()] ?? food.label
+        : food.label.toLowerCase();
+    return getFoodByLabel(label);
+  }
+
   Future<int> insertFood(FoodData food) async {
     final db = await database;
-    return db.insert('food_data', food.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    return db.transaction((txn) async {
+      final replaced = await txn.query(
+        'food_data',
+        columns: ['id'],
+        where: 'id = ? OR label = ?',
+        whereArgs: [food.id, food.label],
+      );
+      for (final row in replaced) {
+        // Keep a non-null invalid marker so provenance never falls back to a
+        // different row after a replacement, even if its id is reused.
+        await txn.update('detected_foods',
+            {'nutrition_food_id': DetectedFood.unresolvedNutritionFoodId},
+            where: 'nutrition_food_id = ?', whereArgs: [row['id']]);
+      }
+      return txn.insert('food_data', food.toMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    });
   }
 
   // ── scan_results CRUD ────────────────────────────────────────────────────
@@ -5015,12 +5076,7 @@ class DatabaseService {
       double carbsSum = 0;
       double fatSum = 0;
       for (final food in result.foods) {
-        var lookupLabel = food.label;
-        const aliases = {'chicken duck': 'chicken'};
-        if (aliases.containsKey(lookupLabel.toLowerCase())) {
-          lookupLabel = aliases[lookupLabel.toLowerCase()]!;
-        }
-        final foodData = await getFoodByLabel(lookupLabel);
+        final foodData = await getFoodForNutrition(food);
         if (foodData != null && foodData.kcalPer100g > 0) {
           final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
           final weightG = avgCal / (foodData.kcalPer100g / 100);
@@ -5216,6 +5272,8 @@ class DatabaseService {
           'detected_foods',
           {
             'label': label,
+            'nutrition_food_id': null,
+            'nutrition_food_label': null,
             'volume_cm3': 0,
             'calories_min': calories,
             'calories_max': calories,
@@ -5234,24 +5292,52 @@ class DatabaseService {
     required double caloriesMin,
     required double caloriesMax,
     double? volumeCm3,
+    FoodData? recalculatedFood,
   }) async {
     final db = await database;
-    await db.update(
-      'detected_foods',
-      {
-        'label': label,
-        if (volumeCm3 != null) 'volume_cm3': volumeCm3,
-        'calories_min': caloriesMin,
-        'calories_max': caloriesMax,
-      },
-      where: 'id = ?',
-      whereArgs: [foodId],
-    );
+    await db.transaction((txn) async {
+      final identityRows = await txn.query(
+        'detected_foods',
+        columns: ['label', 'nutrition_food_id', 'nutrition_food_label'],
+        where: 'id = ?',
+        whereArgs: [foodId],
+      );
+      if (identityRows.isEmpty) return;
+      final previous = identityRows.single;
+      final changedLabel = previous['label'] != label;
+      final hasIdentity = previous['nutrition_food_id'] != null ||
+          previous['nutrition_food_label'] != null;
+      await txn.update(
+        'detected_foods',
+        {
+          'label': label,
+          if (hasIdentity && recalculatedFood != null) ...{
+            'nutrition_food_id': recalculatedFood.id ??
+                DetectedFood.unresolvedNutritionFoodId,
+            'nutrition_food_label':
+                recalculatedFood.id == null ? null : recalculatedFood.label,
+          } else if (hasIdentity && changedLabel) ...{
+            'nutrition_food_id': DetectedFood.unresolvedNutritionFoodId,
+            'nutrition_food_label': null,
+          },
+          if (volumeCm3 != null) 'volume_cm3': volumeCm3,
+          'calories_min': caloriesMin,
+          'calories_max': caloriesMax,
+        },
+        where: 'id = ?',
+        whereArgs: [foodId],
+      );
+    });
   }
 
   Future<void> deleteFood(int foodId) async {
     final db = await database;
-    await db.delete('food_data', where: 'id = ?', whereArgs: [foodId]);
+    await db.transaction((txn) async {
+      await txn.update('detected_foods',
+          {'nutrition_food_id': DetectedFood.unresolvedNutritionFoodId},
+          where: 'nutrition_food_id = ?', whereArgs: [foodId]);
+      await txn.delete('food_data', where: 'id = ?', whereArgs: [foodId]);
+    });
   }
 
   /// Delete a single detected food from a scan (cascades to ground_truth).

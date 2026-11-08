@@ -34,7 +34,7 @@ class AiScanEdgeGlow extends StatefulWidget {
 }
 
 class _AiScanEdgeGlowState extends State<AiScanEdgeGlow>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _flow;
   late final AnimationController _fade;
 

@@ -87,14 +87,17 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
     Future<List<Map<String, dynamic>>> Function()? runInference,
     Future<FoodData?> Function(String)? lookupFood,
     Future<double?> Function(String)? lookupPortion,
+    Future<List<Map<String, dynamic>>> Function()? lookupExemplars,
   })  : _runInference = runInference,
         _lookupFood = lookupFood,
         _lookupPortion = lookupPortion,
+        _lookupExemplars = lookupExemplars,
         super(const ScanResultState());
 
   final Future<List<Map<String, dynamic>>> Function()? _runInference;
   final Future<FoodData?> Function(String)? _lookupFood;
   final Future<double?> Function(String)? _lookupPortion;
+  final Future<List<Map<String, dynamic>>> Function()? _lookupExemplars;
 
   /// Maps model output labels to user-friendly DB labels where they differ.
   static const _labelAliases = {
@@ -184,14 +187,20 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
   }
 
   /// Run the multi-frame video inference pipeline.
-  Future<void> runVideoScan({bool extraAccuracy = true}) async {
+  Future<void> runVideoScan({
+    bool extraAccuracy = true,
+    double? plateDiameterCm,
+  }) async {
     state = ScanResultState(loading: true, approximate: !extraAccuracy);
 
     try {
       // Load the user's on-device label corrections so the native pipeline can
       // recognise foods they've already taught it. Local SQLite only.
       final rawVolumes = await (_runInference?.call() ??
-          _runNativeInference(extraAccuracy: extraAccuracy));
+          _runNativeInference(
+            extraAccuracy: extraAccuracy,
+            plateDiameterCm: plateDiameterCm,
+          ));
       debugPrint(
           '[SCAN] Flutter received ${rawVolumes.length} raw items from native');
       for (final vol in rawVolumes) {
@@ -317,6 +326,8 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
 
         foods.add(DetectedFood(
           label: label,
+          nutritionFoodId: foodData?.id ?? DetectedFood.unresolvedNutritionFoodId,
+          nutritionFoodLabel: foodData?.id == null ? null : foodData?.label,
           volumeCm3: volumeCm3,
           caloriesMin: calMin,
           caloriesMax: calMax,
@@ -422,10 +433,15 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
 
   Future<List<Map<String, dynamic>>> _runNativeInference({
     required bool extraAccuracy,
+    double? plateDiameterCm,
   }) async {
-    final userExemplars = await DatabaseService.instance.getFoodExemplars();
+    final userExemplars = await (_lookupExemplars?.call() ??
+        DatabaseService.instance.getFoodExemplars());
     return NativeBridge.instance.runVideoInference(
-        userExemplars: userExemplars, extraAccuracy: extraAccuracy);
+      userExemplars: userExemplars,
+      extraAccuracy: extraAccuracy,
+      plateDiameterCm: plateDiameterCm,
+    );
   }
 
   @visibleForTesting

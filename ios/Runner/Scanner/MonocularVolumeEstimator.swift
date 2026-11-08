@@ -386,6 +386,7 @@ final class MonocularVolumeEstimator {
         sidePreprocessedRGB: CVPixelBuffer? = nil,
         tableDistanceCm: Double? = nil,
         preprocessingPlate: PlateDetector.PlateResult? = nil,
+        knownPlateDiameterCm: Double? = nil,
         captureProvenance: String? = nil
     ) throws -> Result {
         guard sideFrame != nil else {
@@ -406,7 +407,8 @@ final class MonocularVolumeEstimator {
             maskWidth: maskWidth,
             maskHeight: maskHeight,
             tableDistanceCm: tableDistanceCm,
-            preprocessingPlate: preprocessingPlate
+            preprocessingPlate: preprocessingPlate,
+            knownPlateDiameterCm: knownPlateDiameterCm
         )
         guard scale.pixelsPerCm.isFinite, scale.pixelsPerCm > 0 else {
             throw EstimateError.sideViewRequired(scale.fallbackReason ?? "invalid_calibration")
@@ -837,7 +839,8 @@ final class MonocularVolumeEstimator {
         maskWidth: Int,
         maskHeight: Int,
         tableDistanceCm: Double? = nil,
-        preprocessingPlate: PlateDetector.PlateResult? = nil
+        preprocessingPlate: PlateDetector.PlateResult? = nil,
+        knownPlateDiameterCm: Double? = nil
     ) -> ScaleEstimate {
         let imageWidth = CVPixelBufferGetWidth(topFrame.pixelBuffer)
         // The segmentation mask is a square resize of this crop. A credible
@@ -847,11 +850,16 @@ final class MonocularVolumeEstimator {
         let cropWidthPx = Double(plate.rect.width) * Double(imageWidth)
         let cropHeightPx = Double(plate.rect.height) * Double(CVPixelBufferGetHeight(topFrame.pixelBuffer))
         let fx = Double(topFrame.cameraIntrinsics.columns.0.x)
+        let effectivePlateDiameterCm = knownPlateDiameterCm ?? Double(PlateDetector.defaultDiameterCm)
+        let plateDiameterSource = knownPlateDiameterCm == nil ? "assumed_default" : "user_entered"
+        let plateDiameterIsValid = effectivePlateDiameterCm.isFinite && effectivePlateDiameterCm > 0
+        let plateDiameterCandidateEligible = plate.detected && plate.diameterPx > 0 && plateDiameterIsValid
+        var plateDiameterApplied = false
 
         let plateDiameterPxPerCm: Double? = {
-            guard plate.detected, plate.diameterPx > 0 else { return nil }
+            guard plateDiameterCandidateEligible else { return nil }
             let diameterInMask = Double(plate.diameterPx) * Double(maskWidth) / cropWidthPx
-            let pxPerCm = diameterInMask / Double(PlateDetector.defaultDiameterCm)
+            let pxPerCm = diameterInMask / effectivePlateDiameterCm
             guard pxPerCm.isFinite, pxPerCm >= 4.0, pxPerCm <= 80.0 else { return nil }
             return pxPerCm
         }()
@@ -895,7 +903,9 @@ final class MonocularVolumeEstimator {
                 "scaleActualCropTL=\(plate.rect.minX),\(plate.rect.minY),\(plate.rect.width),\(plate.rect.height) " +
                 "scaleCropWidthPx=\(cropWidthPx) mask=\(maskWidth)x\(maskHeight) fx=\(fx) " +
                 "columnPixelsPerCm=\(pixelsPerCm) rowPixelsPerCm=\(rowScale) " +
-                "assumedPlateDiameterCm=\(PlateDetector.defaultDiameterCm) detectedPlateDiameterPx=\(plate.diameterPx) " +
+                "plateDiameterCm=\(effectivePlateDiameterCm) plateDiameterSource=\(plateDiameterSource) " +
+                "plateDiameterApplied=\(plateDiameterApplied) defaultPlateDiameterCm=\(PlateDetector.defaultDiameterCm) " +
+                "detectedPlateDiameterPx=\(plate.diameterPx) " +
                 "assumedGuidedDistanceCm=\(guidedDistanceCm) " +
                 "plateCandidate={\(candidate(plateDiameterPxPerCm, available: plate.detected))} " +
                 "planeCandidate={\(candidate(planePxPerCm, available: tableDistanceCm != nil))} " +
@@ -903,6 +913,11 @@ final class MonocularVolumeEstimator {
                 "intrinsicGuidedPxPerCm=\(intrinsicGuidedPxPerCm.map(String.init(describing:)) ?? "nil") guidedDistanceIsAssumption=true cropSource=\(preprocessingPlate == nil ? "standalone_detection" : "preprocessing")"
             print("[ScaleValidation] \(result.provenance)")
             return result
+        }
+
+        guard plateDiameterIsValid else {
+            return selected(pixelsPerCm: .nan, source: "calibration_invalid", confidence: 0,
+                            fallbackReason: "invalid_plate_diameter_cm")
         }
 
         let crop = plate.rect
@@ -915,6 +930,7 @@ final class MonocularVolumeEstimator {
         }
 
         if let platePxPerCm = plateDiameterPxPerCm {
+            plateDiameterApplied = true
             logScaleValidation(chosenPxPerCm: platePxPerCm, plateDetected: true,
                                maskWidth: maskWidth, maskHeight: maskHeight, source: "plate_diameter")
             return selected(pixelsPerCm: platePxPerCm, source: "plate_diameter",

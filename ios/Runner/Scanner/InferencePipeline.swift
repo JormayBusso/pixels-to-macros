@@ -347,7 +347,14 @@ final class InferencePipeline {
               "\(Set(userExemplars.map { $0.label }).count) labels")
     }
 
-    func runVideoScan(recorder: MultiFrameRecorder) throws -> String {
+    static func monocularPlateDiameterCm(_ diameterCm: Double?, hasDepthData: Bool) -> Double? {
+        hasDepthData ? nil : diameterCm
+    }
+
+    func runVideoScan(
+        recorder: MultiFrameRecorder,
+        knownPlateDiameterCm: Double? = nil
+    ) throws -> String {
         lastModel3DPath = nil
         lastModel3DObjects = []
 
@@ -721,6 +728,10 @@ final class InferencePipeline {
                     sidePreprocessedRGB: capturedSideRGB,
                     tableDistanceCm: recorder.tableDistanceCm,
                     preprocessingPlate: plate,
+                    // This user setting calibrates only the monocular plate
+                    // reference. LiDAR keeps its measured world-space scale.
+                    knownPlateDiameterCm: Self.monocularPlateDiameterCm(
+                        knownPlateDiameterCm, hasDepthData: recorder.hasDepthData),
                     captureProvenance: captureProvenance
                 )
             } catch MonocularVolumeEstimator.EstimateError.sideViewRequired(let reason) {

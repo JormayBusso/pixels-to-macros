@@ -156,9 +156,13 @@ class ScanResult {
 
 /// One food item detected in a scan.
 class DetectedFood {
+  static const int unresolvedNutritionFoodId = -1;
+
   final int? id;
   final int? scanId;
   final String label;
+  final int? nutritionFoodId;
+  final String? nutritionFoodLabel;
   final double volumeCm3;
   final double caloriesMin;
   final double caloriesMax;
@@ -167,6 +171,8 @@ class DetectedFood {
     this.id,
     this.scanId,
     required this.label,
+    this.nutritionFoodId,
+    this.nutritionFoodLabel,
     required this.volumeCm3,
     required this.caloriesMin,
     required this.caloriesMax,
@@ -177,6 +183,8 @@ class DetectedFood {
       if (id != null) 'id': id,
       if (scanId != null) 'scan_id': scanId,
       'label': label,
+      'nutrition_food_id': nutritionFoodId,
+      'nutrition_food_label': nutritionFoodLabel,
       'volume_cm3': volumeCm3,
       'calories_min': caloriesMin,
       'calories_max': caloriesMax,
@@ -188,6 +196,8 @@ class DetectedFood {
       id: map['id'] as int?,
       scanId: map['scan_id'] as int?,
       label: map['label'] as String,
+      nutritionFoodId: map['nutrition_food_id'] as int?,
+      nutritionFoodLabel: map['nutrition_food_label'] as String?,
       volumeCm3: (map['volume_cm3'] as num).toDouble(),
       caloriesMin: (map['calories_min'] as num).toDouble(),
       caloriesMax: (map['calories_max'] as num).toDouble(),

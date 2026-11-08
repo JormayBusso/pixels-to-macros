@@ -1,6 +1,7 @@
 ﻿import Flutter
 import Foundation
 import AVFoundation
+import CoreFoundation
 import UIKit
 
 /// Central MethodChannel handler.
@@ -9,6 +10,27 @@ import UIKit
 /// native service. All JSON encoding / decoding happens here so
 /// the individual services stay transport-agnostic.
 final class ScannerPlugin {
+
+    enum PlateDiameterArgumentError: Error {
+        case invalidValue
+    }
+
+    static func validatedPlateDiameterCm(from arguments: Any?) throws -> Double? {
+        guard let args = arguments as? [String: Any],
+              let value = args["plate_diameter_cm"],
+              !(value is NSNull) else {
+            return nil
+        }
+        guard let number = value as? NSNumber,
+              CFGetTypeID(number) != CFBooleanGetTypeID() else {
+            throw PlateDiameterArgumentError.invalidValue
+        }
+        let diameterCm = number.doubleValue
+        guard diameterCm.isFinite, diameterCm > 0 else {
+            throw PlateDiameterArgumentError.invalidValue
+        }
+        return diameterCm
+    }
 
     // MARK: - Channel name (must match Dart side)
 
@@ -133,15 +155,26 @@ final class ScannerPlugin {
             result(nil)
 
         case "runVideoInference":
-            let approximate = (call.arguments as? [String: Any])?["scan_mode"] as? String == "approximate"
+            let args = call.arguments as? [String: Any]
+            let approximate = args?["scan_mode"] as? String == "approximate"
+            let plateDiameterCm: Double?
+            do {
+                plateDiameterCm = try Self.validatedPlateDiameterCm(from: call.arguments)
+            } catch {
+                result(FlutterError(
+                    code: "INVALID_PLATE_DIAMETER",
+                    message: "plate_diameter_cm must be a finite number greater than zero",
+                    details: nil
+                ))
+                return
+            }
             inferenceInFlight = true
             recorder.stopRecording()
             // On-device exemplar learning: Dart passes the user's locally-stored
             // label corrections so the pipeline can recognise foods the user has
             // already taught it. This data comes from local SQLite and is never
             // uploaded — it only travels Dart→native over this in-process channel.
-            if let args = call.arguments as? [String: Any],
-               let exemplars = args["user_exemplars"] as? [[String: Any]] {
+            if let args, let exemplars = args["user_exemplars"] as? [[String: Any]] {
                 pipeline.setUserExemplars(exemplars)
             } else {
                 pipeline.setUserExemplars([])
@@ -167,7 +200,10 @@ final class ScannerPlugin {
                             lastVideoPLY = nil
                             jsonResult = try pipeline.runApproximateScan(recorder: recorder)
                         } else {
-                            jsonResult = try pipeline.runVideoScan(recorder: recorder)
+                            jsonResult = try pipeline.runVideoScan(
+                                recorder: recorder,
+                                knownPlateDiameterCm: plateDiameterCm
+                            )
                             lastVideoPLY = pointCloudExporter.exportFromRecorder(recorder: recorder)
                         }
                     } catch {

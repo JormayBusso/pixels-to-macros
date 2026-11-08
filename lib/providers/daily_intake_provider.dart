@@ -37,13 +37,22 @@ class DailyIntake {
 }
 
 class DailyIntakeNotifier extends StateNotifier<DailyIntake> {
-  DailyIntakeNotifier() : super(const DailyIntake());
+  DailyIntakeNotifier({
+    DatabaseService? database,
+    Future<void> Function()? refreshMealReminders,
+  })  : _database = database ?? DatabaseService.instance,
+        _refreshMealReminders = refreshMealReminders ??
+            NotificationService.instance.refreshMealReminders,
+        super(const DailyIntake());
+
+  final DatabaseService _database;
+  final Future<void> Function() _refreshMealReminders;
 
   Future<void> load() async {
     state = const DailyIntake(loading: true);
 
     try {
-      final allScans = await DatabaseService.instance.getAllScanResults();
+      final allScans = await _database.getAllScanResults();
       final now = DateTime.now();
       final todayStart = DateTime(now.year, now.month, now.day);
 
@@ -66,14 +75,7 @@ class DailyIntakeNotifier extends StateNotifier<DailyIntake> {
 
         // Estimate macros from food DB lookup
         for (final food in scan.foods) {
-          // Map legacy model labels (e.g. "chicken duck" → "chicken").
-          var lookupLabel = food.label;
-          const aliases = {'chicken duck': 'chicken'};
-          if (aliases.containsKey(lookupLabel.toLowerCase())) {
-            lookupLabel = aliases[lookupLabel.toLowerCase()]!;
-          }
-          final foodData =
-              await DatabaseService.instance.getFoodByLabel(lookupLabel);
+          final foodData = await _database.getFoodForNutrition(food);
           if (foodData != null && foodData.kcalPer100g > 0) {
             final avgCal = (food.caloriesMin + food.caloriesMax) / 2;
             final weightG = avgCal / (foodData.kcalPer100g / 100);
@@ -107,7 +109,7 @@ class DailyIntakeNotifier extends StateNotifier<DailyIntake> {
 
     // Re-evaluate meal reminders so a meal that was just logged has its
     // pending reminder cancelled (best-effort, never blocks intake loading).
-    unawaited(NotificationService.instance.refreshMealReminders());
+    unawaited(_refreshMealReminders());
   }
 }
 
