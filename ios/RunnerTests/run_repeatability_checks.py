@@ -4,8 +4,9 @@ Plate detection is fixture-injected; AR/ML inference and segmentation/matching
 entry points are not executed. Height statements are extracted verbatim after
 profile construction and checked against known metric fixtures.
 Todo03 executes the full monocular estimator, reconstruction/color methods and
-real sidecar serializer. The ModelIO export wrapper and disabled MonoDepth are
-stubbed; no USDZ/texture-bake integration or full-app XCTest pass is implied.
+real sidecar serializer, photo atlas bake and SceneKit geometry/material setup.
+The ModelIO export wrapper and disabled MonoDepth are stubbed; no USDZ export,
+GPU rendering or full-app XCTest pass is implied.
 """
 from pathlib import Path
 import re
@@ -48,8 +49,13 @@ host_tests = re.findall(r"func (test\w+)\(", tests)
 # UIKit image/EXIF integration belongs to the real app XCTest target, not this
 # macOS extraction harness.
 host_tests = [name for name in host_tests if not name.startswith("testPantryUIKit")]
+# Live-only fixtures are executed by run_live_overlay_checks.py.
+host_tests = [name for name in host_tests if not name.startswith(
+    ("testLive", "testOverlappingLive", "testConfirmedLive")
+)]
+viewer = (scanner / "Scan3DViewerPlugin.swift").read_text()
 source = [
-    "import Foundation\nimport CoreGraphics\nimport CoreVideo\nimport CoreImage\nimport Accelerate\nimport simd\nimport SceneKit",
+    "import Foundation\nimport CoreGraphics\nimport CoreVideo\nimport CoreImage\nimport ImageIO\nimport UniformTypeIdentifiers\nimport Accelerate\nimport simd\nimport SceneKit\nimport AppKit\ntypealias UIColor = NSColor",
     """func XCTAssertTrue(_ x: Bool) { precondition(x) }
 func XCTAssertFalse(_ x: Bool) { precondition(!x) }
 func XCTAssertNotNil<T>(_ x: T?) { precondition(x != nil) }
@@ -94,10 +100,7 @@ func XCTAssertEqual(_ a: Double, _ b: Double, accuracy: Double) {
         ]
     )
     + "\n}",
-    "final class Food3DTextureBaker {\n"
-    + re.search(r"    private static let context =[^\n]+", baker).group(0) + "\n"
-    + "\n".join(re.findall(r"    static let atlas[^\n]+", baker)) + "\n"
-    + declaration(baker, "static func bgraCopy(") + "\n}",
+    declaration(baker, "enum Food3DTextureBaker"),
     "final class MonoDepthService {\n"
     + declaration(mono_depth, "struct DepthGrid") + "\n"
     + declaration(mono_depth, "struct ReliefGrid") + """
@@ -171,8 +174,12 @@ func XCTAssertEqual(_ a: Double, _ b: Double, accuracy: Double) {
                 result.fallbackReason, result.provenance)
     }
     \n}""",
-    "final class Scan3DViewerPlugin {\n"
-    + declaration((scanner / "Scan3DViewerPlugin.swift").read_text(), "static func computeSmoothNormals(")
+    "final class Scan3DViewer {\n"
+    + declaration(viewer, "struct SidecarObject") + "\n"
+    + re.search(r'    private static let vertexColorGeometryModifier = """[\s\S]*?"""', viewer).group(0) + "\n"
+    + re.search(r'    private static let vertexColorSurfaceModifier = """[\s\S]*?"""', viewer).group(0) + "\n"
+    + declaration(viewer, "static func buildScene(") + "\n"
+    + declaration(viewer, "static func computeSmoothNormals(")
     + "\n}",
     "class RunnerTests {\n"
     + "\n".join(declaration(tests, f"func {name}(") for name in host_tests)

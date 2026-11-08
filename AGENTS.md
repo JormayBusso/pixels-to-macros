@@ -291,7 +291,7 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
   implemented for each path on its own terms — never edit one and assume the other follows.
   The **final 3D model must look the SAME to the user on both paths**: source-resolution
   silhouette support without added shape or geometry smoothing/subdivision/Taubin,
-  same per-vertex color source, and the same
+  same captured TOP+SIDE photo atlas (sampled vertex colors when unavailable), and the same
   `volume_source=display_mesh` contract. State in your report what you did for each path.
 - **ALWAYS use the EXACT silhouette — hard-forced, no fallback shape.** On BOTH paths the 3D
   model MUST be reconstructed from the exact outline of the TOP mask **and** the exact profile
@@ -340,8 +340,11 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
   Target <15% energy MAPE; benchmark on MetaFood3D / SimpleFood45; ground food densities in
   EFSA/FNDDS (§13). References: PerBite (arXiv:2606.02021), Size Matters (2601.20051),
   OmniFood8K (2604.12356), PortionNet (2512.22304), MetaFood3D (2409.01966).
-- In-app 3D color = per-vertex colors from the `.p2mesh` sidecar (the SceneKit viewer forces
-  `material.diffuse = white` and ignores the USD `_texture.png` for monocular scans).
+- In-app 3D color uses the captured TOP+SIDE `_texture.png` atlas and `.p2mesh`
+  UVs on BOTH paths. Render the photo unlit, without vertex-color modulation or
+  ambient brightening; convert stored bottom-left UVs to image top-left coordinates.
+  If the texture or valid UVs are unavailable, use normalized sampled vertex colors
+  with the food's measured average color as the material fallback.
 - **You cannot see the render here.** After any recognition/geometry/color change, deploy and
   ask the user to re-scan and paste the relevant logs, e.g.:
   - `[MonocularEstimator] visual-hull food#… ar=… height=…cm fill=…`

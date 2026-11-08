@@ -1,11 +1,139 @@
 import Flutter
 import UIKit
+import CoreImage
 import XCTest
 import SceneKit
 import simd
 @testable import Runner
 
 class RunnerTests: XCTestCase {
+
+  func testViewerPastesPhotoAtlasWithoutVertexTintOrAmbientBrightening() throws {
+    let context = try XCTUnwrap(CGContext(data: nil, width: 2, height: 2,
+      bitsPerComponent: 8, bytesPerRow: 8, space: CGColorSpaceCreateDeviceRGB(),
+      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+    context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: 2, height: 2))
+    let texture = try XCTUnwrap(context.makeImage())
+    let object = Scan3DViewer.SidecarObject(id: "apple_0", averageColor: SCNVector3(0.2, 0.3, 0.4),
+      positions: [SCNVector3(0, 0, 0), SCNVector3(1, 0, 0), SCNVector3(0, 1, 0)],
+      colors: [UInt8](repeating: 255, count: 12),
+      uvs: [CGPoint(x: 0.1, y: 0.8), CGPoint(x: 0.6, y: 0.2), CGPoint(x: 0.9, y: 0.5)],
+      indices: [0, 1, 2])
+    let scene = Scan3DViewer.buildScene(fromSidecar: [object], textureImage: texture)
+    let node = try XCTUnwrap(scene.rootNode.childNode(withName: object.id, recursively: false))
+    let geometry = try XCTUnwrap(node.geometry)
+    let material = try XCTUnwrap(geometry.firstMaterial)
+    XCTAssertEqual(CFGetTypeID(try XCTUnwrap(material.diffuse.contents) as CFTypeRef), CGImage.typeID)
+    XCTAssertTrue(material.shaderModifiers?.isEmpty ?? true)
+    XCTAssertTrue(geometry.sources(for: .color).isEmpty)
+    XCTAssertEqual(material.lightingModel, .constant)
+    XCTAssertFalse(material.locksAmbientWithDiffuse)
+    XCTAssertEqual(material.diffuse.wrapS, .clamp)
+    XCTAssertEqual(material.diffuse.wrapT, .clamp)
+    XCTAssertEqual(geometry.sources(for: .vertex).first?.vectorCount, object.positions.count)
+    XCTAssertEqual(geometry.elements.first?.primitiveCount, 1)
+    let source = try XCTUnwrap(geometry.sources(for: .texcoord).first)
+    source.data.withUnsafeBytes { bytes in
+      for (index, uv) in object.uvs.enumerated() {
+        let offset = source.dataOffset + index * source.dataStride
+        func component(_ component: Int) -> Double {
+          let location = offset + component * source.bytesPerComponent
+          return source.bytesPerComponent == 4
+            ? Double(bytes.loadUnaligned(fromByteOffset: location, as: Float.self))
+            : bytes.loadUnaligned(fromByteOffset: location, as: Double.self)
+        }
+        XCTAssertEqual(component(0), Double(uv.x), accuracy: 0.00001)
+        XCTAssertEqual(component(1), Double(1 - uv.y), accuracy: 0.00001)
+      }
+    }
+  }
+
+  func testViewerMissingTextureOrInvalidUVsKeepsSampledColorsIncludingWhite() throws {
+    let context = try XCTUnwrap(CGContext(data: nil, width: 1, height: 1,
+      bitsPerComponent: 8, bytesPerRow: 4, space: CGColorSpaceCreateDeviceRGB(),
+      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+    let image = try XCTUnwrap(context.makeImage())
+    let validUVs = [CGPoint](repeating: CGPoint(x: 0.2, y: 0.3), count: 3)
+    for (texture, uvs) in [(nil as CGImage?, validUVs), (image, []),
+                          (image, [CGPoint](repeating: CGPoint(x: CGFloat.nan, y: 0.3), count: 3))] {
+      let object = Scan3DViewer.SidecarObject(id: "food_0", averageColor: SCNVector3(0.2, 0.3, 0.4),
+        positions: [SCNVector3(0, 0, 0), SCNVector3(1, 0, 0), SCNVector3(0, 1, 0)],
+        colors: [255, 255, 255, 255, 51, 102, 153, 255, 0, 0, 0, 255],
+        uvs: uvs, indices: [0, 1, 2])
+      let scene = Scan3DViewer.buildScene(fromSidecar: [object], textureImage: texture)
+      let geometry = try XCTUnwrap(scene.rootNode.childNodes.first?.geometry)
+      XCTAssertTrue(geometry.sources(for: .texcoord).isEmpty)
+      let color = try XCTUnwrap(geometry.sources(for: .color).first)
+      XCTAssertTrue(color.usesFloatComponents)
+      color.data.withUnsafeBytes { bytes in
+        for index in object.colors.indices {
+          XCTAssertEqual(bytes.loadUnaligned(fromByteOffset: index * 4, as: Float.self),
+                         Float(object.colors[index]) / 255, accuracy: 0.00001)
+        }
+      }
+      let material = try XCTUnwrap(geometry.firstMaterial)
+      XCTAssertNotNil(material.shaderModifiers?[.surface])
+      let fallback = try XCTUnwrap(material.diffuse.contents as? UIColor)
+      var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+      fallback.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+      XCTAssertEqual(Double(red), 0.2, accuracy: 0.00001)
+      XCTAssertEqual(Double(green), 0.3, accuracy: 0.00001)
+      XCTAssertEqual(Double(blue), 0.4, accuracy: 0.00001)
+    }
+  }
+
+  func testPhotoAtlasKeepsTopAndSidePhotosAlignedWithFoodMasks() throws {
+    func buffer(top: (UInt8, UInt8, UInt8), bottom: (UInt8, UInt8, UInt8)) throws -> CVPixelBuffer {
+      var result: CVPixelBuffer?
+      XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, 4, 4,
+        kCVPixelFormatType_32BGRA, nil, &result), kCVReturnSuccess)
+      let buffer = try XCTUnwrap(result)
+      CVPixelBufferLockBaseAddress(buffer, [])
+      defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
+      let bytes = try XCTUnwrap(CVPixelBufferGetBaseAddress(buffer)).assumingMemoryBound(to: UInt8.self)
+      let stride = CVPixelBufferGetBytesPerRow(buffer)
+      for row in 0..<4 {
+        let color = row < 2 ? top : bottom
+        for column in 0..<4 {
+          let index = row * stride + column * 4
+          bytes[index] = color.2
+          bytes[index + 1] = color.1
+          bytes[index + 2] = color.0
+          bytes[index + 3] = 255
+        }
+      }
+      return buffer
+    }
+    let top = try buffer(top: (255, 0, 0), bottom: (0, 0, 255))
+    let side = try buffer(top: (255, 255, 0), bottom: (0, 255, 0))
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".png")
+    defer { try? FileManager.default.removeItem(at: url) }
+    XCTAssertTrue(Food3DTextureBaker.writeTextureAtlas(top: top, side: side,
+      topCoverage: [[1, 0], [0, 0]], sideCoverage: [[1, 1], [1, 1]],
+      baseColor: (r: 0.5, g: 0, b: 0.5), to: url))
+    let atlas = try XCTUnwrap(CIImage(contentsOf: url))
+    let context = CIContext(options: [.useSoftwareRenderer: true])
+    func pixel(u: CGFloat, vTop: CGFloat) -> [UInt8] {
+      var rgba = [UInt8](repeating: 0, count: 4)
+      rgba.withUnsafeMutableBytes { bytes in
+        context.render(atlas, toBitmap: bytes.baseAddress!, rowBytes: 4,
+          bounds: CGRect(x: u * atlas.extent.width, y: (1 - vTop) * atlas.extent.height,
+                         width: 1, height: 1),
+          format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB())
+      }
+      return rgba
+    }
+    let topFood = pixel(u: 0.1, vTop: 0.25)
+    XCTAssertTrue(topFood[0] > 180 && topFood[1] < 40 && topFood[2] < 40)
+    for rejected in [pixel(u: 0.1, vTop: 0.75), pixel(u: 0.35, vTop: 0.25)] {
+      XCTAssertTrue(rejected[0] > 90 && rejected[1] < 40 && rejected[2] > 90)
+    }
+    let sideTop = pixel(u: 0.6, vTop: 0.25)
+    let sideBottom = pixel(u: 0.6, vTop: 0.75)
+    XCTAssertTrue(sideTop[0] > 180 && sideTop[1] > 180 && sideTop[2] < 40)
+    XCTAssertTrue(sideBottom[0] < 40 && sideBottom[1] > 180 && sideBottom[2] < 40)
+  }
 
   func testSmallSilhouetteTrianglesUseTheirOwnTopAndSidePhotoColors() throws {
     func image(_ color: [UInt8]) -> CVPixelBuffer {
@@ -60,7 +188,7 @@ class RunnerTests: XCTestCase {
       SCNVector3(0, 0, 0), SCNVector3(0, 0, a), SCNVector3(a, 0, 0),
       SCNVector3(0, a, 0), SCNVector3(a, a, 0), SCNVector3(0, a, a),
     ]
-    let normals = Scan3DViewerPlugin.computeSmoothNormals(positions: positions, indices: [0, 1, 2, 3, 4, 5])
+    let normals = Scan3DViewer.computeSmoothNormals(positions: positions, indices: [0, 1, 2, 3, 4, 5])
     for i in 0..<3 { XCTAssertEqual(Float(normals[i].y), 1, accuracy: 0.00001) }
     for i in 3..<6 { XCTAssertEqual(Float(normals[i].y), -1, accuracy: 0.00001) }
   }

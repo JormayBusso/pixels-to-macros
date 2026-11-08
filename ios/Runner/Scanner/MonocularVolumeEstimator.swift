@@ -695,7 +695,7 @@ final class MonocularVolumeEstimator {
     /// coordinates. The atlas top tile is masked to this so the baked top photo
     /// only shows through where the camera actually saw food; anywhere else the
     /// exporter's dominant-colour underlay shows instead of the plate/table.
-    private func unionTopCoverage(
+    func unionTopCoverage(
         segments: [SegmentationService.SegmentedObject],
         maskWidth: Int,
         maskHeight: Int
@@ -730,7 +730,7 @@ final class MonocularVolumeEstimator {
     /// column's [bottom,top] band. Gaps between per-sample columns are the only
     /// approximation; the food outline itself is the captured one. Multiple
     /// profiles (multi-food side view) are unioned since they share one photo.
-    private func sideCoverageGrid(
+    func sideCoverageGrid(
         profiles: [SideProfile],
         gridW: Int = 384,
         gridH: Int = 384

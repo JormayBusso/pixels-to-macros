@@ -888,9 +888,18 @@ final class InferencePipeline {
         }
 
         let baseName = "scan3d_\(Int(Date().timeIntervalSince1970 * 1000))"
+        let topCoverage = monocularEstimator.unionTopCoverage(
+            segments: segments, maskWidth: preprocessor.modelInputWidth,
+            maskHeight: preprocessor.modelInputHeight)
+        let sideCoverage = monocularEstimator.sideCoverageGrid(
+            profiles: capturedSideProfiles.filter { !$0.sideShared })
         guard let url = exporter.export(
             objects: foodObjects,
-            baseName: baseName
+            baseName: baseName,
+            textureSource: preprocessedRGB,
+            sideTextureSource: capturedSideRGB,
+            topCoverage: topCoverage,
+            sideCoverage: sideCoverage
         ) else {
             print("[PIPELINE] export success: false")
             print("[PIPELINE] model3dPath: nil")
