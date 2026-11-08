@@ -27,6 +27,7 @@ subprocess.run(
     input="\n".join([
         "import Foundation\nimport CoreGraphics\nimport simd",
         declaration(preview, "enum LiveFoodOverlayPolicy"),
+        declaration(preview, "struct LiveFoodMesh"),
         declaration(preview, "struct LiveGlowGridROI"),
         "enum LiveFoodDetector { static let grid = 160 }",
         dense, yolo,
@@ -87,13 +88,20 @@ print("PASS live preview/services typecheck (iOS SDK; Flutter/session host stubs
 source = [
     "import Foundation\nimport CoreGraphics\nimport CoreML\nimport simd",
     declaration(preview, "enum LiveFoodOverlayPolicy"),
+    declaration(preview, "struct LiveFoodMesh"),
     declaration(preview, "struct LiveFoodFrameGate"),
+    declaration(preview, "struct LiveFoodObservation"),
+    declaration(preview, "enum LiveFoodTrackState"),
+    declaration(preview, "struct LiveFoodTrack {"),
+    declaration(preview, "struct LiveFoodTrackStore"),
+    declaration(preview, "enum LiveFoodWave"),
     declaration(preview, "struct LiveGlowROI"),
     declaration(preview, "struct LiveGlowGridROI"),
     declaration(preview, "struct LiveFoodCrop"),
     "enum LiveFoodDetector { static let grid = 160 }",
     "final class LiveAccumulationHost {\nstatic let grid = 160\n"
     + declaration(preview, "private func accumulate(").replace("private ", "")
+    + "\n" + declaration(preview, "private func inputPoints(").replace("private ", "")
     + "\n}",
     "final class LiveDrainHost {\n"
     + declaration(preview, "func reset()")
@@ -153,8 +161,106 @@ check("semantic food-only labels, not filename or class-zero heuristics") {
     for name in ["candy", "steak", "apple", "hot_dog", " WHITE BUTTON MUSHROOM "] {
         precondition(LiveFoodOverlayPolicy.accepts(label: name, confidence: 0.8))
     }
-    for confidence in [Float(0.54), .nan, .infinity, -.infinity] {
+    for confidence in [Float(0.29), .nan, .infinity, -.infinity] {
         precondition(!LiveFoodOverlayPolicy.accepts(label: "steak", confidence: confidence))
+    }
+    check("fast per-food identities survive misses, low confidence and temporary occlusion") {
+        let g = LiveFoodTrackStore.maskGrid
+        let mask = Array(repeating: Float(1), count: g * g)
+        func food(_ x: CGFloat, _ score: Float = 0.8, _ label: String = "apple") -> LiveFoodObservation {
+            LiveFoodObservation(label: label, confidence: score,
+                bounds: CGRect(x: x, y: 40, width: 25, height: 30), mask: mask)
+        }
+        var store = LiveFoodTrackStore()
+        store.update([food(40, 0.40)], at: 0)
+        precondition(store.tracks.isEmpty)
+        store.update([food(40, 0.46), food(80)], at: 0.1)
+        precondition(store.tracks.count == 2 && store.tracks.allSatisfy { $0.visible })
+        let first = store.tracks.first { $0.bounds.minX == 40 }!.id
+        let second = store.tracks.first { $0.id != first }!.id
+        store.update([food(41, 0.31), food(80)], at: 0.3)
+        precondition(store.tracks.first { $0.id == first }!.hits == 2)
+        for time in [0.5, 0.7, 0.9] { store.update([food(80)], at: time) }
+        precondition(store.tracks.first { $0.id == first }!.state == .temporarilyOccluded)
+        precondition(store.tracks.allSatisfy { $0.visible })
+        store.move(id: first, bounds: CGRect(x: 43, y: 40, width: 25, height: 30),
+                   confidence: 0.9, at: 1)
+        store.update([food(44), food(80)], at: 1.1)
+        precondition(store.tracks.first { $0.id == first }!.state == .confirmed)
+        precondition(store.tracks.first { $0.id == first }!.revision == 1)
+        // A transient semantic label change must not create another highlight.
+        store.update([food(44, 0.8, "pear"), food(80)], at: 1.2)
+        precondition(store.tracks.count == 2 && store.tracks.contains { $0.id == first && $0.misses == 0 })
+        for step in 1...10 { store.update([food(80)], at: 1.2 + Double(step) * 0.2) }
+        precondition(store.tracks.first { $0.id == first }!.state == .lost)
+        precondition(store.tracks.first { $0.id == second }!.visible)
+        store.update([food(44), food(80)], at: 3.3)
+        precondition(store.tracks.contains { $0.id == first && $0.visible })
+        for step in 1...30 { store.update([food(80)], at: 3.3 + Double(step) * 0.2) }
+        precondition(store.tracks.count == 1 && store.tracks[0].id == second)
+    }
+    check("per-instance masks stay separate, retain holes and include small ingredients") {
+        let g = 160
+        var mask = Array(repeating: Float(0), count: g * g)
+        for y in 40..<50 { for x in 40..<50 { mask[y * g + x] = 1 } }
+        for y in 43..<46 { for x in 43..<46 { mask[y * g + x] = 0 } }
+        for y in 80..<83 { for x in 90..<93 { mask[y * g + x] = 1 } }
+        let observations = LiveFoodTrackStore.observations(mask: mask, label: "apple",
+                                                           confidence: 0.8, grid: g)
+        precondition(observations.count == 2)
+        let instance = LiveFoodTrackStore.observations(mask: mask, label: "apple",
+            confidence: 0.8, grid: g, splitComponents: false)
+        precondition(instance.count == 1)
+        let ring = observations.first { $0.bounds.minX == 40 }!
+        let n = LiveFoodTrackStore.maskGrid
+        precondition(ring.mask[n / 2 * n + n / 2] == 0)
+        var store = LiveFoodTrackStore()
+        store.update(observations, at: 0)
+        precondition(store.tracks.count == 2)
+        let touching = LiveFoodObservation(label: "rice", confidence: 0.8,
+            bounds: CGRect(x: 50, y: 40, width: 10, height: 10),
+            mask: Array(repeating: 1, count: n * n))
+        store.update(observations + [touching], at: 0.2)
+        precondition(store.tracks.count == 3)
+    }
+    check("more than eight foods coexist without duplicate IDs or unbounded growth") {
+        let n = LiveFoodTrackStore.maskGrid
+        let foods = (0..<30).map { index in
+            LiveFoodObservation(label: "apple", confidence: 0.8,
+                bounds: CGRect(x: index % 6 * 20, y: index / 6 * 20, width: 12, height: 12),
+                mask: Array(repeating: Float(1), count: n * n))
+        }
+        check("travelling gradient is spatially periodic with a continuous repeat seam") {
+            let stops = LiveFoodWave.locations.map { $0.doubleValue }
+            let alphas = LiveFoodWave.alphas.map { Double($0) }
+            precondition(stops.allSatisfy { $0 >= 0 && $0 <= 1 })
+            func brightness(_ position: Double) -> Double {
+                let index = min(11, max(0, Int(position * 12)))
+                let fraction = (position - stops[index]) / (stops[index + 1] - stops[index])
+                return alphas[index] * (1 - fraction) + alphas[index + 1] * fraction
+            }
+            // Moving a 3× gradient by one food-width/height shifts the sample by
+            // exactly 1/3. Both sides of the loop must have identical brightness.
+            for step in 0...60 {
+                let position = 1.0 / 3 + Double(step) / 180
+                precondition(abs(brightness(position) - brightness(position - 1.0 / 3)) < 1e-12)
+            }
+            for size in [CGSize(width: 150, height: 20), CGSize(width: 20, height: 150)] {
+                let mask = Array(repeating: Float(1), count: 96 * 96)
+                let mesh = LiveFoodMesh.build(mask: mask, grid: 96, spacing: 6,
+                    aspectRatio: size.width / size.height)!
+                precondition(!mesh.outline.isEmpty && mesh.triangles > 0)
+            }
+        }
+        var store = LiveFoodTrackStore()
+        store.update(foods, at: 0)
+        precondition(store.tracks.count == LiveFoodOverlayPolicy.maxTracks && store.tracks.count > 8)
+        store.update(foods, at: 0.2)
+        precondition(Set(store.tracks.map { $0.id }).count == store.tracks.count)
+        let first = store.tracks[0]
+        store.move(id: first.id, bounds: CGRect(x: 0, y: 0, width: 160, height: 160),
+                   confidence: 1, at: 0.3)
+        precondition(store.tracks[0].bounds == first.bounds)
     }
 }
 check("bounded slot survives repeated resets and discards old completions") {
@@ -167,8 +273,8 @@ check("bounded slot survives repeated resets and discards old completions") {
     precondition(!gate.finish(token: first, timestamp: 12, now: 12.1))
     let second = gate.begin(at: 12.1)!
     precondition(gate.finish(token: second, timestamp: 12.1, now: 12.2))
-    precondition(gate.begin(at: 12.21) == nil)
-    precondition(gate.begin(at: 12.3) != nil)
+    precondition(gate.begin(at: 12.15) == nil)
+    precondition(gate.begin(at: 12.17) != nil)
 }
 check("late, nonfinite and future timestamps are rejected") {
     precondition(LiveFoodOverlayPolicy.isFresh(timestamp: 1, now: 1.3))
@@ -201,42 +307,50 @@ check("late, nonfinite and future timestamps are rejected") {
     precondition(!gate.finish(token: token, timestamp: 1, now: 1.4))
     precondition(!gate.busy)
 }
-check("camera motion suppresses old contours") {
+check("re-aiming suppresses old contours but hand tremor does not flicker") {
     let identity = matrix_identity_float4x4
     precondition(LiveFoodOverlayPolicy.cameraIsAligned(identity, identity))
+    var tremor = simd_float4x4(simd_quatf(angle: Float.pi / 60 * 0.8, axis: SIMD3(0, 1, 0)))
+    tremor.columns.3.x = 0.02
+    precondition(LiveFoodOverlayPolicy.cameraIsAligned(identity, tremor))
     var moved = identity
-    moved.columns.3.x = 0.02
+    moved.columns.3.x = 0.06
     precondition(!LiveFoodOverlayPolicy.cameraIsAligned(identity, moved))
-    let rotated = simd_float4x4(simd_quatf(angle: Float.pi / 40, axis: SIMD3(0, 1, 0)))
+    let rotated = simd_float4x4(simd_quatf(angle: Float.pi / 20, axis: SIMD3(0, 1, 0)))
     precondition(!LiveFoodOverlayPolicy.cameraIsAligned(identity, rotated))
+    precondition(LiveFoodOverlayPolicy.overlayHold > LiveFoodFrameGate.minInterval * 3)
 }
-check("display glow has a feathered fill and soft rim/halo without changing food support") {
-    let g = 40
+check("wireframe mesh triangulates exactly the food mask, clipped at its contour") {
+    let g = 160
     var mask = [Float](repeating: 0, count: g * g)
-    for y in 10..<30 { for x in 10..<30 { mask[y * g + x] = 1 } }
-    mask[20 * g + 20] = 0
-    mask[2 * g + 2] = 1
+    for y in 40..<120 { for x in 40..<120 {
+        let dx = Float(x) + 0.5 - 80, dy = Float(y) + 0.5 - 80
+        if dx * dx + dy * dy <= 36 * 36 { mask[y * g + x] = 1 }
+    } }
     let original = mask
-    let f = LiveFoodOverlayPolicy.glowFields(mask, grid: g)!
-    for field in [f.fill, f.edge, f.core] {
-        precondition(field.allSatisfy { $0 >= 0 && $0 <= 1 })
+    let mesh = LiveFoodMesh.build(mask: mask, grid: g)!
+    precondition(mask == original)
+    precondition(mesh.triangles > 100 && !mesh.nodes.isEmpty)
+    precondition(!mesh.outline.isEmpty && !mesh.wire.isEmpty)
+    // Lattice nodes are only placed on food; the contour hugs the true radius.
+    for p in mesh.nodes {
+        precondition(hypot(p.x - 80, p.y - 80) <= 36.5)
     }
-    precondition(mask == original && mask[20 * g + 20] == 0)
-    precondition(f.fill[15 * g + 15] > 0.99)
-    precondition(f.fill[10 * g + 20] > 0 && f.fill[10 * g + 20] < 1)
-    precondition(f.fill[9 * g + 20] > 0 && f.fill[9 * g + 20] < 1)
-    precondition(f.edge[9 * g + 20] > f.edge[15 * g + 15])
-    precondition(f.edge[5 * g + 20] > 0)
-    precondition(f.core[10 * g + 20] > f.core[15 * g + 15])
-    precondition(f.fill[39 * g + 39] == 0 && f.edge[39 * g + 39] == 0)
-    let image = LiveFoodOverlayPolicy.alphaImage(f.fill, g)!
-    precondition(image.shouldInterpolate)
-    let empty = LiveFoodOverlayPolicy.glowFields([Float](repeating: 0, count: g * g), grid: g)!
-    precondition([empty.fill, empty.edge, empty.core].allSatisfy { $0.allSatisfy { $0 == 0 } })
-    precondition(LiveFoodOverlayPolicy.glowFields([], grid: g) == nil)
-    precondition(LiveFoodOverlayPolicy.alphaImage([], g) == nil)
-    let invalid = LiveFoodOverlayPolicy.glowFields([.nan, .infinity, -1, 0], grid: 2)!
-    precondition([invalid.fill, invalid.edge, invalid.core].allSatisfy { $0.allSatisfy { $0 == 0 } })
+    var radii = [CGFloat]()
+    mesh.outline.applyWithBlock { element in
+        let e = element.pointee
+        if e.type == .moveToPoint || e.type == .addLineToPoint {
+            radii.append(hypot(e.points[0].x - 80, e.points[0].y - 80))
+        }
+    }
+    precondition(!radii.isEmpty && radii.allSatisfy { abs($0 - 36) < 1.5 })
+    let box = mesh.region.boundingBox
+    precondition(abs(box.minX - 44) < 1.5 && abs(box.maxX - 116) < 1.5)
+    precondition(mesh.region.contains(CGPoint(x: 80, y: 80)))
+    precondition(!mesh.region.contains(CGPoint(x: 80, y: 40)))
+    precondition(LiveFoodMesh.build(mask: [Float](repeating: 0, count: g * g), grid: g) == nil)
+    precondition(LiveFoodMesh.build(mask: [], grid: g) == nil)
+    precondition(LiveFoodMesh.build(mask: [.nan, .infinity, -1, 0], grid: 2) == nil)
 }
 check("guide crop and inverse mapping preserve TOP and SIDE support") {
     for rounded in [false, true] {
@@ -307,8 +421,13 @@ check("production YOLO rejects background anchors BEFORE NMS but saved decode st
     let size = CGSize(width: 640, height: 640)
     let live = decoder.decode(det: det, livePreview: true, roi: roi, modelSize: size)
     let saved = decoder.decode(det: det, livePreview: false, roi: roi, modelSize: size)
-    precondition(live.count == 1 && live[0].score == Float(0.80))
+    // The first food's centre is outside the circle, but its mask can cross
+    // the guide edge; do not reject it until actual mask clipping.
+    precondition(live.count == 2)
     precondition(saved.count == 2)
+    put(0, 0, -320)
+    let outside = decoder.decode(det: det, livePreview: true, roi: roi, modelSize: size)
+    precondition(outside.count == 1 && outside[0].score == Float(0.80))
 }
 check("dense 104-class live labels correct YOLO JSON offset without changing saved mapping") {
     let service = SegmentationService()
@@ -326,7 +445,7 @@ check("dense 104-class live labels correct YOLO JSON offset without changing sav
     precondition(objects(0, true).isEmpty)
     precondition(objects(103, true).isEmpty)
     precondition(!objects(25, false, 0.4).isEmpty)
-    precondition(objects(25, true, 0.4).isEmpty)
+    precondition(!objects(25, true, 0.4).isEmpty)
     precondition(objects(4, true, 0.8, 10).first!.label == "bread")
 }
 check("actual bundled YOLO metadata is zero-based food with a rejected generic class") {

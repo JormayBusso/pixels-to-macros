@@ -548,7 +548,7 @@ final class SegmentationService {
         // foods, not noise. The ML Kit food-presence gate + the (now
         // confidence-aware) presence gate in InferencePipeline remain the
         // primary hallucination defence, so these per-class floors can be lower.
-        let minPixels = max(
+        let minPixels = livePreview ? max(12, Int(Double(totalPixels) * 0.0002)) : max(
             isMiniModel ? 400 : 280,
             Int(Double(totalPixels) * (isMiniModel ? 0.005 : 0.0035))
         )
@@ -558,7 +558,8 @@ final class SegmentationService {
         // the primary hallucination defence. Over-filtering here causes
         // the mini model to reject valid out-of-vocabulary foods (e.g.
         // banana, tomato) before the ML Kit label-override can fix them.
-        let minConfidence: Float = isMiniModel ? 0.33 : 0.36
+        let minConfidence: Float = livePreview ? LiveFoodOverlayPolicy.maintenanceConfidence
+            : (isMiniModel ? 0.33 : 0.36)
         let liveLabels = livePreview && totalClasses == Self.buildLabelMap().count
             ? Self.buildLabelMap() : nil
         for (cls, pixels) in classPixels {

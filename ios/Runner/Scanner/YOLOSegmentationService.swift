@@ -233,7 +233,7 @@ final class YOLOSegmentationService {
         let liveModelSize = protoShape.count == 4
             ? CGSize(width: protoShape[3] * 4, height: protoShape[2] * 4) : .zero
         let detections = decode(det: det, livePreview: livePreview, roi: roi, modelSize: liveModelSize)
-        let kept = nonMaxSuppression(detections, limit: livePreview ? 8 : maxObjects)
+        let kept = nonMaxSuppression(detections, limit: livePreview ? LiveFoodOverlayPolicy.maxTracks : maxObjects)
         return rasterise(kept, proto: proto, targetW: targetW, targetH: targetH, livePreview: livePreview)
     }
 
@@ -301,8 +301,12 @@ final class YOLOSegmentationService {
             let h = read(3 * strideChannel + anchorOffset)
             if livePreview, let roi {
                 guard modelSize.width > 0, modelSize.height > 0,
-                      roi.contains(x: CGFloat(cx) * CGFloat(LiveFoodDetector.grid) / modelSize.width,
-                                   y: CGFloat(cy) * CGFloat(LiveFoodDetector.grid) / modelSize.height)
+                      CGRect(
+                        x: CGFloat(cx - w / 2) * CGFloat(LiveFoodDetector.grid) / modelSize.width,
+                        y: CGFloat(cy - h / 2) * CGFloat(LiveFoodDetector.grid) / modelSize.height,
+                        width: CGFloat(w) * CGFloat(LiveFoodDetector.grid) / modelSize.width,
+                        height: CGFloat(h) * CGFloat(LiveFoodDetector.grid) / modelSize.height
+                      ).intersects(roi.rect)
                 else { continue }
             }
 
