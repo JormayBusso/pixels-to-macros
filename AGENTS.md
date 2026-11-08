@@ -44,6 +44,11 @@ outdated, update this file in the same change.
     Gitignored model files (`*.pt`, `*.mlpackage`, `*.mlmodelc`, embeddings JSON) must not
     be deleted or regenerated without explicit instruction.
 13. **Validate before saying "done"** — see the checklist in §15.
+14. **PLAN completion gate:** follow `.claude/skills/plan-loop/SKILL.md`'s automated
+    gate procedure. `.github/hooks/plan-loop.json` registers prompt activation and
+    `agentStop` checks for session-specific acceptance/check receipts. It blocks
+    missing or stale declared evidence when hooks are enabled; it does not prove
+    semantic completeness or replace the read-only assessment.
 
 ---
 
