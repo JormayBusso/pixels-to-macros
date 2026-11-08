@@ -7,6 +7,150 @@ import simd
 
 class RunnerTests: XCTestCase {
 
+  func testLiveFoodWaveMovesAcrossEdgesAndRepeatsWithoutAJump() throws {
+    let bounds = CGRect(x: 0, y: 0, width: 120, height: 120)
+    let animation = LiveFoodWave.animation(in: bounds)
+    let start = try XCTUnwrap(animation.fromValue as? NSValue).cgPointValue
+    let end = try XCTUnwrap(animation.toValue as? NSValue).cgPointValue
+    XCTAssertEqual(animation.keyPath, "position")
+    XCTAssertGreaterThan(animation.duration, 0)
+
+    func alpha(at point: CGPoint, progress: CGFloat) -> CGFloat {
+      let center = CGPoint(x: start.x + (end.x - start.x) * progress,
+                           y: start.y + (end.y - start.y) * progress)
+      let x = (point.x - center.x + 1.5 * bounds.width) / (3 * bounds.width)
+      let y = (point.y - center.y + 1.5 * bounds.height) / (3 * bounds.height)
+      let index = (x + y) / 2 * CGFloat(LiveFoodWave.alphas.count - 1)
+      let lower = Int(floor(index))
+      let fraction = index - CGFloat(lower)
+      return LiveFoodWave.alphas[lower] * (1 - fraction)
+        + LiveFoodWave.alphas[lower + 1] * fraction
+    }
+
+    let first = CGPoint(x: 15, y: 15)
+    let second = CGPoint(x: 75, y: 75)
+    XCTAssertGreaterThan(abs(alpha(at: first, progress: 0) - alpha(at: second, progress: 0)), 0.3)
+    XCTAssertGreaterThan(abs(alpha(at: first, progress: 0) - alpha(at: first, progress: 0.5)), 0.3)
+    XCTAssertEqual(alpha(at: first, progress: 0), alpha(at: first, progress: 1), accuracy: 0.0001)
+    XCTAssertLessThan(LiveFoodWave.alphas.max()!, 1)
+  }
+
+  func testLiveFoodWireUsesEachSharedTriangleEdgeOnce() throws {
+    let grid = 24
+    let mask = [Float](repeating: 1, count: grid * grid)
+    let mesh = try XCTUnwrap(LiveFoodMesh.build(mask: mask, grid: grid))
+    var edges = Set<String>()
+    var start: CGPoint?
+    var duplicate = false
+    mesh.wire.applyWithBlock { element in
+      switch element.pointee.type {
+      case .moveToPoint:
+        start = element.pointee.points[0]
+      case .addLineToPoint:
+        guard let startPoint = start else { return }
+        let end = element.pointee.points[0]
+        let first = "\(Int((startPoint.x * 1024).rounded())),\(Int((startPoint.y * 1024).rounded()))"
+        let second = "\(Int((end.x * 1024).rounded())),\(Int((end.y * 1024).rounded()))"
+        let key = [first, second].sorted().joined(separator: "|")
+        if !edges.insert(key).inserted { duplicate = true }
+        start = nil
+      default:
+        break
+      }
+    }
+    XCTAssertFalse(duplicate)
+  }
+
+  func testOverlappingLiveFoodLabelsShareOneTrack() throws {
+    let grid = LiveFoodTrackStore.maskGrid
+    let bounds = CGRect(x: 24, y: 24, width: 64, height: 64)
+    let mask = [Float](repeating: 1, count: grid * grid)
+    var store = LiveFoodTrackStore()
+    store.update([
+      LiveFoodObservation(label: "apple", confidence: 0.9, bounds: bounds, mask: mask),
+      LiveFoodObservation(label: "banana", confidence: 0.8, bounds: bounds, mask: mask),
+    ], at: 1)
+    XCTAssertEqual(store.tracks.count, 1)
+  }
+
+  func testLiveTrackingRejectsDegenerateVisionBoxes() {
+    XCTAssertTrue(LiveFoodOverlayPolicy.validTrackingBox(CGRect(x: 0.1, y: 0.1, width: 0.2, height: 0.2)))
+    XCTAssertFalse(LiveFoodOverlayPolicy.validTrackingBox(CGRect(x: 0.1, y: 0.1, width: 0, height: 0.2)))
+    XCTAssertFalse(LiveFoodOverlayPolicy.validTrackingBox(CGRect(x: 0.9, y: 0.1, width: 0.2, height: 0.2)))
+  }
+
+  func testConfirmedLiveMeshSurvivesBriefInferenceMissesOnly() {
+    XCTAssertFalse(LiveFoodOverlayPolicy.shouldKeepOverlay(confirmedAt: nil, now: 1))
+    XCTAssertTrue(LiveFoodOverlayPolicy.shouldKeepOverlay(confirmedAt: 1, now: 1.59))
+    XCTAssertFalse(LiveFoodOverlayPolicy.shouldKeepOverlay(confirmedAt: 1, now: 1.61))
+    XCTAssertFalse(LiveFoodOverlayPolicy.shouldKeepOverlay(confirmedAt: 2, now: 1))
+  }
+
+  func testLiveFoodMeshIncludesDotsAtClippedEdgeIntersections() throws {
+    let grid = 24
+    var mask = [Float](repeating: 0, count: grid * grid)
+    for y in 4..<20 {
+      for x in 4..<20 { mask[y * grid + x] = 1 }
+    }
+    let mesh = try XCTUnwrap(LiveFoodMesh.build(mask: mask, grid: grid))
+    var crossings = [CGPoint]()
+    mesh.outline.applyWithBlock { element in
+      switch element.pointee.type {
+      case .moveToPoint, .addLineToPoint:
+        crossings.append(element.pointee.points[0])
+      default:
+        break
+      }
+    }
+    XCTAssertFalse(crossings.isEmpty)
+    for point in crossings {
+      XCTAssertTrue(mesh.nodes.contains { hypot($0.x - point.x, $0.y - point.y) < 0.001 })
+    }
+  }
+
+  func testLiveFoodTrackRejectsUnreliableMotion() throws {
+    let grid = LiveFoodTrackStore.maskGrid
+    let bounds = CGRect(x: 20, y: 20, width: 40, height: 40)
+    var store = LiveFoodTrackStore()
+    store.update([LiveFoodObservation(label: "apple", confidence: 0.9, bounds: bounds,
+      mask: [Float](repeating: 1, count: grid * grid))], at: 1)
+    let id = try XCTUnwrap(store.tracks.first?.id)
+    XCTAssertFalse(store.move(id: id, bounds: bounds.offsetBy(dx: 2, dy: 0), confidence: 0.2, at: 2))
+    XCTAssertEqual(store.tracks[0].bounds, bounds)
+    XCTAssertTrue(store.move(id: id, bounds: bounds.offsetBy(dx: 2, dy: 0), confidence: 0.9, at: 3))
+    XCTAssertEqual(store.tracks[0].bounds.minX, bounds.minX + 1.6, accuracy: 0.0001)
+    XCTAssertTrue(store.tracks[0].isRecentlyObserved(at: 3.59))
+    XCTAssertFalse(store.tracks[0].isRecentlyObserved(at: 3.61))
+    XCTAssertFalse(store.tracks[0].isRecentlyObserved(at: 2.9))
+  }
+
+  func testLiveFoodTrackDebouncesChangedMaskBeforeRebuildingMesh() throws {
+    let grid = LiveFoodTrackStore.maskGrid
+    let bounds = CGRect(x: 20, y: 20, width: 40, height: 40)
+    func mask(left: Int) -> [Float] {
+      var result = [Float](repeating: 0, count: grid * grid)
+      for y in 10..<70 {
+        for x in left..<(left + 60) { result[y * grid + x] = 1 }
+      }
+      return result
+    }
+
+    var store = LiveFoodTrackStore()
+    let original = mask(left: 10)
+    store.update([LiveFoodObservation(label: "apple", confidence: 0.9, bounds: bounds,
+      mask: original)], at: 1)
+    let firstRevision = try XCTUnwrap(store.tracks.first?.revision)
+    let shifted = mask(left: 20)
+    let observation = LiveFoodObservation(label: "apple", confidence: 0.9, bounds: bounds,
+      mask: shifted)
+    store.update([observation], at: 1.2)
+    XCTAssertEqual(store.tracks[0].revision, firstRevision)
+    XCTAssertEqual(store.tracks[0].mask, original)
+    store.update([observation], at: 1.4)
+    XCTAssertEqual(store.tracks[0].revision, firstRevision + 1)
+    XCTAssertEqual(store.tracks[0].mask, shifted)
+  }
+
   func testSmallSilhouetteTrianglesUseTheirOwnTopAndSidePhotoColors() throws {
     func image(_ color: [UInt8]) -> CVPixelBuffer {
       var buffer: CVPixelBuffer?

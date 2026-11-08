@@ -241,8 +241,8 @@ final class ARCameraPreviewView: NSObject, FlutterPlatformView {
             }
             let now = CACurrentMediaTime()
             // A stalled camera/inference must not leave a permanent highlight.
-            if let confirmed = confirmedTimestamp,
-               now - confirmed > LiveFoodOverlayPolicy.overlayHold {
+            if !LiveFoodOverlayPolicy.shouldKeepOverlay(confirmedAt: confirmedTimestamp, now: now),
+               confirmedTimestamp != nil {
                 hideConfirmedOverlay()
             }
             guard let frame = sessionManager?.latestFrame,
@@ -338,11 +338,13 @@ final class ARCameraPreviewView: NSObject, FlutterPlatformView {
                   LiveFoodGlowController.shared.enabled,
                   LiveFoodOverlayPolicy.isFresh(timestamp: timestamp, now: CACurrentMediaTime())
             else { return }
-            glow.update(tracks: result.tracks)
             if result.present {
+                glow.update(tracks: result.tracks)
                 glow.setVisible(true)
                 self.confirmedTimestamp = timestamp
-            } else {
+            } else if !LiveFoodOverlayPolicy.shouldKeepOverlay(
+                confirmedAt: self.confirmedTimestamp,
+                now: CACurrentMediaTime()) {
                 self.hideConfirmedOverlay()
             }
             LiveFoodGlowController.shared.report(
@@ -633,7 +635,7 @@ struct LiveGlowResult {
 /// whereas the dense model's class zero is background. Unknown/generic classes
 /// and class-agnostic foreground masks cannot identify food.
 enum LiveFoodOverlayPolicy {
-    static let maxAge: TimeInterval = 0.35
+    static let maxAge: TimeInterval = 0.2
     static let foodLabels: Set<String> = [
         "candy", "egg tart", "french fries", "chocolate", "biscuit", "popcorn",
         "pudding", "ice cream", "cheese butter", "cake", "wine", "milkshake",
@@ -689,9 +691,21 @@ enum LiveFoodOverlayPolicy {
         return translation <= 0.04 && abs(simd_dot(rotationA.vector, rotationB.vector)) >= cos(Float.pi / 60)
     }
 
+    static func validTrackingBox(_ box: CGRect) -> Bool {
+        [box.minX, box.minY, box.width, box.height].allSatisfy { $0.isFinite }
+            && box.minX >= 0 && box.minY >= 0 && box.maxX <= 1 && box.maxY <= 1
+            && box.width >= 0.015 && box.height >= 0.015
+    }
+
     /// How long the last confirmed mesh survives detector misses before the
     /// food is reported as lost (temporal hysteresis against flicker).
-    static let overlayHold: TimeInterval = 2.0
+    static let overlayHold: TimeInterval = 0.6
+
+    static func shouldKeepOverlay(confirmedAt: TimeInterval?, now: TimeInterval) -> Bool {
+        guard let confirmedAt else { return false }
+        let age = now - confirmedAt
+        return age.isFinite && age >= 0 && age <= overlayHold
+    }
 
     /// Separable box blur with clamped edges (running sums, O(n)).
     static func boxBlur(_ src: [Float], _ g: Int, _ radius: Int) -> [Float] {
@@ -727,6 +741,31 @@ enum LiveFoodOverlayPolicy {
 /// follows the mask silhouette while interior lines never jitter between
 /// frames. Display-only — saved scans never use this. Coordinates are in
 /// mask-grid cells.
+private struct LiveFoodEdgeKey: Hashable {
+    let ax: Int
+    let ay: Int
+    let bx: Int
+    let by: Int
+
+    init(_ first: CGPoint, _ second: CGPoint) {
+        let x1 = Int((first.x * 1024).rounded())
+        let y1 = Int((first.y * 1024).rounded())
+        let x2 = Int((second.x * 1024).rounded())
+        let y2 = Int((second.y * 1024).rounded())
+        if x1 < x2 || (x1 == x2 && y1 <= y2) {
+            ax = x1
+            ay = y1
+            bx = x2
+            by = y2
+        } else {
+            ax = x2
+            ay = y2
+            bx = x1
+            by = y1
+        }
+    }
+}
+
 struct LiveFoodMesh {
     let wire: CGPath
     let outline: CGPath
@@ -772,18 +811,25 @@ struct LiveFoodMesh {
         }
 
         let wire = CGMutablePath(), outline = CGMutablePath(), region = CGMutablePath()
+        var wireEdges = Set<LiveFoodEdgeKey>()
         var nodes = [CGPoint]()
         var used = [Bool](repeating: false, count: points.count)
         var triangles = 0
 
+        func addWireEdge(_ start: CGPoint, _ end: CGPoint) {
+            guard wireEdges.insert(LiveFoodEdgeKey(start, end)).inserted else { return }
+            wire.move(to: start)
+            wire.addLine(to: end)
+        }
+
         func emit(_ poly: [CGPoint]) {
             region.addLines(between: poly)
             region.closeSubpath()
-            wire.addLines(between: poly)
-            wire.closeSubpath()
+            for index in poly.indices {
+                addWireEdge(poly[index], poly[(index + 1) % poly.count])
+            }
             if poly.count == 4 {
-                wire.move(to: poly[0])
-                wire.addLine(to: poly[2])
+                addWireEdge(poly[0], poly[2])
             }
             triangles += poly.count - 2
         }
@@ -814,6 +860,7 @@ struct LiveFoodMesh {
                     let q = CGPoint(x: (pin.x + pout.x) / 2, y: (pin.y + pout.y) / 2)
                     poly.append(q)
                     crossings.append(q)
+                    nodes.append(q)
                 }
             }
             guard poly.count >= 3 else { return }
@@ -863,6 +910,8 @@ struct LiveFoodTrack {
     var bounds: CGRect
     var mask: [Float]
     var meshMask: [Float]
+    var pendingMask: [Float]
+    var pendingMaskHits: Int
     var mesh: LiveFoodMesh
     var meshAspect: CGFloat
     var revision: Int
@@ -872,11 +921,16 @@ struct LiveFoodTrack {
     var lastMotion: TimeInterval
 
     var visible: Bool { state != .lost && state != .removed }
+
+    func isRecentlyObserved(at now: TimeInterval) -> Bool {
+        let age = now - max(lastDetection, lastMotion)
+        return age >= 0 && age <= LiveFoodOverlayPolicy.overlayHold
+    }
 }
 
 /// Live-only identities and canonical silhouettes. No saved-scan geometry is used.
 struct LiveFoodTrackStore {
-    static let maskGrid = 96
+    static let maskGrid = 160
     static let missedDetections = 6
     static let occlusionHold: TimeInterval = 1.6
     static let identityHold: TimeInterval = 5
@@ -895,19 +949,29 @@ struct LiveFoodTrackStore {
             && rect.width >= 1 && rect.height >= 1
     }
 
-    mutating func move(id: Int, bounds: CGRect, confidence: Float, at now: TimeInterval) {
+    static func interpolate(_ old: CGRect, _ new: CGRect, amount: CGFloat) -> CGRect {
+        let t = min(1, max(0, amount))
+        return CGRect(x: old.minX + (new.minX - old.minX) * t,
+                      y: old.minY + (new.minY - old.minY) * t,
+                      width: old.width + (new.width - old.width) * t,
+                      height: old.height + (new.height - old.height) * t)
+    }
+
+    @discardableResult
+    mutating func move(id: Int, bounds: CGRect, confidence: Float, at now: TimeInterval) -> Bool {
         guard confidence.isFinite, confidence >= 0.5, Self.valid(bounds),
               let i = tracks.firstIndex(where: { $0.id == id && $0.visible })
-        else { return }
+        else { return false }
         let old = tracks[i].bounds
         // Reject a tracker latching onto the plate or an unrelated ingredient.
-        guard Self.overlap(old.insetBy(dx: -12, dy: -12), bounds) > 0.15,
-              bounds.width / old.width > 0.65, bounds.width / old.width < 1.5,
-              bounds.height / old.height > 0.65, bounds.height / old.height < 1.5
-        else { return }
-        tracks[i].bounds = bounds
+        guard Self.overlap(old.insetBy(dx: -24, dy: -24), bounds) > 0.05,
+              bounds.width / old.width > 0.5, bounds.width / old.width < 2,
+              bounds.height / old.height > 0.5, bounds.height / old.height < 2
+        else { return false }
+        tracks[i].bounds = Self.interpolate(old, bounds, amount: 0.8)
         tracks[i].lastMotion = now
         if tracks[i].misses == 0 { tracks[i].state = .tracked }
+        return true
     }
 
     mutating func expire(at now: TimeInterval) {
@@ -934,14 +998,15 @@ struct LiveFoodTrackStore {
             let candidates = tracks.indices.filter {
                 let overlap = Self.overlap(tracks[$0].bounds, observation.bounds)
                 return !assigned.contains(tracks[$0].id)
-                    && (tracks[$0].label == observation.label ? overlap > 0.2 : overlap > 0.65)
+                    && (tracks[$0].label == observation.label ? overlap > 0.08 : overlap > 0.35)
             }
             if let i = candidates.max(by: {
                 Self.overlap(tracks[$0].bounds, observation.bounds)
                     < Self.overlap(tracks[$1].bounds, observation.bounds)
             }) {
                 assigned.insert(tracks[i].id)
-                tracks[i].bounds = observation.bounds
+                let stableBounds = Self.interpolate(tracks[i].bounds, observation.bounds, amount: 0.7)
+                tracks[i].bounds = stableBounds
                 tracks[i].confidence = tracks[i].confidence * 0.65 + observation.confidence * 0.35
                 tracks[i].lastDetection = now
                 tracks[i].lastMotion = now
@@ -951,25 +1016,45 @@ struct LiveFoodTrackStore {
                 let changed = zip(tracks[i].meshMask, observation.mask).reduce(0) {
                     $0 + (($1.0 > 0.5) != ($1.1 > 0.5) ? 1 : 0)
                 }
-                // Keep topology for tiny segmentation changes. The renderer
-                // independently clips to the latest silhouette, including holes.
-                let aspect = observation.bounds.width / observation.bounds.height
-                if Float(changed) / Float(observation.mask.count) > 0.025
-                    || abs(aspect / tracks[i].meshAspect - 1) > 0.12,
-                   let mesh = LiveFoodMesh.build(mask: observation.mask, grid: Self.maskGrid,
-                                                 spacing: Self.spacing(for: observation.bounds),
-                                                 aspectRatio: aspect) {
-                    tracks[i].mesh = mesh
-                    tracks[i].meshAspect = aspect
-                    tracks[i].meshMask = observation.mask
-                    tracks[i].revision += 1
+                let changeRatio = Float(changed) / Float(observation.mask.count)
+                let aspect = stableBounds.width / stableBounds.height
+                let aspectChanged = abs(aspect / tracks[i].meshAspect - 1) > 0.12
+                if changeRatio > 0.04 || aspectChanged {
+                    if tracks[i].pendingMask.isEmpty {
+                        tracks[i].pendingMask = observation.mask
+                        tracks[i].pendingMaskHits = 1
+                    } else {
+                        let candidateChanges = zip(tracks[i].pendingMask, observation.mask).reduce(0) {
+                            $0 + (($1.0 > 0.5) != ($1.1 > 0.5) ? 1 : 0)
+                        }
+                        if Float(candidateChanges) / Float(observation.mask.count) <= 0.015 {
+                            tracks[i].pendingMaskHits += 1
+                        } else {
+                            tracks[i].pendingMask = observation.mask
+                            tracks[i].pendingMaskHits = 1
+                        }
+                    }
+                    if tracks[i].pendingMaskHits >= 2,
+                       let mesh = LiveFoodMesh.build(mask: observation.mask, grid: Self.maskGrid,
+                                                     spacing: Self.spacing(for: stableBounds),
+                                                     aspectRatio: aspect) {
+                        tracks[i].mesh = mesh
+                        tracks[i].meshAspect = aspect
+                        tracks[i].meshMask = observation.mask
+                        tracks[i].mask = observation.mask
+                        tracks[i].pendingMask.removeAll(keepingCapacity: true)
+                        tracks[i].pendingMaskHits = 0
+                        tracks[i].revision += 1
+                    }
+                } else {
+                    tracks[i].pendingMask.removeAll(keepingCapacity: true)
+                    tracks[i].pendingMaskHits = 0
                 }
-                tracks[i].mask = observation.mask
             } else {
                 guard observation.confidence >= LiveFoodOverlayPolicy.creationConfidence,
                       tracks.filter({ $0.visible }).count < LiveFoodOverlayPolicy.maxTracks,
                       !tracks.contains(where: {
-                          Self.overlap($0.bounds, observation.bounds) > 0.75
+                          Self.overlap($0.bounds, observation.bounds) > 0.35
                       }),
                       let mesh = LiveFoodMesh.build(mask: observation.mask, grid: Self.maskGrid,
                                                    spacing: Self.spacing(for: observation.bounds),
@@ -983,6 +1068,7 @@ struct LiveFoodTrackStore {
                     state: observation.confidence >= 0.7 ? .confirmed : .new,
                     confidence: observation.confidence, bounds: observation.bounds,
                     mask: observation.mask, meshMask: observation.mask,
+                    pendingMask: [], pendingMaskHits: 0,
                     mesh: mesh, meshAspect: observation.bounds.width / observation.bounds.height,
                     revision: 1, hits: 1, misses: 0,
                     lastDetection: now, lastMotion: now))
@@ -995,8 +1081,22 @@ struct LiveFoodTrackStore {
         expire(at: now)
     }
 
-    private static func spacing(for bounds: CGRect) -> CGFloat {
-        max(3, min(32, CGFloat(maskGrid) * 4.5 / bounds.width))
+    static func spacing(for bounds: CGRect) -> CGFloat {
+        max(4, min(36, CGFloat(maskGrid) * 7.5 / bounds.width))
+    }
+
+    static func nonOverlapping(_ candidates: [LiveFoodTrack]) -> [LiveFoodTrack] {
+        var selected = [LiveFoodTrack]()
+        let ranked = candidates.sorted(by: {
+            if $0.confidence == $1.confidence { return $0.lastDetection > $1.lastDetection }
+            return $0.confidence > $1.confidence
+        })
+        for candidate in ranked {
+            guard !selected.contains(where: { overlap($0.bounds, candidate.bounds) > 0.35 })
+            else { continue }
+            selected.append(candidate)
+        }
+        return selected
     }
 
     static func observations(mask: [Float], label: String, confidence: Float,
@@ -1040,7 +1140,7 @@ struct LiveFoodTrackStore {
 
 struct LiveFoodFrameGate {
     /// ~15 Hz cap; one request in flight, so slow inference self-throttles.
-    static let minInterval: TimeInterval = 0.066
+    static let minInterval: TimeInterval = 1.0 / 30.0
     private(set) var busy = false
     private(set) var generation = 0
     private var lastSubmit: TimeInterval = -.infinity
@@ -1100,6 +1200,7 @@ final class LiveFoodDetector {
     private var trackStore = LiveFoodTrackStore()
     private var sequence = VNSequenceRequestHandler()
     private var trackingRequests: [Int: VNTrackObjectRequest] = [:]
+    private var lastTrackingInput: CVPixelBuffer?
     private var lastSegmentation: TimeInterval = -.infinity
     private var trackingGeneration = -1
     private lazy var ciContext = CIContext(options: [
@@ -1125,6 +1226,15 @@ final class LiveFoodDetector {
     /// Invalidates results without freeing the occupied inference slot.
     func reset() {
         gate.invalidate()
+        queue.async { [self] in
+            if let input = lastTrackingInput {
+                finishTracking(Array(trackingRequests.values), on: input)
+            }
+            trackingRequests.removeAll()
+            lastTrackingInput = nil
+            sequence = VNSequenceRequestHandler()
+            trackingGeneration = -1
+        }
     }
 
     func drain(completion: @escaping () -> Void) {
@@ -1157,12 +1267,16 @@ final class LiveFoodDetector {
                 guard LiveFoodOverlayPolicy.isFresh(timestamp: frameTimestamp, now: CACurrentMediaTime())
                 else { return nil }
                 if trackingGeneration != token {
+                    if let previous = lastTrackingInput {
+                        finishTracking(Array(trackingRequests.values), on: previous)
+                    }
                     trackingGeneration = token
                     trackStore = LiveFoodTrackStore()
                     sequence = VNSequenceRequestHandler()
                     trackingRequests.removeAll()
                     lastSegmentation = -.infinity
                 }
+                lastTrackingInput = input
                 return process(input, roi: roi, crop: crop, timestamp: frameTimestamp,
                                prepMs: prepMs, queueMs: queueMs)
             }
@@ -1189,7 +1303,7 @@ final class LiveFoodDetector {
 
         if backend == .undecided { decideBackend() }
 
-        advanceTracks(input, crop: crop, timestamp: timestamp)
+        let trackedIDs = advanceTracks(input, crop: crop, timestamp: timestamp)
         var observations = [LiveFoodObservation]()
         var ran = false
         let thermal = ProcessInfo.processInfo.thermalState
@@ -1212,11 +1326,15 @@ final class LiveFoodDetector {
 
         if detectionDue {
             trackStore.update(observations, at: timestamp)
-            seedTrackingRequests(crop: crop)
+            seedTrackingRequests(crop: crop, input: input)
         } else {
             trackStore.expire(at: timestamp)
         }
-        let visible = trackStore.tracks.filter { $0.visible }
+        let now = CACurrentMediaTime()
+        let visible = LiveFoodTrackStore.nonOverlapping(trackStore.tracks.filter {
+            $0.visible && (trackedIDs.contains($0.id) || (ran && $0.lastDetection == timestamp)
+                || $0.isRecentlyObserved(at: now))
+        })
         let t3 = CACurrentMediaTime()
         runs += 1
         if runs <= 5 || runs % 10 == 0 {
@@ -1276,30 +1394,57 @@ final class LiveFoodDetector {
         consecutiveFailures = 0
     }
 
-    private func advanceTracks(_ input: CVPixelBuffer, crop: LiveFoodCrop, timestamp: TimeInterval) {
+    private func advanceTracks(_ input: CVPixelBuffer, crop: LiveFoodCrop, timestamp: TimeInterval) -> Set<Int> {
         let active = trackingRequests.filter { id, _ in
             trackStore.tracks.contains { $0.id == id && $0.visible }
         }
-        guard !active.isEmpty else { return }
+        guard !active.isEmpty else { return [] }
+        var tracked = Set<Int>()
+        var retired = [VNTrackObjectRequest]()
         do {
             try sequence.perform(Array(active.values), on: input, orientation: .up)
             for (id, request) in active {
                 guard let observation = request.results?.first as? VNDetectedObjectObservation else { continue }
                 let box = observation.boundingBox
+                guard LiveFoodOverlayPolicy.validTrackingBox(box) else {
+                    retired.append(request)
+                    trackingRequests.removeValue(forKey: id)
+                    continue
+                }
                 let rect = CGRect(
                     x: crop.rect.minX + box.minX * crop.rect.width,
                     y: crop.rect.minY + (1 - box.maxY) * crop.rect.height,
                     width: box.width * crop.rect.width, height: box.height * crop.rect.height)
-                trackStore.move(id: id, bounds: rect, confidence: observation.confidence, at: timestamp)
+                if trackStore.move(id: id, bounds: rect, confidence: observation.confidence, at: timestamp) {
+                    tracked.insert(id)
+                }
                 request.inputObservation = observation
             }
+            finishTracking(retired, on: input)
+            return tracked
         } catch {
             print("[LiveGlowTracks] motion_failed \(error)")
+            for request in active.values { request.isLastFrame = true }
+            trackingRequests.removeAll()
+            sequence = VNSequenceRequestHandler()
+            return []
         }
     }
 
-    private func seedTrackingRequests(crop: LiveFoodCrop) {
+    private func finishTracking(_ requests: [VNTrackObjectRequest], on input: CVPixelBuffer) {
+        guard !requests.isEmpty else { return }
+        for request in requests { request.isLastFrame = true }
+        do {
+            try sequence.perform(requests, on: input, orientation: .up)
+        } catch {
+            print("[LiveGlowTracks] finish_failed \(error)")
+        }
+    }
+
+    private func seedTrackingRequests(crop: LiveFoodCrop, input: CVPixelBuffer) {
         let visibleIDs = Set(trackStore.tracks.filter { $0.visible }.map { $0.id })
+        let finished = trackingRequests.filter { !visibleIDs.contains($0.key) }
+        finishTracking(Array(finished.values), on: input)
         trackingRequests = trackingRequests.filter { visibleIDs.contains($0.key) }
         for track in trackStore.tracks where track.visible && track.misses == 0 {
             let rect = track.bounds
@@ -1308,11 +1453,9 @@ final class LiveFoodDetector {
                 y: 1 - (rect.maxY - crop.rect.minY) / crop.rect.height,
                 width: rect.width / crop.rect.width, height: rect.height / crop.rect.height)
                 .intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
-            guard !box.isNull, box.width > 0, box.height > 0 else { continue }
-            let observation = VNDetectedObjectObservation(boundingBox: box)
-            if let request = trackingRequests[track.id] {
-                request.inputObservation = observation
-            } else {
+            guard LiveFoodOverlayPolicy.validTrackingBox(box) else { continue }
+            if trackingRequests[track.id] == nil {
+                let observation = VNDetectedObjectObservation(boundingBox: box)
                 let request = VNTrackObjectRequest(detectedObjectObservation: observation)
                 request.trackingLevel = .fast
                 trackingRequests[track.id] = request
@@ -1512,7 +1655,7 @@ private final class LiveFoodHighlights {
         let ids = Set(tracks.map { $0.id })
         for id in Array(foods.keys) where !ids.contains(id) {
             guard let food = foods.removeValue(forKey: id) else { continue }
-            food.setVisible(false)
+            food.setVisible(false, animated: false)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 food.root.removeFromSuperlayer()
             }
@@ -1552,15 +1695,25 @@ private final class LiveFoodHighlights {
 /// of the frame) lands exactly on the food in every orientation. The mesh is
 /// clipped to the capture ROI drawn in that same centred square, so it matches
 /// the pipeline's capture geometry exactly (only food inside counts).
-/// All motion (wire pulse, scan sweep, node twinkle, premium colour flow) is
-/// render-server animation, so it runs at the display's full refresh rate
-/// independent of the ~15 Hz detector and of main-thread load.
+/// The wave and premium colour flow run on the render server, independently
+/// of the ~15 Hz detector and of main-thread load.
 enum LiveFoodWave {
-    static let duration: TimeInterval = 4
-    static let alphas: [CGFloat] = (0...12).map {
-        CGFloat(0.22 + 0.20 * cos(Double($0) * .pi / 2))
+    static let duration: TimeInterval = 2.4
+    // Three identical periods across a gradient three times the mesh size.
+    static let alphas: [CGFloat] = (0...24).map {
+        CGFloat(0.4 * (1 + cos(Double($0) * .pi / 4)))
     }
-    static let locations = (0...12).map { NSNumber(value: Double($0) / 12) }
+    static let locations = (0...24).map { NSNumber(value: Double($0) / 24) }
+
+    static func animation(in bounds: CGRect) -> CABasicAnimation {
+        let sweep = CABasicAnimation(keyPath: "position")
+        sweep.fromValue = NSValue(cgPoint: CGPoint(x: bounds.midX, y: bounds.midY))
+        sweep.toValue = NSValue(cgPoint: CGPoint(x: bounds.midX + bounds.width,
+                                                y: bounds.midY + bounds.height))
+        sweep.duration = duration
+        sweep.timingFunction = CAMediaTimingFunction(name: .linear)
+        return sweep
+    }
 }
 
 private final class LiveGlowLayers {
@@ -1572,6 +1725,7 @@ private final class LiveGlowLayers {
     private let geometry = CALayer()
     private let silhouetteMask = CALayer()
     private let fillLayer = CAShapeLayer()
+    private let glowLayer = CAShapeLayer()
     private let wireContainer = CALayer()
     private let wireSource = CAGradientLayer()
     private let wireMask = CAShapeLayer()
@@ -1580,6 +1734,8 @@ private final class LiveGlowLayers {
     private let sweepMask = CAShapeLayer()
     private let outlineLayer = CAShapeLayer()
     private let nodesLayer = CAShapeLayer()
+    private let nodeDotsLayer = CAShapeLayer()
+    private let sweepNodesLayer = CAShapeLayer()
 
     var videoSize = CGSize(width: 1920, height: 1440)
     private var style: LiveGlowStyle
@@ -1615,6 +1771,15 @@ private final class LiveGlowLayers {
         wireContainer.addSublayer(wireSource)
         sweepContainer.mask = sweepMask
         sweepContainer.addSublayer(sweepSource)
+        for nodes in [nodesLayer, nodeDotsLayer, sweepNodesLayer] {
+            nodes.fillColor = UIColor.white.cgColor
+        }
+        nodeDotsLayer.lineWidth = 0
+        glowLayer.fillColor = nil
+        glowLayer.lineJoin = .round
+        glowLayer.lineCap = .round
+        wireMask.addSublayer(nodesLayer)
+        sweepMask.addSublayer(sweepNodesLayer)
 
         outlineLayer.fillColor = nil
         outlineLayer.lineWidth = 2
@@ -1635,10 +1800,11 @@ private final class LiveGlowLayers {
         silhouetteMask.minificationFilter = .nearest
         crop.addSublayer(geometry)
         geometry.addSublayer(fillLayer)
+        geometry.addSublayer(glowLayer)
         geometry.addSublayer(wireContainer)
         geometry.addSublayer(sweepContainer)
+        geometry.addSublayer(nodeDotsLayer)
         geometry.addSublayer(outlineLayer)
-        geometry.addSublayer(nodesLayer)
         apply(style: style)
     }
 
@@ -1733,18 +1899,23 @@ private final class LiveGlowLayers {
         style = newStyle
         styleApplied = true
         let colors = style.colors.isEmpty ? LiveGlowStyle.fallback.colors : style.colors
-        let accent = colors[0]
+        let accent = style.premium ? colors[0] : UIColor.white
         let bright = accent.mixed(with: .white, amount: 0.35)
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        for layer in [wireContainer, wireSource, sweepSource, nodesLayer] as [CALayer] {
+        for layer in [wireContainer, wireSource, sweepSource, glowLayer] as [CALayer] {
             layer.removeAllAnimations()
         }
-        fillLayer.fillColor = accent.withAlphaComponent(style.premium ? 0.07 : 0.04).cgColor
-        outlineLayer.strokeColor = bright.cgColor
-        nodesLayer.fillColor = accent.mixed(with: .white, amount: 0.55).cgColor
-        wireContainer.opacity = 0.85
+        fillLayer.fillColor = UIColor.clear.cgColor
+        outlineLayer.strokeColor = UIColor.clear.cgColor
+        outlineLayer.isHidden = true
+        wireContainer.opacity = 0.3
+        nodeDotsLayer.fillColor = accent.withAlphaComponent(0.72).cgColor
+        nodeDotsLayer.shadowColor = accent.cgColor
+        nodeDotsLayer.shadowOpacity = 0.7
+        nodeDotsLayer.shadowRadius = 1.5
+        nodeDotsLayer.shadowOffset = .zero
 
         if style.premium && colors.count > 1 {
             wireSource.type = .conic
@@ -1765,25 +1936,25 @@ private final class LiveGlowLayers {
         sweepSource.colors = LiveFoodWave.alphas.map { bright.withAlphaComponent($0).cgColor }
         sweepSource.locations = LiveFoodWave.locations
         sweepSource.isHidden = style.reduceMotion
+        glowLayer.strokeColor = accent.withAlphaComponent(0.35).cgColor
+        glowLayer.lineWidth = 1.8
+        glowLayer.shadowColor = accent.cgColor
+        glowLayer.shadowOpacity = 0.9
+        glowLayer.shadowRadius = 2.4
+        glowLayer.shadowOffset = .zero
+        wireContainer.shadowColor = accent.cgColor
+        wireContainer.shadowOpacity = 0.7
+        wireContainer.shadowRadius = 3
+        wireContainer.shadowOffset = .zero
+        sweepContainer.shadowColor = bright.cgColor
+        sweepContainer.shadowOpacity = 0.55
+        sweepContainer.shadowRadius = 3
+        sweepContainer.shadowOffset = .zero
         CATransaction.commit()
 
         guard !style.reduceMotion else { return }
 
-        let pulse = CABasicAnimation(keyPath: "opacity")
-        pulse.fromValue = 0.72
-        pulse.toValue = 0.88
-        pulse.duration = 2.4
-        pulse.autoreverses = true
-        add(pulse, to: wireContainer, key: "pulse")
-
         animateWave()
-
-        let twinkle = CABasicAnimation(keyPath: "opacity")
-        twinkle.fromValue = 0.75
-        twinkle.toValue = 0.9
-        twinkle.duration = 2.4
-        twinkle.autoreverses = true
-        add(twinkle, to: nodesLayer, key: "twinkle")
 
         if style.premium && colors.count > 1 {
             let flow = CABasicAnimation(keyPath: "transform.rotation.z")
@@ -1809,13 +1980,9 @@ private final class LiveGlowLayers {
 
     private func animateWave() {
         let b = geometry.bounds
-        guard b.width > 0, b.height > 0, !style.reduceMotion else { return }
-        let sweep = CABasicAnimation(keyPath: "position")
-        sweep.fromValue = NSValue(cgPoint: .zero)
-        sweep.toValue = NSValue(cgPoint: CGPoint(x: b.width, y: b.height))
-        sweep.duration = LiveFoodWave.duration
-        sweep.timingFunction = CAMediaTimingFunction(name: .linear)
-        add(sweep, to: sweepSource, key: "sweep")
+        guard mesh != nil, trackBounds != nil, b.width > 0, b.height > 0, !style.reduceMotion,
+              sweepSource.animation(forKey: "sweep") == nil else { return }
+        add(LiveFoodWave.animation(in: b), to: sweepSource, key: "sweep")
     }
 
     /// Replaces the mesh atomically — never blends previous support into a
@@ -1826,6 +1993,7 @@ private final class LiveGlowLayers {
         CATransaction.setDisableActions(true)
         applyMeshPaths()
         CATransaction.commit()
+        animateWave()
     }
 
     func update(track: LiveFoodTrack) {
@@ -1835,12 +2003,13 @@ private final class LiveGlowLayers {
         let sizeChanged = trackBounds?.size != track.bounds.size
         trackBounds = track.bounds
         layoutGeometry()
-        if revision != track.revision || sizeChanged {
+        let meshChanged = revision != track.revision || sizeChanged
+        if meshChanged {
             revision = track.revision
             mesh = track.mesh
-            applyMeshPaths()
         }
-        if lastMask != track.mask {
+        let maskChanged = lastMask != track.mask
+        if maskChanged {
             lastMask = track.mask
             var pixels = [UInt8](repeating: 255, count: meshGrid * meshGrid * 4)
             for i in track.mask.indices {
@@ -1855,6 +2024,8 @@ private final class LiveGlowLayers {
                     provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
             }
         }
+        if meshChanged || maskChanged { applyMeshPaths() }
+        if meshChanged { animateWave() }
         applyTrackTransform(animated: visible && !style.reduceMotion)
         CATransaction.commit()
     }
@@ -1884,17 +2055,17 @@ private final class LiveGlowLayers {
         geometry.bounds = b
         silhouetteMask.frame = b
         for layer in [fillLayer, wireContainer, wireMask, sweepContainer, sweepMask,
-                      outlineLayer, nodesLayer] as [CALayer] {
+                      outlineLayer, nodesLayer, nodeDotsLayer, sweepNodesLayer, glowLayer] as [CALayer] {
             layer.frame = b
         }
         let d = max(b.width, b.height) * 1.5
         wireSource.bounds = CGRect(x: 0, y: 0, width: d, height: d)
         wireSource.position = CGPoint(x: b.midX, y: b.midY)
         sweepSource.bounds = CGRect(x: 0, y: 0, width: b.width * 3, height: b.height * 3)
-        sweepSource.position = .zero
+        sweepSource.position = CGPoint(x: b.midX, y: b.midY)
         if sizeChanged { animateWave() }
-        wireMask.lineWidth = 0.8
-        sweepMask.lineWidth = 1.0
+        wireMask.lineWidth = 0.45
+        sweepMask.lineWidth = 0.75
         outlineLayer.lineWidth = 1.1
     }
 
@@ -1902,7 +2073,8 @@ private final class LiveGlowLayers {
     private func applyMeshPaths() {
         let size = geometry.bounds.size
         guard let mesh, size.width > 0, size.height > 0 else {
-            for shape in [fillLayer, wireMask, sweepMask, outlineLayer, nodesLayer] {
+            for shape in [fillLayer, wireMask, sweepMask, outlineLayer, nodesLayer,
+                          nodeDotsLayer, sweepNodesLayer, glowLayer] {
                 shape.path = nil
             }
             return
@@ -1913,17 +2085,20 @@ private final class LiveGlowLayers {
         fillLayer.path = mesh.region.copy(using: &t)
         wireMask.path = wire
         sweepMask.path = wire
+        glowLayer.path = wire
         outlineLayer.path = mesh.outline.copy(using: &t)
-        let r: CGFloat = 0.75
+        let r: CGFloat = 2.2
         let dots = CGMutablePath()
         for p in mesh.nodes {
             dots.addEllipse(in: CGRect(x: p.x * sx - r, y: p.y * sy - r,
                                        width: 2 * r, height: 2 * r))
         }
         nodesLayer.path = dots
+        nodeDotsLayer.path = dots
+        sweepNodesLayer.path = dots
     }
 
-    func setVisible(_ show: Bool) {
+    func setVisible(_ show: Bool, animated: Bool = true) {
         guard show != visible else { return }
         visible = show
         let to: Float = show ? 1 : 0
@@ -1931,7 +2106,7 @@ private final class LiveGlowLayers {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         root.opacity = to
-        if !style.reduceMotion {
+        if animated && !style.reduceMotion {
             let fade = CABasicAnimation(keyPath: "opacity")
             fade.fromValue = from
             fade.toValue = to
