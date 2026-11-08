@@ -1035,6 +1035,37 @@ final class MonocularVolumeEstimator {
         case lidar
     }
 
+    /// Empty SIDE bands cannot be carved through an occupied TOP band. Check
+    /// source-pixel interval overlap, not centres: a subpixel gap still cuts
+    /// the hull, and the transverse symmetry repeats that cut on the other axis.
+    func sideSupportFailure(mask: [[UInt8]], profile: SideProfile) -> String? {
+        func support(_ mask: [[UInt8]], alongRows: Bool) -> [Bool]? {
+            let w = mask.first?.count ?? 0
+            guard w > 0, !mask.isEmpty, mask.allSatisfy({ $0.count == w }) else { return nil }
+            var bands = [Bool](repeating: false, count: alongRows ? mask.count : w)
+            for r in mask.indices {
+                for c in mask[r].indices where mask[r][c] != 0 {
+                    bands[alongRows ? r : c] = true
+                }
+            }
+            guard let lo = bands.firstIndex(of: true), let hi = bands.lastIndex(of: true) else { return nil }
+            return Array(bands[lo...hi])
+        }
+        guard let measured = support(profile.sourceMask, alongRows: profile.textureHorizontalUsesRows) else {
+            return "invalid_side_mask"
+        }
+        let side = profile.reversed ? Array(measured.reversed()) : measured
+        for alongRows in [false, true] {
+            guard let top = support(mask, alongRows: alongRows) else { return "invalid_top_mask" }
+            for i in top.indices where top[i] {
+                let lo = i * side.count / top.count
+                let hi = ((i + 1) * side.count + top.count - 1) / top.count
+                if side[lo..<hi].contains(false) { return "side_silhouette_gap" }
+            }
+        }
+        return nil
+    }
+
     func usableSideProfile(_ profile: SideProfile?, for label: String, mode: SideProfileMode) -> SideProfile? {
         guard let profile, !profile.sideShared else { return nil }
         // Reject only geometrically unusable masks. A low segmentation
@@ -1483,6 +1514,12 @@ final class MonocularVolumeEstimator {
         let bboxW = footprint.maxCol - footprint.minCol + 1
         let bboxH = footprint.maxRow - footprint.minRow + 1
         guard let geometryProfile = sideProfile else { throw EstimateError.sideViewRequired("missing_side_silhouette") }
+        if let reason = sideSupportFailure(mask: mask, profile: geometryProfile) {
+            print("[SILHOUETTECHECK] path=monocular food#\(instanceIndex) rejected=\(reason) action=retake " +
+                "top={\(ScanMaskGeometry.maskProvenance(mask))} " +
+                "side={\(ScanMaskGeometry.maskProvenance(geometryProfile.sourceMask, horizontalAlongRows: geometryProfile.textureHorizontalUsesRows))}")
+            throw EstimateError.sideViewRequired(reason)
+        }
         let hull = try silhouetteHull(mask: mask, profile: geometryProfile,
             widthCm: widthCm, depthCm: depthCm, heightCm: heightCm,
             offsetX: offsetX, offsetZ: offsetZ, measuredCeilingCm: measuredCeilingCm)

@@ -122,10 +122,41 @@ For each item, capture top + side as guided, then open Scanner Diagnostics:
 | ---------------------------------------------- | ---------------------------------------------------------- |
 | `scale_source = fallback_22cm`                 | Plate not detected — improve plate framing/contrast.       |
 | `side=false`, `fallback=true`                  | Missing capture, unmatched/occluded food, or invalid mask; inspect `[CAPTUREPAIR]` and `[SIDEMATCH]`. Top-only monocular geometry is a zero-thickness sheet, not an inferred portion. |
-| Visible horizontal layers                      | Monocular mesh should report `surface_extraction_mode = exact_silhouette_loft`; otherwise an old layered hull path is still being used. |
+| Food sliced into separate bands                | An empty SIDE-mask column is carved through the matched TOP axis and again across the mirrored axis. A side gap overlapping occupied TOP support now requires `SIDE_VIEW_REQUIRED`, not a saved sliced model. Inspect `[SILHOUETTECHECK]` and `[HEIGHTMEASUREMENT]` `emptyColumns`; retake the full food at a level SIDE angle. |
 | Cube/cylinder shape                            | Inspect missing-side input and silhouette association; do not add smoothing, rim taper, or class thickness. |
 | `guardrail: softened` on a normal portion      | Raw volume overshoot — review envelope for that label.     |
 | `volume_cm3` swings wildly on identical scans  | Unstable scale or silhouette extraction.                   |
+
+### Single-tomato side-mask regression
+
+The reported scan had `heights=[0.37,0.00,0.68,0.77,0.17]`: the zero is an
+empty measured side band, not a reason to add a tomato-shaped prior. In a
+top ∩ side ∩ mirrored-side hull, a band with no occupied side pixels removes
+the food along both horizontal axes. Unioning assigned side pieces keeps their
+original pixels; it does not repair segmentation gaps. The drop from prism
+telemetry (`94.0 cm³`) to mesh volume (`53.7 cm³`) is not itself a volume
+calculation bug: the prism ignores the transverse intersection and mask holes.
+
+Both strict paths now check every source SIDE-band interval against occupied
+TOP intervals, including gaps narrower than a TOP pixel. Inconsistent bands
+request a retake before mesh export/nutrition/save. Real TOP gaps, thin food and
+internal SIDE holes are not filled, smoothed or replaced. This prevents this
+failure from being accepted; it does **not** repair the segmentation model or
+establish the original tomato's true size from logs alone.
+
+Research: [Laurentini's visual-hull definition](https://cgvg.polito.it/Articles/pami94.pdf)
+and [SNU's silhouette back-projection demonstration](https://jhugestar.github.io/snu-vision-lecture/3dvision-visualhull/visual_hull.html).
+Reconstruction intersects foreground masks; missing foreground support cannot
+be recovered faithfully by mesh smoothing.
+
+On the iPhone, scan the same whole tomato again with the full food inside both
+guides and a level SIDE capture. Paste `[PIPELINE] segmentation backend`,
+`[MASKMEASUREMENT] view=side`, `[SIDEMATCH]`, `[HEIGHTMEASUREMENT]`,
+`[SILHOUETTECHECK]`, `[DUALHULL]` and `[MonocularEstimator] visual-hull` logs.
+Confirm either an unsliced model with valid mask support or a retake request
+(no saved result). Original TOP/SIDE photos or mask images are needed to
+distinguish segmentation loss from a genuinely occluded side view. Repeat on
+a LiDAR device to confirm that path's visual behavior independently.
 
 ## October 2026 dual-photo repeatability regression
 

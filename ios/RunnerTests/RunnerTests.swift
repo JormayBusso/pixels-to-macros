@@ -354,6 +354,15 @@ class RunnerTests: XCTestCase {
       sideFrame: sideFrame, profiles: [profile], topColor: topRGB, sideColor: sideRGB)
     XCTAssertTrue(depthCarved.objects[0].volumeCm3 > 0)
     XCTAssertTrue(depthCarved.objects[0].volumeCm3 < object.volumeCm3)
+    var gapped = profile
+    gapped.sourceMask = [[UInt8]](repeating: [1, 0, 1, 1], count: 4)
+    do {
+      _ = try fusion.strictFoodObjects(segments: [segment], topFrame: topFrame, sideFrame: sideFrame,
+        profiles: [gapped], topColor: topRGB, sideColor: sideRGB)
+      XCTFail("side gap must not slice connected top food, even with measured LiDAR depth")
+    } catch InferencePipeline.PipelineError.sideViewRequired(let reason) {
+      XCTAssertTrue(reason.contains("side_silhouette_gap"))
+    }
     for profiles in [[], [profile, profile]] {
       do {
         _ = try fusion.strictFoodObjects(segments: [segment], topFrame: topFrame, sideFrame: sideFrame,
@@ -1280,9 +1289,10 @@ class RunnerTests: XCTestCase {
     empty.sourceMask = [[0, 0], [0, 0]]
     var legacy = profile
     legacy.topSegmentIndex = nil
+    let gapped = hullProfile([[1, 0, 1, 1]])
     let cases: [(FrameCaptureService.CapturedFrame?, [MonocularVolumeEstimator.SideProfile])] = [
       (nil, [profile]), (frame, []), (frame, [borrowed]), (frame, [wrongFood]),
-      (frame, [empty]), (frame, [legacy]),
+      (frame, [empty]), (frame, [legacy]), (frame, [gapped]),
     ]
     for (side, profiles) in cases {
       do {
@@ -1298,6 +1308,37 @@ class RunnerTests: XCTestCase {
     }
     let after = (try? FileManager.default.contentsOfDirectory(atPath: docs.path)) ?? []
     XCTAssertEqual(Set(before), Set(after))
+  }
+
+  func testSideSupportGapsCannotCarveOccupiedTopSilhouette() {
+    let estimator = MonocularVolumeEstimator()
+    let solid: [[UInt8]] = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]
+    let gapped: [[UInt8]] = [[1, 0, 1], [1, 0, 1]]
+    for reversed in [false, true] {
+      for rows in [false, true] {
+        let side = rows ? [[1, 1], [0, 0], [1, 1]] : gapped
+        XCTAssertEqual(estimator.sideSupportFailure(mask: solid,
+          profile: hullProfile(side, reversed: reversed, rows: rows)), "side_silhouette_gap")
+      }
+    }
+    // A gap is legitimate when the TOP also measures separate pieces along
+    // both the observed and mirrored axes.
+    let separate: [[UInt8]] = [[1, 0, 1], [0, 0, 0], [1, 0, 1]]
+    XCTAssertNil(estimator.sideSupportFailure(mask: separate, profile: hullProfile(gapped)))
+    XCTAssertNil(estimator.sideSupportFailure(mask: solid,
+      profile: hullProfile([[1, 1, 1], [1, 0, 1], [1, 1, 1]])))
+    XCTAssertNil(estimator.sideSupportFailure(mask: solid, profile: hullProfile([[1]])))
+    // One empty source column is still a cut when narrower than a top pixel;
+    // never sample only the top-pixel centre or trust cached height samples.
+    var fineSide = [[UInt8]](repeating: [UInt8](repeating: 1, count: 373), count: 2)
+    fineSide[0][93] = 0; fineSide[1][93] = 0
+    XCTAssertEqual(estimator.sideSupportFailure(mask: solid,
+      profile: hullProfile(fineSide)), "side_silhouette_gap")
+    let reversedSide = hullProfile([[1, 1, 0, 1]], reversed: true)
+    let aligned: [[UInt8]] = [[1, 0, 1, 1], [0, 0, 0, 0], [1, 0, 1, 1], [1, 0, 1, 1]]
+    XCTAssertNil(estimator.sideSupportFailure(mask: aligned, profile: reversedSide))
+    XCTAssertEqual(estimator.sideSupportFailure(mask: aligned,
+      profile: hullProfile([[1, 1, 0, 1]])), "side_silhouette_gap")
   }
 
   private func hullProfile(_ mask: [[UInt8]], reversed: Bool = false,
