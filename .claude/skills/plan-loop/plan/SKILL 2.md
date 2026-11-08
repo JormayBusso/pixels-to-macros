@@ -37,4 +37,4 @@ Fallbacks must satisfy the task and the user's explicit model constraints.
 ## Legacy phase reference
 
 For planning/revising via this compatibility path, use the authoritative
-[Plan Loop](../SKILL.md) and [Understand](SKILL.md) instructions.
+[Plan Loop](../SKILL.md) and [Plan](SKILL.md) instructions.

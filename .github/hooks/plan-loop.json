@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "command": "ruby .github/hooks/plan-loop-gate.rb prompt",
+        "timeoutSec": 10
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "command": "ruby .github/hooks/plan-loop-gate.rb stop",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}
