@@ -24,6 +24,11 @@ layout_geometry = declaration(preview, "private func layoutGeometry()")
 assert 'sweepSource.animation(forKey: "sweep") == nil' in wave_starter
 assert "mesh != nil, trackBounds != nil" in wave_starter
 assert "if sizeChanged { animateWave() }" in layout_geometry
+assert "LiveFoodWave.animation(in: waveSpace.bounds)" in wave_starter
+assert "sweepSource.position" not in layout_geometry
+assert "silhouetteMask = CAShapeLayer()" in preview and ".nearest" not in declaration(preview, "private final class LiveGlowLayers")
+assert "geometry.addSublayer(fillLayer)" not in preview
+assert "setShadow(offset: .zero, blur:" in declaration(preview, "private func applyMeshPaths()")
 assert "scanFade" not in preview and "scanGlow" not in preview
 print("PASS sweep continues across routine bounds updates without global opacity pulsing")
 subprocess.run(
@@ -94,7 +99,8 @@ extension Notification.Name {
 )
 print("PASS live preview/services typecheck (iOS SDK; Flutter/session host stubs)", flush=True)
 live_wave = declaration(preview, "enum LiveFoodWave")
-live_wave = live_wave[:live_wave.index("    static func animation(in bounds: CGRect)")] + "}"
+live_wave = live_wave[:live_wave.index("    static func animation(in bounds: CGRect)")] \
+    + declaration(preview, "static func image(color: CGColor)") + "}"
 source = [
     "import Foundation\nimport CoreGraphics\nimport CoreML\nimport simd",
     declaration(preview, "enum LiveFoodOverlayPolicy"),
@@ -251,21 +257,32 @@ check("semantic food-only labels, not filename or class-zero heuristics") {
                 bounds: CGRect(x: index % 6 * 20, y: index / 6 * 20, width: 12, height: 12),
                 mask: Array(repeating: Float(1), count: n * n))
         }
-        check("travelling gradient is spatially periodic with a continuous repeat seam") {
-            let stops = LiveFoodWave.locations.map { $0.doubleValue }
-            let alphas = LiveFoodWave.alphas.map { Double($0) }
-            precondition(stops.allSatisfy { $0 >= 0 && $0 <= 1 })
-            func brightness(_ position: Double) -> Double {
-                let index = min(23, max(0, Int(position * 24)))
-                let fraction = (position - stops[index]) / (stops[index + 1] - stops[index])
-                return alphas[index] * (1 - fraction) + alphas[index + 1] * fraction
+        check("curved spatial wave keeps travelling for ten seconds and repeats seamlessly") {
+            for step in 0...100 {
+                let elapsed = Double(step) / 10
+                let crest = CGPoint(x: elapsed / LiveFoodWave.duration, y: 0)
+                let trough = CGPoint(x: crest.x + 0.5, y: 0)
+                precondition(LiveFoodWave.brightness(at: crest, elapsed: elapsed) > 0.7)
+                precondition(LiveFoodWave.brightness(at: trough, elapsed: elapsed) < 0.01)
+                let point = CGPoint(x: Double(step) / 100, y: 0.37)
+                precondition(abs(LiveFoodWave.brightness(at: point, elapsed: elapsed)
+                    - LiveFoodWave.brightness(at: point, elapsed: elapsed + LiveFoodWave.duration)) < 1e-12)
             }
-            // Moving a 3× gradient by one food-width/height shifts the sample by
-            // exactly 1/3. Both sides of the loop must have identical brightness.
-            for step in 0...60 {
-                let position = 1.0 / 3 + Double(step) / 180
-                precondition(abs(brightness(position) - brightness(position - 1.0 / 3)) < 1e-12)
+            precondition(abs(LiveFoodWave.brightness(at: .zero, elapsed: 0)
+                - LiveFoodWave.brightness(at: CGPoint(x: 0, y: 0.25), elapsed: 0)) > 0.3)
+            let color = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
+            let image = LiveFoodWave.image(color: color)!
+            let data = image.dataProvider!.data!
+            let pixels = CFDataGetBytePtr(data)!
+            for y in stride(from: 0, to: image.height, by: 17) {
+                for x in 0..<128 {
+                    let index = (y * image.width + x) * 4
+                    precondition(pixels[index] == pixels[index + 3])
+                    precondition(pixels[index + 3] == pixels[index + 128 * 4 + 3])
+                    precondition(pixels[index + 3] < 200)
+                }
             }
+            precondition(pixels[3] > 170 && pixels[64 * 4 + 3] < 10)
             for size in [CGSize(width: 150, height: 20), CGSize(width: 20, height: 150)] {
                 let mask = Array(repeating: Float(1), count: 96 * 96)
                 let mesh = LiveFoodMesh.build(mask: mask, grid: 96, spacing: 6,
@@ -415,9 +432,48 @@ check("shared wire edges are emitted once and mesh masks debounce segmentation j
                                       bounds: bounds, mask: original)], at: 1)
     let revision = store.tracks[0].revision
     store.update([observation], at: 1.2)
-    precondition(store.tracks[0].revision == revision && store.tracks[0].mask == original)
+    precondition(store.tracks[0].revision == revision && store.tracks[0].meshMask == original)
+    precondition(store.tracks[0].mask == shifted)
+    precondition(store.tracks[0].silhouette.contains(CGPoint(x: 85.5, y: 30.5)))
     store.update([observation], at: 1.4)
     precondition(store.tracks[0].revision == revision + 1 && store.tracks[0].mask == shifted)
+}
+check("source-resolution silhouette keeps holes, thin protrusions and crop edges at every mesh density") {
+    let g = 32
+    var mask = [Float](repeating: 0, count: g * g)
+    for y in 0..<24 { for x in 0..<24 { mask[y * g + x] = 1 } }
+    for y in 8..<12 { for x in 8..<12 { mask[y * g + x] = 0 } }
+    for x in 24..<30 { mask[3 * g + x] = 1 }
+    mask[29 * g + 29] = 1
+    mask[30 * g + 30] = 1
+    let original = mask
+    let fine = LiveFoodMesh.build(mask: mask, grid: g, spacing: 2)!
+    let coarse = LiveFoodMesh.build(mask: mask, grid: g, spacing: 16)!
+    precondition(fine.region == coarse.region && fine.triangles > coarse.triangles * 4)
+    for y in 0..<g { for x in 0..<g {
+        let point = CGPoint(x: CGFloat(x) + 0.5, y: CGFloat(y) + 0.5)
+        precondition(fine.region.contains(point, using: .evenOdd) == (mask[y * g + x] > 0.5))
+    } }
+    precondition(mask == original)
+    let n = LiveFoodTrackStore.maskGrid
+    var current = [Float](repeating: 1, count: n * n)
+    var store = LiveFoodTrackStore()
+    let oldBounds = CGRect(x: 10, y: 10, width: 40, height: 40)
+    store.update([LiveFoodObservation(label: "apple", confidence: 0.9,
+        bounds: oldBounds, mask: current)], at: 1)
+    let first = store.tracks[0]
+    current[80 * n + 80] = 0
+    let measuredBounds = oldBounds.offsetBy(dx: 2, dy: 1)
+    store.update([LiveFoodObservation(label: "apple", confidence: 0.9,
+        bounds: measuredBounds, mask: current)], at: 1.1)
+    precondition(store.tracks[0].id == first.id && store.tracks[0].revision == first.revision)
+    precondition(store.tracks[0].bounds == measuredBounds)
+    precondition(!store.tracks[0].silhouette.contains(CGPoint(x: 80.5, y: 80.5)))
+    for width in [20, 60, 120, 160] {
+        let bounds = CGRect(x: 0, y: 0, width: width, height: width)
+        let step = LiveFoodTrackStore.spacing(for: bounds) * CGFloat(width) / CGFloat(n)
+        precondition(step <= 3.2)
+    }
 }
 check("guide crop and inverse mapping preserve TOP and SIDE support") {
     for rounded in [false, true] {

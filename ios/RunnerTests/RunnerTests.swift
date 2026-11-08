@@ -8,31 +8,22 @@ import simd
 class RunnerTests: XCTestCase {
 
   func testLiveFoodWaveMovesAcrossEdgesAndRepeatsWithoutAJump() throws {
-    let bounds = CGRect(x: 0, y: 0, width: 120, height: 120)
+    let bounds = CGRect(x: 0, y: 0, width: 1, height: 1)
     let animation = LiveFoodWave.animation(in: bounds)
-    let start = try XCTUnwrap(animation.fromValue as? NSValue).cgPointValue
-    let end = try XCTUnwrap(animation.toValue as? NSValue).cgPointValue
-    XCTAssertEqual(animation.keyPath, "position")
-    XCTAssertGreaterThan(animation.duration, 0)
-
-    func alpha(at point: CGPoint, progress: CGFloat) -> CGFloat {
-      let center = CGPoint(x: start.x + (end.x - start.x) * progress,
-                           y: start.y + (end.y - start.y) * progress)
-      let x = (point.x - center.x + 1.5 * bounds.width) / (3 * bounds.width)
-      let y = (point.y - center.y + 1.5 * bounds.height) / (3 * bounds.height)
-      let index = (x + y) / 2 * CGFloat(LiveFoodWave.alphas.count - 1)
-      let lower = Int(floor(index))
-      let fraction = index - CGFloat(lower)
-      return LiveFoodWave.alphas[lower] * (1 - fraction)
-        + LiveFoodWave.alphas[lower + 1] * fraction
+    XCTAssertEqual(animation.keyPath, "transform.translation.x")
+    XCTAssertEqual(try XCTUnwrap(animation.toValue as? CGFloat), 1)
+    let first = CGPoint.zero
+    let second = CGPoint(x: 0.5, y: 0)
+    XCTAssertGreaterThan(abs(LiveFoodWave.brightness(at: first, elapsed: 0)
+      - LiveFoodWave.brightness(at: second, elapsed: 0)), 0.6)
+    XCTAssertLessThan(LiveFoodWave.brightness(at: first, elapsed: animation.duration / 2), 0.01)
+    XCTAssertGreaterThan(abs(LiveFoodWave.brightness(at: first, elapsed: 0)
+      - LiveFoodWave.brightness(at: CGPoint(x: 0, y: 0.25), elapsed: 0)), 0.3)
+    for step in 0...100 {
+      let point = CGPoint(x: Double(step) / 100, y: 0.37)
+      XCTAssertEqual(LiveFoodWave.brightness(at: point, elapsed: 0),
+        LiveFoodWave.brightness(at: point, elapsed: animation.duration), accuracy: 0.0001)
     }
-
-    let first = CGPoint(x: 15, y: 15)
-    let second = CGPoint(x: 75, y: 75)
-    XCTAssertGreaterThan(abs(alpha(at: first, progress: 0) - alpha(at: second, progress: 0)), 0.3)
-    XCTAssertGreaterThan(abs(alpha(at: first, progress: 0) - alpha(at: first, progress: 0.5)), 0.3)
-    XCTAssertEqual(alpha(at: first, progress: 0), alpha(at: first, progress: 1), accuracy: 0.0001)
-    XCTAssertLessThan(LiveFoodWave.alphas.max()!, 1)
   }
 
   func testLiveFoodWireUsesEachSharedTriangleEdgeOnce() throws {
@@ -86,25 +77,24 @@ class RunnerTests: XCTestCase {
     XCTAssertFalse(LiveFoodOverlayPolicy.shouldKeepOverlay(confirmedAt: 2, now: 1))
   }
 
-  func testLiveFoodMeshIncludesDotsAtClippedEdgeIntersections() throws {
+  func testLiveFoodSilhouetteDoesNotDependOnTriangleSize() throws {
     let grid = 24
     var mask = [Float](repeating: 0, count: grid * grid)
     for y in 4..<20 {
       for x in 4..<20 { mask[y * grid + x] = 1 }
     }
-    let mesh = try XCTUnwrap(LiveFoodMesh.build(mask: mask, grid: grid))
-    var crossings = [CGPoint]()
-    mesh.outline.applyWithBlock { element in
-      switch element.pointee.type {
-      case .moveToPoint, .addLineToPoint:
-        crossings.append(element.pointee.points[0])
-      default:
-        break
-      }
-    }
-    XCTAssertFalse(crossings.isEmpty)
-    for point in crossings {
-      XCTAssertTrue(mesh.nodes.contains { hypot($0.x - point.x, $0.y - point.y) < 0.001 })
+    for y in 9..<13 { for x in 9..<13 { mask[y * grid + x] = 0 } }
+    mask[6 * grid + 20] = 1
+    let fine = try XCTUnwrap(LiveFoodMesh.build(mask: mask, grid: grid, spacing: 2))
+    let coarse = try XCTUnwrap(LiveFoodMesh.build(mask: mask, grid: grid, spacing: 12))
+    XCTAssertEqual(fine.region, coarse.region)
+    XCTAssertGreaterThan(fine.triangles, coarse.triangles * 4)
+    for y in 0..<grid { for x in 0..<grid {
+      XCTAssertEqual(fine.region.contains(CGPoint(x: CGFloat(x) + 0.5, y: CGFloat(y) + 0.5)),
+        mask[y * grid + x] > 0.5)
+    } }
+    for point in fine.nodes {
+      XCTAssertTrue(fine.region.contains(point))
     }
   }
 
@@ -145,7 +135,9 @@ class RunnerTests: XCTestCase {
       mask: shifted)
     store.update([observation], at: 1.2)
     XCTAssertEqual(store.tracks[0].revision, firstRevision)
-    XCTAssertEqual(store.tracks[0].mask, original)
+    XCTAssertEqual(store.tracks[0].meshMask, original)
+    XCTAssertEqual(store.tracks[0].mask, shifted)
+    XCTAssertTrue(store.tracks[0].silhouette.contains(CGPoint(x: 75.5, y: 30.5)))
     store.update([observation], at: 1.4)
     XCTAssertEqual(store.tracks[0].revision, firstRevision + 1)
     XCTAssertEqual(store.tracks[0].mask, shifted)

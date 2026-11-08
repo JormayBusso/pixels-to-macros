@@ -734,13 +734,6 @@ enum LiveFoodOverlayPolicy {
     }
 }
 
-/// Live wireframe of the current food mask: marching triangles on a fixed,
-/// screen-anchored equilateral lattice. Every lattice triangle fully inside
-/// the iso-0.5 contour is kept; boundary triangles are clipped exactly at the
-/// interpolated contour crossing (Sutherland–Hodgman), so the outer edge
-/// follows the mask silhouette while interior lines never jitter between
-/// frames. Display-only — saved scans never use this. Coordinates are in
-/// mask-grid cells.
 private struct LiveFoodEdgeKey: Hashable {
     let ax: Int
     let ay: Int
@@ -773,47 +766,92 @@ struct LiveFoodMesh {
     let nodes: [CGPoint]
     let triangles: Int
 
-    static func build(mask: [Float], grid g: Int, spacing h: CGFloat = 6,
+    /// Trace the source mask, not the triangle lattice. Padding closes food
+    /// touching the crop; directed marching-square loops also retain holes.
+    static func silhouette(mask: [Float], grid g: Int) -> CGPath? {
+        guard g > 1, mask.count == g * g else { return nil }
+        struct Point: Hashable {
+            let x: Int
+            let y: Int
+            var position: CGPoint { CGPoint(x: CGFloat(x) / 2, y: CGFloat(y) / 2) }
+        }
+        func inside(_ x: Int, _ y: Int) -> Bool {
+            guard x >= 0, y >= 0, x < g, y < g else { return false }
+            let value = mask[y * g + x]
+            return value.isFinite && value > 0.5
+        }
+        var next = [Point: Point]()
+        var starts = [Point]()
+        for y in -1..<g {
+            for x in -1..<g {
+                let code = (inside(x, y) ? 1 : 0) | (inside(x + 1, y) ? 2 : 0)
+                    | (inside(x + 1, y + 1) ? 4 : 0) | (inside(x, y + 1) ? 8 : 0)
+                let edges = [
+                    Point(x: 2 * x + 2, y: 2 * y + 1),
+                    Point(x: 2 * x + 3, y: 2 * y + 2),
+                    Point(x: 2 * x + 2, y: 2 * y + 3),
+                    Point(x: 2 * x + 1, y: 2 * y + 2),
+                ]
+                func connect(_ a: Int, _ b: Int) {
+                    starts.append(edges[a])
+                    next[edges[a]] = edges[b]
+                }
+                switch code {
+                case 1: connect(0, 3)
+                case 2: connect(1, 0)
+                case 3: connect(1, 3)
+                case 4: connect(2, 1)
+                case 5: connect(0, 3); connect(2, 1)
+                case 6: connect(2, 0)
+                case 7: connect(2, 3)
+                case 8: connect(3, 2)
+                case 9: connect(0, 2)
+                case 10: connect(1, 0); connect(3, 2)
+                case 11: connect(1, 2)
+                case 12: connect(3, 1)
+                case 13: connect(0, 1)
+                case 14: connect(3, 0)
+                default: break
+                }
+            }
+        }
+        guard !next.isEmpty else { return nil }
+        let region = CGMutablePath()
+        for start in starts where next[start] != nil {
+            region.move(to: start.position)
+            var point = start
+            repeat {
+                guard let end = next.removeValue(forKey: point) else { return nil }
+                region.addLine(to: end.position)
+                point = end
+            } while point != start
+            region.closeSubpath()
+        }
+        return region.copy()
+    }
+
+    static func build(mask: [Float], grid g: Int, spacing h: CGFloat = 4,
                       aspectRatio: CGFloat = 1) -> LiveFoodMesh? {
         guard g > 1, mask.count == g * g, h.isFinite, h >= 1,
-              aspectRatio.isFinite, aspectRatio > 0 else { return nil }
-        var support = [Float](repeating: 0, count: g * g)
-        for i in 0..<(g * g) where mask[i].isFinite && mask[i] > 0.5 { support[i] = 1 }
-        // One tiny blur only gives the iso-line sub-cell precision; the 0.5
-        // level set stays on the original mask boundary.
-        let field = LiveFoodOverlayPolicy.boxBlur(support, g, 1)
-
-        func sample(_ x: CGFloat, _ y: CGFloat) -> Float {
-            guard x >= 0, y >= 0, x <= CGFloat(g), y <= CGFloat(g) else { return -0.5 }
-            let fx = min(max(x - 0.5, 0), CGFloat(g - 1))
-            let fy = min(max(y - 0.5, 0), CGFloat(g - 1))
-            let x0 = Int(fx), y0 = Int(fy)
-            let x1 = min(x0 + 1, g - 1), y1 = min(y0 + 1, g - 1)
-            let tx = Float(fx - CGFloat(x0)), ty = Float(fy - CGFloat(y0))
-            let top = field[y0 * g + x0] * (1 - tx) + field[y0 * g + x1] * tx
-            let bottom = field[y1 * g + x0] * (1 - tx) + field[y1 * g + x1] * tx
-            return top * (1 - ty) + bottom * ty - 0.5
-        }
+              aspectRatio.isFinite, aspectRatio > 0,
+              let region = silhouette(mask: mask, grid: g) else { return nil }
 
         let rowH = h * aspectRatio * CGFloat(3).squareRoot() / 2
         let cols = Int((CGFloat(g) / h).rounded(.up)) + 4
         let rows = Int((CGFloat(g) / rowH).rounded(.up)) + 3
-        var points = [CGPoint](), values = [Float]()
+        var points = [CGPoint]()
         points.reserveCapacity(cols * rows)
-        values.reserveCapacity(cols * rows)
         for j in 0..<rows {
             for i in 0..<cols {
                 let p = CGPoint(x: CGFloat(i - 1) * h - (j % 2 == 0 ? 0 : h / 2),
                                 y: CGFloat(j - 1) * rowH)
                 points.append(p)
-                values.append(sample(p.x, p.y))
             }
         }
 
-        let wire = CGMutablePath(), outline = CGMutablePath(), region = CGMutablePath()
+        let wire = CGMutablePath()
         var wireEdges = Set<LiveFoodEdgeKey>()
         var nodes = [CGPoint]()
-        var used = [Bool](repeating: false, count: points.count)
         var triangles = 0
 
         func addWireEdge(_ start: CGPoint, _ end: CGPoint) {
@@ -822,53 +860,13 @@ struct LiveFoodMesh {
             wire.addLine(to: end)
         }
 
-        func emit(_ poly: [CGPoint]) {
-            region.addLines(between: poly)
-            region.closeSubpath()
-            for index in poly.indices {
-                addWireEdge(poly[index], poly[(index + 1) % poly.count])
-            }
-            if poly.count == 4 {
-                addWireEdge(poly[0], poly[2])
-            }
-            triangles += poly.count - 2
-        }
-
         func triangle(_ a: Int, _ b: Int, _ c: Int) {
-            let idx = [a, b, c]
-            let v = idx.map { values[$0] }
-            let inside = v.map { $0 >= 0 }
-            if !inside.contains(true) { return }
-            if !inside.contains(false) {
-                emit(idx.map { points[$0] })
-                for k in idx { used[k] = true }
-                return
-            }
-            var poly = [CGPoint](), crossings = [CGPoint]()
-            for k in 0..<3 {
-                let n = (k + 1) % 3
-                if inside[k] { poly.append(points[idx[k]]); used[idx[k]] = true }
-                if inside[k] != inside[n] {
-                    // Bisect on the field: lattice edges span several cells,
-                    // so a linear guess could sit up to h/2 off the silhouette.
-                    var pin = points[idx[inside[k] ? k : n]]
-                    var pout = points[idx[inside[k] ? n : k]]
-                    for _ in 0..<8 {
-                        let mid = CGPoint(x: (pin.x + pout.x) / 2, y: (pin.y + pout.y) / 2)
-                        if sample(mid.x, mid.y) >= 0 { pin = mid } else { pout = mid }
-                    }
-                    let q = CGPoint(x: (pin.x + pout.x) / 2, y: (pin.y + pout.y) / 2)
-                    poly.append(q)
-                    crossings.append(q)
-                    nodes.append(q)
-                }
-            }
-            guard poly.count >= 3 else { return }
-            emit(poly)
-            if crossings.count == 2 {
-                outline.move(to: crossings[0])
-                outline.addLine(to: crossings[1])
-            }
+            // The complete lattice is clipped by the independent source
+            // contour at compositing time, never by coarse triangle chords.
+            addWireEdge(points[a], points[b])
+            addWireEdge(points[b], points[c])
+            addWireEdge(points[c], points[a])
+            triangles += 1
         }
 
         for j in 0..<(rows - 1) {
@@ -884,10 +882,9 @@ struct LiveFoodMesh {
                 }
             }
         }
-        guard triangles > 0 else { return nil }
-        for k in 0..<points.count where used[k] && values[k] >= 0 { nodes.append(points[k]) }
-        return LiveFoodMesh(wire: wire.copy() ?? wire, outline: outline.copy() ?? outline,
-                            region: region.copy() ?? region, nodes: nodes, triangles: triangles)
+        for point in points where region.contains(point) { nodes.append(point) }
+        return LiveFoodMesh(wire: wire.copy() ?? wire, outline: region,
+                            region: region, nodes: nodes, triangles: triangles)
     }
 }
 
@@ -913,6 +910,7 @@ struct LiveFoodTrack {
     var pendingMask: [Float]
     var pendingMaskHits: Int
     var mesh: LiveFoodMesh
+    var silhouette: CGPath
     var meshAspect: CGFloat
     var revision: Int
     var hits: Int
@@ -1005,7 +1003,7 @@ struct LiveFoodTrackStore {
                     < Self.overlap(tracks[$1].bounds, observation.bounds)
             }) {
                 assigned.insert(tracks[i].id)
-                let stableBounds = Self.interpolate(tracks[i].bounds, observation.bounds, amount: 0.7)
+                let stableBounds = observation.bounds
                 tracks[i].bounds = stableBounds
                 tracks[i].confidence = tracks[i].confidence * 0.65 + observation.confidence * 0.35
                 tracks[i].lastDetection = now
@@ -1013,6 +1011,11 @@ struct LiveFoodTrackStore {
                 tracks[i].hits += 1
                 tracks[i].misses = 0
                 tracks[i].state = .confirmed
+                if tracks[i].mask != observation.mask,
+                   let silhouette = LiveFoodMesh.silhouette(mask: observation.mask, grid: Self.maskGrid) {
+                    tracks[i].mask = observation.mask
+                    tracks[i].silhouette = silhouette
+                }
                 let changed = zip(tracks[i].meshMask, observation.mask).reduce(0) {
                     $0 + (($1.0 > 0.5) != ($1.1 > 0.5) ? 1 : 0)
                 }
@@ -1069,7 +1072,8 @@ struct LiveFoodTrackStore {
                     confidence: observation.confidence, bounds: observation.bounds,
                     mask: observation.mask, meshMask: observation.mask,
                     pendingMask: [], pendingMaskHits: 0,
-                    mesh: mesh, meshAspect: observation.bounds.width / observation.bounds.height,
+                    mesh: mesh, silhouette: mesh.region,
+                    meshAspect: observation.bounds.width / observation.bounds.height,
                     revision: 1, hits: 1, misses: 0,
                     lastDetection: now, lastMotion: now))
             }
@@ -1082,7 +1086,7 @@ struct LiveFoodTrackStore {
     }
 
     static func spacing(for bounds: CGRect) -> CGFloat {
-        max(4, min(36, CGFloat(maskGrid) * 7.5 / bounds.width))
+        max(2, min(36, CGFloat(maskGrid) * 2.8 / bounds.width))
     }
 
     static func nonOverlapping(_ candidates: [LiveFoodTrack]) -> [LiveFoodTrack] {
@@ -1698,21 +1702,50 @@ private final class LiveFoodHighlights {
 /// The wave and premium colour flow run on the render server, independently
 /// of the ~15 Hz detector and of main-thread load.
 enum LiveFoodWave {
-    static let duration: TimeInterval = 2.4
-    // Three identical periods across a gradient three times the mesh size.
-    static let alphas: [CGFloat] = (0...24).map {
-        CGFloat(0.4 * (1 + cos(Double($0) * .pi / 4)))
+    static let duration: TimeInterval = 3.6
+    static let nodeRadius: CGFloat = 0.65
+
+    static func brightness(at point: CGPoint, elapsed: TimeInterval) -> CGFloat {
+        let bend = 0.18 * sin(2 * Double.pi * Double(point.y))
+            + 0.055 * sin(4 * Double.pi * Double(point.y))
+        let phase = 2 * Double.pi * (Double(point.x) + bend - elapsed / duration)
+        return CGFloat(0.74 * pow((1 + cos(phase)) / 2, 5))
     }
-    static let locations = (0...24).map { NSNumber(value: Double($0) / 24) }
 
     static func animation(in bounds: CGRect) -> CABasicAnimation {
-        let sweep = CABasicAnimation(keyPath: "position")
-        sweep.fromValue = NSValue(cgPoint: CGPoint(x: bounds.midX, y: bounds.midY))
-        sweep.toValue = NSValue(cgPoint: CGPoint(x: bounds.midX + bounds.width,
-                                                y: bounds.midY + bounds.height))
+        let sweep = CABasicAnimation(keyPath: "transform.translation.x")
+        sweep.fromValue = 0
+        sweep.toValue = bounds.width
         sweep.duration = duration
         sweep.timingFunction = CAMediaTimingFunction(name: .linear)
         return sweep
+    }
+
+    static let whiteImage = image(color: UIColor.white.cgColor)
+
+    static func image(color: CGColor) -> CGImage? {
+        let side = 384
+        let space = CGColorSpaceCreateDeviceRGB()
+        guard let rgb = color.converted(to: space, intent: .defaultIntent, options: nil),
+              let components = rgb.components, components.count == 4 else { return nil }
+        var pixels = [UInt8](repeating: 0, count: side * side * 4)
+        for y in 0..<side {
+            for x in 0..<side {
+                let value = components[3] * brightness(
+                    at: CGPoint(x: 3 * (CGFloat(x) + 0.5) / CGFloat(side),
+                                y: 3 * (CGFloat(y) + 0.5) / CGFloat(side)), elapsed: 0)
+                let index = (y * side + x) * 4
+                pixels[index] = UInt8((255 * components[0] * value).rounded())
+                pixels[index + 1] = UInt8((255 * components[1] * value).rounded())
+                pixels[index + 2] = UInt8((255 * components[2] * value).rounded())
+                pixels[index + 3] = UInt8((255 * value).rounded())
+            }
+        }
+        guard let provider = CGDataProvider(data: Data(pixels) as CFData) else { return nil }
+        return CGImage(width: side, height: side, bitsPerComponent: 8, bitsPerPixel: 32,
+                       bytesPerRow: side * 4, space: space,
+                       bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
     }
 }
 
@@ -1723,19 +1756,17 @@ private final class LiveGlowLayers {
     private let content = CALayer()
     private let crop = CALayer()
     private let geometry = CALayer()
-    private let silhouetteMask = CALayer()
-    private let fillLayer = CAShapeLayer()
-    private let glowLayer = CAShapeLayer()
+    private let silhouetteMask = CAShapeLayer()
     private let wireContainer = CALayer()
     private let wireSource = CAGradientLayer()
     private let wireMask = CAShapeLayer()
-    private let sweepSource = CAGradientLayer()
+    private let sweepSource = CALayer()
+    private let waveSpace = CALayer()
     private let sweepContainer = CALayer()
     private let sweepMask = CAShapeLayer()
-    private let outlineLayer = CAShapeLayer()
     private let nodesLayer = CAShapeLayer()
-    private let nodeDotsLayer = CAShapeLayer()
-    private let sweepNodesLayer = CAShapeLayer()
+    private var lightMaskWire: CGPath?
+    private var lightMaskSize = CGSize.zero
 
     var videoSize = CGSize(width: 1920, height: 1440)
     private var style: LiveGlowStyle
@@ -1746,6 +1777,7 @@ private final class LiveGlowLayers {
     private var revision = -1
     private var trackBounds: CGRect?
     private var lastMask: [Float] = []
+    private var currentSilhouette: CGPath?
     /// Landscape UI: world-horizontal follows the frame columns.
     private var longAxisAlongColumns = true
     private var visible = false
@@ -1759,52 +1791,37 @@ private final class LiveGlowLayers {
         crop.masksToBounds = true
         if clipsGuide { crop.mask = roiMask }
 
-        for shape in [wireMask, sweepMask] {
-            shape.fillColor = nil
-            shape.strokeColor = UIColor.white.cgColor
-            shape.lineJoin = .round
-            shape.lineCap = .round
-        }
-        wireMask.lineWidth = 0.9
-        sweepMask.lineWidth = 1.6
+        wireMask.fillColor = nil
+        wireMask.strokeColor = UIColor.white.cgColor
+        wireMask.lineJoin = .round
+        wireMask.lineCap = .round
+        wireMask.lineWidth = 0.45
         wireContainer.mask = wireMask
         wireContainer.addSublayer(wireSource)
         sweepContainer.mask = sweepMask
-        sweepContainer.addSublayer(sweepSource)
-        for nodes in [nodesLayer, nodeDotsLayer, sweepNodesLayer] {
-            nodes.fillColor = UIColor.white.cgColor
-        }
-        nodeDotsLayer.lineWidth = 0
-        glowLayer.fillColor = nil
-        glowLayer.lineJoin = .round
-        glowLayer.lineCap = .round
+        sweepContainer.addSublayer(waveSpace)
+        waveSpace.addSublayer(sweepSource)
+        waveSpace.anchorPoint = .zero
+        waveSpace.bounds = CGRect(x: 0, y: 0, width: 1, height: 1)
+        waveSpace.position = .zero
+        sweepSource.frame = CGRect(x: -1, y: -1, width: 3, height: 3)
+        sweepSource.contentsGravity = .resize
+        sweepSource.magnificationFilter = .linear
+        sweepMask.contentsGravity = .resize
+        nodesLayer.fillColor = UIColor.white.cgColor
         wireMask.addSublayer(nodesLayer)
-        sweepMask.addSublayer(sweepNodesLayer)
-
-        outlineLayer.fillColor = nil
-        outlineLayer.lineWidth = 2
-        outlineLayer.lineJoin = .round
-        outlineLayer.lineCap = .round
-        // A hairline dark shadow keeps the theme-coloured contour legible on
-        // bright plates and food without turning it into a glow.
-        outlineLayer.shadowColor = UIColor.black.cgColor
-        outlineLayer.shadowOpacity = 0.35
-        outlineLayer.shadowRadius = 1.2
-        outlineLayer.shadowOffset = .zero
+        for shape in [wireMask, silhouetteMask, nodesLayer] {
+            shape.contentsScale = UIScreen.main.scale
+        }
 
         geometry.anchorPoint = .zero
         geometry.position = .zero
         geometry.mask = silhouetteMask
-        silhouetteMask.contentsGravity = .resize
-        silhouetteMask.magnificationFilter = .nearest
-        silhouetteMask.minificationFilter = .nearest
+        silhouetteMask.fillColor = UIColor.white.cgColor
+        silhouetteMask.fillRule = .evenOdd
         crop.addSublayer(geometry)
-        geometry.addSublayer(fillLayer)
-        geometry.addSublayer(glowLayer)
         geometry.addSublayer(wireContainer)
         geometry.addSublayer(sweepContainer)
-        geometry.addSublayer(nodeDotsLayer)
-        geometry.addSublayer(outlineLayer)
         apply(style: style)
     }
 
@@ -1827,6 +1844,7 @@ private final class LiveGlowLayers {
         roiMask.frame = b
         roiMask.path = roiPath()
         applyMeshPaths()
+        if let currentSilhouette { applySilhouette(currentSilhouette) }
         applyTrackTransform(animated: false)
         CATransaction.commit()
     }
@@ -1904,18 +1922,10 @@ private final class LiveGlowLayers {
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        for layer in [wireContainer, wireSource, sweepSource, glowLayer] as [CALayer] {
+        for layer in [wireContainer, wireSource, sweepSource] {
             layer.removeAllAnimations()
         }
-        fillLayer.fillColor = UIColor.clear.cgColor
-        outlineLayer.strokeColor = UIColor.clear.cgColor
-        outlineLayer.isHidden = true
-        wireContainer.opacity = 0.3
-        nodeDotsLayer.fillColor = accent.withAlphaComponent(0.72).cgColor
-        nodeDotsLayer.shadowColor = accent.cgColor
-        nodeDotsLayer.shadowOpacity = 0.7
-        nodeDotsLayer.shadowRadius = 1.5
-        nodeDotsLayer.shadowOffset = .zero
+        wireContainer.opacity = 0.24
 
         if style.premium && colors.count > 1 {
             wireSource.type = .conic
@@ -1930,26 +1940,8 @@ private final class LiveGlowLayers {
             wireSource.backgroundColor = accent.mixed(with: .white, amount: 0.15).cgColor
         }
 
-        sweepSource.type = .axial
-        sweepSource.startPoint = CGPoint(x: 0, y: 0)
-        sweepSource.endPoint = CGPoint(x: 1, y: 1)
-        sweepSource.colors = LiveFoodWave.alphas.map { bright.withAlphaComponent($0).cgColor }
-        sweepSource.locations = LiveFoodWave.locations
-        sweepSource.isHidden = style.reduceMotion
-        glowLayer.strokeColor = accent.withAlphaComponent(0.35).cgColor
-        glowLayer.lineWidth = 1.8
-        glowLayer.shadowColor = accent.cgColor
-        glowLayer.shadowOpacity = 0.9
-        glowLayer.shadowRadius = 2.4
-        glowLayer.shadowOffset = .zero
-        wireContainer.shadowColor = accent.cgColor
-        wireContainer.shadowOpacity = 0.7
-        wireContainer.shadowRadius = 3
-        wireContainer.shadowOffset = .zero
-        sweepContainer.shadowColor = bright.cgColor
-        sweepContainer.shadowOpacity = 0.55
-        sweepContainer.shadowRadius = 3
-        sweepContainer.shadowOffset = .zero
+        sweepSource.contents = style.premium ? LiveFoodWave.image(color: bright.cgColor) : LiveFoodWave.whiteImage
+        sweepContainer.isHidden = style.reduceMotion
         CATransaction.commit()
 
         guard !style.reduceMotion else { return }
@@ -1982,7 +1974,9 @@ private final class LiveGlowLayers {
         let b = geometry.bounds
         guard mesh != nil, trackBounds != nil, b.width > 0, b.height > 0, !style.reduceMotion,
               sweepSource.animation(forKey: "sweep") == nil else { return }
-        add(LiveFoodWave.animation(in: b), to: sweepSource, key: "sweep")
+        // Unit coordinates keep the phase and travel distance valid when
+        // tracked bounds change, without replacing the running animation.
+        add(LiveFoodWave.animation(in: waveSpace.bounds), to: sweepSource, key: "sweep")
     }
 
     /// Replaces the mesh atomically — never blends previous support into a
@@ -1992,6 +1986,7 @@ private final class LiveGlowLayers {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         applyMeshPaths()
+        applySilhouette(newMesh.region)
         CATransaction.commit()
         animateWave()
     }
@@ -2011,19 +2006,8 @@ private final class LiveGlowLayers {
         let maskChanged = lastMask != track.mask
         if maskChanged {
             lastMask = track.mask
-            var pixels = [UInt8](repeating: 255, count: meshGrid * meshGrid * 4)
-            for i in track.mask.indices {
-                let alpha: UInt8 = track.mask[i] > 0.5 ? 255 : 0
-                for c in 0..<4 { pixels[i * 4 + c] = alpha }
-            }
-            if let provider = CGDataProvider(data: Data(pixels) as CFData) {
-                silhouetteMask.contents = CGImage(
-                    width: meshGrid, height: meshGrid, bitsPerComponent: 8, bitsPerPixel: 32,
-                    bytesPerRow: meshGrid * 4, space: CGColorSpaceCreateDeviceRGB(),
-                    bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-                    provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
-            }
         }
+        if meshChanged || maskChanged { applySilhouette(track.silhouette) }
         if meshChanged || maskChanged { applyMeshPaths() }
         if meshChanged { animateWave() }
         applyTrackTransform(animated: visible && !style.reduceMotion)
@@ -2054,48 +2038,70 @@ private final class LiveGlowLayers {
         let sizeChanged = geometry.bounds.size != b.size
         geometry.bounds = b
         silhouetteMask.frame = b
-        for layer in [fillLayer, wireContainer, wireMask, sweepContainer, sweepMask,
-                      outlineLayer, nodesLayer, nodeDotsLayer, sweepNodesLayer, glowLayer] as [CALayer] {
+        for layer in [wireContainer, wireMask, sweepContainer, sweepMask, nodesLayer] {
             layer.frame = b
         }
         let d = max(b.width, b.height) * 1.5
         wireSource.bounds = CGRect(x: 0, y: 0, width: d, height: d)
         wireSource.position = CGPoint(x: b.midX, y: b.midY)
-        sweepSource.bounds = CGRect(x: 0, y: 0, width: b.width * 3, height: b.height * 3)
-        sweepSource.position = CGPoint(x: b.midX, y: b.midY)
+        waveSpace.setAffineTransform(CGAffineTransform(scaleX: b.width, y: b.height))
         if sizeChanged { animateWave() }
-        wireMask.lineWidth = 0.45
-        sweepMask.lineWidth = 0.75
-        outlineLayer.lineWidth = 1.1
+    }
+
+    private func applySilhouette(_ path: CGPath) {
+        currentSilhouette = path
+        let size = geometry.bounds.size
+        var transform = CGAffineTransform(scaleX: size.width / CGFloat(meshGrid),
+                                          y: size.height / CGFloat(meshGrid))
+        silhouetteMask.path = path.copy(using: &transform)
     }
 
     /// Maps the mesh from mask-grid cells into the crop square.
     private func applyMeshPaths() {
         let size = geometry.bounds.size
         guard let mesh, size.width > 0, size.height > 0 else {
-            for shape in [fillLayer, wireMask, sweepMask, outlineLayer, nodesLayer,
-                          nodeDotsLayer, sweepNodesLayer, glowLayer] {
+            for shape in [wireMask, nodesLayer] {
                 shape.path = nil
             }
+            sweepMask.contents = nil
             return
         }
         let sx = size.width / CGFloat(meshGrid), sy = size.height / CGFloat(meshGrid)
         var t = CGAffineTransform(scaleX: sx, y: sy)
         let wire = mesh.wire.copy(using: &t)
-        fillLayer.path = mesh.region.copy(using: &t)
         wireMask.path = wire
-        sweepMask.path = wire
-        glowLayer.path = wire
-        outlineLayer.path = mesh.outline.copy(using: &t)
-        let r: CGFloat = 2.2
+        let r = LiveFoodWave.nodeRadius
         let dots = CGMutablePath()
         for p in mesh.nodes {
             dots.addEllipse(in: CGRect(x: p.x * sx - r, y: p.y * sy - r,
                                        width: 2 * r, height: 2 * r))
         }
         nodesLayer.path = dots
-        nodeDotsLayer.path = dots
-        sweepNodesLayer.path = dots
+        let resized = lightMaskSize.width == 0 || lightMaskSize.height == 0
+            || abs(size.width / lightMaskSize.width - 1) > 0.15
+            || abs(size.height / lightMaskSize.height - 1) > 0.15
+        if lightMaskWire != mesh.wire || resized {
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 2
+            format.opaque = false
+            let image = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
+                let context = renderer.cgContext
+                context.setShadow(offset: .zero, blur: 2.5,
+                                  color: UIColor.white.withAlphaComponent(0.55).cgColor)
+                context.setStrokeColor(UIColor.white.cgColor)
+                context.setLineWidth(0.7)
+                context.setLineCap(.round)
+                context.setLineJoin(.round)
+                if let wire { context.addPath(wire); context.strokePath() }
+                context.setFillColor(UIColor.white.cgColor)
+                context.addPath(dots)
+                context.fillPath()
+            }
+            sweepMask.contents = image.cgImage
+            sweepMask.contentsScale = format.scale
+            lightMaskWire = mesh.wire
+            lightMaskSize = size
+        }
     }
 
     func setVisible(_ show: Bool, animated: Bool = true) {
