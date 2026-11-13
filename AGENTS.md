@@ -69,6 +69,10 @@ outdated, update this file in the same change.
 - **Smart grocery & pantry:** an optional (Settings toggle) system that tracks what the
   user has at home; marking groceries as bought stocks the pantry, logging/scanning food
   uses it up, and fridge/basket photo scans fill it. Viewable in the Grocery tab.
+  Receipt/packaging text goes through `GroceryTextReader.swift` (Vision OCR, any script,
+  + on-device Foundation Models on iOS 26, weak-linked) → `GroceryTextParser` +
+  `GroceryFoodLexicon` (8-language food/non-food lexicon, canonical English names), which
+  validates model items and drops receipt metadata/non-food. Logs: `[RECEIPT]`, `[GROCERY_TEXT]`.
 - **Working branch:** `upgraded` (off `dev`).
 
 ---

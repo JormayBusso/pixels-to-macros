@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../core/app_localizations.dart';
@@ -571,9 +570,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         toPantry: true, candidates: candidates);
   }
 
-  /// Take a photo of a shopping receipt, OCR its line items, and stock the
-  /// recognised foods into the home-ingredients database (pantry). Prices,
-  /// totals and store lines are ignored; the user reviews/edits before adding.
+  /// Take a photo of a shopping receipt, read its line items, and stock only
+  /// the foods and drinks into the home-ingredients database (pantry).
+  /// Receipt metadata, prices, totals and household items are ignored; the
+  /// user reviews/edits before adding.
   Future<void> _scanReceipt() async {
     XFile? file;
     try {
@@ -600,19 +600,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       ),
     );
 
-    final recognized = <String>{};
+    List<PantryPhotoCandidate> recognized;
     try {
-      final inputImage = InputImage.fromFilePath(file.path);
-      final textRecognizer =
-          TextRecognizer(script: TextRecognitionScript.latin);
-      try {
-        final recognizedText = await textRecognizer.processImage(inputImage);
-        for (final product in _parseReceiptProducts(recognizedText.text)) {
-          recognized.add(product);
-        }
-      } finally {
-        await textRecognizer.close();
-      }
+      recognized = await _photoService.analyzeReceipt(file);
     } catch (e) {
       debugPrint('GroceryList: receipt scan failed: $e');
       if (mounted) {
@@ -626,87 +616,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
-    await _showRecognizedItemsSheet(recognized.toList(),
-        toPantry: true, observations: false);
-  }
-
-  /// Parse receipt OCR text into clean food product names. Receipt lines mix
-  /// product names with prices, quantities and store metadata; this keeps only
-  /// the alphabetic product portion of a line and drops totals/tax/payment
-  /// lines that never name a food.
-  List<String> _parseReceiptProducts(String rawText) {
-    final products = <String>[];
-    final seen = <String>{};
-    // Non-food receipt keywords (multilingual) to skip whole lines.
-    const skipWords = {
-      'total',
-      'totaal',
-      'gesamt',
-      'suma',
-      'subtotal',
-      'tax',
-      'btw',
-      'vat',
-      'iva',
-      'mwst',
-      'change',
-      'cash',
-      'card',
-      'visa',
-      'debit',
-      'credit',
-      'balance',
-      'receipt',
-      'invoice',
-      'bon',
-      'ticket',
-      'store',
-      'tel',
-      'phone',
-      'www',
-      'http',
-      'discount',
-      'coupon',
-      'loyalty',
-      'points',
-      'thank',
-      'welcome',
-      'cashier',
-      'terminal',
-      'auth',
-      'ref',
-      'date',
-      'time',
-      'qty',
-      'amount',
-      'price',
-      'ust',
-      'summe',
-      'zahlung',
-      'rabat',
-    };
-    for (final line in rawText.split(RegExp(r'\n+'))) {
-      final lower = line.toLowerCase();
-      if (skipWords.any(lower.contains)) continue;
-      // Strip a trailing price / weight (e.g. "  2.99", "1,49 €", "0.350 kg").
-      var cleaned = line
-          .replaceAll(RegExp(r'[€$£]'), ' ')
-          .replaceAll(RegExp(r'\b\d+[.,]\d{2,3}\b'), ' ') // prices / kg weights
-          .replaceAll(
-              RegExp(r'\bx?\s*\d+\s*(pcs?|stk|szt|x)\b', caseSensitive: false),
-              ' ')
-          .replaceAll(RegExp(r'[^A-Za-zÀ-ÿ ]'), ' ')
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .trim();
-      if (cleaned.length < 3) continue;
-      // Prefer a known-product mapping; otherwise keep a plausible food line.
-      final mapped = _matchKnownProduct(cleaned) ??
-          (cleaned.split(' ').length <= 4 ? _normalizeFoodName(cleaned) : null);
-      if (mapped == null || mapped.isEmpty) continue;
-      final key = mapped.toLowerCase();
-      if (seen.add(key)) products.add(mapped);
-    }
-    return products;
+    await _showRecognizedItemsSheet(recognized.map((c) => c.name).toList(),
+        toPantry: true, candidates: recognized, observations: false);
   }
 
   /// Show the recognised products in an editable sheet: the user can remove
@@ -1046,14 +957,6 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     return raw.isEmpty ? raw : raw[0].toUpperCase() + raw.substring(1);
   }
 
-  /// Like [_normalizeProduct] but returns null when the term is NOT a
-  /// recognised food, so generic labels ("Food", brand text) are ignored by
-  /// the fridge-photo recogniser.
-  static String? _matchKnownProduct(String raw) {
-    final matches = PantryPhotoService.matchProducts(raw, _pantryAliases);
-    return matches.isEmpty ? null : matches.first;
-  }
-
   /// Compute suggestion items from scan history.
   /// Foods eaten more recently are weighted higher (×2 in last 30 days).
   /// Products are normalised to specific grocery items with accurate quantities.
@@ -1258,20 +1161,6 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
             content: Text(AppLocalizations.of(context).couldNotAnalyzePhoto)));
       }
     }
-  }
-
-  String _normalizeFoodName(String raw) {
-    final s = raw.trim().toLowerCase();
-    if (s.isEmpty) return '';
-    final clean = s
-        .replaceAll(RegExp(r'[^a-z\s]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    if (clean.isEmpty) return '';
-    return clean.split(' ').map((w) {
-      if (w.isEmpty) return w;
-      return '${w[0].toUpperCase()}${w.substring(1)}';
-    }).join(' ');
   }
 
   void _showSmartSuggestSheet() {

@@ -31,6 +31,7 @@
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A232C2CA52BEB0C154F86E /* ARCameraPreviewPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A430111209B9F1B66F2EB7D /* ARCameraPreviewPlugin.swift */; };
 		7A791A37CDFED49A71146C82 /* FoodClassifierService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D64D28332E08F7760383C9EB /* FoodClassifierService.swift */; };
+		821ABBA6724482F69C073717 /* GroceryTextReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED3F324F7BDB9B04452F0A35 /* GroceryTextReader.swift */; };
 		85261BCEEAF8890AB5AD6966 /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EB40F0EA6B69F7366A4C0A6D /* Vision.framework */; };
 		8799FEB7EE3524C3187E1815 /* ModelIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 45253471A282FCFFF61F56CE /* ModelIO.framework */; };
 		8F56B74FEB516263169B0426 /* MobileSamEncoder.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 5D06435D5201B59BD7A04F5A /* MobileSamEncoder.mlmodelc */; };
@@ -158,6 +159,7 @@
 		E94BBFB04F45F07C2C97BB54 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB40F0EA6B69F7366A4C0A6D /* Vision.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Vision.framework; path = System/Library/Frameworks/Vision.framework; sourceTree = SDKROOT; };
 		ECDA3130CA35D9F91C47196F /* FramePreprocessor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FramePreprocessor.swift; sourceTree = "<group>"; };
+		ED3F324F7BDB9B04452F0A35 /* GroceryTextReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroceryTextReader.swift; sourceTree = "<group>"; };
 		F457EE21D28F8991FB1794F2 /* YOLOSegmentationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = YOLOSegmentationService.swift; sourceTree = "<group>"; };
 		F484AD302BB78A36A902D2ED /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		F70FD3D45DA8AD693BA58B20 /* MobileCLIPService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MobileCLIPService.swift; sourceTree = "<group>"; };
@@ -229,6 +231,7 @@
 				F70FD3D45DA8AD693BA58B20 /* MobileCLIPService.swift */,
 				7EF951929ADAB6434D66D18D /* MeshSmoothing.swift */,
 				B574D1B20CEB86A923DBF076 /* MobileSamRefiner.swift */,
+				ED3F324F7BDB9B04452F0A35 /* GroceryTextReader.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -596,6 +599,7 @@
 				BFBBF023731E53233CA98AD1 /* MeshSmoothing.swift in Sources */,
 				EDAF8639309D86D2F8803B25 /* MobileSamRefiner.swift in Sources */,
 				A7804938FCC1A760A35A4A3B /* TranslationPlugin.swift in Sources */,
+				821ABBA6724482F69C073717 /* GroceryTextReader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -697,6 +701,11 @@
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-weak_framework",
+					FoundationModels,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.pixelstomacros.pixelsToMacros;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -886,6 +895,11 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-weak_framework",
+					FoundationModels,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.pixelstomacros.pixelsToMacros;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
@@ -911,6 +925,11 @@
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-weak_framework",
+					FoundationModels,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.pixelstomacros.pixelsToMacros;
 				PRODUCT_NAME = "$(TARGET_NAME)";

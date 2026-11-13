@@ -218,6 +218,24 @@ final class ScannerPlugin {
                 }
             }
 
+        case "readGroceryText":
+            guard let args = call.arguments as? [String: Any],
+                  let path = args["image_path"] as? String, path.hasPrefix("/"),
+                  FileManager.default.fileExists(atPath: path) else {
+                result(FlutterError(code: "GROCERY_IMAGE_INVALID", message: "A local image file is required", details: nil))
+                return
+            }
+            let kind = (args["kind"] as? String) == "receipt" ? "receipt" : "packaging"
+            Task.detached(priority: .userInitiated) {
+                let value: Any
+                do {
+                    value = try await GroceryTextReader.read(path: path, kind: kind)
+                } catch {
+                    value = FlutterError(code: "GROCERY_TEXT_FAILED", message: error.localizedDescription, details: nil)
+                }
+                await MainActor.run { result(value) }
+            }
+
         case "exportPointCloud":
             DispatchQueue.global(qos: .userInitiated).async {
                 let ply = pointCloudExporter.exportFromCapture(
