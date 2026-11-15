@@ -4,8 +4,9 @@ Plate detection is fixture-injected; AR/ML inference and segmentation/matching
 entry points are not executed. Height statements are extracted verbatim after
 profile construction and checked against known metric fixtures.
 Todo03 executes the full monocular estimator, reconstruction/color methods and
-real sidecar serializer. The ModelIO export wrapper and disabled MonoDepth are
-stubbed; no USDZ/texture-bake integration or full-app XCTest pass is implied.
+real sidecar serializer, photo atlas bake and SceneKit geometry/material setup.
+The ModelIO export wrapper and disabled MonoDepth are stubbed; no USDZ export,
+GPU rendering or full-app XCTest pass is implied.
 """
 from pathlib import Path
 import re
@@ -48,13 +49,21 @@ host_tests = re.findall(r"func (test\w+)\(", tests)
 # UIKit image/EXIF integration belongs to the real app XCTest target, not this
 # macOS extraction harness.
 host_tests = [name for name in host_tests if not name.startswith("testPantryUIKit")]
+host_tests = [name for name in host_tests if not name.startswith(
+    ("testLive", "testOverlappingLive", "testConfirmedLive")
+)]
+viewer = (scanner / "Scan3DViewerPlugin.swift").read_text()
 source = [
-    "import Foundation\nimport CoreGraphics\nimport CoreVideo\nimport CoreImage\nimport Accelerate\nimport simd\nimport SceneKit",
+    "import Foundation\nimport CoreGraphics\nimport CoreVideo\nimport CoreImage\nimport ImageIO\nimport UniformTypeIdentifiers\nimport Accelerate\nimport simd\nimport SceneKit\nimport AppKit\ntypealias UIColor = NSColor",
     """func XCTAssertTrue(_ x: Bool) { precondition(x) }
 func XCTAssertFalse(_ x: Bool) { precondition(!x) }
 func XCTAssertNotNil<T>(_ x: T?) { precondition(x != nil) }
 func XCTAssertNil<T>(_ x: T?) { precondition(x == nil) }
 func XCTFail(_ message: String) { preconditionFailure(message) }
+func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) {
+    do { _ = try expression() } catch { return }
+    preconditionFailure("expected thrown error")
+}
 func XCTUnwrap<T>(_ x: T?) throws -> T {
     guard let value = x else { preconditionFailure("expected nonnil fixture") }
     return value
@@ -94,10 +103,7 @@ func XCTAssertEqual(_ a: Double, _ b: Double, accuracy: Double) {
         ]
     )
     + "\n}",
-    "final class Food3DTextureBaker {\n"
-    + re.search(r"    private static let context =[^\n]+", baker).group(0) + "\n"
-    + "\n".join(re.findall(r"    static let atlas[^\n]+", baker)) + "\n"
-    + declaration(baker, "static func bgraCopy(") + "\n}",
+    declaration(baker, "enum Food3DTextureBaker"),
     "final class MonoDepthService {\n"
     + declaration(mono_depth, "struct DepthGrid") + "\n"
     + declaration(mono_depth, "struct ReliefGrid") + """
@@ -136,6 +142,7 @@ func XCTAssertEqual(_ a: Double, _ b: Double, accuracy: Double) {
             "static func pantryRecognitionPayload(",
             "static func approximateRecognitionPayload(",
             "static func approximateFoodRecognitionPayload(",
+            "static func monocularPlateDiameterCm(",
             "func sideProfileAxes(",
             "func uncalibratedAspectFailure(",
             "func makeSideProfile(",
@@ -156,6 +163,8 @@ func XCTAssertEqual(_ a: Double, _ b: Double, accuracy: Double) {
     let details: Any?
 }""",
     "final class ScannerPlugin {\n"
+    + declaration(plugin, "enum PlateDiameterArgumentError") + "\n"
+    + declaration(plugin, "static func validatedPlateDiameterCm(") + "\n"
     + declaration(plugin, "static func flutterError(") + "\n}",
     declaration(monocular, "final class MonocularVolumeEstimator")
     + "\nextension MonocularVolumeEstimator {"
@@ -171,8 +180,12 @@ func XCTAssertEqual(_ a: Double, _ b: Double, accuracy: Double) {
                 result.fallbackReason, result.provenance)
     }
     \n}""",
-    "final class Scan3DViewerPlugin {\n"
-    + declaration((scanner / "Scan3DViewerPlugin.swift").read_text(), "static func computeSmoothNormals(")
+    "final class Scan3DViewer {\n"
+    + declaration(viewer, "struct SidecarObject") + "\n"
+    + re.search(r'    private static let vertexColorGeometryModifier = """[\s\S]*?"""', viewer).group(0) + "\n"
+    + re.search(r'    private static let vertexColorSurfaceModifier = """[\s\S]*?"""', viewer).group(0) + "\n"
+    + declaration(viewer, "static func buildScene(") + "\n"
+    + declaration(viewer, "static func computeSmoothNormals(")
     + "\n}",
     "class RunnerTests {\n"
     + "\n".join(declaration(tests, f"func {name}(") for name in host_tests)
@@ -282,7 +295,8 @@ for (name, diameter, detected, fx, distance, expectedSource, fallback, pxPerCm,
     XCTAssertEqual(result.confidence, confidence)
     XCTAssertTrue(result.provenance.contains("scaleSource=\(expectedSource) scaleFallback=\(fallback ?? "none")"))
     XCTAssertTrue(result.provenance.contains("scaleActualCropTL=0.0,0.0,1.0,1.0 scaleCropWidthPx=1000.0 mask=640x640"))
-    XCTAssertTrue(result.provenance.contains("assumedPlateDiameterCm=26.0"))
+    XCTAssertTrue(result.provenance.contains("plateDiameterCm=26.0 plateDiameterSource=assumed_default"))
+    XCTAssertTrue(result.provenance.contains("defaultPlateDiameterCm=26.0"))
     XCTAssertTrue(result.provenance.contains("assumedGuidedDistanceCm=22.0"))
     XCTAssertTrue(result.provenance.contains("guidedDistanceIsAssumption=true"))
     let plateCandidate = result.provenance.components(separatedBy: "plateCandidate={")[1]

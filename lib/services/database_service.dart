@@ -789,13 +789,22 @@ class DatabaseService {
 
   @visibleForTesting
   static Future<void> migrateNutritionFoodIdentity(DatabaseExecutor db) async {
-    await db.execute('ALTER TABLE detected_foods ADD COLUMN nutrition_food_id INTEGER');
-    await db.execute('ALTER TABLE detected_foods ADD COLUMN nutrition_food_label TEXT');
+    await _addColumnIfMissing(
+        db, 'detected_foods', 'nutrition_food_id', 'INTEGER');
+    await _addColumnIfMissing(
+        db, 'detected_foods', 'nutrition_food_label', 'TEXT');
   }
 
   @visibleForTesting
-  static Future<void> migratePlateDiameter(DatabaseExecutor db) => db.execute(
-      'ALTER TABLE user_preferences ADD COLUMN plate_diameter_cm REAL');
+  static Future<void> migratePlateDiameter(DatabaseExecutor db) =>
+      _addColumnIfMissing(db, 'user_preferences', 'plate_diameter_cm', 'REAL');
+
+  static Future<void> _addColumnIfMissing(DatabaseExecutor db, String table,
+      String column, String declaration) async {
+    final columns = await db.rawQuery('PRAGMA table_info($table)');
+    if (columns.any((existing) => existing['name'] == column)) return;
+    await db.execute('ALTER TABLE $table ADD COLUMN $column $declaration');
+  }
 
   @visibleForTesting
   static Future<void> migrateExtraAccuracy(DatabaseExecutor db) => db.execute(
@@ -5312,8 +5321,8 @@ class DatabaseService {
         {
           'label': label,
           if (hasIdentity && recalculatedFood != null) ...{
-            'nutrition_food_id': recalculatedFood.id ??
-                DetectedFood.unresolvedNutritionFoodId,
+            'nutrition_food_id':
+                recalculatedFood.id ?? DetectedFood.unresolvedNutritionFoodId,
             'nutrition_food_label':
                 recalculatedFood.id == null ? null : recalculatedFood.label,
           } else if (hasIdentity && changedLabel) ...{

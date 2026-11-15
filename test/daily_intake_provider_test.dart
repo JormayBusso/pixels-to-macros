@@ -148,9 +148,25 @@ class _Transaction extends Fake implements Transaction {
 }
 
 class _MigrationDatabase extends Fake implements DatabaseExecutor {
+  _MigrationDatabase({Set<String> columns = const {'id', 'label'}})
+      : columns = {...columns};
+
+  final Set<String> columns;
   final statements = <String>[];
+
+  @override
+  Future<List<Map<String, Object?>>> rawQuery(String sql,
+      [List<Object?>? arguments]) async {
+    expect(sql, 'PRAGMA table_info(detected_foods)');
+    return columns.map((name) => <String, Object?>{'name': name}).toList();
+  }
+
   @override
   Future<void> execute(String sql, [List<Object?>? arguments]) async {
+    final addition = RegExp(r'^ALTER TABLE detected_foods ADD COLUMN (\w+) ')
+        .firstMatch(sql);
+    if (addition == null) throw StateError('Unexpected migration: $sql');
+    if (!columns.add(addition.group(1)!)) throw StateError('duplicate column');
     statements.add(sql);
   }
 }
@@ -226,6 +242,23 @@ void main() {
       'ALTER TABLE detected_foods ADD COLUMN nutrition_food_id INTEGER',
       'ALTER TABLE detected_foods ADD COLUMN nutrition_food_label TEXT',
     ]);
+  });
+
+  test('nutrition migration completes a partial schema without duplicate ALTER',
+      () async {
+    for (final existing in ['nutrition_food_id', 'nutrition_food_label']) {
+      final db = _MigrationDatabase(columns: {'id', 'label', existing});
+
+      await DatabaseService.migrateNutritionFoodIdentity(db);
+      await DatabaseService.migrateNutritionFoodIdentity(db);
+
+      expect(db.statements, [
+        if (existing != 'nutrition_food_id')
+          'ALTER TABLE detected_foods ADD COLUMN nutrition_food_id INTEGER',
+        if (existing != 'nutrition_food_label')
+          'ALTER TABLE detected_foods ADD COLUMN nutrition_food_label TEXT',
+      ]);
+    }
   });
 
   test('detected-food persistence round-trips identity without changing labels',

@@ -8,10 +8,14 @@ import '../services/debug_log.dart';
 
 /// Provides the user's preferences (name, calorie goal, onboarding status, nutrition goal).
 class UserPrefsNotifier extends StateNotifier<UserPreferences> {
-  UserPrefsNotifier() : super(const UserPreferences());
+  UserPrefsNotifier({DatabaseService? databaseService})
+      : _databaseService = databaseService ?? DatabaseService.instance,
+        super(const UserPreferences());
+
+  final DatabaseService _databaseService;
 
   Future<void> load() async {
-    final prefs = await DatabaseService.instance.getUserPreferences();
+    final prefs = await _databaseService.getUserPreferences();
     state = await _normaliseDailyHydration(prefs);
   }
 
@@ -22,7 +26,7 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     // user from progressing through the app.
     state = prefs;
     try {
-      await DatabaseService.instance.saveUserPreferences(prefs);
+      await _databaseService.saveUserPreferences(prefs);
     } catch (e, st) {
       DebugLog.instance.log('UserPrefs', 'saveUserPreferences failed: $e\n$st');
     }
@@ -204,7 +208,7 @@ class UserPrefsNotifier extends StateNotifier<UserPreferences> {
     if (prefs.waterIntakeDate == today) return prefs;
 
     final reset = prefs.copyWith(waterIntakeMl: 0, waterIntakeDate: today);
-    await DatabaseService.instance.saveUserPreferences(reset);
+    await _databaseService.saveUserPreferences(reset);
     return reset;
   }
 

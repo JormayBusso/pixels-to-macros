@@ -8,32 +8,37 @@ land.
 > The agent cannot run this — it requires the physical iPhone 16 Plus
 > (monocular, no LiDAR) and real food. This is the human-in-the-loop checklist.
 
-## Live food glow checks
+## Live food mesh checks
 
 LiDAR framing and non-LiDAR TOP/SIDE framing use the same
-`com.pixelstomacros/ar_camera` preview and native live glow renderer. Saved
+`com.pixelstomacros/ar_camera` preview and native live mesh renderer. Saved
 capture segmentation, geometry and texture projection are separate and unchanged
 by the live-only gates.
 
 - Check a plate with food, then an empty table, plate, utensils and other objects:
-  only recognized food classes should receive a glow. Unknown/generic labels
+  only recognized food classes should receive a mesh. Unknown/generic labels
   are rejected; ML food-class false positives remain possible.
 - Pan/rotate the camera, switch TOP to SIDE, close/reopen the scanner and
   background/foreground the app. Old outlines must disappear rather than trail
   the previous image. Check both landscape directions and the guide alignment.
-- The current food mask should have a soft fill/edge/core glow without
-  historical-mask blending or trails. This live-only blur never alters the
-  saved segmentation or reconstructed silhouette.
-  The live masks use spatial feathering and linear magnification rather than
-  enlarged hard pixels. Free themes use their accent; premium themes use their
-  gradient. Reduce Motion keeps the static halo but disables the shimmer.
-- Paste `[LiveGlow] backend=`, `infer=`, `drop_stale`, `roi` and any
-  `label_map_rejected` logs. Frames older than 350 ms or displaced by more than
-  1 cm / 3° are not displayed. A slow model can therefore yield fewer/no live
-  glows; it must not fall back to highlighting arbitrary foreground objects.
+- The current food mask is drawn as a themed triangular wireframe (marching
+  triangles on a fixed lattice, contour crossings bisected onto the mask
+  silhouette) with a crisp outline, vertex dots, a translucent fill, a pulsing
+  wire opacity and a sweeping highlight. No historical-mask blending or trails;
+  it never alters the saved segmentation or reconstructed silhouette. Free
+  themes use their accent; premium themes flow their gradient along the wires.
+  Reduce Motion keeps the static mesh but disables pulse/sweep/flow.
+- Holding steady over food must NOT flicker or toggle "Food detected": a mesh
+  survives single missed inferences for 600 ms and is dropped only after that
+  hold or a re-aim of more than 4 cm / 6°.
+- Paste `[LiveGlow] backend=`, `infer=` (incl. `tris=`), `drop_stale`, `roi`
+  and any `label_map_rejected` logs. Results from frames older than 350 ms are
+  not displayed. A slow model can therefore yield fewer/no live meshes; it must
+  not fall back to highlighting arbitrary foreground objects.
 - Host regression checks: `python3 ios/RunnerTests/run_live_overlay_checks.py`.
   These validate live label gates, reset/backlog handling, freshness, camera
-  motion, smooth bounded glow fields and ROI mapping, not on-device ML/render quality.
+  motion hysteresis, mesh contour accuracy and ROI mapping, not on-device
+  ML/render quality.
 
 Scheduling follows Apple's [TN2445](https://developer.apple.com/library/archive/technotes/tn2445/_index.html):
 one inference slot, discard busy frames, and promptly release camera buffers.
@@ -114,7 +119,7 @@ For each item, capture top + side as guided, then open Scanner Diagnostics:
 
 - [ ] `inference` time is acceptable on-device (check the chip on each card).
 - [ ] `mem` peak does not spike toward an OOM.
-- [ ] No dropped frames / UI jank during the AI edge-glow + capture.
+- [ ] No dropped frames / UI jank during the AI edge-glow, live food mesh + capture.
 
 ## Failure triage (what each signal means)
 

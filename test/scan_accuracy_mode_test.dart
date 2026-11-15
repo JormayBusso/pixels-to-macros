@@ -31,11 +31,58 @@ const rice = FoodData(
     kcalPer100g: 130,
     category: 'grain');
 
-class _MigrationDatabase extends Fake implements DatabaseExecutor {
+class _MigrationDatabase extends Fake implements Database {
+  _MigrationDatabase({
+    Set<String> columns = const {'id'},
+    this.savedPreferences,
+    this.schemaError,
+    this.alterError,
+  }) : columns = {...columns};
+
+  final Set<String> columns;
+  final Map<String, Object?>? savedPreferences;
+  final Object? schemaError;
+  final Object? alterError;
+  final statements = <String>[];
   String? sql;
+
+  @override
+  Future<List<Map<String, Object?>>> rawQuery(String sql,
+      [List<Object?>? arguments]) async {
+    expect(sql, 'PRAGMA table_info(user_preferences)');
+    if (schemaError != null) throw schemaError!;
+    return columns.map((name) => <String, Object?>{'name': name}).toList();
+  }
+
   @override
   Future<void> execute(String sql, [List<Object?>? arguments]) async {
+    if (sql.startsWith('ALTER TABLE') && alterError != null) throw alterError!;
+    final addition = RegExp(r'^ALTER TABLE user_preferences ADD COLUMN (\w+) ')
+        .firstMatch(sql);
+    if (addition != null && !columns.add(addition.group(1)!)) {
+      throw StateError('duplicate column');
+    }
+    statements.add(sql);
     this.sql = sql;
+  }
+
+  @override
+  Future<List<Map<String, Object?>>> query(
+    String table, {
+    bool? distinct,
+    List<String>? columns,
+    String? where,
+    List<Object?>? whereArgs,
+    String? groupBy,
+    String? having,
+    String? orderBy,
+    int? limit,
+    int? offset,
+  }) async {
+    expect(table, 'user_preferences');
+    return [
+      if (savedPreferences != null) {...savedPreferences!}
+    ];
   }
 }
 
@@ -106,7 +153,8 @@ void main() {
     expect(UserPreferences.fromMap(reset.toMap()).plateDiameterCm, isNull);
     expect(custom.copyWith(plateDiameterCm: 25).plateDiameterCm, 25.0);
     for (final value in [0.0, -1.0, double.nan, double.infinity]) {
-      expect(() => custom.copyWith(plateDiameterCm: value), throwsArgumentError);
+      expect(
+          () => custom.copyWith(plateDiameterCm: value), throwsArgumentError);
       expect(
         UserPreferences.fromMap({'plate_diameter_cm': value}).plateDiameterCm,
         isNull,
@@ -124,24 +172,83 @@ void main() {
     expect(UserPreferences.parsePlateDiameterCm('26.25'), 26.25);
     expect(UserPreferences.parsePlateDiameterCm('  '), isNull);
     for (final input in [
-      '0', '-1', 'NaN', 'Infinity', '-Infinity', '1e999', 'abc', '26 cm',
+      '0',
+      '-1',
+      'NaN',
+      'Infinity',
+      '-Infinity',
+      '1e999',
+      'abc',
+      '26 cm',
     ]) {
       expect(() => UserPreferences.parsePlateDiameterCm(input),
           throwsFormatException);
     }
   });
 
-  test('version51 adds a nullable plate diameter without backfilling legacy rows',
+  test(
+      'version51 adds a nullable plate diameter without backfilling legacy rows',
       () async {
     final db = _MigrationDatabase();
     await DatabaseService.migratePlateDiameter(db);
     expect(db.sql,
         'ALTER TABLE user_preferences ADD COLUMN plate_diameter_cm REAL');
-    final source = File('lib/services/database_service.dart').readAsStringSync();
+    final source =
+        File('lib/services/database_service.dart').readAsStringSync();
     expect(source, contains('version: 52'));
     expect(source, contains('if (oldVersion < 51)'));
     expect(source, contains('await migratePlateDiameter(db)'));
     expect(source, contains('plate_diameter_cm        REAL'));
+  });
+
+  test('version51 preserves saved preferences when plate column already exists',
+      () async {
+    final saved = const UserPreferences().copyWith(
+      name: 'Saved user',
+      onboardingComplete: true,
+      plateDiameterCm: 24.5,
+      fontScale: 1.2,
+    );
+    final db = _MigrationDatabase(
+      columns: saved.toMap().keys.toSet(),
+      savedPreferences: saved.toMap(),
+    );
+
+    await DatabaseService.migratePlateDiameter(db);
+    final restored = await DatabaseService.forTesting(db).getUserPreferences();
+
+    expect(db.statements, isEmpty);
+    expect(restored.toMap(), saved.toMap());
+  });
+
+  test('version51 adds a missing plate column only once', () async {
+    final db = _MigrationDatabase();
+
+    await DatabaseService.migratePlateDiameter(db);
+    await DatabaseService.migratePlateDiameter(db);
+
+    expect(db.statements, [
+      'ALTER TABLE user_preferences ADD COLUMN plate_diameter_cm REAL',
+    ]);
+  });
+
+  test('version51 propagates schema inspection and unrelated ALTER failures',
+      () async {
+    final schemaError = StateError('schema inspection failed');
+    final alterError = StateError('database is read-only');
+
+    await expectLater(
+      DatabaseService.migratePlateDiameter(
+        _MigrationDatabase(schemaError: schemaError),
+      ),
+      throwsA(same(schemaError)),
+    );
+    await expectLater(
+      DatabaseService.migratePlateDiameter(
+        _MigrationDatabase(alterError: alterError),
+      ),
+      throwsA(same(alterError)),
+    );
   });
 
   test('bridge omits unset diameter and rejects invalid values before native',
@@ -169,12 +276,16 @@ void main() {
   });
 
   for (final extraAccuracy in [true, false]) {
-    test('provider forwards plate diameter and exemplars in mode=$extraAccuracy',
+    test(
+        'provider forwards plate diameter and exemplars in mode=$extraAccuracy',
         () async {
       const channel = MethodChannel(AppConstants.methodChannelName);
       final calls = <MethodCall>[];
       const exemplars = [
-        {'label': 'rice', 'embedding': [0.1, 0.2]},
+        {
+          'label': 'rice',
+          'embedding': [0.1, 0.2]
+        },
       ];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
@@ -243,7 +354,10 @@ void main() {
       await tester.pump();
       expect(prefs.saved!['plate_diameter_cm'], isNull);
       expect(
-        tester.widget<TextFormField>(find.byType(TextFormField)).controller!.text,
+        tester
+            .widget<TextFormField>(find.byType(TextFormField))
+            .controller!
+            .text,
         isEmpty,
       );
       await tester.enterText(find.byType(TextFormField), '25');
@@ -280,14 +394,14 @@ void main() {
         final calls = <MethodCall>[];
         var topCaptures = 0;
         var sideCaptures = 0;
-        final messenger = TestDefaultBinaryMessengerBinding
-            .instance.defaultBinaryMessenger;
-        messenger.setMockMethodCallHandler(permissions,
-            (_) async => {Permission.camera.value: 1});
-        messenger.setMockMethodCallHandler(SystemChannels.platform_views,
-            (_) async => null);
-        messenger.setMockMethodCallHandler(SystemChannels.platform,
-            (_) async => null);
+        final messenger =
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        messenger.setMockMethodCallHandler(
+            permissions, (_) async => {Permission.camera.value: 1});
+        messenger.setMockMethodCallHandler(
+            SystemChannels.platform_views, (_) async => null);
+        messenger.setMockMethodCallHandler(
+            SystemChannels.platform, (_) async => null);
         messenger.setMockMethodCallHandler(liveGlow, (_) async => null);
         messenger.setMockMethodCallHandler(scanner, (call) async {
           switch (call.method) {
@@ -323,15 +437,16 @@ void main() {
         addTearDown(() {
           messenger.setMockMethodCallHandler(scanner, null);
           messenger.setMockMethodCallHandler(permissions, null);
-          messenger.setMockMethodCallHandler(SystemChannels.platform_views, null);
+          messenger.setMockMethodCallHandler(
+              SystemChannels.platform_views, null);
           messenger.setMockMethodCallHandler(SystemChannels.platform, null);
           messenger.setMockMethodCallHandler(liveGlow, null);
         });
         await tester.pumpWidget(UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(
-            localizationsDelegates: const [AppLocalizations.delegate],
-            home: const ScanScreen(),
+          child: const MaterialApp(
+            localizationsDelegates: [AppLocalizations.delegate],
+            home: ScanScreen(),
           ),
         ));
         for (var tick = 0; tick < 60 && calls.isEmpty; tick++) {
@@ -341,7 +456,8 @@ void main() {
         expect(topCaptures, 1);
         expect(sideCaptures, extraAccuracy ? 1 : 0);
         final arguments = calls.single.arguments as Map;
-        expect(arguments['scan_mode'], extraAccuracy ? 'strict' : 'approximate');
+        expect(
+            arguments['scan_mode'], extraAccuracy ? 'strict' : 'approximate');
         expect(arguments.containsKey('plate_diameter_cm'), diameter != null);
         if (diameter != null) {
           expect(arguments['plate_diameter_cm'], diameter);

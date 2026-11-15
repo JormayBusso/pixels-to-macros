@@ -69,9 +69,10 @@ class PixelsToMacrosApp extends ConsumerWidget {
           GlobalCupertinoLocalizations.delegate,
         ],
         home: _RecoveryScreen(onRetry: () {
-          // Force a full rebuild by invalidating providers
           ref.invalidate(themeProvider);
           ref.invalidate(userPrefsProvider);
+          ref.invalidate(localeProvider);
+          ref.invalidate(startupLoadProvider);
         }),
       );
     }
@@ -94,8 +95,8 @@ class _AppGate extends ConsumerWidget {
       // a rare fallback. Show the plain app background (no spinner) so there is
       // never a visible "loading" flash before the home screen.
       loading: () => const Scaffold(),
-      error: (e, _) {
-        DebugLog.instance.log('App', 'Startup load failed: $e');
+      error: (e, stack) {
+        DebugLog.instance.log('App', 'Startup load failed: $e\n$stack');
         return _RecoveryScreen(
           onRetry: () => ref.invalidate(startupLoadProvider),
         );
@@ -148,7 +149,10 @@ class _RecoveryScreen extends StatelessWidget {
                 Text(
                   AppLocalizations.of(context).recoveryMessage,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15, color: Colors.black54),
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
                 const SizedBox(height: 32),
                 FilledButton.icon(

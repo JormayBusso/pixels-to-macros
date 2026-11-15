@@ -67,7 +67,7 @@ private enum ViewMode: String {
 /// mutation it pushes `onSelectionChanged` to Flutter so the Dart layer
 /// always REFLECTS (never owns) selection state. Flutter must never assume
 /// a selection succeeded — it waits for the callback.
-private final class Scan3DViewer: NSObject, FlutterPlatformView {
+final class Scan3DViewer: NSObject, FlutterPlatformView {
 
     // MARK: – UI
 
@@ -262,13 +262,8 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
             return
         }
 
-        // Prefer the per-vertex-colour mesh sidecar written next to the scene.
-        // USD/USDZ export drops the vertex colour source, so the exported file
-        // renders as a single dull averaged colour. Rebuilding the geometry in
-        // process from the sidecar keeps a real SCNGeometrySource(.color), and
-        // `configure(scene:)` then forces diffuse to white so the true sampled
-        // food colours render at full brightness — the top crown, the silhouette
-        // sides and the reasoned underside all in their captured colour.
+        // The sidecar preserves exact geometry and UVs that ModelIO may drop.
+        // Prefer the captured photo atlas; retain sampled colors for older scans.
         let sidecarURL = url.deletingPathExtension().appendingPathExtension("p2mesh")
         let sidecarExists = FileManager.default.fileExists(atPath: sidecarURL.path)
         let sidecarSize: Int = (try? FileManager.default.attributesOfItem(atPath: sidecarURL.path)[.size] as? Int) ?? 0
@@ -277,7 +272,8 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
             let base = url.deletingPathExtension().lastPathComponent
             let textureURL = url.deletingLastPathComponent()
                 .appendingPathComponent(base + "_texture.png")
-            let scene = buildScene(fromSidecar: objects, textureURL: textureURL)
+            let textureImage = UIImage(contentsOfFile: textureURL.path)?.cgImage
+            let scene = Self.buildScene(fromSidecar: objects, textureImage: textureImage)
             configure(scene: scene, modelURL: url)
             sceneView.scene = scene
             placeholderLabel.isHidden = true
@@ -337,7 +333,7 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
 
     /// One food object decoded from the `.p2mesh` sidecar. Positions share the
     /// USD coordinate space; colours are RGBA bytes (one per vertex).
-    private struct SidecarObject {
+    struct SidecarObject {
         let id: String
         let averageColor: SCNVector3
         let positions: [SCNVector3]
@@ -455,14 +451,13 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
     _surface.diffuse.rgb = p2mVC;
     """
 
-    /// Build a scene whose geometry keeps a real `SCNGeometrySource(.color)` so
-    /// the sampled per-vertex food colours render (USD would have dropped them).
+    /// Build exact sidecar geometry with its photo atlas or sampled vertex colors.
     /// Node names are the stable food ids, matching the metadata Flutter passed,
     /// so selection / isolation keep working exactly as with the USD path.
-    private func buildScene(fromSidecar objects: [SidecarObject], textureURL: URL?) -> SCNScene {
+    static func buildScene(fromSidecar objects: [SidecarObject], textureImage: CGImage?) -> SCNScene {
         let scene = SCNScene()
 
-        print("[Scan3DViewer] sidecar colorSource=per_food_mask_pixels texture=ignored")
+        print("[Scan3DViewer] sidecar textureAvailable=\(textureImage != nil)")
 
         for object in objects {
             guard object.positions.count >= 3, object.indices.count >= 3 else { continue }
@@ -472,17 +467,28 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
                 positions: object.positions, indices: object.indices
             )
             let normalSource = SCNGeometrySource(normals: normals)
-            let colorSource = SCNGeometrySource(
-                data: Data(object.colors),
-                semantic: .color,
-                vectorCount: object.positions.count,
-                usesFloatComponents: false,
-                componentsPerVector: 4,
-                bytesPerComponent: MemoryLayout<UInt8>.size,
-                dataOffset: 0,
-                dataStride: 4
-            )
-            let sources = [positionSource, normalSource, colorSource]
+            let canTexture = textureImage != nil &&
+                object.uvs.count == object.positions.count &&
+                object.uvs.allSatisfy { $0.x.isFinite && $0.y.isFinite }
+            var sources = [positionSource, normalSource]
+            if canTexture {
+                // Sidecar UVs use USD's bottom-left origin; image texcoords are top-left.
+                let texcoords = object.uvs.map { CGPoint(x: $0.x, y: 1.0 - $0.y) }
+                sources.append(SCNGeometrySource(textureCoordinates: texcoords))
+            } else {
+                let colors = object.colors.map { Float($0) / 255 }
+                let data = colors.withUnsafeBytes { Data($0) }
+                sources.append(SCNGeometrySource(
+                    data: data,
+                    semantic: .color,
+                    vectorCount: object.positions.count,
+                    usesFloatComponents: true,
+                    componentsPerVector: 4,
+                    bytesPerComponent: MemoryLayout<Float>.size,
+                    dataOffset: 0,
+                    dataStride: MemoryLayout<Float>.size * 4
+                ))
+            }
 
             let element = SCNGeometryElement(
                 indices: object.indices, primitiveType: .triangles
@@ -490,13 +496,28 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
             let geometry = SCNGeometry(sources: sources, elements: [element])
 
             let material = SCNMaterial()
-            material.diffuse.contents = UIColor.white
-            material.shaderModifiers = [
-                .geometry: Self.vertexColorGeometryModifier,
-                .surface: Self.vertexColorSurfaceModifier,
-            ]
-            print("[Scan3DViewer] sidecar node=\(object.id) vertexColors=true " +
-                  "verts=\(object.positions.count) textured=false avgColor=(" +
+            material.lightingModel = .constant
+            material.locksAmbientWithDiffuse = false
+            material.ambient.contents = UIColor.black
+            material.isDoubleSided = true
+            if canTexture, let textureImage {
+                material.diffuse.contents = textureImage
+                material.diffuse.wrapS = .clamp
+                material.diffuse.wrapT = .clamp
+            } else {
+                material.diffuse.contents = UIColor(
+                    red: CGFloat(max(0, min(1, object.averageColor.x))),
+                    green: CGFloat(max(0, min(1, object.averageColor.y))),
+                    blue: CGFloat(max(0, min(1, object.averageColor.z))),
+                    alpha: 1.0
+                )
+                material.shaderModifiers = [
+                    .geometry: Self.vertexColorGeometryModifier,
+                    .surface: Self.vertexColorSurfaceModifier,
+                ]
+            }
+            print("[Scan3DViewer] sidecar node=\(object.id) vertexColors=\(!canTexture) " +
+                  "verts=\(object.positions.count) textured=\(canTexture) avgColor=(" +
                   "\(String(format: "%.2f", object.averageColor.x))," +
                   "\(String(format: "%.2f", object.averageColor.y))," +
                   "\(String(format: "%.2f", object.averageColor.z)))")
@@ -559,22 +580,7 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
     private func configure(scene: SCNScene, modelURL: URL) {
         scene.background.contents = UIColor(white: 0.06, alpha: 1.0)
 
-        // Render the mesh with its REAL per-vertex colours (each vertex is
-        // sampled from the captured photos at its own position: the top crown
-        // from the top photo, the sides from the silhouette rim = the true side
-        // colour, and a reasoned darker underside). The per-vertex path avoids
-        // the planar-projection artefacts a baked photo texture produced —
-        // stretched vertical streaks down the sides, the top image bleeding onto
-        // the underside, and edge seams — because every vertex simply carries
-        // its own colour with no UV projection to stretch.
-        //
-        // The sidecar material (see buildScene) already carries a shader
-        // modifier that writes each vertex's sampled colour into the diffuse,
-        // plus a real average-colour diffuse as the fallback. Earlier this method
-        // forced the diffuse to white expecting SceneKit to multiply it by the
-        // `.color` source, but `.physicallyBased` does NOT reliably do that
-        // multiply, so the food rendered flat WHITE. We therefore keep the
-        // diffuse buildScene set and only apply shared PBR styling here.
+        // Preserve photo textures and sampled-color fallback materials.
         scene.rootNode.enumerateHierarchy { node, _ in
             guard let geometry = node.geometry else { return }
             let hasVertexColors = geometry.sources(for: .color).isEmpty == false
@@ -588,11 +594,16 @@ private final class Scan3DViewer: NSObject, FlutterPlatformView {
                 // overwrite it — the flat-tint clobber below was exactly why a
                 // textured food fell back to showing a single solid colour
                 // instead of the picture.
-                let isTextured = material.diffuse.contents is UIImage
+                let isTextured = material.diffuse.contents is UIImage ||
+                    material.diffuse.contents.map {
+                        CFGetTypeID($0 as CFTypeRef) == CGImage.typeID
+                    } == true
                 material.lightingModel =
                     (hasVertexColors || isTextured) ? .constant : .physicallyBased
                 material.isDoubleSided = true
                 if hasVertexColors || isTextured {
+                    material.locksAmbientWithDiffuse = false
+                    material.ambient.contents = UIColor.black
                     material.roughness.contents = 1.0
                     material.metalness.contents = 0.0
                 } else {

@@ -706,6 +706,12 @@ final class DepthFusion {
                   var profile = estimator.usableSideProfile(match.element, for: segment.label, mode: .lidar) else {
                 throw InferencePipeline.PipelineError.sideViewRequired("lidar_food#\(index)_missing_independent_side_silhouette")
             }
+            if let reason = estimator.sideSupportFailure(mask: segment.mask, profile: profile) {
+                print("[SILHOUETTECHECK] path=lidar food#\(index) rejected=\(reason) action=retake " +
+                    "top={\(ScanMaskGeometry.maskProvenance(segment.mask))} " +
+                    "side={\(ScanMaskGeometry.maskProvenance(profile.sourceMask, horizontalAlongRows: profile.textureHorizontalUsesRows))}")
+                throw InferencePipeline.PipelineError.sideViewRequired("lidar_\(reason)")
+            }
             usedProfiles.insert(match.offset)
             let calibration = MonocularVolumeEstimator.PhotoCalibration(
                 topTransform: projection.transform, topIntrinsics: projection.intrinsics,
