@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -88,6 +89,62 @@ void main() {
     expect(calls.map((call) => (call.arguments as Map)['scan_mode']),
         ['strict', 'approximate']);
     expect(calls.every((call) => call.method == 'runVideoInference'), isTrue);
+  });
+
+  testWidgets('a slow native inference is not failed after 75 seconds',
+      (tester) async {
+    const channel = MethodChannel(AppConstants.methodChannelName);
+    final response = Completer<String>();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (_) => response.future);
+    addTearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null));
+    var completed = false;
+    final scan = NativeBridge.instance.runVideoInference().then((value) {
+      completed = true;
+      return value;
+    });
+    await tester.pump(const Duration(seconds: 76));
+    expect(completed, isFalse);
+    response.complete('[]');
+    await tester.pump();
+    expect(await scan, isEmpty);
+  });
+
+  testWidgets('a stuck native job does not block retry indefinitely',
+      (tester) async {
+    const channel = MethodChannel(AppConstants.methodChannelName);
+    final response = Completer<void>();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (_) => response.future);
+    addTearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null));
+    final scan = NativeBridge.instance.beginScan();
+    final expectation = expectLater(scan, throwsA(isA<TimeoutException>()));
+    await tester.pump(const Duration(seconds: 16));
+    await expectation;
+    response.complete();
+    await tester.pump();
+  });
+
+  test('capture errors are not silently converted to repeated retries',
+      () async {
+    const channel = MethodChannel(AppConstants.methodChannelName);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (_) async {
+      throw PlatformException(code: 'SCAN_BUSY');
+    });
+    addTearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null));
+    await expectLater(
+        NativeBridge.instance.beginScan(), throwsA(isA<PlatformException>()));
+    await expectLater(NativeBridge.instance.captureTopFrame(),
+        throwsA(isA<PlatformException>()));
+    await expectLater(NativeBridge.instance.captureSideFrame(),
+        throwsA(isA<PlatformException>()));
   });
 
   test('OFF bypasses side geometry and requires review before any nutrition',

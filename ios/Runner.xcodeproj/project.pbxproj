@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		00F929A0E1900BAC819B1489 /* CoreML.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 106E69CAAEAFA6A5B66AD4AC /* CoreML.framework */; };
+		05773BC2AF092A628139CBBC /* ReceiptCameraPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A13A55B3498685BB27B3B4A /* ReceiptCameraPlugin.swift */; };
 		0CE2EB2DDB7EC90AD57FFC21 /* MobileSamDecoder.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = E33CEEBDAC617D6881ADDA72 /* MobileSamDecoder.mlmodelc */; };
 		13D0DA49CB82FB919FBE2CEF /* FoodLabelEmbeddings.json in Resources */ = {isa = PBXBuildFile; fileRef = 4FB0E776E8798D8FBA77E5F8 /* FoodLabelEmbeddings.json */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
@@ -91,6 +92,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0A13A55B3498685BB27B3B4A /* ReceiptCameraPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReceiptCameraPlugin.swift; sourceTree = "<group>"; };
 		0B9AE4DF4C235B31E91A8461 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		0BB9B00B7CD4C732A187E257 /* PlateDetector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlateDetector.swift; sourceTree = "<group>"; };
 		0CE3957ACA294D7390C05E88 /* FoodClassifier.mlmodelc */ = {isa = PBXFileReference; includeInIndex = 1; path = FoodClassifier.mlmodelc; sourceTree = "<group>"; };
@@ -232,6 +234,7 @@
 				7EF951929ADAB6434D66D18D /* MeshSmoothing.swift */,
 				B574D1B20CEB86A923DBF076 /* MobileSamRefiner.swift */,
 				ED3F324F7BDB9B04452F0A35 /* GroceryTextReader.swift */,
+				0A13A55B3498685BB27B3B4A /* ReceiptCameraPlugin.swift */,
 			);
 			path = Scanner;
 			sourceTree = "<group>";
@@ -600,6 +603,7 @@
 				EDAF8639309D86D2F8803B25 /* MobileSamRefiner.swift in Sources */,
 				A7804938FCC1A760A35A4A3B /* TranslationPlugin.swift in Sources */,
 				821ABBA6724482F69C073717 /* GroceryTextReader.swift in Sources */,
+				05773BC2AF092A628139CBBC /* ReceiptCameraPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

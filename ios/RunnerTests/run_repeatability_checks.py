@@ -158,6 +158,7 @@ func XCTAssertEqual(_ a: Double, _ b: Double, accuracy: Double) {
     let message: String?
     let details: Any?
 }""",
+    declaration(plugin, "final class ScanInferenceGate"),
     "final class ScannerPlugin {\n"
     + declaration(plugin, "static func flutterError(") + "\n}",
     declaration(monocular, "final class MonocularVolumeEstimator")

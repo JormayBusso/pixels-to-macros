@@ -107,6 +107,7 @@ class _Groceries extends GroceryNotifier {
 
 class _Pantry extends PantryNotifier {
   int saves = 0;
+  bool? observations;
   Completer<void>? saving;
   @override
   Future<void> load() async {}
@@ -114,9 +115,22 @@ class _Pantry extends PantryNotifier {
   Future<void> saveReviewedItems(List<PantryItem> items,
       {bool observations = true}) async {
     saves++;
+    this.observations = observations;
     if (saving != null) await saving!.future;
     state = PantryState(items: items);
   }
+}
+
+class _ReceiptPhotos extends PantryPhotoService {
+  _ReceiptPhotos(this.items) : super(aliases: aliases);
+
+  final List<PantryPhotoCandidate> items;
+
+  @override
+  Future<List<XFile>> pickReceiptGallery() async => [XFile('receipt.jpg')];
+
+  @override
+  Future<List<PantryPhotoCandidate>> analyzeReceipt(XFile photo) async => items;
 }
 
 class _History extends HistoryNotifier {
@@ -292,6 +306,74 @@ void main() {
     await tester.pumpAndSettle();
     expect(pantry.saves, 0);
     expect(pantry.state.items, isEmpty);
+  });
+
+  testWidgets('receipt quantities and source survive review; saves purchases',
+      (tester) async {
+    final pantry = _Pantry();
+    await _openGrocery(tester, pantry,
+        photos: _ReceiptPhotos([
+          const PantryPhotoCandidate('Rice',
+              quantity: 1000, unit: 'g', sourceText: 'Rice 500g 2 x 1.50'),
+        ]));
+    await tester.tap(find.text('Scan a receipt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose from gallery'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Rice 500g 2 x 1.50'), findsOneWidget);
+    expect(pantry.saves, 0);
+    await tester.enterText(
+        find.byWidgetPredicate((widget) =>
+            widget is TextField && widget.decoration?.labelText == 'Quantity'),
+        '1200');
+    await tester.tap(find.byType(ElevatedButton));
+    await tester.pumpAndSettle();
+    expect(pantry.saves, 1);
+    expect(pantry.observations, isFalse);
+    expect(pantry.state.items.single.quantity, 1200);
+    expect(pantry.state.items.single.unit, 'g');
+  });
+
+  testWidgets('incompatible receipt units remain visible and block saving',
+      (tester) async {
+    final pantry = _Pantry();
+    await _openGrocery(tester, pantry,
+        photos: _ReceiptPhotos([
+          const PantryPhotoCandidate('Milk', quantity: 1),
+          const PantryPhotoCandidate('Milk', quantity: 1000, unit: 'ml'),
+        ]));
+    await tester.tap(find.text('Scan a receipt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose from gallery'));
+    await tester.pumpAndSettle();
+    expect(
+        find.byWidgetPredicate((widget) =>
+            widget is TextField && widget.decoration?.labelText == 'Quantity'),
+        findsNWidgets(2));
+    await tester.tap(find.byType(ElevatedButton));
+    await tester.pumpAndSettle();
+    expect(pantry.saves, 0);
+    expect(find.byType(SnackBar), findsOneWidget);
+  });
+
+  testWidgets('spoken purchase route reviews before additive pantry save',
+      (tester) async {
+    final pantry = _Pantry();
+    await _openGrocery(tester, pantry);
+    await tester.tap(find.text('Speak your purchases'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byType(TextField), 'two apples and one litre of milk');
+    await tester.pump();
+    await tester.tap(find.text('Review purchases'));
+    await tester.pumpAndSettle();
+    expect(pantry.saves, 0);
+    await tester.tap(find.byType(ElevatedButton));
+    await tester.pumpAndSettle();
+    expect(pantry.saves, 1);
+    expect(pantry.observations, isFalse);
+    expect(pantry.state.items, hasLength(2));
+    expect(pantry.state.items.first.quantity, 2);
   });
 
   for (final seed in AppColorSeed.values) {

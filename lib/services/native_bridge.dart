@@ -77,31 +77,23 @@ class NativeBridge {
   /// Reset the native recorder for a fresh guided top→side capture session.
   /// Call once when the scan screen becomes ready, before the first capture.
   Future<void> beginScan() async {
-    try {
-      await _channel.invokeMethod<void>('beginScan');
-    } catch (_) {}
+    await _channel
+        .invokeMethod<void>('beginScan')
+        .timeout(const Duration(seconds: 15));
   }
 
   /// Capture the current frame as the top-down photo into the reconstruction
   /// recorder. Returns true if a frame was captured.
   Future<bool> captureTopFrame() async {
-    try {
-      final ok = await _channel.invokeMethod<bool>('captureTopFrame');
-      return ok ?? false;
-    } catch (_) {
-      return false;
-    }
+    final ok = await _channel.invokeMethod<bool>('captureTopFrame');
+    return ok ?? false;
   }
 
   /// Capture the current frame as the side-profile photo into the
   /// reconstruction recorder. Returns true if a frame was captured.
   Future<bool> captureSideFrame() async {
-    try {
-      final ok = await _channel.invokeMethod<bool>('captureSideFrame');
-      return ok ?? false;
-    } catch (_) {
-      return false;
-    }
+    final ok = await _channel.invokeMethod<bool>('captureSideFrame');
+    return ok ?? false;
   }
 
   /// Real-time device-motion stability from CoreMotion (gyro + accelerometer).
@@ -133,7 +125,7 @@ class NativeBridge {
 
   /// Run multi-frame 3-D reconstruction + segmentation on the recorded sweep.
   /// Returns JSON metadata only after a 3-D model file exists on disk.
-  /// Times out after 75 s to avoid false scan failures on cold model load or
+  /// Times out after five minutes to allow cold model load or
   /// USDZ export while still bounding genuine native hangs.
   ///
   /// [userExemplars] carries the user's locally-stored label corrections
@@ -154,7 +146,7 @@ class NativeBridge {
           'user_exemplars': userExemplars,
           'scan_mode': extraAccuracy ? 'strict' : 'approximate',
         },
-      ).timeout(const Duration(seconds: 75));
+      ).timeout(const Duration(minutes: 5));
       debugPrint(
           '[SCAN] NativeBridge.runVideoInference() raw=${raw?.substring(0, (raw.length > 200 ? 200 : raw.length))}');
       if (raw == null) return [];

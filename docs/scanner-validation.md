@@ -21,22 +21,84 @@ by the live-only gates.
 - Pan/rotate the camera, switch TOP to SIDE, close/reopen the scanner and
   background/foreground the app. Old outlines must disappear rather than trail
   the previous image. Check both landscape directions and the guide alignment.
-- The current food mask should have a soft fill/edge/core glow without
-  historical-mask blending or trails. This live-only blur never alters the
-  saved segmentation or reconstructed silhouette.
-  The live masks use spatial feathering and linear magnification rather than
-  enlarged hard pixels. Free themes use their accent; premium themes use their
-  gradient. Reduce Motion keeps the static halo but disables the shimmer.
-- Paste `[LiveGlow] backend=`, `infer=`, `drop_stale`, `roi` and any
-  `label_map_rejected` logs. Frames older than 350 ms or displaced by more than
-  1 cm / 3° are not displayed. A slow model can therefore yield fewer/no live
-  glows; it must not fall back to highlighting arbitrary foreground objects.
+- The whole current food silhouette receives a translucent glow, with curved
+  traveling brightness waves. No gridlines, vertex dots or stroked outline
+  are rendered. Holes and the TOP/SIDE capture ROI remain unlit. No
+  historical-mask blending or trails; saved segmentation, geometry and photo
+  colors are unchanged. Free themes use a neutral glow; premium themes flow
+  their gradient through the fill. Reduce Motion keeps the static translucent
+  fill and disables sweep/flow.
+- Holding steady over food must NOT flicker or toggle "Food detected": a mesh
+  survives single missed inferences for 600 ms and is dropped only after that
+  hold or a re-aim of more than 4 cm / 6°.
+- Paste `[LiveGlow] backend=`, `infer=` (incl. `tris=`), `drop_stale`, `roi`
+  and any `label_map_rejected` logs. Results from frames older than 350 ms are
+  not displayed. A slow model can therefore yield fewer/no live meshes; it must
+  not fall back to highlighting arbitrary foreground objects.
 - Host regression checks: `python3 ios/RunnerTests/run_live_overlay_checks.py`.
   These validate live label gates, reset/backlog handling, freshness, camera
-  motion, smooth bounded glow fields and ROI mapping, not on-device ML/render quality.
+  motion hysteresis, mesh contour accuracy and ROI mapping, not on-device
+  ML/render quality.
 
 Scheduling follows Apple's [TN2445](https://developer.apple.com/library/archive/technotes/tn2445/_index.html):
 one inference slot, discard busy frames, and promptly release camera buffers.
+
+## Volume calibration: delayed support-plane detection
+
+The supplied `intrinsic_guided 24.0px/cm` scan had no selected metric reference.
+This scale assumes a 22 cm hold distance; the focal length alone cannot measure
+camera distance. With aspect-based height, linear-scale error affects all three
+dimensions, so a 10% scale error can cause roughly 33% volume error. The logged
+`206.7 cm³` prism is not the accepted portion: the exact intersected display mesh
+was `191.5 cm³`. Prism telemetry is now explicitly named `prismVol`.
+
+If TOP has no support measurement, SIDE can now recover it from a freshly
+observed horizontal ARKit plane in the same capture session. Validation uses
+the original TOP camera ray and checks the plane boundary, classification and
+observation freshness; it never substitutes the level SIDE camera's height.
+An already locked TOP measurement is retained. Non-LiDAR then uses measured
+plane scale and side-pose-ray height; LiDAR independently feeds that recovered
+support into its measured-depth/exact-silhouette reconstruction.
+
+This follows the calibrated camera approach in
+[Dehais et al., Two-view 3D Reconstruction](https://arxiv.org/abs/1701.03330)
+and Apple's [ARCamera intrinsics](https://developer.apple.com/documentation/arkit/arcamera/intrinsics):
+pixel focal lengths and top-left principal point describe projection, not
+object size. Plane recovery is not guaranteed. Without a valid plane or plate,
+the existing guided-distance estimate remains and is explicitly low-confidence.
+Detected plates still assume **26 cm** diameter, not a user-measured diameter.
+No learned-depth flag, silhouette smoothing, thickness floor, density value or
+photo texture was changed.
+
+Device confirmation is required: scan the same measured item at several TOP
+distances, keeping SIDE level, and paste `[PlaneMeasurement]` (including
+`recoveredAt=side` if present), `[ScaleValidation]`, `[HEIGHTMEASUREMENT]`,
+`[MonocularEstimator]`, `[DUALHULL]` and `[EVAL]`. Compare accepted mesh volume
+against an independently measured reference and check the glow in TOP and SIDE,
+premium/free themes and Reduce Motion. Host fixtures and builds prove neither
+real-food accuracy nor device appearance.
+
+### Reconstruction work and the tomato failure
+
+Exact-hull partitioning now omits boundaries only where adjacent TOP support
+and SIDE height runs are identical. Every actual source silhouette transition,
+hole and mirrored-side boundary is retained; no decimation, smoothing or shape
+fallback is used. LiDAR keeps all TOP pixels when a measured-depth ceiling is
+supplied, so a single lower depth pixel still carves its own column. Original
+source-cell counts and volume telemetry are preserved.
+
+A 32-pixel constant-support host fixture produces 260 triangles instead of
+12,288 with full TOP partitioning, with equal volume and closed boundaries.
+That mesh-size reduction is not a device timing measurement. `[DUALHULL]`
+now includes `buildMs`, vertex and face counts for comparison on-device.
+
+Round tomato-like TOP/SIDE fixtures at different source resolutions build
+closed, positive-volume hulls. They also passed before the optimization, so
+the reported real tomato error has **not** been reproduced or confirmed fixed.
+The exact error and capture masks were unavailable. Paste the native error
+code/details plus `[SILHOUETTECHECK]`, `[HEIGHTMEASUREMENT]`, `[AXISMEASUREMENT]`
+and `[DUALHULL]` from a failing scan. Genuine missing/gapped silhouettes still
+require retaking; they are not silently repaired.
 
 ## Where the data comes from
 
@@ -114,7 +176,7 @@ For each item, capture top + side as guided, then open Scanner Diagnostics:
 
 - [ ] `inference` time is acceptable on-device (check the chip on each card).
 - [ ] `mem` peak does not spike toward an OOM.
-- [ ] No dropped frames / UI jank during the AI edge-glow + capture.
+- [ ] No dropped frames / UI jank during the AI edge-glow, live food mesh + capture.
 
 ## Failure triage (what each signal means)
 
@@ -283,3 +345,35 @@ The diagnostics plumbing itself is covered by
 parsing, `bothViews` logic, guardrail capture, report formatting). The on-device
 checklist above validates the *reconstruction quality* that automated tests
 cannot.
+
+## Receipt purchases and voice entry
+
+Receipt scanning is independent of the LiDAR/monocular 3D food pipelines.
+On supported iPhones, capture uses the native document camera; all saved pages
+retain their resolution. Gallery input is also not resized. Receipt OCR reads
+both original pixels and a grayscale/contrast copy, selecting one set of text
+per overlapping region rather than counting both passes. Packaging OCR is unchanged.
+
+Validate on the phone with a sharp receipt, a faint thermal receipt, and one
+with separate product/price columns. Flatten the paper, avoid glare and shadows,
+and check focus/crop. Scan each receipt once: overlapping saved pages can
+double-count purchases. Enhancement cannot restore print that is no longer visible.
+
+Check `Rice 500g` with `2 x 1.50` on its own line, inline `2x500g`, milk marked
+`1L`, weighed produce and repeated purchases. Confirm total contents/count and the
+original OCR text in review, correct mistakes, then save once. Counts, mass and
+volume must not be silently combined; incompatible units require correction.
+No purchase is saved before confirmation.
+
+Use **Speak your purchases** in the app language, for example “two apples,
+500 grams of rice and one litre of milk”. Dictate short batches, stop, and tap
+the microphone again to append. Check editable text and review amounts before
+stocking the pantry. Test microphone denial, cancellation, backgrounding, and
+the typed alternative. Voice entry must not log a meal or save automatically.
+
+Record expected versus reviewed items/amounts and collect `[RECEIPT_CAMERA]`,
+`[GROCERY_TEXT]`, and `[RECEIPT]` logs. Host fixtures and successful builds do
+not establish real faded-print accuracy or device microphone availability.
+
+Capture choices follow [Apple's document camera API](https://developer.apple.com/documentation/visionkit/vndocumentcameraviewcontroller)
+and [ML Kit's input-resolution/focus guidance](https://developers.google.com/ml-kit/vision/text-recognition/v2/ios#input-image-guidelines).

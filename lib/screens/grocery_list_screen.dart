@@ -12,9 +12,11 @@ import '../providers/grocery_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/pantry_provider.dart';
 import '../services/barcode_lookup_service.dart';
+import '../services/grocery_text_parser.dart';
 import '../services/pantry_photo_service.dart';
 import '../services/ingredient_localizer.dart';
 import '../theme/app_theme.dart';
+import 'grocery_voice_entry_screen.dart';
 
 /// Screen for managing a personal grocery shopping list.
 ///
@@ -34,7 +36,6 @@ class GroceryListScreen extends ConsumerStatefulWidget {
 
 class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   final _nameCtrl = TextEditingController();
-  final _picker = ImagePicker();
 
   String? _selectedCategory;
   bool _loaded = false;
@@ -575,34 +576,59 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   /// Receipt metadata, prices, totals and household items are ignored; the
   /// user reviews/edits before adding.
   Future<void> _scanReceipt() async {
-    XFile? file;
-    try {
-      file = await _picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 85,
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(AppLocalizations.of(context).couldNotReadReceipt)));
-      }
-      return;
-    }
-    if (file == null || !mounted) return;
+    if (_photoBusy) return;
     final l10n = AppLocalizations.of(context);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(l10n.readingReceipt),
-        duration: const Duration(seconds: 2),
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: context.appSurfaceColor,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(l10n.scanReceiptTooltip,
+                style: TextStyle(
+                    fontWeight: FontWeight.w700, color: ctx.appTextColor)),
+            const SizedBox(height: 12),
+            Text(l10n.receiptCaptureHint,
+                style: TextStyle(color: ctx.appMutedTextColor)),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () => Navigator.pop(ctx, ImageSource.camera),
+              icon: const Icon(Icons.document_scanner_outlined),
+              label: Text(l10n.takePhoto),
+            ),
+            TextButton.icon(
+              onPressed: () => Navigator.pop(ctx, ImageSource.gallery),
+              icon: const Icon(Icons.photo_library_outlined),
+              label: Text(l10n.chooseFromGallery),
+            ),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
+          ]),
+        ),
       ),
     );
-
-    List<PantryPhotoCandidate> recognized;
+    if (source == null || !mounted) return;
+    setState(() => _photoBusy = true);
+    List<PantryPhotoCandidate>? recognized;
     try {
-      recognized = await _photoService.analyzeReceipt(file);
+      final files = source == ImageSource.camera
+          ? await _photoService.captureReceipt()
+          : await _photoService.pickReceiptGallery();
+      if (files.isEmpty || !mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.readingReceipt),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      final candidates = <PantryPhotoCandidate>[];
+      final paths = <String>{};
+      for (final file in files) {
+        if (!paths.add(file.path)) continue;
+        candidates.addAll(await _photoService.analyzeReceipt(file));
+      }
+      recognized = GroceryTextParser.sumPurchases(candidates);
     } catch (e) {
       debugPrint('GroceryList: receipt scan failed: $e');
       if (mounted) {
@@ -612,12 +638,29 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         );
       }
       return;
+    } finally {
+      if (mounted) {
+        setState(() => _photoBusy = false);
+      }
     }
-
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
     await _showRecognizedItemsSheet(recognized.map((c) => c.name).toList(),
         toPantry: true, candidates: recognized, observations: false);
+  }
+
+  Future<void> _speakPurchases() async {
+    if (_photoBusy) return;
+    final candidates = await Navigator.push<List<PantryPhotoCandidate>>(
+      context,
+      MaterialPageRoute(builder: (_) => const GroceryVoiceEntryScreen()),
+    );
+    if (!mounted || candidates == null) return;
+    await _showRecognizedItemsSheet(
+        candidates.map((item) => item.name).toList(),
+        toPantry: true,
+        candidates: candidates,
+        observations: false);
   }
 
   /// Show the recognised products in an editable sheet: the user can remove
@@ -634,8 +677,11 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     bool observations = true,
   }) async {
     final l10n = AppLocalizations.of(context);
-    final items = mergePantryCandidates(
-        candidates ?? recognized.map((name) => PantryPhotoCandidate(name)));
+    final initial =
+        candidates ?? recognized.map((name) => PantryPhotoCandidate(name));
+    final items = observations
+        ? mergePantryCandidates(initial)
+        : GroceryTextParser.sumPurchases(initial);
     if (toPantry && observations) {
       final stock = ref.read(pantryProvider).availableItems;
       for (var i = 0; i < items.length; i++) {
@@ -693,7 +739,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                   const SizedBox(height: 4),
                   Text(
                       toPantry
-                          ? l10n.groceryRecognizedHomeSubtitle
+                          ? observations
+                              ? l10n.groceryRecognizedHomeSubtitle
+                              : l10n.receiptReviewHint
                           : l10n.groceryRecognizedSubtitle,
                       style: TextStyle(
                           fontSize: 12.5, color: context.appMutedTextColor)),
@@ -726,43 +774,62 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                             onChanged: (value) {
                               items[i] = PantryPhotoCandidate(value,
                                   quantity: items[i].quantity,
-                                  unit: items[i].unit);
+                                  unit: items[i].unit,
+                                  sourceText: items[i].sourceText);
                             },
                           ),
-                          subtitle: Row(children: [
-                            Expanded(
-                                child: TextFormField(
-                              initialValue: items[i].quantity.toString(),
-                              enabled: !saving,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                      decimal: true),
-                              decoration: InputDecoration(
-                                  labelText: l10n.quantityLabel),
-                              onChanged: (value) {
-                                items[i] = PantryPhotoCandidate(items[i].name,
-                                    quantity: double.tryParse(
-                                            value.replaceAll(',', '.')) ??
-                                        0,
-                                    unit: items[i].unit);
-                              },
-                            )),
-                            const SizedBox(width: 8),
-                            Expanded(
-                                child: TextFormField(
-                              initialValue: items[i].unit ?? '',
-                              enabled: !saving,
-                              decoration:
-                                  InputDecoration(labelText: l10n.unitOptional),
-                              onChanged: (value) {
-                                items[i] = PantryPhotoCandidate(items[i].name,
-                                    quantity: items[i].quantity,
-                                    unit: value.trim().isEmpty
-                                        ? null
-                                        : value.trim());
-                              },
-                            )),
-                          ]),
+                          subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (items[i].sourceText != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      '${l10n.receiptSourceLabel}: ${items[i].sourceText}',
+                                      style: TextStyle(
+                                          color: ctx.appMutedTextColor,
+                                          fontSize: 12),
+                                    ),
+                                  ),
+                                Row(children: [
+                                  Expanded(
+                                      child: TextFormField(
+                                    initialValue: items[i].quantity.toString(),
+                                    enabled: !saving,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
+                                    decoration: InputDecoration(
+                                        labelText: l10n.quantityLabel),
+                                    onChanged: (value) {
+                                      items[i] = PantryPhotoCandidate(
+                                          items[i].name,
+                                          quantity: double.tryParse(
+                                                  value.replaceAll(',', '.')) ??
+                                              0,
+                                          unit: items[i].unit,
+                                          sourceText: items[i].sourceText);
+                                    },
+                                  )),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                      child: TextFormField(
+                                    initialValue: items[i].unit ?? '',
+                                    enabled: !saving,
+                                    decoration: InputDecoration(
+                                        labelText: l10n.unitOptional),
+                                    onChanged: (value) {
+                                      items[i] = PantryPhotoCandidate(
+                                          items[i].name,
+                                          quantity: items[i].quantity,
+                                          unit: value.trim().isEmpty
+                                              ? null
+                                              : value.trim(),
+                                          sourceText: items[i].sourceText);
+                                    },
+                                  )),
+                                ]),
+                              ]),
                           trailing: IconButton(
                             icon: const Icon(Icons.close, size: 20),
                             onPressed: saving
@@ -823,7 +890,17 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                               }
                               setSheet(() => saving = true);
                               try {
-                                final reviewed = mergePantryCandidates(items);
+                                final reviewed = observations
+                                    ? mergePantryCandidates(items)
+                                    : GroceryTextParser.sumPurchases(items);
+                                if (toPantry && !observations) {
+                                  final names = <String>{};
+                                  if (reviewed.any((item) => !names.add(
+                                      PantryItem.normalizeKey(item.name)))) {
+                                    throw ArgumentError(
+                                        'Incompatible purchase units');
+                                  }
+                                }
                                 if (toPantry) {
                                   final now = DateTime.now();
                                   await ref
@@ -1811,12 +1888,21 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                     ],
                   ),
                 ),
-                if (!atHome)
-                  TextButton.icon(
-                    onPressed: _scanReceipt,
-                    icon: const Icon(Icons.receipt_long_outlined),
-                    label: Text(l10n.scanReceiptTooltip),
-                  ),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    TextButton.icon(
+                      onPressed: _photoBusy ? null : _scanReceipt,
+                      icon: const Icon(Icons.receipt_long_outlined),
+                      label: Text(l10n.scanReceiptTooltip),
+                    ),
+                    TextButton.icon(
+                      onPressed: _photoBusy ? null : _speakPurchases,
+                      icon: const Icon(Icons.mic_none_outlined),
+                      label: Text(l10n.grocerySpeakPurchases),
+                    ),
+                  ],
+                ),
                 // Food-group selectable variables (like the Recipes tab).
                 SizedBox(
                   height: 46,

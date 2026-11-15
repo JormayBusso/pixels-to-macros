@@ -7938,6 +7938,106 @@ class AppLocalizations {
         'de': 'Kassenbon wird gelesen…',
       });
 
+  String get receiptCaptureHint => _t({
+        'en':
+            'Flatten the receipt, use even light without glare, and fill the frame. Check focus and crop before saving. Scan each receipt once; overlapping pages count purchases twice.',
+        'nl':
+            'Leg de bon plat, gebruik gelijkmatig licht zonder reflecties en vul het beeld. Controleer scherpte en uitsnede vóór het opslaan. Scan elke bon één keer; overlappende pagina’s tellen aankopen dubbel.',
+        'es':
+            'Alisa el recibo, usa luz uniforme sin reflejos y llena el encuadre. Comprueba el enfoque y el recorte antes de guardar. Escanea cada recibo una vez; las páginas superpuestas duplican las compras.',
+        'de':
+            'Lege den Bon flach hin, nutze gleichmäßiges Licht ohne Reflexionen und fülle das Bild. Prüfe Schärfe und Zuschnitt vor dem Speichern. Scanne jeden Bon einmal; überlappende Seiten zählen Käufe doppelt.',
+        'pl':
+            'Rozprostuj paragon, użyj równomiernego światła bez odblasków i wypełnij kadr. Sprawdź ostrość i przycięcie przed zapisaniem. Skanuj każdy paragon raz; nakładające się strony podwajają zakupy.',
+      });
+
+  String get receiptReviewHint => _t({
+        'en':
+            'Check against the receipt. Quantities show the total purchased weight, volume or count, including package sizes. Unknown amounts stay at 1 for you to correct. Nothing is added until you confirm.',
+        'nl':
+            'Controleer met de bon. Hoeveelheden tonen het totale gekochte gewicht, volume of aantal, inclusief verpakkingsgroottes. Onbekende hoeveelheden blijven op 1 om te corrigeren. Er wordt niets toegevoegd tot je bevestigt.',
+        'es':
+            'Comprueba los datos con el recibo. Las cantidades muestran el peso, volumen o número total comprado, incluido el tamaño de los envases. Las cantidades desconocidas quedan en 1 para corregirlas. No se añade nada hasta que confirmes.',
+        'de':
+            'Vergleiche mit dem Bon. Mengen zeigen das gesamte gekaufte Gewicht, Volumen oder die Stückzahl, einschließlich Packungsgrößen. Unbekannte Mengen bleiben zum Korrigieren bei 1. Erst nach deiner Bestätigung wird etwas hinzugefügt.',
+        'pl':
+            'Porównaj z paragonem. Ilości pokazują łączną kupioną masę, objętość lub liczbę sztuk, z uwzględnieniem rozmiaru opakowań. Nieznane ilości pozostają równe 1 do poprawienia. Nic nie zostanie dodane bez potwierdzenia.',
+      });
+
+  String get receiptSourceLabel => _t({
+        'en': 'Original text',
+        'nl': 'Oorspronkelijke tekst',
+        'es': 'Texto original',
+        'de': 'Originaltext',
+        'pl': 'Tekst źródłowy',
+      });
+
+  String get grocerySpeakPurchases => _t({
+        'en': 'Speak your purchases',
+        'nl': 'Spreek je aankopen in',
+        'es': 'Dictar tus compras',
+        'de': 'Einkäufe diktieren',
+        'pl': 'Podyktuj zakupy',
+      });
+
+  String get groceryVoiceHint => _t({
+        'en':
+            'Say what you bought, with amounts: “two apples, 500 grams of rice and one litre of milk”. Speak in short batches; tap the microphone again to append more. You can also type or correct the text. Review before adding to home stock.',
+        'nl':
+            'Vertel wat je kocht, met hoeveelheden: “twee appels, 500 gram rijst en één liter melk”. Spreek in korte delen; tik opnieuw op de microfoon om meer toe te voegen. Je kunt de tekst ook typen of corrigeren. Controleer vóór het toevoegen aan je voorraad.',
+        'es':
+            'Di lo que compraste con cantidades: “dos manzanas, 500 gramos de arroz y un litro de leche”. Habla en frases cortas; pulsa de nuevo el micrófono para añadir más. También puedes escribir o corregir el texto. Revisa antes de añadir a la despensa.',
+        'de':
+            'Nenne deine Einkäufe mit Mengen: „zwei Äpfel, 500 Gramm Reis und ein Liter Milch“. Sprich in kurzen Abschnitten; tippe erneut auf das Mikrofon, um mehr anzuhängen. Du kannst den Text auch eingeben oder korrigieren. Prüfe ihn vor dem Hinzufügen zum Vorrat.',
+        'pl':
+            'Powiedz, co kupiono, z ilościami: „dwa jabłka, 500 gramów ryżu i jeden litr mleka”. Mów krótkimi fragmentami; dotknij mikrofonu ponownie, aby dopisać więcej. Możesz też wpisać lub poprawić tekst. Sprawdź przed dodaniem do zapasów.',
+      });
+
+  String get groceryPurchaseText => _t({
+        'en': 'Purchases and amounts',
+        'nl': 'Aankopen en hoeveelheden',
+        'es': 'Compras y cantidades',
+        'de': 'Einkäufe und Mengen',
+        'pl': 'Zakupy i ilości',
+      });
+
+  String get groceryVoiceStart => _t({
+        'en': 'Start speaking',
+        'nl': 'Begin met spreken',
+        'es': 'Empezar a hablar',
+        'de': 'Sprechen starten',
+        'pl': 'Zacznij mówić',
+      });
+
+  String get groceryVoiceStop => _t({
+        'en': 'Stop listening',
+        'nl': 'Stop met luisteren',
+        'es': 'Dejar de escuchar',
+        'de': 'Zuhören beenden',
+        'pl': 'Zatrzymaj nasłuchiwanie',
+      });
+
+  String get groceryVoiceReview => _t({
+        'en': 'Review purchases',
+        'nl': 'Aankopen controleren',
+        'es': 'Revisar compras',
+        'de': 'Einkäufe prüfen',
+        'pl': 'Sprawdź zakupy',
+      });
+
+  String get groceryVoiceNoProducts => _t({
+        'en':
+            'No food or drink recognized. Correct the text and include each product and its amount.',
+        'nl':
+            'Geen eten of drinken herkend. Corrigeer de tekst en noem elk product met de hoeveelheid.',
+        'es':
+            'No se reconocieron alimentos ni bebidas. Corrige el texto e incluye cada producto y su cantidad.',
+        'de':
+            'Keine Lebensmittel oder Getränke erkannt. Korrigiere den Text und nenne jedes Produkt mit seiner Menge.',
+        'pl':
+            'Nie rozpoznano żywności ani napojów. Popraw tekst i podaj każdy produkt z ilością.',
+      });
+
   String get couldNotReadReceipt => _t({
         'en': 'Could not read the receipt. Try a clearer, well-lit photo.',
         'pl':

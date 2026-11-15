@@ -160,17 +160,28 @@ class GroceryTextParser {
   static final _date = RegExp(r'\b\d{1,4}[./-]\d{1,2}[./-]\d{2,4}\b');
   static final _clock = RegExp(r'\b\d{1,2}:\d{2}(:\d{2})?\b');
   static final _percent = RegExp(r'\d\s*%');
+  static final _emailAddress = RegExp(
+      r'[\p{L}\d._%+-]+\s*@\s*[\p{L}\d.-]+\s*\.\s*\p{L}{2,}',
+      unicode: true);
   static final _countUnit = RegExp(
       r'(?:^|\s)(\d{1,2})\s*(?:st|stk|stuk|stuks|stück|stuck|szt|pcs|pc|pz|uds|ud|un|unid)\b\.?',
       caseSensitive: false);
   static final _countTimes =
       RegExp(r'(?:^|\s)(\d{1,2})\s*[x×*]\s*(?=\S)', caseSensitive: false);
-  static final _leadingCount =
-      RegExp(r'^\s*(\d{1,2})\s+(?=\p{L})', unicode: true);
+  static final _leadingCount = RegExp(
+      r'^\s*(\d{1,2})\s+(?!(?:kg|g|ml|l)\b)(?=\p{L})',
+      unicode: true,
+      caseSensitive: false);
   static final _timesCount =
       RegExp(r'[x×]\s*(\d{1,2})\s*$', caseSensitive: false);
   static final _weighedKg = RegExp(
       r'(\d+[.,]\d{1,3})\s*kg\b(?=.*(?:/\s*kg|[x×*@]))',
+      caseSensitive: false);
+  static final _packageAmount = RegExp(
+      r'(?<![\d.,/])(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)\b',
+      caseSensitive: false);
+  static final _multipack = RegExp(
+      r'(?:^|\s)(\d{1,2})\s*[x×*]\s*(?=\d+(?:[.,]\d+)?\s*(?:kg|g|ml|l)\b)',
       caseSensitive: false);
 
   static bool _hasMetadata(List<String> words) {
@@ -190,7 +201,7 @@ class GroceryTextParser {
   static bool isReceiptMetadata(String line) {
     final words = GroceryFoodLexicon.tokens(line);
     if (_hasMetadata(words)) return true;
-    if (line.contains('@') || line.contains('://')) return true;
+    if (_emailAddress.hasMatch(line) || line.contains('://')) return true;
     // "BTW 9%" is tax, but "Mleko 2%" / "Vollmilch 3,5%" is a product.
     if (_percent.hasMatch(line) ||
         _date.hasMatch(line) ||
@@ -218,6 +229,8 @@ class GroceryTextParser {
               'pc',
               'kg',
               'g',
+              'ml',
+              'l',
               'eur',
               'euro',
               'zl',
@@ -242,29 +255,48 @@ class GroceryTextParser {
     return letters && _quantity(line) != null;
   }
 
-  /// Purchased quantity on a receipt line: a count ("2 x", "3 St") or a
-  /// weighed kilogram amount. Package sizes ("1L", "500g") are not counts.
-  static PantryPhotoCandidate? _quantity(String line) {
-    final weighed = _weighedKg.firstMatch(line);
-    if (weighed != null) {
-      final kg = double.tryParse(weighed.group(1)!.replaceAll(',', '.'));
-      if (kg != null && kg > 0 && kg <= 25) {
-        return PantryPhotoCandidate('', quantity: kg, unit: 'kg');
-      }
-    }
+  static double? _count(String line) {
+    // "4x125g" describes one package, not its receipt purchase count.
+    final purchaseText = line.replaceAll(_multipack, ' ');
     for (final pattern in [
       _countUnit,
       _countTimes,
       _timesCount,
       _leadingCount
     ]) {
-      final match = pattern.firstMatch(line);
+      final match = pattern.firstMatch(purchaseText);
       final count = match == null ? null : int.tryParse(match.group(1)!);
       if (count != null && count > 0 && count <= 50) {
-        return PantryPhotoCandidate('', quantity: count.toDouble());
+        return count.toDouble();
       }
     }
     return null;
+  }
+
+  /// Explicit package contents multiplied by an explicit purchase count.
+  /// Currency, percentages and unit prices never supply a package amount.
+  static PantryPhotoCandidate? _quantity(String line) {
+    final weighed = _weighedKg.firstMatch(line);
+    if (weighed != null && _count(line) == null && !_multipack.hasMatch(line)) {
+      final kg = double.tryParse(weighed.group(1)!.replaceAll(',', '.'));
+      if (kg != null && kg > 0 && kg <= 25) {
+        return PantryPhotoCandidate('', quantity: kg, unit: 'kg');
+      }
+    }
+    final amount = _packageAmount.firstMatch(line);
+    if (amount != null) {
+      final value = double.tryParse(amount.group(1)!.replaceAll(',', '.'));
+      if (value != null && value > 0 && value.isFinite) {
+        return PantryPhotoCandidate('',
+            quantity: value *
+                (double.tryParse(_multipack.firstMatch(line)?.group(1) ?? '') ??
+                    1) *
+                (_count(line) ?? 1),
+            unit: amount.group(2)!.toLowerCase());
+      }
+    }
+    final count = _count(line);
+    return count == null ? null : PantryPhotoCandidate('', quantity: count);
   }
 
   /// Index of the first footer (total) line once a product was seen, so
@@ -310,35 +342,82 @@ class GroceryTextParser {
 
     final candidates = <PantryPhotoCandidate>[];
     final order = byLine.keys.toList()..sort();
+    final usedQuantityLines = <int>{};
     for (final i in order) {
       var quantity = _quantity(lines[i]);
-      // A separate "2 x 1,29" line usually follows the product line.
-      if (quantity == null &&
-          i + 1 < end &&
-          !byLine.containsKey(i + 1) &&
-          _isBareQuantity(lines[i + 1])) {
-        quantity = _quantity(lines[i + 1]);
+      var sourceText = lines[i];
+      // Prefer a following quantity row; a preceding row is used only once.
+      if (_count(lines[i]) == null) {
+        for (final adjacent in [i + 1, i - 1]) {
+          if (adjacent < 0 ||
+              adjacent >= end ||
+              byLine.containsKey(adjacent) ||
+              usedQuantityLines.contains(adjacent) ||
+              isReceiptMetadata(lines[adjacent]) ||
+              !_isBareQuantity(lines[adjacent])) {
+            continue;
+          }
+          final extra = _quantity(lines[adjacent])!;
+          if (quantity?.unit != null && extra.unit == null) {
+            quantity = PantryPhotoCandidate('',
+                quantity: quantity!.quantity * extra.quantity,
+                unit: quantity.unit);
+          } else if (quantity == null) {
+            quantity = extra;
+          } else {
+            continue;
+          }
+          usedQuantityLines.add(adjacent);
+          sourceText = adjacent > i
+              ? '${lines[i]}\n${lines[adjacent]}'
+              : '${lines[adjacent]}\n${lines[i]}';
+          break;
+        }
       }
       candidates.add(PantryPhotoCandidate(byLine[i]!,
-          quantity: quantity?.quantity ?? 1, unit: quantity?.unit));
+          quantity: quantity?.quantity ?? 1,
+          unit: quantity?.unit,
+          sourceText: sourceText));
     }
-    return _sumPurchases(candidates);
+    return sumPurchases(candidates);
   }
 
-  /// Receipt lines are separate purchases: repeated products add up.
-  static List<PantryPhotoCandidate> _sumPurchases(
-      List<PantryPhotoCandidate> items) {
+  /// Separate purchases add up. Compatible metric units are converted to the
+  /// first purchase's unit; count/mass/volume conflicts remain separate rows.
+  static List<PantryPhotoCandidate> sumPurchases(
+      Iterable<PantryPhotoCandidate> items) {
     final merged = <String, PantryPhotoCandidate>{};
     final order = <String>[];
     for (final item in items) {
-      final key = '${item.name.toLowerCase()}|${item.unit ?? ''}';
+      if (item.name.trim().isEmpty ||
+          !item.quantity.isFinite ||
+          item.quantity <= 0) {
+        continue;
+      }
+      final unit = item.unit?.toLowerCase();
+      final dimension = switch (unit) {
+        'g' || 'kg' => 'mass',
+        'ml' || 'l' => 'volume',
+        null || '' || 'pcs' => 'count',
+        _ => 'unit:$unit',
+      };
+      final key = '${GroceryFoodLexicon.fold(item.name.trim())}|$dimension';
       final previous = merged[key];
       if (previous == null) {
         order.add(key);
         merged[key] = item;
       } else {
+        double factor(String? u) =>
+            {'kg', 'l'}.contains(u?.toLowerCase()) ? 1000 : 1;
+        final sources = [
+          if (previous.sourceText != null) previous.sourceText!,
+          if (item.sourceText != null) item.sourceText!,
+        ];
         merged[key] = PantryPhotoCandidate(item.name,
-            quantity: previous.quantity + item.quantity, unit: item.unit);
+            quantity: previous.quantity +
+                item.quantity * factor(unit) / factor(previous.unit),
+            unit: previous.unit,
+            sourceText: sources.isEmpty ? null : sources.join('\n'));
       }
     }
     return [for (final key in order) merged[key]!];

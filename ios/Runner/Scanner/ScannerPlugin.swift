@@ -3,6 +3,27 @@ import Foundation
 import AVFoundation
 import UIKit
 
+final class ScanInferenceGate {
+    private(set) var busy = false
+    private var pending: [() -> Void] = []
+
+    func start() {
+        precondition(!busy)
+        busy = true
+    }
+
+    func whenIdle(_ action: @escaping () -> Void) {
+        if busy { pending.append(action) } else { action() }
+    }
+
+    func finish() {
+        busy = false
+        let actions = pending
+        pending.removeAll()
+        for action in actions { action() }
+    }
+}
+
 /// Central MethodChannel handler.
 ///
 /// Routes every call from the Dart `NativeBridge` to the correct
@@ -31,7 +52,8 @@ final class ScannerPlugin {
     /// PLY snapshot from the most recent scan. The recorder releases buffers
     /// after inference, so export keeps this lightweight text copy.
     private static var lastVideoPLY: String?
-    private static var inferenceInFlight = false
+    private static let inferenceGate = ScanInferenceGate()
+    private static let receiptCamera = ReceiptCameraPlugin()
 
     // MARK: - Registration
 
@@ -52,8 +74,8 @@ final class ScannerPlugin {
         _ call: FlutterMethodCall,
         result: @escaping FlutterResult
     ) {
-        if inferenceInFlight,
-           ["beginScan", "captureTopFrame", "captureSideFrame", "startRecording", "runVideoInference", "recognizePantryPhoto"].contains(call.method) {
+        if inferenceGate.busy,
+           ["captureTopFrame", "captureSideFrame", "startRecording", "runVideoInference", "recognizePantryPhoto"].contains(call.method) {
             result(FlutterError(code: "SCAN_BUSY", message: "Scan inference is still running", details: nil))
             return
         }
@@ -102,7 +124,7 @@ final class ScannerPlugin {
         // ── Guided dual-photo capture ───────────────────────────────────────
         case "beginScan":
             // Reset the recorder for a fresh top→side capture session.
-            DispatchQueue.main.async {
+            inferenceGate.whenIdle {
                 lastVideoPLY = nil
                 recorder.beginTwoShotCapture()
                 result(nil)
@@ -134,7 +156,7 @@ final class ScannerPlugin {
 
         case "runVideoInference":
             let approximate = (call.arguments as? [String: Any])?["scan_mode"] as? String == "approximate"
-            inferenceInFlight = true
+            inferenceGate.start()
             recorder.stopRecording()
             // On-device exemplar learning: Dart passes the user's locally-stored
             // label corrections so the pipeline can recognise foods the user has
@@ -153,7 +175,7 @@ final class ScannerPlugin {
                     guard !resultCalled else { return }
                     resultCalled = true
                     DispatchQueue.main.async {
-                        inferenceInFlight = false
+                        inferenceGate.finish()
                         result(value)
                     }
                 }
@@ -200,7 +222,7 @@ final class ScannerPlugin {
                 result(FlutterError(code: "PANTRY_IMAGE_INVALID", message: "A local image file is required", details: nil))
                 return
             }
-            inferenceInFlight = true
+            inferenceGate.start()
             DispatchQueue.global(qos: .userInitiated).async {
                 let value: Any = autoreleasepool {
                     guard let buffer = pantryImageBuffer(path: path) else {
@@ -213,10 +235,13 @@ final class ScannerPlugin {
                     }
                 }
                 DispatchQueue.main.async {
-                    inferenceInFlight = false
+                    inferenceGate.finish()
                     result(value)
                 }
             }
+
+        case "captureReceipt":
+            receiptCamera.capture(result: result)
 
         case "readGroceryText":
             guard let args = call.arguments as? [String: Any],

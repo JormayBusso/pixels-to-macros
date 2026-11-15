@@ -11,11 +11,13 @@ import '../models/pantry_item.dart';
 import 'grocery_text_parser.dart';
 
 class PantryPhotoCandidate {
-  const PantryPhotoCandidate(this.name, {this.quantity = 1, this.unit});
+  const PantryPhotoCandidate(this.name,
+      {this.quantity = 1, this.unit, this.sourceText});
 
   final String name;
   final double quantity;
   final String? unit;
+  final String? sourceText;
 }
 
 /// Photos are observations of stock, not separate purchases.
@@ -79,6 +81,36 @@ class PantryPhotoService {
     final photo = await _picker.pickImage(
         source: source, maxWidth: 1600, maxHeight: 1600, imageQuality: 85);
     return photo == null ? [] : [photo];
+  }
+
+  /// Original-resolution document pages; only unavailable capture falls back.
+  Future<List<XFile>> captureReceipt() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      try {
+        final paths = await const MethodChannel(AppConstants.methodChannelName)
+            .invokeListMethod<String>('captureReceipt');
+        return [for (final path in paths ?? <String>[]) XFile(path)];
+      } on MissingPluginException {
+        // Older installations have no document camera implementation.
+      } on PlatformException catch (error) {
+        if (!{
+          'RECEIPT_CAMERA_UNSUPPORTED',
+          'UNSUPPORTED',
+          'unsupported',
+        }.contains(error.code)) {
+          rethrow;
+        }
+      }
+    }
+    if (_photoPicker != null) return _photoPicker(ImageSource.camera);
+    final photo =
+        await _picker.pickImage(source: ImageSource.camera, imageQuality: 100);
+    return photo == null ? [] : [photo];
+  }
+
+  Future<List<XFile>> pickReceiptGallery() async {
+    if (_photoPicker != null) return _photoPicker(ImageSource.gallery);
+    return _picker.pickMultiImage(imageQuality: 100);
   }
 
   static List<String> matchProducts(String raw, Map<String, String> aliases) {

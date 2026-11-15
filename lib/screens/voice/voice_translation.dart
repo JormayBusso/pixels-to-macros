@@ -1009,16 +1009,23 @@ const Map<String, Map<String, List<String>>> _foodTable = {
 /// weight by the caller. [resolved] is true when [foodQuery] is a canonical
 /// English DB label resolved from the multilingual index.
 class SpokenItem {
-  final String foodQuery;
-  final double? grams;
-  final double? pieceCount;
-  final bool resolved;
   const SpokenItem({
     required this.foodQuery,
     this.grams,
     this.pieceCount,
     required this.resolved,
+    this.quantity,
+    this.unit,
   });
+
+  final String foodQuery;
+  final double? grams;
+  final double? pieceCount;
+  final bool resolved;
+
+  /// Grocery-only explicit amount and unit. No meal portion conversions.
+  final double? quantity;
+  final String? unit;
 }
 
 /// English canonical number-word → value. Localized number words are mapped to
@@ -1295,14 +1302,16 @@ String? _resolveFood(List<String> words, _LangPack pack) {
 
 /// Parse a spoken transcript in [lang] into structured food items without
 /// pivoting through English. See [SpokenItem].
-List<SpokenItem> parseSpokenFoods(String text, String lang) {
+List<SpokenItem> parseSpokenFoods(String text, String lang,
+    {bool groceryPurchases = false}) {
+  if (groceryPurchases) return _parseGroceryPurchases(text, lang);
   final pack = _langPack(lang);
 
   // Normalise: lowercase, turn most punctuation into spaces, keep commas as
   // explicit separators, normalise decimal commas inside numbers (1,5 -> 1.5).
   var cleaned = text.toLowerCase().replaceAll(RegExp(r'[.!?¿¡;:()"]'), ' ');
-  cleaned = cleaned.replaceAllMapped(
-      RegExp(r'(\d),(\d)'), (m) => '${m[1]}.${m[2]}');
+  cleaned =
+      cleaned.replaceAllMapped(RegExp(r'(\d),(\d)'), (m) => '${m[1]}.${m[2]}');
   cleaned = cleaned.replaceAll(',', ' , ');
   final raw = cleaned.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
 
@@ -1416,6 +1425,211 @@ List<SpokenItem> parseSpokenFoods(String text, String lang) {
       }
     }
     return [for (final k in order) byKey[k]!];
+  }
+  return items;
+}
+
+/// Grocery mode is deliberately separate from legacy meal portion parsing.
+/// Exact food phrases retain unknown/ambiguous amounts for explicit review.
+List<SpokenItem> _parseGroceryPurchases(String text, String lang) {
+  final pack = _langPack(lang);
+  final numbers = {
+    for (final entry in pack.numberValue.entries) _fold(entry.key): entry.value,
+    if (lang == 'nl') 'acht': 8.0,
+  };
+  final localUnits = lang == 'en' ? _unitsEn : (_units[lang] ?? const {});
+  final units = <String, String>{
+    'g': 'g',
+    'kg': 'kg',
+    'ml': 'ml',
+    'l': 'l',
+    for (final entry in localUnits.entries)
+      if ({'grams', 'kg', 'ml', 'l', 'piece'}.contains(entry.value))
+        _fold(entry.key): entry.value == 'grams' ? 'g' : entry.value,
+    ...switch (lang) {
+      'en' => {
+          'kilograms': 'kg',
+          'milliliters': 'ml',
+          'millilitres': 'ml',
+          'millilitre': 'ml',
+          'liters': 'l',
+          'litres': 'l',
+        },
+      'nl' => {'grammen': 'g', 'liters': 'l', 'stuks': 'piece'},
+      'es' => {'kilos': 'kg', 'kilogramos': 'kg'},
+      'de' => {'gramme': 'g', 'litern': 'l', 'stuck': 'piece'},
+      'pl' => {
+          'kilogramy': 'kg',
+          'kilogramow': 'kg',
+          'kilograma': 'kg',
+          'litry': 'l',
+          'litrow': 'l',
+          'litra': 'l',
+          'mililitry': 'ml',
+          'mililitrow': 'ml',
+          'mililitra': 'ml',
+          'grama': 'g',
+          'sztuki': 'piece',
+          'sztuk': 'piece',
+        },
+      _ => <String, String>{},
+    },
+  };
+  final packs = switch (lang) {
+    'en' => {
+        'pack',
+        'packs',
+        'packet',
+        'packets',
+        'bottle',
+        'bottles',
+        'carton',
+        'cartons',
+        'bag',
+        'bags'
+      },
+    'nl' => {
+        'pak',
+        'pakken',
+        'pakje',
+        'pakjes',
+        'verpakking',
+        'verpakkingen',
+        'fles',
+        'flessen',
+        'zak',
+        'zakken'
+      },
+    'es' => {'paquete', 'paquetes', 'botella', 'botellas', 'bolsa', 'bolsas'},
+    'de' => {'packung', 'packungen', 'paket', 'pakete', 'flasche', 'flaschen'},
+    'pl' => {
+        'paczka',
+        'paczki',
+        'paczek',
+        'opakowanie',
+        'opakowania',
+        'opakowan',
+        'butelka',
+        'butelki',
+        'butelek'
+      },
+    _ => <String>{},
+  };
+  final drop = <String>{
+    for (final word in pack.drop) _fold(word),
+    ...switch (lang) {
+      'en' => {'bought', 'purchased'},
+      'nl' => {'ik', 'heb', 'gekocht', 'kocht', 'wij', 'hebben', 'van'},
+      'es' => {'he', 'comprado', 'compre', 'compramos', 'yo'},
+      'de' => {'ich', 'habe', 'gekauft', 'kaufte', 'wir', 'haben', 'von'},
+      'pl' => {'kupilem', 'kupilam', 'kupilismy', 'kupilysmy'},
+      _ => <String>{},
+    },
+    ...packs,
+  };
+  final articles = {for (final word in pack.articleCount) _fold(word)};
+  final connectors = {for (final word in pack.connectors) _fold(word)};
+  var cleaned = _fold(text)
+      .replaceAllMapped(RegExp(r'(\d),(\d)'), (m) => '${m[1]}.${m[2]}');
+  cleaned = cleaned
+      .replaceAll(RegExp(r'(?<!\d)\.|\.(?!\d)|[!?¿¡;:()"]'), ' ')
+      .replaceAllMapped(RegExp(r'(\d)(kg|g|ml|l)\b'), (m) => '${m[1]} ${m[2]}')
+      .replaceAll(',', ' , ');
+  final segments = <List<String>>[];
+  var current = <String>[];
+  for (final token in cleaned.split(RegExp(r'\s+'))) {
+    if (token.isEmpty) continue;
+    if (token == ',' || connectors.contains(token)) {
+      if (current.isNotEmpty) segments.add(current);
+      current = <String>[];
+    } else {
+      current.add(token);
+    }
+  }
+  if (current.isNotEmpty) segments.add(current);
+
+  final items = <SpokenItem>[];
+  for (final segment in segments) {
+    final amounts = <(double, String?)>[];
+    var invalid = false;
+    var sawArticle = false;
+    final hasPack = segment.any(packs.contains);
+    final assignedUnits = <int>{};
+    final foodWords = <String>[];
+    for (var i = 0; i < segment.length; i++) {
+      final token = segment[i];
+      if (drop.contains(token)) continue;
+      final value = double.tryParse(token) ?? numbers[token];
+      if (value != null) {
+        var amount = value;
+        // Only number-word composition joins adjacent numbers. Separate
+        // numeric amounts may multiply only with an explicit pack structure.
+        while (i + 1 < segment.length) {
+          final next = numbers[segment[i + 1]];
+          if (next == 100 && amount > 0 && amount < 100) {
+            amount *= 100;
+          } else if (next != null &&
+              next >= 1 &&
+              next < 10 &&
+              amount >= 20 &&
+              amount % 10 == 0) {
+            amount += next;
+          } else {
+            break;
+          }
+          i++;
+        }
+        amounts.add((amount, null));
+        continue;
+      }
+      final metricUnit = units[token];
+      if (metricUnit != null) {
+        if (amounts.isEmpty && sawArticle) amounts.add((1, null));
+        if (amounts.isEmpty || !assignedUnits.add(amounts.length - 1)) {
+          invalid = true;
+        } else {
+          amounts[amounts.length - 1] =
+              (amounts.last.$1, metricUnit == 'piece' ? null : metricUnit);
+        }
+        continue;
+      }
+      if (articles.contains(token)) {
+        sawArticle = true;
+        continue;
+      }
+      foodWords.add(token);
+    }
+    if (foodWords.isEmpty) continue;
+    final phrase = foodWords.join(' ');
+    var food = pack.foodIndex[phrase];
+    // English regular plurals are exact singular variants, never edit-distance
+    // food guesses (e.g. "soap" must not become "soup").
+    if (food == null && lang == 'en' && phrase.endsWith('s')) {
+      food = pack.foodIndex[phrase.substring(0, phrase.length - 1)];
+    }
+    if (food == null) continue;
+    double? quantity;
+    String? unit;
+    if (!invalid && amounts.every((a) => a.$1.isFinite && a.$1 > 0)) {
+      if (amounts.isEmpty) {
+        quantity = sawArticle ? 1 : null;
+      } else if (amounts.length == 1) {
+        (quantity, unit) = amounts.single;
+      } else if (hasPack && amounts.length == 2) {
+        final measured = amounts.where((a) => a.$2 != null).toList();
+        final counts = amounts.where((a) => a.$2 == null).toList();
+        if (measured.length == 1 && counts.length == 1) {
+          quantity = measured.single.$1 * counts.single.$1;
+          unit = measured.single.$2;
+        }
+      }
+    }
+    if (quantity != null && !quantity.isFinite) {
+      quantity = null;
+      unit = null;
+    }
+    items.add(SpokenItem(
+        foodQuery: food, resolved: true, quantity: quantity, unit: unit));
   }
   return items;
 }

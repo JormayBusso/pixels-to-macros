@@ -8,6 +8,142 @@ import simd
 
 class RunnerTests: XCTestCase {
 
+  func testLiveFoodWaveMovesAcrossEdgesAndRepeatsWithoutAJump() throws {
+    let bounds = CGRect(x: 0, y: 0, width: 1, height: 1)
+    let animation = LiveFoodWave.animation(in: bounds)
+    XCTAssertEqual(animation.keyPath, "transform.translation.x")
+    XCTAssertEqual(try XCTUnwrap(animation.toValue as? CGFloat), 1)
+    let first = CGPoint.zero
+    let second = CGPoint(x: 0.5, y: 0)
+    XCTAssertGreaterThan(abs(LiveFoodWave.brightness(at: first, elapsed: 0)
+      - LiveFoodWave.brightness(at: second, elapsed: 0)), 0.6)
+    XCTAssertLessThan(LiveFoodWave.brightness(at: first, elapsed: animation.duration / 2), 0.01)
+    XCTAssertGreaterThan(abs(LiveFoodWave.brightness(at: first, elapsed: 0)
+      - LiveFoodWave.brightness(at: CGPoint(x: 0, y: 0.25), elapsed: 0)), 0.3)
+    for step in 0...100 {
+      let point = CGPoint(x: Double(step) / 100, y: 0.37)
+      XCTAssertEqual(LiveFoodWave.brightness(at: point, elapsed: 0),
+        LiveFoodWave.brightness(at: point, elapsed: animation.duration), accuracy: 0.0001)
+    }
+  }
+
+  func testLiveFoodWireUsesEachSharedTriangleEdgeOnce() throws {
+    let grid = 24
+    let mask = [Float](repeating: 1, count: grid * grid)
+    let mesh = try XCTUnwrap(LiveFoodMesh.build(mask: mask, grid: grid))
+    var edges = Set<String>()
+    var start: CGPoint?
+    var duplicate = false
+    mesh.wire.applyWithBlock { element in
+      switch element.pointee.type {
+      case .moveToPoint:
+        start = element.pointee.points[0]
+      case .addLineToPoint:
+        guard let startPoint = start else { return }
+        let end = element.pointee.points[0]
+        let first = "\(Int((startPoint.x * 1024).rounded())),\(Int((startPoint.y * 1024).rounded()))"
+        let second = "\(Int((end.x * 1024).rounded())),\(Int((end.y * 1024).rounded()))"
+        let key = [first, second].sorted().joined(separator: "|")
+        if !edges.insert(key).inserted { duplicate = true }
+        start = nil
+      default:
+        break
+      }
+    }
+    XCTAssertFalse(duplicate)
+  }
+
+  func testOverlappingLiveFoodLabelsShareOneTrack() throws {
+    let grid = LiveFoodTrackStore.maskGrid
+    let bounds = CGRect(x: 24, y: 24, width: 64, height: 64)
+    let mask = [Float](repeating: 1, count: grid * grid)
+    var store = LiveFoodTrackStore()
+    store.update([
+      LiveFoodObservation(label: "apple", confidence: 0.9, bounds: bounds, mask: mask),
+      LiveFoodObservation(label: "banana", confidence: 0.8, bounds: bounds, mask: mask),
+    ], at: 1)
+    XCTAssertEqual(store.tracks.count, 1)
+  }
+
+  func testLiveTrackingRejectsDegenerateVisionBoxes() {
+    XCTAssertTrue(LiveFoodOverlayPolicy.validTrackingBox(CGRect(x: 0.1, y: 0.1, width: 0.2, height: 0.2)))
+    XCTAssertFalse(LiveFoodOverlayPolicy.validTrackingBox(CGRect(x: 0.1, y: 0.1, width: 0, height: 0.2)))
+    XCTAssertFalse(LiveFoodOverlayPolicy.validTrackingBox(CGRect(x: 0.9, y: 0.1, width: 0.2, height: 0.2)))
+  }
+
+  func testConfirmedLiveMeshSurvivesBriefInferenceMissesOnly() {
+    XCTAssertFalse(LiveFoodOverlayPolicy.shouldKeepOverlay(confirmedAt: nil, now: 1))
+    XCTAssertTrue(LiveFoodOverlayPolicy.shouldKeepOverlay(confirmedAt: 1, now: 1.59))
+    XCTAssertFalse(LiveFoodOverlayPolicy.shouldKeepOverlay(confirmedAt: 1, now: 1.61))
+    XCTAssertFalse(LiveFoodOverlayPolicy.shouldKeepOverlay(confirmedAt: 2, now: 1))
+  }
+
+  func testLiveFoodSilhouetteDoesNotDependOnTriangleSize() throws {
+    let grid = 24
+    var mask = [Float](repeating: 0, count: grid * grid)
+    for y in 4..<20 {
+      for x in 4..<20 { mask[y * grid + x] = 1 }
+    }
+    for y in 9..<13 { for x in 9..<13 { mask[y * grid + x] = 0 } }
+    mask[6 * grid + 20] = 1
+    let fine = try XCTUnwrap(LiveFoodMesh.build(mask: mask, grid: grid, spacing: 2))
+    let coarse = try XCTUnwrap(LiveFoodMesh.build(mask: mask, grid: grid, spacing: 12))
+    XCTAssertEqual(fine.region, coarse.region)
+    XCTAssertGreaterThan(fine.triangles, coarse.triangles * 4)
+    for y in 0..<grid { for x in 0..<grid {
+      XCTAssertEqual(fine.region.contains(CGPoint(x: CGFloat(x) + 0.5, y: CGFloat(y) + 0.5)),
+        mask[y * grid + x] > 0.5)
+    } }
+    for point in fine.nodes {
+      XCTAssertTrue(fine.region.contains(point))
+    }
+  }
+
+  func testLiveFoodTrackRejectsUnreliableMotion() throws {
+    let grid = LiveFoodTrackStore.maskGrid
+    let bounds = CGRect(x: 20, y: 20, width: 40, height: 40)
+    var store = LiveFoodTrackStore()
+    store.update([LiveFoodObservation(label: "apple", confidence: 0.9, bounds: bounds,
+      mask: [Float](repeating: 1, count: grid * grid))], at: 1)
+    let id = try XCTUnwrap(store.tracks.first?.id)
+    XCTAssertFalse(store.move(id: id, bounds: bounds.offsetBy(dx: 2, dy: 0), confidence: 0.2, at: 2))
+    XCTAssertEqual(store.tracks[0].bounds, bounds)
+    XCTAssertTrue(store.move(id: id, bounds: bounds.offsetBy(dx: 2, dy: 0), confidence: 0.9, at: 3))
+    XCTAssertEqual(store.tracks[0].bounds.minX, bounds.minX + 1.6, accuracy: 0.0001)
+    XCTAssertTrue(store.tracks[0].isRecentlyObserved(at: 3.59))
+    XCTAssertFalse(store.tracks[0].isRecentlyObserved(at: 3.61))
+    XCTAssertFalse(store.tracks[0].isRecentlyObserved(at: 2.9))
+  }
+
+  func testLiveFoodTrackDebouncesChangedMaskBeforeRebuildingMesh() throws {
+    let grid = LiveFoodTrackStore.maskGrid
+    let bounds = CGRect(x: 20, y: 20, width: 40, height: 40)
+    func mask(left: Int) -> [Float] {
+      var result = [Float](repeating: 0, count: grid * grid)
+      for y in 10..<70 {
+        for x in left..<(left + 60) { result[y * grid + x] = 1 }
+      }
+      return result
+    }
+
+    var store = LiveFoodTrackStore()
+    let original = mask(left: 10)
+    store.update([LiveFoodObservation(label: "apple", confidence: 0.9, bounds: bounds,
+      mask: original)], at: 1)
+    let firstRevision = try XCTUnwrap(store.tracks.first?.revision)
+    let shifted = mask(left: 20)
+    let observation = LiveFoodObservation(label: "apple", confidence: 0.9, bounds: bounds,
+      mask: shifted)
+    store.update([observation], at: 1.2)
+    XCTAssertEqual(store.tracks[0].revision, firstRevision)
+    XCTAssertEqual(store.tracks[0].meshMask, original)
+    XCTAssertEqual(store.tracks[0].mask, shifted)
+    XCTAssertTrue(store.tracks[0].silhouette.contains(CGPoint(x: 75.5, y: 30.5)))
+    store.update([observation], at: 1.4)
+    XCTAssertEqual(store.tracks[0].revision, firstRevision + 1)
+    XCTAssertEqual(store.tracks[0].mask, shifted)
+  }
+
   func testViewerPastesPhotoAtlasWithoutVertexTintOrAmbientBrightening() throws {
     let context = try XCTUnwrap(CGContext(data: nil, width: 2, height: 2,
       bitsPerComponent: 8, bytesPerRow: 8, space: CGColorSpaceCreateDeviceRGB(),
@@ -300,7 +436,12 @@ class RunnerTests: XCTestCase {
     fusion.assignLabels(segments: [segment], plateRect: CGRect(x: 0, y: 0, width: 1, height: 1),
       topFrameTransform: topPose, topFrameIntrinsics: k, maskWidth: 4, maskHeight: 4,
       imageWidth: 64, imageHeight: 64)
-    fusion.setTablePlaneY(0)
+    let support = FrameCaptureService.SupportingPlane(transform: matrix_identity_float4x4,
+      boundary: [SIMD3(-0.2, 0, -0.2), SIMD3(0.2, 0, -0.2),
+                 SIMD3(0.2, 0, 0.2), SIMD3(-0.2, 0, 0.2)])
+    let recovered = support.distance(camera: topPose, timestamp: 1,
+      currentTimestamp: 2.1, horizontal: true, observationTimestamp: 2)
+    fusion.setTablePlaneY(topPose.columns.3.y - recovered.meters!)
     let result = try fusion.strictFoodObjects(segments: [segment], topFrame: topFrame,
       sideFrame: sideFrame, profiles: [profile], topColor: topRGB, sideColor: sideRGB)
     let object = try XCTUnwrap(result.objects.first)
@@ -443,6 +584,54 @@ class RunnerTests: XCTestCase {
     XCTAssertTrue(Food3DExporter.validDisplayObject(object))
   }
 
+  func testPhotoSamplesKeepSpatialVariationAndAreLocalToEachScan() throws {
+    func image(_ base: UInt8) -> CVPixelBuffer {
+      var buffer: CVPixelBuffer?
+      XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, 8, 8,
+        kCVPixelFormatType_32BGRA, nil, &buffer), kCVReturnSuccess)
+      CVPixelBufferLockBaseAddress(buffer!, [])
+      let p = CVPixelBufferGetBaseAddress(buffer!)!.assumingMemoryBound(to: UInt8.self)
+      let bytes = CVPixelBufferGetBytesPerRow(buffer!)
+      for r in 0..<8 { for c in 0..<8 {
+        let off = r * bytes + c * 4
+        p[off] = 20; p[off + 1] = 30; p[off + 2] = base + UInt8(r * 3 + c)
+        p[off + 3] = 255
+      } }
+      CVPixelBufferUnlockBaseAddress(buffer!, [])
+      return buffer!
+    }
+    let firstTop = image(50), nextTop = image(100), side = image(10)
+    let mask = [[UInt8]](repeating: [UInt8](repeating: 1, count: 8), count: 8)
+    let estimator = MonocularVolumeEstimator()
+    let profile = hullProfile(mask)
+    func object(_ top: CVPixelBuffer) throws -> DepthFusion.Food3DObject {
+      let frame = FrameCaptureService.CapturedFrame(pixelBuffer: top, depthBuffer: nil,
+        cameraTransform: matrix_identity_float4x4, cameraIntrinsics: matrix_identity_float3x3, timestamp: 1)
+      return try estimator.sourceSilhouetteObject(id: "fixture", label: "fixture",
+        instanceIndex: 0, mask: mask, widthCm: 8, depthCm: 8, heightCm: 8,
+        topFrame: frame, colorFrame: top, sideColorFrame: side, profile: profile)
+    }
+    let first = try object(firstTop), second = try object(nextTop)
+    XCTAssertEqual(first.faces, second.faces)
+    var topReds: Set<UInt8> = [], sideReds: Set<UInt8> = []
+    for i in stride(from: 0, to: first.faces.count, by: 3) {
+      let a = first.faces[i], b = first.faces[i + 1], c = first.faces[i + 2]
+      let normal = simd_normalize(simd_cross(first.vertices[b] - first.vertices[a],
+        first.vertices[c] - first.vertices[a]))
+      for v in [a, b, c] {
+        let before = first.colors[v * 3], after = second.colors[v * 3]
+        if normal.y < 0.45 && normal.y > -0.35 {
+          XCTAssertEqual(before, after)
+          sideReds.insert(before)
+        } else {
+          XCTAssertEqual(Int(after) - Int(before), 50)
+          topReds.insert(before)
+        }
+      }
+    }
+    XCTAssertTrue(topReds.count > 1 && sideReds.count > 1)
+  }
+
   func testApproximateRecognitionNeverClaimsVolumeHeightOrModel() {
     let payload = InferencePipeline.approximateRecognitionPayload([
       ["label": "rice", "confidence": 0.8],
@@ -516,6 +705,62 @@ class RunnerTests: XCTestCase {
     XCTAssertEqual(FrameCaptureService.SupportingPlane(transform: plane, boundary: boundary)
       .distance(camera: camera, timestamp: 10, currentTimestamp: 10,
         horizontal: true, supportsFood: false).reason, "nonfood_support_classification")
+  }
+
+  func testFreshSidePlaneObservationMeasuresOriginalTopCameraAndRejectsStaleEvidence() {
+    var top = matrix_identity_float4x4
+    top.columns.1 = SIMD4(0, 0, -1, 0)
+    top.columns.2 = SIMD4(0, 1, 0, 0)
+    top.columns.3 = SIMD4(0, 0.3, 0, 1)
+    let boundary: [SIMD3<Float>] = [
+      SIMD3(-0.2, 0, -0.2), SIMD3(0.2, 0, -0.2),
+      SIMD3(0.2, 0, 0.2), SIMD3(-0.2, 0, 0.2)]
+    let support = FrameCaptureService.SupportingPlane(
+      transform: matrix_identity_float4x4, boundary: boundary)
+    let recovered = support.distance(camera: top, timestamp: 10,
+      currentTimestamp: 15.1, horizontal: true, observationTimestamp: 15)
+    XCTAssertEqual(recovered.meters!, 0.3, accuracy: 0.00001)
+    XCTAssertEqual(support.distance(camera: top, timestamp: 10,
+      currentTimestamp: 15.3, horizontal: true, observationTimestamp: 15).reason,
+      "stale_capture_frame")
+    XCTAssertEqual(support.distance(camera: top, timestamp: 16,
+      currentTimestamp: 15.1, horizontal: true, observationTimestamp: 15).reason,
+      "stale_capture_frame")
+    top.columns.3.x = 0.5
+    XCTAssertEqual(support.distance(camera: top, timestamp: 10,
+      currentTimestamp: 15.1, horizontal: true, observationTimestamp: 15).reason,
+      "capture_ray_outside_plane_footprint")
+  }
+
+  func testRecoveredPlaneFeedsMonocularScaleWithoutGuidedDistance() {
+    var top = matrix_identity_float4x4
+    top.columns.1 = SIMD4(0, 0, -1, 0)
+    top.columns.2 = SIMD4(0, 1, 0, 0)
+    top.columns.3 = SIMD4(0, 0.3, 0, 1)
+    let boundary: [SIMD3<Float>] = [
+      SIMD3(-0.2, 0, -0.2), SIMD3(0.2, 0, -0.2),
+      SIMD3(0.2, 0, 0.2), SIMD3(-0.2, 0, 0.2)]
+    let support = FrameCaptureService.SupportingPlane(
+      transform: matrix_identity_float4x4, boundary: boundary)
+    let distance = support.distance(camera: top, timestamp: 10,
+      currentTimestamp: 15.1, horizontal: true, observationTimestamp: 15).meters!
+    var buffer: CVPixelBuffer?
+    XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, 64, 64,
+      kCVPixelFormatType_32BGRA, nil, &buffer), kCVReturnSuccess)
+    let k = simd_float3x3(columns: (
+      SIMD3(64, 0, 0), SIMD3(0, 64, 0), SIMD3(32, 32, 1)))
+    let frame = FrameCaptureService.CapturedFrame(pixelBuffer: buffer!, depthBuffer: nil,
+      cameraTransform: top, cameraIntrinsics: k, timestamp: 10)
+    let crop = PlateDetector.PlateResult(
+      rect: CGRect(x: 0, y: 0, width: 1, height: 1), diameterPx: 0, detected: false)
+    let estimator = MonocularVolumeEstimator()
+    let measured = estimator.estimateScale(topFrame: frame, maskWidth: 64, maskHeight: 64,
+      tableDistanceCm: Double(distance) * 100, preprocessingPlate: crop)
+    XCTAssertEqual(measured.source, "arkit_plane")
+    XCTAssertEqual(64 / measured.pixelsPerCm, 30, accuracy: 0.0001)
+    let guided = estimator.estimateScale(topFrame: frame, maskWidth: 64, maskHeight: 64,
+      preprocessingPlate: crop)
+    XCTAssertEqual(64 / guided.pixelsPerCm, 22, accuracy: 0.0001)
   }
 
   func testScaleUsesPreprocessingCropAndDoesNotGateMeasuredReferencesByGuidedDistance() {
@@ -1456,6 +1701,37 @@ class RunnerTests: XCTestCase {
     }
   }
 
+  func testScanRetryWaitsForNativeInferenceBeforeResettingRecorder() {
+    let gate = ScanInferenceGate()
+    var started: [Int] = []
+    gate.start()
+    gate.whenIdle { started.append(1) }
+    gate.whenIdle { started.append(2) }
+    XCTAssertTrue(gate.busy)
+    XCTAssertTrue(started.isEmpty)
+    gate.finish()
+    XCTAssertFalse(gate.busy)
+    XCTAssertEqual(started, [1, 2])
+    gate.whenIdle { started.append(3) }
+    XCTAssertEqual(started, [1, 2, 3])
+  }
+
+  func testTallSilhouetteHullKeepsInteriorAndDepthCeiling() throws {
+    let top = [[UInt8]](repeating: [UInt8](repeating: 1, count: 20), count: 20)
+    let side = [[UInt8]](repeating: [UInt8](repeating: 1, count: 20), count: 80)
+    let estimator = MonocularVolumeEstimator()
+    let profile = hullProfile(side)
+    let full = try estimator.silhouetteHull(mask: top, profile: profile,
+      widthCm: 20, depthCm: 20, heightCm: 80)
+    assertClosedHull(full)
+    XCTAssertEqual(full.cellVolumeCm3, 32000, accuracy: 1e-6)
+    let capped = try estimator.silhouetteHull(mask: top, profile: profile,
+      widthCm: 20, depthCm: 20, heightCm: 80,
+      measuredCeilingCm: { row, _ in row < 10 ? 60 : 80 })
+    assertClosedHull(capped)
+    XCTAssertEqual(capped.cellVolumeCm3, 28000, accuracy: 1e-6)
+  }
+
   func testMonocularPixelBoundarySurfaceFansRemainManifold() throws {
     var masks: [[[UInt8]]] = []
     for bits in 1..<16 {
@@ -1521,6 +1797,49 @@ class RunnerTests: XCTestCase {
     }
   }
 
+  func testRoundTomatoSilhouetteBuildsClosedPositiveVolumeWithoutShapeFallback() throws {
+    for side in [24, 31, 48] {
+      func disk(_ n: Int) -> [[UInt8]] {
+        (0..<n).map { r in
+          (0..<n).map { c in
+            let x = (Double(c) + 0.5) / Double(n) * 2 - 1
+            let y = (Double(r) + 0.5) / Double(n) * 2 - 1
+            return x * x + y * y <= 1 ? UInt8(1) : UInt8(0)
+          }
+        }
+      }
+      let top = disk(32), profile = hullProfile(disk(side))
+      let hull = try MonocularVolumeEstimator().silhouetteHull(
+        mask: top, profile: profile, widthCm: 6, depthCm: 6, heightCm: 6)
+      XCTAssertTrue(hull.cellVolumeCm3 > 0)
+      XCTAssertEqual(signedHullVolume(hull.vertices, hull.faces), hull.cellVolumeCm3, accuracy: 0.001)
+      assertClosedHull(hull)
+      print("PASS tomato side=\(side) vertices=\(hull.vertices.count) faces=\(hull.faces.count / 3)")
+    }
+  }
+
+  func testExactHullSkipsIdenticalSupportButKeepsMeasuredDepthCells() throws {
+    let mask = [[UInt8]](repeating: [UInt8](repeating: 1, count: 32), count: 32)
+    let profile = hullProfile(mask)
+    let estimator = MonocularVolumeEstimator()
+    let compact = try estimator.silhouetteHull(
+      mask: mask, profile: profile, widthCm: 6, depthCm: 6, heightCm: 6)
+    let measured = try estimator.silhouetteHull(
+      mask: mask, profile: profile, widthCm: 6, depthCm: 6, heightCm: 6,
+      measuredCeilingCm: { _, _ in 6 })
+    XCTAssertTrue(compact.faces.count < measured.faces.count / 10)
+    XCTAssertEqual(compact.cellVolumeCm3, 216, accuracy: 0.0001)
+    XCTAssertEqual(measured.cellVolumeCm3, compact.cellVolumeCm3, accuracy: 0.0001)
+    assertClosedHull(compact)
+    assertClosedHull(measured)
+    let carved = try estimator.silhouetteHull(
+      mask: mask, profile: profile, widthCm: 6, depthCm: 6, heightCm: 6,
+      measuredCeilingCm: { r, c in r == 16 && c == 16 ? 3 : 6 })
+    XCTAssertEqual(carved.cellVolumeCm3, 216 - 108.0 / (32 * 32), accuracy: 0.0001)
+    assertClosedHull(carved)
+    print("PASS exact partition compactFaces=\(compact.faces.count / 3) measuredFaces=\(measured.faces.count / 3)")
+  }
+
   func testMonocularFullEstimatorExportsDisplayedMeshVolume() throws {
     var buffer: CVPixelBuffer?
     XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, 8, 8,
@@ -1550,16 +1869,24 @@ class RunnerTests: XCTestCase {
     sidePose.columns.3 = SIMD4(0, 0.04, 0.5, 1)
     let sideFrame = FrameCaptureService.CapturedFrame(pixelBuffer: rgb, depthBuffer: nil,
       cameraTransform: sidePose, cameraIntrinsics: k, timestamp: 2)
-    for sideRGB in [nil, rgb] as [CVPixelBuffer?] {
+    for (sideRGB, tableDistance) in [(nil, nil), (nil, 50), (rgb, nil), (rgb, 50)]
+      as [(CVPixelBuffer?, Double?)] {
       let result = try MonocularVolumeEstimator().estimate(segments: [segment],
         topFrame: frame, sideFrame: sideFrame, sideProfiles: [profile], maskWidth: 8, maskHeight: 8,
-        preprocessedRGB: rgb, sidePreprocessedRGB: sideRGB, tableDistanceCm: 50,
+        preprocessedRGB: rgb, sidePreprocessedRGB: sideRGB, tableDistanceCm: tableDistance,
         preprocessingPlate: PlateDetector.PlateResult(rect: CGRect(x: 0, y: 0, width: 1, height: 1),
           diameterPx: 0, detected: false))
       let row = try XCTUnwrap(result.objects.first)
       XCTAssertEqual(row["volume_source"] as? String, "display_mesh")
       XCTAssertEqual(row["volume_measured"] as? Bool, true)
       XCTAssertEqual(row["fallback_used"] as? Bool, false)
+      XCTAssertTrue((row["debug"] as? String)?.contains("prismVol=") == true)
+      if tableDistance == nil {
+        XCTAssertEqual(row["scale_source"] as? String, "intrinsic_guided")
+        XCTAssertEqual(row["low_confidence"] as? Bool, true)
+      } else {
+        XCTAssertEqual(row["scale_source"] as? String, "arkit_plane")
+      }
       XCTAssertTrue(FileManager.default.fileExists(atPath: result.modelPath))
       let url = URL(fileURLWithPath: result.modelPath).deletingPathExtension().appendingPathExtension("p2mesh")
       let data = try Data(contentsOf: url)

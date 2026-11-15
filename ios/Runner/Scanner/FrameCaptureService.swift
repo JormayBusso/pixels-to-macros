@@ -52,13 +52,16 @@ final class FrameCaptureService {
 
         func distance(camera: simd_float4x4, timestamp: TimeInterval,
                       currentTimestamp: TimeInterval, horizontal: Bool,
-                      supportsFood: Bool = true) -> (meters: Float?, reason: String) {
+                      supportsFood: Bool = true,
+                      observationTimestamp: TimeInterval? = nil) -> (meters: Float?, reason: String) {
             guard MonocularVolumeEstimator.PhotoCalibration.validPose(camera),
                   MonocularVolumeEstimator.PhotoCalibration.validPose(transform) else {
                 return (nil, "invalid_plane_or_camera_pose")
             }
-            guard timestamp.isFinite, currentTimestamp.isFinite,
-                  currentTimestamp >= timestamp, currentTimestamp - timestamp <= 0.25 else {
+            let observed = observationTimestamp ?? timestamp
+            guard timestamp.isFinite, observed.isFinite, currentTimestamp.isFinite,
+                  observed >= timestamp, currentTimestamp >= observed,
+                  currentTimestamp - observed <= 0.25 else {
                 return (nil, "stale_capture_frame")
             }
             let normal = SIMD3(transform.columns.1.x, transform.columns.1.y, transform.columns.1.z)

@@ -476,7 +476,7 @@ final class MonocularVolumeEstimator {
             let scanMode = sideApplied ? "monocular_visual_hull" : "monocular_top_only"
             let meshMode = "exact_silhouette"
             let debugInfo = String(
-                format: "%@: side=%@ mesh=%@ scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm(%@) fill=%.2f ar=%.2f match=%@ vol=%.0fcm³",
+                format: "%@: side=%@ mesh=%@ scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm(%@) fill=%.2f ar=%.2f match=%@ prismVol=%.0fcm³",
                 scanMode,
                 sideApplied ? "exact" : "missing_volume_unmeasured",
                 meshMode,
@@ -576,7 +576,7 @@ final class MonocularVolumeEstimator {
             // scan scored the way it did (scale vs segmentation vs silhouette).
             let scaleConfidence = scale.confidence
             let silhouetteConfidence = Double(profile?.confidence ?? 0)
-            let lowConfidence = !sideApplied || roundedConfidence < 0.62 || scale.source == "intrinsic_default"
+            let lowConfidence = !sideApplied || roundedConfidence < 0.62 || scale.source == "intrinsic_guided"
             var row: [String: Any] = [
                 "id": id,
                 "label": seg.label,
@@ -1239,19 +1239,6 @@ final class MonocularVolumeEstimator {
         let verticalCount = profile.textureHorizontalUsesRows
             ? sideBounds.maxCol - verticalLo + 1 : sideBounds.maxRow - verticalLo + 1
 
-        func edges(_ topCount: Int) -> [Double] {
-            // Each mapped side column must have its own cell even when it is
-            // narrower than a top pixel. Endpoints are never snapped inward.
-            let all = (0...topCount).map { Double($0) / Double(topCount) } +
-                (0...horizontalCount).map { Double($0) / Double(horizontalCount) }
-            var unique: [Double] = []
-            for value in all.sorted() {
-                if unique.last.map({ abs($0 - value) > 1e-12 }) ?? true { unique.append(value) }
-            }
-            return unique
-        }
-        let xs = edges(tw), zs = edges(th)
-        let nx = xs.count - 1, nz = zs.count - 1
         var sideRuns = [[Range<Int>]](repeating: [], count: horizontalCount)
         for horizontal in 0..<horizontalCount {
             var start: Int?
@@ -1272,6 +1259,47 @@ final class MonocularVolumeEstimator {
                 }
             }
         }
+        func edges(_ topCount: Int, alongRows: Bool) -> [Double] {
+            var all: [Double] = [0, 1]
+            for i in 1..<topCount {
+                let changed: Bool
+                if measuredCeilingCm != nil {
+                    changed = true
+                } else if alongRows {
+                    changed = mask[topBounds.minRow + i] != mask[topBounds.minRow + i - 1]
+                } else {
+                    let c = topBounds.minCol + i
+                    changed = (topBounds.minRow...topBounds.maxRow).contains { mask[$0][c] != mask[$0][c - 1] }
+                }
+                if changed { all.append(Double(i) / Double(topCount)) }
+            }
+            // Skip only identical adjacent support, never a silhouette edge.
+            // LiDAR retains every TOP cell for its per-pixel measured ceiling.
+            for i in 1..<horizontalCount where sideRuns[i] != sideRuns[i - 1] {
+                let u = Double(i) / Double(horizontalCount)
+                all.append(profile.reversed ? 1 - u : u)
+            }
+            var unique: [Double] = []
+            for value in all.sorted() {
+                if unique.last.map({ abs($0 - value) > 1e-12 }) ?? true { unique.append(value) }
+            }
+            return unique
+        }
+        let xs = edges(tw, alongRows: false), zs = edges(th, alongRows: true)
+        let nx = xs.count - 1, nz = zs.count - 1
+        func sourceCellCounts(_ coarse: [Double], topCount: Int) -> [Int] {
+            let all = (0...topCount).map { Double($0) / Double(topCount) } +
+                (0...horizontalCount).map { Double($0) / Double(horizontalCount) }
+            var fine: [Double] = []
+            for value in all.sorted() {
+                if fine.last.map({ abs($0 - value) > 1e-12 }) ?? true { fine.append(value) }
+            }
+            return (0..<(coarse.count - 1)).map { i in
+                1 + fine.filter { $0 > coarse[i] + 1e-12 && $0 < coarse[i + 1] - 1e-12 }.count
+            }
+        }
+        let xCellCounts = sourceCellCounts(xs, topCount: tw)
+        let zCellCounts = sourceCellCounts(zs, topCount: th)
         func sideColumn(_ u: Double) -> Int {
             let t = profile.reversed ? 1 - u : u
             return min(horizontalCount - 1, Int(t * Double(horizontalCount)))
@@ -1308,7 +1336,7 @@ final class MonocularVolumeEstimator {
                 }
                 columns[z * nx + x] = runs
                 let layers = runs.reduce(0) { $0 + $1.count }
-                cellCount += layers
+                cellCount += layers * xCellCounts[x] * zCellCounts[z]
                 cellVolume += (xs[x + 1] - xs[x]) * widthCm *
                     (zs[z + 1] - zs[z]) * depthCm * heightCm *
                     Double(layers) / Double(verticalCount)
@@ -1320,6 +1348,22 @@ final class MonocularVolumeEstimator {
         func occupied(_ x: Int, _ y: Int, _ z: Int) -> Bool {
             guard x >= 0, x < nx, z >= 0, z < nz, y >= 0, y < verticalCount else { return false }
             return columns[z * nx + x].contains { $0.contains(y) }
+        }
+        func exposedRanges(_ x: Int, _ z: Int, _ run: Range<Int>) -> [Range<Int>] {
+            var interior = [run]
+            for (cx, cz) in [(x - 1, z), (x + 1, z), (x, z - 1), (x, z + 1)] {
+                guard cx >= 0, cx < nx, cz >= 0, cz < nz else { return [run] }
+                interior = intersection(interior, columns[cz * nx + cx])
+                if interior.isEmpty { return [run] }
+            }
+            var result: [Range<Int>] = []
+            var start = run.lowerBound
+            for covered in interior {
+                if start < covered.lowerBound { result.append(start..<covered.lowerBound) }
+                start = covered.upperBound
+            }
+            if start < run.upperBound { result.append(start..<run.upperBound) }
+            return result
         }
 
         struct GridPoint: Hashable { let x: Int; let y: Int; let z: Int }
@@ -1354,15 +1398,17 @@ final class MonocularVolumeEstimator {
                     quad([GridPoint(x: x, y: lo, z: z), GridPoint(x: x + 1, y: lo, z: z),
                           GridPoint(x: x + 1, y: lo, z: z + 1), GridPoint(x: x, y: lo, z: z + 1)],
                          owner: GridPoint(x: x, y: lo, z: z))
-                    for y in run {
-                        let p000 = GridPoint(x: x, y: y, z: z), p100 = GridPoint(x: x + 1, y: y, z: z)
-                        let p010 = GridPoint(x: x, y: y + 1, z: z), p110 = GridPoint(x: x + 1, y: y + 1, z: z)
-                        let p001 = GridPoint(x: x, y: y, z: z + 1), p101 = GridPoint(x: x + 1, y: y, z: z + 1)
-                        let p011 = GridPoint(x: x, y: y + 1, z: z + 1), p111 = GridPoint(x: x + 1, y: y + 1, z: z + 1)
-                        if !occupied(x - 1, y, z) { quad([p000, p001, p011, p010], owner: p000) }
-                        if !occupied(x + 1, y, z) { quad([p100, p110, p111, p101], owner: p000) }
-                        if !occupied(x, y, z - 1) { quad([p000, p010, p110, p100], owner: p000) }
-                        if !occupied(x, y, z + 1) { quad([p001, p101, p111, p011], owner: p000) }
+                    for exposed in exposedRanges(x, z, run) {
+                        for y in exposed {
+                            let p000 = GridPoint(x: x, y: y, z: z), p100 = GridPoint(x: x + 1, y: y, z: z)
+                            let p010 = GridPoint(x: x, y: y + 1, z: z), p110 = GridPoint(x: x + 1, y: y + 1, z: z)
+                            let p001 = GridPoint(x: x, y: y, z: z + 1), p101 = GridPoint(x: x + 1, y: y, z: z + 1)
+                            let p011 = GridPoint(x: x, y: y + 1, z: z + 1), p111 = GridPoint(x: x + 1, y: y + 1, z: z + 1)
+                            if !occupied(x - 1, y, z) { quad([p000, p001, p011, p010], owner: p000) }
+                            if !occupied(x + 1, y, z) { quad([p100, p110, p111, p101], owner: p000) }
+                            if !occupied(x, y, z - 1) { quad([p000, p010, p110, p100], owner: p000) }
+                            if !occupied(x, y, z + 1) { quad([p001, p101, p111, p011], owner: p000) }
+                        }
                     }
                 }
             }
@@ -1520,6 +1566,7 @@ final class MonocularVolumeEstimator {
                 "side={\(ScanMaskGeometry.maskProvenance(geometryProfile.sourceMask, horizontalAlongRows: geometryProfile.textureHorizontalUsesRows))}")
             throw EstimateError.sideViewRequired(reason)
         }
+        let hullStarted = ProcessInfo.processInfo.systemUptime
         let hull = try silhouetteHull(mask: mask, profile: geometryProfile,
             widthCm: widthCm, depthCm: depthCm, heightCm: heightCm,
             offsetX: offsetX, offsetZ: offsetZ, measuredCeilingCm: measuredCeilingCm)
@@ -1528,7 +1575,8 @@ final class MonocularVolumeEstimator {
         let occupiedCellCount = hull.cellCount
         let hullVoxelVolumeCm3 = hull.cellVolumeCm3
         let topSilhouetteSnapVertices = 0, topSilhouetteEdgeSnapVertices = 0
-        print("[DUALHULL] path=monocular food=\(label) mode=\(surfaceExtractionMode) cells=\(occupiedCellCount) vertices=\(vertices.count) faces=\(faces.count / 3) cellVolumeCm3=\(hullVoxelVolumeCm3) shapeAdded=false")
+        let hullMs = (ProcessInfo.processInfo.systemUptime - hullStarted) * 1000
+        print("[DUALHULL] path=monocular food=\(label) mode=\(surfaceExtractionMode) cells=\(occupiedCellCount) vertices=\(vertices.count) faces=\(faces.count / 3) cellVolumeCm3=\(hullVoxelVolumeCm3) shapeAdded=false partition=identical_support_only buildMs=\(String(format: "%.1f", hullMs))")
 
         @inline(__always) func maskPosition(for p: SIMD3<Float>) -> (row: Double, col: Double) {
             let colNorm = Double(((p.x - offsetX) / max(0.0001, 2.0 * rx)) + 0.5)
@@ -1840,6 +1888,10 @@ final class MonocularVolumeEstimator {
             if let sideBGRA { CVPixelBufferUnlockBaseAddress(sideBGRA, .readOnly) }
         }
 
+        struct SamplePosition: Hashable { let row: Int; let col: Int }
+        var topSamples: [SamplePosition: (Double, Double, Double)] = [:]
+        var sideSamples: [SamplePosition: (Double, Double, Double)] = [:]
+
         @inline(__always) func nearestInMask(_ r0: Int, _ c0: Int) -> (Int, Int)? {
             if r0 >= 0, r0 < maskHeight, c0 >= 0, c0 < maskWidth, solidMask[r0][c0] == 1 {
                 return (r0, c0)
@@ -1859,6 +1911,8 @@ final class MonocularVolumeEstimator {
 
         // Mask membership, not brightness, distinguishes food from background.
         @inline(__always) func topPixel(_ mr: Int, _ mc: Int) -> (Double, Double, Double)? {
+            let key = SamplePosition(row: mr, col: mc)
+            if let cached = topSamples[key] { return cached }
             guard let (r, c) = nearestInMask(mr, mc) else { return nil }
             var rSum = 0.0, gSum = 0.0, bSum = 0.0, n = 0.0
             for dr in -1...1 {
@@ -1873,7 +1927,9 @@ final class MonocularVolumeEstimator {
                 }
             }
             guard n > 0 else { return nil }
-            return (rSum / n, gSum / n, bSum / n)
+            let result = (rSum / n, gSum / n, bSum / n)
+            topSamples[key] = result
+            return result
         }
 
         // Exact side-photo colour at a side-frame UV (x = column, y = row,
@@ -1883,6 +1939,8 @@ final class MonocularVolumeEstimator {
             guard let sidePtr, sideWidth > 0, sideHeight > 0 else { return nil }
             let cx = min(max(Int(floor(Double(uv.x) * Double(sideWidth))), 0), sideWidth - 1)
             let cy = min(max(Int(floor(Double(uv.y) * Double(sideHeight))), 0), sideHeight - 1)
+            let key = SamplePosition(row: cy, col: cx)
+            if let cached = sideSamples[key] { return cached }
             let mh = mask?.count ?? 0
             let mw = mask?.first?.count ?? 0
             var rSum = 0.0, gSum = 0.0, bSum = 0.0, n = 0.0
@@ -1900,7 +1958,9 @@ final class MonocularVolumeEstimator {
                 }
             }
             guard n > 0 else { return nil }
-            return (rSum / n, gSum / n, bSum / n)
+            let result = (rSum / n, gSum / n, bSum / n)
+            sideSamples[key] = result
+            return result
         }
         let baseMax = max(baseR, max(baseG, baseB)), baseMin = min(baseR, min(baseG, baseB))
         let baseIsNearWhite = baseMin > 175 && baseMax - baseMin < 40

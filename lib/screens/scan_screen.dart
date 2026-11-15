@@ -319,9 +319,18 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           _sessionStarted = true;
           _sessionErrorDetail = null;
         });
+        // A previous native inference may still own the recorder after cancel.
+        ref.read(scanStateProvider.notifier).recordingStopped();
+        try {
+          await _bridge.beginScan();
+        } catch (e) {
+          DebugLog.instance.log('Scan', 'Could not begin scan: $e');
+          if (!mounted) return;
+          ref.read(scanStateProvider.notifier).modelFailed();
+          return;
+        }
+        if (!mounted) return;
         ref.read(scanStateProvider.notifier).sessionReady();
-        // Reset the native recorder for a fresh top→side capture.
-        unawaited(_bridge.beginScan());
         _startSensorPolling();
       }
       DebugLog.instance.log('Scan', 'AR session started');
@@ -525,7 +534,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
     if (!ok) {
       _hapticError();
-      ref.read(scanStateProvider.notifier).sessionReady(); // retry top
+      ref.read(scanStateProvider.notifier).depthFailed();
       setState(() => _capturing = false);
       return;
     }
@@ -572,7 +581,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
     if (!ok) {
       _hapticError();
-      ref.read(scanStateProvider.notifier).topCaptured(); // back to moveSide
+      ref.read(scanStateProvider.notifier).depthFailed();
       setState(() => _capturing = false);
       return;
     }

@@ -150,14 +150,20 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
     /// Vertical distance (meters) from the camera down to the nearest detected
     /// horizontal supporting plane intersected by the captured camera ray,
     /// or `nil` for stale tracking, invalid range or an unsupported footprint.
-    func cameraToTableDistanceMeters(frame capturedFrame: ARFrame? = nil) -> Float? {
+    func cameraToTableDistanceMeters(
+        frame capturedFrame: ARFrame? = nil,
+        reference: FrameCaptureService.CapturedFrame? = nil
+    ) -> Float? {
         guard let current = session?.currentFrame else { return nil }
         let frame = capturedFrame ?? current
         guard case .normal = frame.camera.trackingState else {
             print("[PlaneMeasurement] timestamp=\(frame.timestamp) reason=tracking_not_normal")
             return nil
         }
-        let cameraY = frame.camera.transform.columns.3.y
+        let camera = reference?.cameraTransform ?? frame.camera.transform
+        let timestamp = reference?.timestamp ?? frame.timestamp
+        let source = reference == nil ? "captured_frame" : "side_observation_top_ray"
+        let cameraY = camera.columns.3.y
         var bestY: Float?
         var selectedPlane: ARPlaneAnchor?
         for anchor in frame.anchors {
@@ -172,10 +178,10 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
                 default: break
                 }
             }
-            let validation = support.distance(camera: frame.camera.transform, timestamp: frame.timestamp,
+            let validation = support.distance(camera: camera, timestamp: timestamp,
                 currentTimestamp: current.timestamp, horizontal: plane.alignment == .horizontal,
-                supportsFood: supportsFood)
-            print("[PlaneMeasurement] timestamp=\(frame.timestamp) source=captured_frame currentTimestamp=\(current.timestamp) planeID=\(plane.identifier) classification=\(plane.classification) reason=\(validation.reason)")
+                supportsFood: supportsFood, observationTimestamp: frame.timestamp)
+            print("[PlaneMeasurement] timestamp=\(timestamp) source=\(source) observationTimestamp=\(frame.timestamp) currentTimestamp=\(current.timestamp) planeID=\(plane.identifier) classification=\(plane.classification) reason=\(validation.reason)")
             guard validation.meters != nil else { continue }
             let planeY = plane.transform.columns.3.y
             // Only consider surfaces below the camera (where the food sits).
@@ -191,7 +197,7 @@ final class ARSessionManager: NSObject, ARSessionDelegate {
             return nil
         }
         let d = cameraY - y
-        print("[PlaneMeasurement] timestamp=\(frame.timestamp) source=captured_frame planeID=\(selectedPlane?.identifier.uuidString ?? "none") cameraY=\(cameraY) planeY=\(y) verticalDistanceM=\(d) normal=\(selectedPlane?.transform.columns.1.description ?? "none") selection=highest_valid_support footprintContainment=accepted")
+        print("[PlaneMeasurement] timestamp=\(timestamp) source=\(source) observationTimestamp=\(frame.timestamp) planeID=\(selectedPlane?.identifier.uuidString ?? "none") cameraY=\(cameraY) planeY=\(y) verticalDistanceM=\(d) normal=\(selectedPlane?.transform.columns.1.description ?? "none") selection=highest_valid_support footprintContainment=accepted")
         // Sanity clamp: plated food is scanned at ~8–80 cm.
         guard d > 0.05, d < 1.0 else { return nil }
         return d

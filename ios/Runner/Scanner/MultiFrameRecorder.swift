@@ -242,6 +242,14 @@ final class MultiFrameRecorder {
         currentPitch = arFrame.camera.eulerAngles.x
         lightFrames = []
 
+        // Plane detection may mature after TOP. Reuse its pose, not the SIDE
+        // camera's height/ray; the generation check above keeps one AR world.
+        if tableDistanceCm == nil,
+           let d = sessionManager.cameraToTableDistanceMeters(frame: arFrame, reference: top) {
+            tableDistanceCm = Double(d) * 100
+            print("[PlaneMeasurement] captureID=\(captureID) recoveredAt=side reference=top distanceCm=\(tableDistanceCm ?? 0) path=\(top.depthBuffer == nil ? "monocular" : "lidar")")
+        }
+
         let meshes = arFrame.anchors.compactMap { $0 as? ARMeshAnchor }
         if !meshes.isEmpty { meshAnchors = meshes }
 
