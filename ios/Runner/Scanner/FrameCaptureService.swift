@@ -33,6 +33,7 @@ final class FrameCaptureService {
         let cameraTransform: simd_float4x4
         let cameraIntrinsics: simd_float3x3
         let timestamp: TimeInterval
+        var confidenceBuffer: CVPixelBuffer? = nil
 
         func measurementProvenance(crop: CGRect) -> String {
             let pose = cameraTransform
@@ -137,7 +138,8 @@ final class FrameCaptureService {
                 depthBuffer: FrameCaptureService.preferredDepthMap(from: arFrame),
                 cameraTransform: arFrame.camera.transform,
                 cameraIntrinsics: arFrame.camera.intrinsics,
-                timestamp: arFrame.timestamp
+                timestamp: arFrame.timestamp,
+                confidenceBuffer: FrameCaptureService.preferredDepthConfidenceMap(from: arFrame)
             )
         }
 
@@ -206,5 +208,10 @@ final class FrameCaptureService {
     /// monocular scale-estimation pipeline.
     static func preferredDepthMap(from frame: ARFrame) -> CVPixelBuffer? {
         return frame.smoothedSceneDepth?.depthMap ?? frame.sceneDepth?.depthMap
+    }
+
+    static func preferredDepthConfidenceMap(from frame: ARFrame) -> CVPixelBuffer? {
+        let depth = frame.smoothedSceneDepth ?? frame.sceneDepth
+        return depth?.confidenceMap
     }
 }

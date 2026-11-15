@@ -36,6 +36,27 @@ void main() {
     );
   });
 
+  test('missing scale requires retake without nutrition lookup', () async {
+    var lookups = 0;
+    final notifier = ScanResultNotifier(
+      runInference: () async => throw PlatformException(
+        code: 'SCALE_REFERENCE_REQUIRED',
+        details: 'unmeasured_metric_reference:intrinsic_guided',
+      ),
+      lookupFood: (_) async {
+        lookups++;
+        return null;
+      },
+    );
+    addTearDown(notifier.dispose);
+    await notifier.runVideoScan();
+    expect(notifier.state.failureKind, ScanFailureKind.scaleReferenceRequired);
+    expect(notifier.state.foods, isEmpty);
+    expect(notifier.state.metadata, isEmpty);
+    expect(notifier.state.loading, isFalse);
+    expect(lookups, 0);
+  });
+
   test('NO_FOOD_DETECTED still maps to noFood', () {
     expect(
       ScanResultNotifier.classifyFailure(

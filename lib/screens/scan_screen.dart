@@ -1215,6 +1215,9 @@ class _BottomPanel extends StatelessWidget {
   final VoidCallback? onViewDetails;
 
   String _scanErrorTitle(AppLocalizations l10n) {
+    if (scanResult.failureKind == ScanFailureKind.scaleReferenceRequired) {
+      return l10n.scaleReferenceRequiredTitle;
+    }
     if (scanResult.failureKind ==
         ScanFailureKind.containerPortionReviewRequired) {
       return l10n.containerPortionReviewTitle;
@@ -1234,6 +1237,9 @@ class _BottomPanel extends StatelessWidget {
   }
 
   String _scanErrorBody(AppLocalizations l10n) {
+    if (scanResult.failureKind == ScanFailureKind.scaleReferenceRequired) {
+      return l10n.scaleReferenceRequiredBody;
+    }
     if (scanResult.failureKind ==
         ScanFailureKind.containerPortionReviewRequired) {
       return l10n.containerPortionReviewBody;
@@ -1457,7 +1463,10 @@ class _BottomPanel extends StatelessWidget {
             ] else if (!isNoFood && sessionErrorDetail != null) ...[
               const SizedBox(height: 8),
               _ScanErrorBox(error: sessionErrorDetail!),
-            ] else if (!isNoFood && scanResult.error != null) ...[
+            ] else if (!isNoFood &&
+                scanResult.failureKind !=
+                    ScanFailureKind.scaleReferenceRequired &&
+                scanResult.error != null) ...[
               const SizedBox(height: 8),
               _ScanErrorBox(error: scanResult.error!),
             ],
@@ -1478,8 +1487,10 @@ class _BottomPanel extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: onRetry,
-                    child: Text(scanResult.failureKind ==
-                            ScanFailureKind.sideViewRequired
+                    child: Text((scanResult.failureKind ==
+                                ScanFailureKind.sideViewRequired ||
+                            scanResult.failureKind ==
+                                ScanFailureKind.scaleReferenceRequired)
                         ? l10n.sideViewRequiredRetake
                         : l10n.retry),
                   ),

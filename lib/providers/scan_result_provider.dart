@@ -14,6 +14,7 @@ enum ScanFailureKind {
   reconstructionFailed,
   dualSilhouetteFailed,
   sideViewRequired,
+  scaleReferenceRequired,
   containerPortionReviewRequired,
 }
 
@@ -431,6 +432,9 @@ class ScanResultNotifier extends StateNotifier<ScanResultState> {
   @visibleForTesting
   static ScanFailureKind classifyFailure(Object error) {
     if (error is PlatformException) {
+      if (error.code == 'SCALE_REFERENCE_REQUIRED') {
+        return ScanFailureKind.scaleReferenceRequired;
+      }
       if (error.code == 'CONTAINER_PORTION_REVIEW_REQUIRED') {
         return ScanFailureKind.containerPortionReviewRequired;
       }

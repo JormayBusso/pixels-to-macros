@@ -26,8 +26,9 @@ outdated, update this file in the same change.
    See §5. A hardcoded English string in UI is a bug.
 6. **Scan changes: implement the LiDAR and non-LiDAR paths SEPARATELY**, and make the final
    3D model look the SAME for both. Never edit one path and assume the other. On BOTH paths the
-   3D model MUST be built from the EXACT silhouette of the TOP **and** SIDE photos, hard-forced
-   with **no** shape fallback, smoothing, subdivision or thickness floor. See §9.
+   3D model MUST be built from the measured contours of the TOP **and** SIDE photos,
+   with bounded source-resolution interpolation and **no** shape fallback, blanket
+   smoothing, subdivision or thickness floor. See §9.
 7. **The 3D scan render + shape is DEVICE-ONLY validatable.** You cannot see the scan
    output in the dev environment. After any scan change: build, deploy, and ask the user
    to re-scan + paste the named debug logs. NEVER claim a visual scan bug is fixed
@@ -294,16 +295,22 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
   use) use the monocular dual-photo path (`MonocularVolumeEstimator`). Any scan change must be
   implemented for each path on its own terms — never edit one and assume the other follows.
   The **final 3D model must look the SAME to the user on both paths**: source-resolution
-  silhouette support without added shape or geometry smoothing/subdivision/Taubin,
+  contour support without added shape or geometry smoothing/subdivision/Taubin,
   same captured TOP+SIDE photo atlas (sampled vertex colors when unavailable), and the same
   `volume_source=display_mesh` contract. State in your report what you did for each path.
-- **ALWAYS use the EXACT silhouette — hard-forced, no fallback shape.** On BOTH paths the 3D
-  model MUST be reconstructed from the exact outline of the TOP mask **and** the exact profile
-  of the SIDE mask (vertices snapped to those two silhouettes). NEVER substitute a generic /
+- **Contour reconstruction — no fallback shape.** On BOTH paths the 3D
+  model MUST be reconstructed from the measured TOP outline **and** SIDE profile.
+  Bounded source-resolution contour interpolation is authorized to remove pixel-cell
+  ledges; retain measured corners, holes, thin features and silhouette support, and
+  report its uncertainty rather than calling it an exact raster-cell reconstruction.
+  Keep the raster hull as a regression oracle, not a production shape fallback.
+  Consolidate coplanar numerical partition faces without moving measured contours;
+  enforce bounded mesh/memory resources before atlas seam duplication.
+  NEVER substitute a generic /
   analytic primitive (sphere, ellipsoid, dome, box), a minimum height/thickness floor, or an
   inflated envelope. This is a hard **accuracy + consistency** requirement: a flat food stays
   flat, an irregular food keeps its true outline, and repeat scans stay stable.
-  **NOTHING may be ADDED in 3-D generation** — no smoothing/subdivision/Taubin, no low-pass of
+  **NOTHING unmeasured may be ADDED in 3-D generation** — no smoothing/subdivision/Taubin, no low-pass of
   the silhouette, no fill/taper/dome/analytic primitive, no thickness floor. The unobserved
   (transverse) axis is filled ONLY by **MIRRORING** the measured side silhouette (symmetry
   assumption) — the two-silhouette **visual hull / space carving** (top ∩ side ∩ mirrored-side)
@@ -325,10 +332,18 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
   no hidden-fill estimator is implemented. Preserve the strict visible-food hull rules.
 - Volume→calories: `scan_result_provider` maps label → `FoodData` (fuzzy label match) →
   `calorieRange(volume)`. The **displayed mesh is the volume source** (`volume_source=display_mesh`).
-- **Scale is the monocular accuracy core.** Metric-scale hierarchy: `plate_diameter`
-  (SOTA-aligned — the winning MetaFood 2026 methods use plate diameter as the metric scale)
-  > `arkit_plane` > learned scale > `fallback_22cm` (worst case; if it fires often, fix plate
-  framing/contrast, don't just re-tune the volume envelope). **Sanctioned, research-backed
+- **Measured scale is the accuracy core.** Strict scans currently require the
+  capture-associated ARKit support plane on BOTH paths. A detected plate measures
+  pixels, not its physical diameter: the default plate diameter and `intrinsic_guided`
+  holding distance remain assumption-only diagnostics, never strict export/save
+  calibration. Missing/invalid measured scale returns `SCALE_REFERENCE_REQUIRED`;
+  Dart localizes guidance to establish the table plane and retake both photos.
+  Never tune a global scale or density multiplier from one food sample.
+  LiDAR depth and confidence maps must belong to the same captured frame and depth
+  source; reject low-confidence readings before fusion.
+  Depth ceilings additionally clip the independently measured two-photo hull:
+  an absent depth sample adds no constraint; an observed zero still removes support.
+  **Sanctioned, research-backed
   accuracy levers:** (1) Depth Anything V2 relief fusion into the hull's TOP surface (measure
   per-pixel height instead of extruding a per-class prior — the single biggest non-LiDAR
   lever) — **already implemented and bundled** (`MonoDepth.mlmodelc`, `MonoDepthService`,
@@ -349,6 +364,13 @@ edits such as this file), say so and skip the deploy rather than rebuilding need
   ambient brightening; convert stored bottom-left UVs to image top-left coordinates.
   If the texture or valid UVs are unavailable, use normalized sampled vertex colors
   with the food's measured average color as the material fallback.
+  The four lateral directions use their own horizontal projection axis, with the
+  same mapping for atlas UVs and sampled-color fallback. Reusing one side photo
+  on unseen sides is explicitly a texture-symmetry assumption, not observed detail.
+  Preserve captured photo colors; do not apply arbitrary saturation/highlight boosts.
+  Encode textures and sampled colors in sRGB. Clamp texture masks at frame edges
+  before resampling, keep UV filtering inside each photo tile, and preserve
+  propagating color attachments when copying captured pixel buffers.
 - **You cannot see the render here.** After any recognition/geometry/color change, deploy and
   ask the user to re-scan and paste the relevant logs, e.g.:
   - `[MonocularEstimator] visual-hull food#… ar=… height=…cm fill=…`

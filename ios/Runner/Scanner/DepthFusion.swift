@@ -93,7 +93,8 @@ final class DepthFusion {
         cameraIntrinsics: simd_float3x3,
         imageWidth:  Int,
         imageHeight: Int,
-        stride:      Int = 3
+        stride:      Int = 3,
+        confidenceBuffer: CVPixelBuffer? = nil
     ) {
         guard MonocularVolumeEstimator.PhotoCalibration.validPose(cameraTransform),
               MonocularVolumeEstimator.PhotoCalibration.validImage(width: imageWidth, height: imageHeight,
@@ -108,6 +109,25 @@ final class DepthFusion {
         guard let base = CVPixelBufferGetBaseAddress(depthBuffer) else { return }
         let ptr          = base.assumingMemoryBound(to: Float32.self)
         let floatsPerRow = rowBytes / MemoryLayout<Float32>.stride
+        var confidence: UnsafePointer<UInt8>?
+        var confidenceStride = 0
+        if let confidenceBuffer {
+            guard CVPixelBufferGetWidth(confidenceBuffer) == dW,
+                  CVPixelBufferGetHeight(confidenceBuffer) == dH,
+                  CVPixelBufferGetPixelFormatType(confidenceBuffer) == kCVPixelFormatType_OneComponent8 else {
+                print("[DepthConfidence] rejected frame reason=invalid_confidence_map")
+                return
+            }
+            CVPixelBufferLockBaseAddress(confidenceBuffer, .readOnly)
+            confidenceStride = CVPixelBufferGetBytesPerRow(confidenceBuffer)
+            confidence = CVPixelBufferGetBaseAddress(confidenceBuffer)
+                .map { UnsafePointer($0.assumingMemoryBound(to: UInt8.self)) }
+        }
+        defer {
+            if let confidenceBuffer { CVPixelBufferUnlockBaseAddress(confidenceBuffer, .readOnly) }
+        }
+        guard confidenceBuffer == nil || confidence != nil else { return }
+        var accepted = 0, rejected = 0
 
         // Scale intrinsics from full image resolution to depth-map resolution.
         let sx = Float(dW) / Float(imageWidth)
@@ -121,6 +141,11 @@ final class DepthFusion {
         for row in Swift.stride(from: 0, to: dH, by: stride) {
             for col in Swift.stride(from: 0, to: dW, by: stride) {
                 let d = ptr[row * floatsPerRow + col]
+                if let confidence,
+                   confidence[row * confidenceStride + col] < UInt8(ARConfidenceLevel.medium.rawValue) {
+                    rejected += 1
+                    continue
+                }
                 // Accept 5 cm – 150 cm range (discard sky / very close noise).
                 guard d > 0.05 && d < 1.5 else { continue }
 
@@ -157,8 +182,10 @@ final class DepthFusion {
                 if measuredPoints[key].map({ measured.y > $0.y }) ?? true {
                     measuredPoints[key] = measured
                 }
+                accepted += 1
             }
         }
+        print("[DepthConfidence] accepted=\(accepted) rejectedLow=\(rejected) mapAvailable=\(confidence != nil)")
     }
 
     // MARK: – Label assignment
@@ -694,7 +721,7 @@ final class DepthFusion {
         // A visible depth surface is not a measured container floor. Require the
         // capture-associated support plane instead of assuming food starts at p05.
         guard let plane = tablePlaneY else {
-            throw InferencePipeline.PipelineError.model3DExportFailed("no_measured_support_plane")
+            throw InferencePipeline.PipelineError.scaleReferenceRequired("no_measured_support_plane")
         }
         let estimator = MonocularVolumeEstimator()
         var objects: [Food3DObject] = [], clusters: [FoodVoxelCluster] = []
@@ -772,7 +799,7 @@ final class DepthFusion {
                 id: id, label: segment.label, instanceIndex: index, mask: mask,
                 widthCm: widthCm, depthCm: depthCm, heightCm: heightCm, topFrame: topFrame,
                 colorFrame: topColor, sideColorFrame: sideColor, profile: profile,
-                measuredCeilingCm: { ceilings[$0 * mw + $1] })
+                measuredCeilingCm: ceilings.isEmpty ? nil : { ceilings[$0 * mw + $1] })
             let offsetX = Float(cs / Double(count) / Double(mw) - 0.5) * 0.28
             let offsetZ = Float(rs / Double(count) / Double(mh) - 0.5) * 0.28
             let worldVertices = try local.vertices.map { v -> SIMD3<Float> in
@@ -795,7 +822,7 @@ final class DepthFusion {
             clusters.append(FoodVoxelCluster(id: id, label: segment.label, instanceIndex: index,
                 topSegmentIndex: index, voxelKeys: [], volumeCm3: volume,
                 sideCarved: true, heightSource: .sideSilhouette))
-            print("[DUALHULL] path=lidar food#\(index) source=source_pixel_silhouette_boundary measuredDepthColumns=\(ceilings.count) cells=\(local.voxelCount) volumeSource=display_mesh shapeAdded=false registration=top_plane_rays_side_plane_rays_transverse_symmetry")
+            print("[DUALHULL] path=lidar food#\(index) source=source_contour_intersection measuredDepthColumns=\(ceilings.count) surfaceCells=\(local.voxelCount) volumeSource=display_mesh contourUncertaintyPx=1 shapeAdded=false registration=top_plane_rays_side_plane_rays_transverse_symmetry")
         }
         return (objects, clusters)
     }

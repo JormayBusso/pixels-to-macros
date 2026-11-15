@@ -24,6 +24,7 @@ import UniformTypeIdentifiers
 enum Food3DTextureBaker {
 
     private static let context = CIContext(options: [.useSoftwareRenderer: false])
+    private static let photoColorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
 
     /// Atlas regions used by the monocular dual-silhouette path. The left tile
     /// stores the top photo, the middle tile stores the side photo, and the
@@ -35,6 +36,16 @@ enum Food3DTextureBaker {
     static let atlasSideU1: Float = 0.92
     static let atlasUnknownU0: Float = 0.92
     static let atlasUnknownU1: Float = 1.0
+    private static let atlasWidth: CGFloat = 2048
+    private static let atlasHeight: CGFloat = 1024
+
+    static func atlasUV(sourceUV: SIMD2<Float>, u0: Float, u1: Float) -> SIMD2<Float> {
+        // Linear filtering must not cross into the neighbouring photo tile.
+        let du = Float(1 / atlasWidth), dv = Float(1 / atlasHeight)
+        let u = min(u1 - du, max(u0 + du, u0 + sourceUV.x * (u1 - u0)))
+        let v = min(1 - dv, max(dv, 1 - sourceUV.y))
+        return SIMD2(u, v)
+    }
 
     /// Maximum texture width; the full sensor frame is downscaled to keep the
     /// `.usdz` small. UVs are normalised, so downscaling does not shift them.
@@ -54,25 +65,10 @@ enum Food3DTextureBaker {
         }
         let workingExtent = ciImage.extent
 
-        // De-glare: the phone's light makes shiny food (a tomato, an apple) blow
-        // out to a white specular highlight that the raw photo would paste onto
-        // the mesh as a white blob. Pull the highlights down and lift saturation
-        // so the food's TRUE colour (its diffuse component, still from THIS
-        // photo) survives instead of the light's reflection.
-        if let highlight = CIFilter(name: "CIHighlightShadowAdjust") {
-            highlight.setValue(ciImage, forKey: kCIInputImageKey)
-            highlight.setValue(0.35, forKey: "inputHighlightAmount")
-            highlight.setValue(0.0, forKey: "inputShadowAmount")
-            if let out = highlight.outputImage { ciImage = out }
-        }
-        if let controls = CIFilter(name: "CIColorControls") {
-            controls.setValue(ciImage, forKey: kCIInputImageKey)
-            controls.setValue(1.22, forKey: kCIInputSaturationKey)
-            if let out = controls.outputImage { ciImage = out }
-        }
         ciImage = ciImage.cropped(to: workingExtent)
 
-        guard let cgImage = context.createCGImage(ciImage, from: workingExtent) else {
+        guard let cgImage = context.createCGImage(ciImage, from: workingExtent,
+                format: .RGBA8, colorSpace: photoColorSpace) else {
             print("[Food3DTextureBaker] createCGImage failed")
             return false
         }
@@ -105,7 +101,7 @@ enum Food3DTextureBaker {
     ///   1. an OPAQUE underlay filled entirely with the food's dominant colour
     ///      (`baseColor`), so any pixel the mask rejects reads as real food
     ///      colour instead of raw background, and
-    ///   2. the de-glared REAL photo composited on top through the food
+    ///   2. the captured REAL photo composited on top through the food
     ///      silhouette mask (`topCoverage` for the top tile, `sideCoverage` for
     ///      the side tile), so genuine food pixels still show the exact captured
     ///      picture — only the non-food pixels fall back to the underlay.
@@ -121,8 +117,8 @@ enum Food3DTextureBaker {
         baseColor: (r: CGFloat, g: CGFloat, b: CGFloat),
         to url: URL
     ) -> Bool {
-        let atlasW: CGFloat = 2048
-        let atlasH: CGFloat = 1024
+        let atlasW = atlasWidth
+        let atlasH = atlasHeight
         let baseCIColor = CIColor(red: baseColor.r, green: baseColor.g, blue: baseColor.b)
         guard let topTile = processedTile(
                 topPixelBuffer,
@@ -155,7 +151,8 @@ enum Food3DTextureBaker {
             .composited(over: background)
             .cropped(to: CGRect(x: 0, y: 0, width: atlasW, height: atlasH))
         guard let cgImage = context.createCGImage(
-            atlas, from: CGRect(x: 0, y: 0, width: atlasW, height: atlasH)) else {
+            atlas, from: CGRect(x: 0, y: 0, width: atlasW, height: atlasH),
+            format: .RGBA8, colorSpace: photoColorSpace) else {
             print("[Food3DTextureBaker] atlas createCGImage failed")
             return false
         }
@@ -171,7 +168,7 @@ enum Food3DTextureBaker {
         return ok
     }
 
-    /// Decode → de-glare → scale a capture to fill one atlas tile, matching the
+    /// Decode and scale a capture to fill one atlas tile, matching the
     /// `writeTexture` colour pipeline so both tiles look consistent, then
     /// composite the real photo over an opaque `baseColor` underlay through the
     /// food-silhouette `coverage` mask. Genuine food pixels show the exact
@@ -186,21 +183,10 @@ enum Food3DTextureBaker {
     ) -> CIImage? {
         var ci = CIImage(cvPixelBuffer: pixelBuffer)
         guard ci.extent.width > 0, ci.extent.height > 0 else { return nil }
-        if let highlight = CIFilter(name: "CIHighlightShadowAdjust") {
-            highlight.setValue(ci, forKey: kCIInputImageKey)
-            highlight.setValue(0.35, forKey: "inputHighlightAmount")
-            highlight.setValue(0.0, forKey: "inputShadowAmount")
-            if let out = highlight.outputImage { ci = out }
-        }
-        if let controls = CIFilter(name: "CIColorControls") {
-            controls.setValue(ci, forKey: kCIInputImageKey)
-            controls.setValue(1.22, forKey: kCIInputSaturationKey)
-            if let out = controls.outputImage { ci = out }
-        }
         ci = ci.transformed(by: CGAffineTransform(
             translationX: -ci.extent.origin.x, y: -ci.extent.origin.y))
         guard ci.extent.width > 0, ci.extent.height > 0 else { return nil }
-        ci = ci.transformed(by: CGAffineTransform(
+        ci = ci.clampedToExtent().transformed(by: CGAffineTransform(
             scaleX: targetW / ci.extent.width, y: targetH / ci.extent.height))
         let tileRect = CGRect(x: 0, y: 0, width: targetW, height: targetH)
         let photo = ci.cropped(to: tileRect)
@@ -223,14 +209,14 @@ enum Food3DTextureBaker {
         let maskNorm = maskRaw.transformed(by: CGAffineTransform(
             translationX: -maskRaw.extent.origin.x, y: -maskRaw.extent.origin.y))
         guard maskNorm.extent.width > 0, maskNorm.extent.height > 0 else { return photo }
-        let maskScaled = maskNorm
+        // Resampling must not blend frame-edge mask pixels with transparent black.
+        let maskScaled = maskNorm.clampedToExtent()
             .transformed(by: CGAffineTransform(
                 scaleX: targetW / maskNorm.extent.width,
                 y: targetH / maskNorm.extent.height))
             .cropped(to: tileRect)
         // CIBlendWithMask: white/opaque mask → the real photo; black/clear mask
-        // → the dominant-colour underlay. The de-glare pipeline above still runs
-        // on the photo, so only the compositing changed.
+        // → the dominant-colour underlay. Captured food colors remain unchanged.
         let blended = photo.applyingFilter("CIBlendWithMask", parameters: [
             kCIInputBackgroundImageKey: base,
             kCIInputMaskImageKey: maskScaled,
@@ -300,7 +286,10 @@ enum Food3DTextureBaker {
             print("[TextureBaker] ⚠️ bgraCopy failed to allocate \(width)x\(height) BGRA buffer")
             return nil
         }
-        context.render(CIImage(cvPixelBuffer: pixelBuffer), to: dst)
+        CVBufferSetAttachment(dst, kCVImageBufferCGColorSpaceKey,
+            photoColorSpace, .shouldPropagate)
+        let image = CIImage(cvPixelBuffer: pixelBuffer)
+        context.render(image, to: dst, bounds: image.extent, colorSpace: photoColorSpace)
         return dst
     }
 
@@ -312,6 +301,7 @@ enum Food3DTextureBaker {
             let scale = maxWidth / extent.width
             ciImage = ciImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         }
-        return context.createCGImage(ciImage, from: ciImage.extent)
+        return context.createCGImage(ciImage, from: ciImage.extent,
+            format: .RGBA8, colorSpace: photoColorSpace)
     }
 }

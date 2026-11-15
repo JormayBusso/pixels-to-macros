@@ -3356,6 +3356,27 @@ class AppLocalizations {
         'de': 'Die Ansichten des Essens konnten nicht zugeordnet werden',
       });
 
+  String get scaleReferenceRequiredTitle => _t({
+        'en': 'The food size could not be measured',
+        'pl': 'Nie udało się zmierzyć rozmiaru jedzenia',
+        'nl': 'De grootte van het eten kon niet worden gemeten',
+        'es': 'No se pudo medir el tamaño de la comida',
+        'de': 'Die Größe des Essens konnte nicht gemessen werden',
+      });
+
+  String get scaleReferenceRequiredBody => _t({
+        'en':
+            'No reliable table measurement was available, so nothing was saved. Before retaking both photos, slowly move the phone over the plate and the surrounding table in good light. Keep the food still and avoid shiny or transparent surfaces.',
+        'pl':
+            'Brak wiarygodnego pomiaru stołu, więc nic nie zapisano. Przed ponownym zrobieniem obu zdjęć powoli przesuń telefon nad talerzem i otaczającym go stołem w dobrym świetle. Nie poruszaj jedzenia i unikaj błyszczących lub przezroczystych powierzchni.',
+        'nl':
+            'Er was geen betrouwbare tafelmeting beschikbaar, dus er is niets opgeslagen. Beweeg de telefoon in goed licht langzaam over het bord en de tafel eromheen voordat je beide foto\'s opnieuw maakt. Laat het eten liggen en vermijd glanzende of doorzichtige oppervlakken.',
+        'es':
+            'No había una medición fiable de la mesa, por lo que no se guardó nada. Antes de repetir ambas fotos, mueve lentamente el móvil sobre el plato y la mesa que lo rodea con buena luz. No muevas la comida y evita superficies brillantes o transparentes.',
+        'de':
+            'Es lag keine zuverlässige Tischmessung vor, daher wurde nichts gespeichert. Bewege das Handy bei gutem Licht langsam über den Teller und den Tisch darum herum, bevor du beide Fotos erneut machst. Bewege das Essen nicht und vermeide glänzende oder transparente Oberflächen.',
+      });
+
   String get sideViewRequiredBody => _t({
         'en':
             'Retake both photos without moving the food. Capture straight down first. Keep the same screen orientation, move toward the edge of the plate without twisting the phone, then lower it for a level side photo with all food visible.',

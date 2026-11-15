@@ -123,6 +123,7 @@ final class InferencePipeline {
         /// LiDAR with too little fused depth and no usable side silhouette.
         /// Strict non-LiDAR also requires independently assigned side support.
         case sideViewRequired(String)
+        case scaleReferenceRequired(String)
         case containerPortionReviewRequired(String)
 
         /// Verbatim message surfaced to Dart with FlutterError code
@@ -142,6 +143,8 @@ final class InferencePipeline {
                 return "Dual-silhouette reconstruction failed. (\(reason))"
             case .sideViewRequired:
                 return PipelineError.sideViewRequiredMessage
+            case .scaleReferenceRequired:
+                return "scale_reference_required"
             case .containerPortionReviewRequired:
                 return "Container hides the food portion; review manually or retake on a plate."
             }
@@ -726,6 +729,8 @@ final class InferencePipeline {
             } catch MonocularVolumeEstimator.EstimateError.sideViewRequired(let reason) {
                 print("[PIPELINE] SIDE_VIEW_REQUIRED reason=\(reason)")
                 throw PipelineError.sideViewRequired(reason)
+            } catch MonocularVolumeEstimator.EstimateError.scaleReferenceRequired(let reason) {
+                throw PipelineError.scaleReferenceRequired(reason)
             }
             lastModel3DPath = estimate.modelPath
             lastModel3DObjects = estimate.objects
@@ -746,7 +751,8 @@ final class InferencePipeline {
                 cameraTransform:  topFrame.cameraTransform,
                 cameraIntrinsics: topFrame.cameraIntrinsics,
                 imageWidth:  CVPixelBufferGetWidth(topFrame.pixelBuffer),
-                imageHeight: CVPixelBufferGetHeight(topFrame.pixelBuffer)
+                imageHeight: CVPixelBufferGetHeight(topFrame.pixelBuffer),
+                confidenceBuffer: topFrame.confidenceBuffer
             )
             print("[SCAN] integrated topFrame depth: voxels now \(fusion.totalOccupiedVoxels)")
         } else {
@@ -760,7 +766,8 @@ final class InferencePipeline {
                 cameraTransform:  frame.cameraTransform,
                 cameraIntrinsics: frame.cameraIntrinsics,
                 imageWidth:  frame.imageWidth,
-                imageHeight: frame.imageHeight
+                imageHeight: frame.imageHeight,
+                confidenceBuffer: frame.confidenceBuffer
             )
         }
         print("[SCAN] after topViewFrames(\(recorder.topViewFrames.count)): voxels=\(fusion.totalOccupiedVoxels)")
@@ -772,7 +779,8 @@ final class InferencePipeline {
                 cameraTransform:  frame.cameraTransform,
                 cameraIntrinsics: frame.cameraIntrinsics,
                 imageWidth:  frame.imageWidth,
-                imageHeight: frame.imageHeight
+                imageHeight: frame.imageHeight,
+                confidenceBuffer: frame.confidenceBuffer
             )
         }
         print("[SCAN] after lightFrames(\(recorder.lightFrames.count)): voxels=\(fusion.totalOccupiedVoxels)")
@@ -975,6 +983,12 @@ final class InferencePipeline {
                 "measurement_provenance": provenance,
                 "height_source": heightSource.rawValue,
                 "volume_measured": measured,
+                "texture_projection": "four_lateral_directions",
+                "texture_symmetry_assumed": true,
+                "scale_source": "arkit_plane",
+                "scale_measured": true,
+                "contour_uncertainty_pixels": 1.0,
+                "transverse_geometry_assumption": "mirrored_side",
                 "side_view_applied": sideApplied,
                 "side_missing_reason": sideReason,
                 "volume_measurement_reason": measured ? "none"
@@ -998,7 +1012,7 @@ final class InferencePipeline {
                 "volume_source": "display_mesh",
                 "display_mesh_volume_cm3": round(obj.volumeCm3 * 10) / 10,
                 "mesh_volume_cm3": round(obj.volumeCm3 * 10) / 10,
-                "surface_extraction_mode": "source_pixel_silhouette_boundary",
+                "surface_extraction_mode": "source_contour_intersection",
                 "width_cm": round(dims.width * 10) / 10,
                 "depth_cm": round(dims.depth * 10) / 10,
                 "height_cm": round(dims.height * 10) / 10,
@@ -1030,7 +1044,7 @@ final class InferencePipeline {
             d["volume_source"] = "display_mesh"
             d["display_mesh_volume_cm3"] = round(obj.volumeCm3 * 10) / 10
             d["mesh_volume_cm3"] = round(obj.volumeCm3 * 10) / 10
-            d["surface_extraction_mode"] = "source_pixel_silhouette_boundary"
+            d["surface_extraction_mode"] = "source_contour_intersection"
             d["width_cm"] = round(dims.width * 10) / 10
             d["depth_cm"] = round(dims.depth * 10) / 10
             d["height_cm"] = round(dims.height * 10) / 10

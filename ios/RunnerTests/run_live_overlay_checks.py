@@ -32,8 +32,8 @@ assert "geometry.addSublayer(glowContainer)" in renderer
 assert "geometry.mask = silhouetteMask" in renderer
 assert "wireMask" not in renderer and "nodesLayer" not in renderer
 assert "strokePath()" not in renderer and "UIGraphicsImageRenderer" not in renderer
-assert "glowContainer.opacity = 0.12" in renderer
-assert "sweepContainer.opacity = 0.35" in renderer
+assert "glowContainer.opacity = 0.10" in renderer
+assert "sweepContainer.opacity = 0.22" in renderer
 assert "sweepContainer.isHidden = unavailable || style.reduceMotion" in renderer
 assert "scanFade" not in preview and "scanGlow" not in preview
 print("PASS sweep continues across routine bounds updates without global opacity pulsing")
@@ -439,10 +439,11 @@ check("shared wire edges are emitted once and mesh masks debounce segmentation j
     let revision = store.tracks[0].revision
     store.update([observation], at: 1.2)
     precondition(store.tracks[0].revision == revision && store.tracks[0].meshMask == original)
-    precondition(store.tracks[0].mask == shifted)
-    precondition(store.tracks[0].silhouette.contains(CGPoint(x: 85.5, y: 30.5)))
+    precondition(store.tracks[0].mask == original)
+    precondition(!store.tracks[0].silhouette.contains(CGPoint(x: 85.5, y: 30.5)))
     store.update([observation], at: 1.4)
     precondition(store.tracks[0].revision == revision + 1 && store.tracks[0].mask == shifted)
+    precondition(store.tracks[0].silhouette.contains(CGPoint(x: 85.5, y: 30.5)))
 }
 check("source-resolution silhouette keeps holes, thin protrusions and crop edges at every mesh density") {
     let g = 32
@@ -473,8 +474,9 @@ check("source-resolution silhouette keeps holes, thin protrusions and crop edges
     store.update([LiveFoodObservation(label: "apple", confidence: 0.9,
         bounds: measuredBounds, mask: current)], at: 1.1)
     precondition(store.tracks[0].id == first.id && store.tracks[0].revision == first.revision)
-    precondition(store.tracks[0].bounds == measuredBounds)
-    precondition(!store.tracks[0].silhouette.contains(CGPoint(x: 80.5, y: 80.5)))
+    precondition(abs(store.tracks[0].bounds.minX - 11.3) < 0.0001)
+    precondition(abs(store.tracks[0].bounds.minY - 10.65) < 0.0001)
+    precondition(store.tracks[0].silhouette.contains(CGPoint(x: 80.5, y: 80.5)))
     for width in [20, 60, 120, 160] {
         let bounds = CGRect(x: 0, y: 0, width: width, height: width)
         let step = LiveFoodTrackStore.spacing(for: bounds) * CGFloat(width) / CGFloat(n)

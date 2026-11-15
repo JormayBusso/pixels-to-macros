@@ -282,6 +282,18 @@ final class MonocularVolumeEstimator {
             return SIMD2(Float(horizontal), Float(vertical))
         }
 
+        func lateralSourceUV(
+            columnFraction: Double, rowFraction: Double,
+            heightFraction: Double, normal: SIMD3<Float>
+        ) -> SIMD2<Float> {
+            // Repeat the measured side on perpendicular walls using their
+            // own horizontal axis; projecting all walls along X makes ±X stripes.
+            let alongRows = abs(normal.x) > abs(normal.z) ||
+                (abs(normal.x) == abs(normal.z) && topAxis == .rows)
+            return sourceUV(axisU: alongRows ? rowFraction : columnFraction,
+                            heightFraction: heightFraction)
+        }
+
         /// `sourceUV` snapped to the EXACT side-mask pixel it lands on, or to
         /// the nearest in-mask pixel when it falls just outside (thin tips,
         /// one-pixel boundary rounding). `uv` is (x = column, y = row)
@@ -315,11 +327,14 @@ final class MonocularVolumeEstimator {
         /// No side silhouette for a food: its height cannot be measured and is
         /// never guessed. Surfaced to Dart as `SIDE_VIEW_REQUIRED`.
         case sideViewRequired(String)
+        case scaleReferenceRequired(String)
 
         var errorDescription: String? {
             switch self {
             case .sideViewRequired:
                 return InferencePipeline.PipelineError.sideViewRequiredMessage
+            case .scaleReferenceRequired:
+                return "scale_reference_required"
             case .noObjects:
                 return "Camera estimate failed: no exportable food objects"
             case .exportFailed:
@@ -409,7 +424,11 @@ final class MonocularVolumeEstimator {
             preprocessingPlate: preprocessingPlate
         )
         guard scale.pixelsPerCm.isFinite, scale.pixelsPerCm > 0 else {
-            throw EstimateError.sideViewRequired(scale.fallbackReason ?? "invalid_calibration")
+            throw EstimateError.scaleReferenceRequired(scale.fallbackReason ?? "invalid_calibration")
+        }
+        guard scale.measured else {
+            print("[ScaleValidation] rejected source=\(scale.source) action=retake reason=unmeasured_metric_reference")
+            throw EstimateError.scaleReferenceRequired("unmeasured_metric_reference:\(scale.source)")
         }
 
         // Depth Anything V2 (gated, AGENTS.md §9) is only ever a RELATIVE top
@@ -474,11 +493,11 @@ final class MonocularVolumeEstimator {
             let rawVolumeCm3 = areaCm2 * heightCm * (profile?.meanNormalizedHeight ?? 0)
             let volumeCm3 = rawVolumeCm3
             let scanMode = sideApplied ? "monocular_visual_hull" : "monocular_top_only"
-            let meshMode = "exact_silhouette"
+            let meshMode = "source_contour_intersection"
             let debugInfo = String(
                 format: "%@: side=%@ mesh=%@ scale=%@ %.1fpx/cm axis=%@%@ h=%.1fcm(%@) fill=%.2f ar=%.2f match=%@ prismVol=%.0fcm³",
                 scanMode,
-                sideApplied ? "exact" : "missing_volume_unmeasured",
+                sideApplied ? "source_contour" : "missing_volume_unmeasured",
                 meshMode,
                 scale.source,
                 scale.pixelsPerCm,
@@ -553,7 +572,7 @@ final class MonocularVolumeEstimator {
                 profile?.aspectRatio ?? 0
             )
             let diagnosticInfo = String(
-                format: "%@ | footprint raw=%.1fcm² %.1fx%.1fcm height=%.2fcm rawVol=%.1fcm³ meshVol=%.1fcm³ hullCellVol=%.1fcm³ finalVol=%.1fcm³ density=%.2fg/cm³ weight=%.0fg sideApplied=%@%@",
+                format: "%@ | footprint raw=%.1fcm² %.1fx%.1fcm height=%.2fcm rawVol=%.1fcm³ meshVol=%.1fcm³ contourVol=%.1fcm³ finalVol=%.1fcm³ density=%.2fg/cm³ weight=%.0fg sideApplied=%@%@",
                 debugInfo,
                 rawAreaCm2,
                 rawWidthCm,
@@ -618,12 +637,17 @@ final class MonocularVolumeEstimator {
                 "temporal_samples": 1,
                 "pre_smoothing_volume_cm3": round(volumeCm3 * 10) / 10,
                 "mesh_volume_cm3": estimatedObject.meshVolumeCm3,
-                "hull_cell_volume_cm3": round(estimatedObject.hullVoxelVolumeCm3 * 10) / 10,
+                "contour_mesh_volume_cm3": estimatedObject.hullVoxelVolumeCm3,
+                "contour_uncertainty_pixels": 1.0,
+                "transverse_geometry_assumption": "mirrored_side",
                 "surface_extraction_mode": estimatedObject.surfaceExtractionMode,
                 "top_silhouette_snap_vertices": estimatedObject.topSilhouetteSnapVertices,
                 "top_silhouette_edge_snap_vertices": estimatedObject.topSilhouetteEdgeSnapVertices,
                 "side_profile_samples": profile?.normalizedHeights.count ?? 0,
                 "volume_source": "display_mesh",
+                "texture_projection": "four_lateral_directions",
+                "texture_symmetry_assumed": true,
+                "scale_measured": scale.measured,
                 "needs_user_label": seg.needsUserLabel,
                 "candidate_labels": seg.candidateLabels,
                 "embedding": seg.embedding.map { Double($0) },
@@ -635,7 +659,7 @@ final class MonocularVolumeEstimator {
                 "side={\(profile?.measurementProvenance ?? "unmatched_or_missing")} " +
                 "heightSource=\(heightSource) axisCm=\(topAxisCm) heightCm=\(heightCm) " +
                 "aspectHeightCm=\((profile?.aspectRatio ?? 0) * topAxisCm) " +
-                "meshVolumeCm3=\(finalVolumeCm3) hullCellVolumeCm3=\(estimatedObject.hullVoxelVolumeCm3) volumeSource=display_mesh"
+                "meshVolumeCm3=\(finalVolumeCm3) contourVolumeCm3=\(estimatedObject.hullVoxelVolumeCm3) volumeSource=display_mesh contourUncertaintyPx=1 transverse=mirrored_side"
             row["measurement_provenance"] = provenance
             print("[MEASUREMENT] food#\(idx) \(provenance)")
             // [EVAL] one line per food for known-weight calibration (#3).
@@ -830,6 +854,7 @@ final class MonocularVolumeEstimator {
         let confidence: Double
         let fallbackReason: String?
         var provenance = ""
+        var measured: Bool { source == "arkit_plane" }
     }
 
     func estimateScale(
@@ -914,13 +939,6 @@ final class MonocularVolumeEstimator {
                             fallbackReason: "invalid_preprocessing_crop")
         }
 
-        if let platePxPerCm = plateDiameterPxPerCm {
-            logScaleValidation(chosenPxPerCm: platePxPerCm, plateDetected: true,
-                               maskWidth: maskWidth, maskHeight: maskHeight, source: "plate_diameter")
-            return selected(pixelsPerCm: platePxPerCm, source: "plate_diameter",
-                            confidence: fx > 1 ? 0.86 : 0.80, fallbackReason: nil)
-        }
-
         if let tableDistanceCm, tableDistanceCm.isFinite, fx.isFinite, fx > 1,
            tableDistanceCm > 5, tableDistanceCm < 100 {
             let calibration = PhotoCalibration(
@@ -950,6 +968,15 @@ final class MonocularVolumeEstimator {
                 source: "arkit_plane",
                 confidence: 0.82,
                 fallbackReason: nil, rowPixelsPerCm: rowPxPerCm)
+        }
+
+        // Detection measures pixels, not the physical plate diameter. Keep
+        // assumed references as diagnostics, never as strict scan calibration.
+        if let platePxPerCm = plateDiameterPxPerCm {
+            logScaleValidation(chosenPxPerCm: platePxPerCm, plateDetected: true,
+                               maskWidth: maskWidth, maskHeight: maskHeight, source: "plate_diameter")
+            return selected(pixelsPerCm: platePxPerCm, source: "plate_diameter",
+                            confidence: 0.60, fallbackReason: "assumed_plate_diameter")
         }
 
         if let pxPerCm = intrinsicGuidedPxPerCm {
@@ -1567,20 +1594,31 @@ final class MonocularVolumeEstimator {
             throw EstimateError.sideViewRequired(reason)
         }
         let hullStarted = ProcessInfo.processInfo.systemUptime
-        let hull = try silhouetteHull(mask: mask, profile: geometryProfile,
-            widthCm: widthCm, depthCm: depthCm, heightCm: heightCm,
-            offsetX: offsetX, offsetZ: offsetZ, measuredCeilingCm: measuredCeilingCm)
+        let hull: ContourVisualHull.Mesh
+        do {
+            hull = try ContourVisualHull.build(top: mask, side: geometryProfile.sourceMask,
+                sideHorizontalUsesRows: geometryProfile.textureHorizontalUsesRows,
+                sideVerticalIncreasesUp: geometryProfile.verticalIndexIncreasesUp,
+                reversed: geometryProfile.reversed,
+                widthCm: widthCm, depthCm: depthCm, heightCm: heightCm,
+                offsetX: offsetX, offsetZ: offsetZ, measuredCeilingCm: measuredCeilingCm)
+        } catch let error as ContourVisualHull.HullError {
+            throw EstimateError.sideViewRequired(error.description)
+        }
         let vertices = hull.vertices, faces = hull.faces
-        let surfaceExtractionMode = "source_pixel_silhouette_boundary"
-        let occupiedCellCount = hull.cellCount
-        let hullVoxelVolumeCm3 = hull.cellVolumeCm3
+        guard faces.count <= 450_000 else {
+            throw EstimateError.sideViewRequired("contour_atlas_resource_limit")
+        }
+        let surfaceExtractionMode = "source_contour_intersection"
+        let occupiedCellCount = hull.diagnostics.visitedSurfaceCells
+        let hullVoxelVolumeCm3 = hull.volumeCm3
         let topSilhouetteSnapVertices = 0, topSilhouetteEdgeSnapVertices = 0
         let hullMs = (ProcessInfo.processInfo.systemUptime - hullStarted) * 1000
-        print("[DUALHULL] path=monocular food=\(label) mode=\(surfaceExtractionMode) cells=\(occupiedCellCount) vertices=\(vertices.count) faces=\(faces.count / 3) cellVolumeCm3=\(hullVoxelVolumeCm3) shapeAdded=false partition=identical_support_only buildMs=\(String(format: "%.1f", hullMs))")
+        print("[DUALHULL] path=monocular food=\(label) mode=\(surfaceExtractionMode) surfaceCells=\(occupiedCellCount) vertices=\(vertices.count) faces=\(faces.count / 3) contourVolumeCm3=\(hullVoxelVolumeCm3) contourUncertaintyPx=1 shapeAdded=false transverse=mirrored_side buildMs=\(String(format: "%.1f", hullMs))")
 
         @inline(__always) func maskPosition(for p: SIMD3<Float>) -> (row: Double, col: Double) {
-            let colNorm = Double(((p.x - offsetX) / max(0.0001, 2.0 * rx)) + 0.5)
-            let rowNorm = Double(((p.z - offsetZ) / max(0.0001, 2.0 * rz)) + 0.5)
+            let colNorm = Double(((p.x - offsetX) / (2.0 * rx)) + 0.5)
+            let rowNorm = Double(((p.z - offsetZ) / (2.0 * rz)) + 0.5)
             return (
                 Double(footprint.minRow) + rowNorm * Double(bboxH),
                 Double(footprint.minCol) + colNorm * Double(bboxW)
@@ -1615,16 +1653,11 @@ final class MonocularVolumeEstimator {
         let normals = vertexNormals(vertices: vertices, faces: faces)
         let surfaceVolumeCm3 = meshVolumeCm3(vertices: vertices, faces: faces)
         let resolvedVolumeCm3 = surfaceVolumeCm3.isFinite ? surfaceVolumeCm3 : 0
-        // Seamless top-down photo projection: every vertex samples the real
-        // captured TOP photo at the pixel directly above its footprint (x,z).
-        // Because the vertices follow source-pixel boundaries the
-        // photo lines up with the outline and wraps continuously down the sides
-        // as ONE image — no atlas split, so no straddling triangles and no
-        // doubled/flickering texture. The matching texture is the mask-aligned
-        // preprocessed top RGB baked by Food3DExporter, so these UVs index it.
+        // TOP projection uses the same mask-aligned crop as the contours.
+        // With a SIDE photo, triangles are assigned to one atlas tile below.
         let uvs: [SIMD2<Float>] = vertices.map { p in
-            let colNorm = clamp01(((p.x - offsetX) / max(0.0001, 2.0 * rx)) + 0.5)
-            let rowNorm = clamp01(((p.z - offsetZ) / max(0.0001, 2.0 * rz)) + 0.5)
+            let colNorm = clamp01(((p.x - offsetX) / (2.0 * rx)) + 0.5)
+            let rowNorm = clamp01(((p.z - offsetZ) / (2.0 * rz)) + 0.5)
             let sourceU = (Float(footprint.minCol) + colNorm * Float(bboxW)) / Float(max(maskWidth, 1))
             let sourceV = (Float(footprint.minRow) + rowNorm * Float(bboxH)) / Float(max(maskHeight, 1))
             return SIMD2<Float>(clamp01(sourceU), 1.0 - clamp01(sourceV))
@@ -1675,7 +1708,7 @@ final class MonocularVolumeEstimator {
             sideBGRA: sharedSideBGRA,
             solidMask: mask,
             positions: vertexMaskPositions,
-            heightFractions: vertices.map { Double(max(0, min(1, $0.y / max(h, 0.0001)))) },
+            heightFractions: vertices.map { Double(clamp01($0.y / h)) },
             normals: normals,
             baseColor: color,
             label: label,
@@ -1703,31 +1736,32 @@ final class MonocularVolumeEstimator {
             let topU0 = Food3DTextureBaker.atlasTopU0, topU1 = Food3DTextureBaker.atlasTopU1
             let sideU0 = Food3DTextureBaker.atlasSideU0, sideU1 = Food3DTextureBaker.atlasSideU1
             @inline(__always) func topUV(_ p: SIMD3<Float>) -> SIMD2<Float> {
-                let colNorm = clamp01(((p.x - offsetX) / max(0.0001, 2.0 * rx)) + 0.5)
-                let rowNorm = clamp01(((p.z - offsetZ) / max(0.0001, 2.0 * rz)) + 0.5)
+                let colNorm = clamp01(((p.x - offsetX) / (2.0 * rx)) + 0.5)
+                let rowNorm = clamp01(((p.z - offsetZ) / (2.0 * rz)) + 0.5)
                 let su = (Float(footprint.minCol) + colNorm * Float(bboxW)) / Float(max(maskWidth, 1))
                 let sv = (Float(footprint.minRow) + rowNorm * Float(bboxH)) / Float(max(maskHeight, 1))
-                return SIMD2<Float>(clamp01(topU0 + su * (topU1 - topU0)), 1.0 - clamp01(sv))
+                return Food3DTextureBaker.atlasUV(sourceUV: SIMD2(clamp01(su), clamp01(sv)),
+                    u0: topU0, u1: topU1)
             }
             var atlasSideVerts = 0
             var atlasSideInMask = 0
-            @inline(__always) func sideUV(_ p: SIMD3<Float>) -> SIMD2<Float> {
+            @inline(__always) func sideUV(_ p: SIMD3<Float>, normal: SIMD3<Float>) -> SIMD2<Float> {
                 guard let sp = sideProfile else { return topUV(p) }
-                let colNorm = clamp01(((p.x - offsetX) / max(0.0001, 2.0 * rx)) + 0.5)
-                let rowNorm = clamp01(((p.z - offsetZ) / max(0.0001, 2.0 * rz)) + 0.5)
-                let axisU = sp.topAxis == .columns ? Double(colNorm) : Double(rowNorm)
-                let hf = Double(clamp01(p.y / Float(max(h, 0.0001))))
+                let colNorm = clamp01(((p.x - offsetX) / (2.0 * rx)) + 0.5)
+                let rowNorm = clamp01(((p.z - offsetZ) / (2.0 * rz)) + 0.5)
+                let hf = Double(clamp01(p.y / h))
                 // `sourceUV` is (x = side-frame column, y = side-frame row); the
                 // side tile is the side frame scaled WITHOUT rotation, exactly
                 // like the top tile, so u follows x and v = 1 − row (same as
                 // `topUV`). Snapped to the exact side-mask pixel when available.
-                let raw = sp.sourceUV(axisU: axisU, heightFraction: hf)
+                let raw = sp.lateralSourceUV(columnFraction: Double(colNorm),
+                    rowFraction: Double(rowNorm), heightFraction: hf, normal: normal)
                 let snap = sp.sourceMask.isEmpty ? (uv: raw, inMask: false, found: false) : sp.maskSnappedUV(raw, maxRadius: 2)
                 atlasSideVerts += 1
                 if snap.inMask { atlasSideInMask += 1 }
-                let uv = snap.found ? snap.uv : raw
-                return SIMD2<Float>(clamp01(sideU0 + clamp01(uv.x) * (sideU1 - sideU0)),
-                                    1.0 - clamp01(uv.y))
+                let uv = snap.found && !snap.inMask ? snap.uv : raw
+                return Food3DTextureBaker.atlasUV(sourceUV: SIMD2(clamp01(uv.x), clamp01(uv.y)),
+                    u0: sideU0, u1: sideU1)
             }
             var nv = [SIMD3<Float>](); nv.reserveCapacity(faces.count)
             var faceNormals = [SIMD3<Float>](); faceNormals.reserveCapacity(faces.count)
@@ -1747,7 +1781,7 @@ final class MonocularVolumeEstimator {
                     nf.append(nv.count)
                     nv.append(vertices[v])
                     faceNormals.append(faceNormal)
-                    nu.append(isSide ? sideUV(vertices[v]) : topUV(vertices[v]))
+                    nu.append(isSide ? sideUV(vertices[v], normal: faceNormal) : topUV(vertices[v]))
                 }
             }
             if nf.count >= 3 {
@@ -1764,7 +1798,7 @@ final class MonocularVolumeEstimator {
                 outUVs = nu
                 print("[MonocularEstimator] atlas seam-split \(label): welded=\(vertices.count)v/\(faces.count / 3)f -> unwelded=\(nv.count)v")
                 if sideProfile != nil {
-                    print("[SIDECOLOR] atlas food=\(label) sideVerts=\(atlasSideVerts) uvInMask=\(String(format: "%.0f", 100.0 * Double(atlasSideInMask) / Double(max(1, atlasSideVerts))))% sideTile=u[\(sideU0),\(sideU1)] uv=(col,1-row) unrotated")
+                    print("[SIDECOLOR] atlas food=\(label) sideVerts=\(atlasSideVerts) uvInMask=\(String(format: "%.0f", 100.0 * Double(atlasSideInMask) / Double(max(1, atlasSideVerts))))% sideTile=u[\(sideU0),\(sideU1)] uv=(col,1-row) projection=four_lateral_directions unseenTexture=side_symmetry")
                 }
             }
         }
@@ -1982,18 +2016,13 @@ final class MonocularVolumeEstimator {
                sidePtr != nil,
                sideWidth > 0,
                sideHeight > 0 {
-                let axisU: Double
-                if sideProfile.topAxis == .columns {
-                    axisU = (pos.col - Double(footprint.minCol)) /
-                        Double(max(1, footprint.maxCol - footprint.minCol + 1))
-                } else {
-                    axisU = (pos.row - Double(footprint.minRow)) /
-                        Double(max(1, footprint.maxRow - footprint.minRow + 1))
-                }
-                // The hull is registered by mask extents, not perspective rays.
-                // Its side colors must use that same registration.
-                let uv = sideProfile.sourceUV(
-                    axisU: axisU, heightFraction: i < heightFractions.count ? heightFractions[i] : 0.5)
+                let uv = sideProfile.lateralSourceUV(
+                    columnFraction: (pos.col - Double(footprint.minCol)) /
+                        Double(max(1, footprint.maxCol - footprint.minCol + 1)),
+                    rowFraction: (pos.row - Double(footprint.minRow)) /
+                        Double(max(1, footprint.maxRow - footprint.minRow + 1)),
+                    heightFraction: i < heightFractions.count ? heightFractions[i] : 0.5,
+                    normal: normals[i])
                 sideVertexCount += 1
                 // `uv` is (x = column, y = row) in the side frame. Snap it to
                 // the exact side-mask pixel (or the nearest in-mask pixel) so a

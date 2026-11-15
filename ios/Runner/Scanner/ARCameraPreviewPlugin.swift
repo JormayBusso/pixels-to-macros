@@ -768,8 +768,9 @@ struct LiveFoodMesh {
 
     /// Trace the source mask, not the triangle lattice. Padding closes food
     /// touching the crop; directed marching-square loops also retain holes.
-    static func silhouette(mask: [Float], grid g: Int) -> CGPath? {
+    static func silhouette(mask: [Float], grid g: Int, smooth: Bool = false) -> CGPath? {
         guard g > 1, mask.count == g * g else { return nil }
+        let samples = smooth ? LiveFoodOverlayPolicy.boxBlur(mask, g, 2) : mask
         struct Point: Hashable {
             let x: Int
             let y: Int
@@ -777,7 +778,7 @@ struct LiveFoodMesh {
         }
         func inside(_ x: Int, _ y: Int) -> Bool {
             guard x >= 0, y >= 0, x < g, y < g else { return false }
-            let value = mask[y * g + x]
+            let value = samples[y * g + x]
             return value.isFinite && value > 0.5
         }
         var next = [Point: Point]()
@@ -815,16 +816,32 @@ struct LiveFoodMesh {
                 }
             }
         }
-        guard !next.isEmpty else { return nil }
+        guard !next.isEmpty else {
+            return smooth ? silhouette(mask: mask, grid: g) : nil
+        }
         let region = CGMutablePath()
         for start in starts where next[start] != nil {
-            region.move(to: start.position)
             var point = start
+            var loop = [CGPoint]()
             repeat {
                 guard let end = next.removeValue(forKey: point) else { return nil }
-                region.addLine(to: end.position)
+                loop.append(point.position)
                 point = end
             } while point != start
+            guard !loop.isEmpty else { continue }
+            if smooth && loop.count > 2 {
+                func midpoint(_ a: CGPoint, _ b: CGPoint) -> CGPoint {
+                    CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2)
+                }
+                region.move(to: midpoint(loop[loop.count - 1], loop[0]))
+                for i in loop.indices {
+                    region.addQuadCurve(to: midpoint(loop[i], loop[(i + 1) % loop.count]),
+                                        control: loop[i])
+                }
+            } else {
+                region.move(to: loop[0])
+                for point in loop.dropFirst() { region.addLine(to: point) }
+            }
             region.closeSubpath()
         }
         return region.copy()
@@ -1003,7 +1020,7 @@ struct LiveFoodTrackStore {
                     < Self.overlap(tracks[$1].bounds, observation.bounds)
             }) {
                 assigned.insert(tracks[i].id)
-                let stableBounds = observation.bounds
+                let stableBounds = Self.interpolate(tracks[i].bounds, observation.bounds, amount: 0.65)
                 tracks[i].bounds = stableBounds
                 tracks[i].confidence = tracks[i].confidence * 0.65 + observation.confidence * 0.35
                 tracks[i].lastDetection = now
@@ -1011,11 +1028,6 @@ struct LiveFoodTrackStore {
                 tracks[i].hits += 1
                 tracks[i].misses = 0
                 tracks[i].state = .confirmed
-                if tracks[i].mask != observation.mask,
-                   let silhouette = LiveFoodMesh.silhouette(mask: observation.mask, grid: Self.maskGrid) {
-                    tracks[i].mask = observation.mask
-                    tracks[i].silhouette = silhouette
-                }
                 let changed = zip(tracks[i].meshMask, observation.mask).reduce(0) {
                     $0 + (($1.0 > 0.5) != ($1.1 > 0.5) ? 1 : 0)
                 }
@@ -1040,8 +1052,11 @@ struct LiveFoodTrackStore {
                     if tracks[i].pendingMaskHits >= 2,
                        let mesh = LiveFoodMesh.build(mask: observation.mask, grid: Self.maskGrid,
                                                      spacing: Self.spacing(for: stableBounds),
-                                                     aspectRatio: aspect) {
+                                                     aspectRatio: aspect),
+                       let silhouette = LiveFoodMesh.silhouette(mask: observation.mask,
+                                                                grid: Self.maskGrid, smooth: true) {
                         tracks[i].mesh = mesh
+                        tracks[i].silhouette = silhouette
                         tracks[i].meshAspect = aspect
                         tracks[i].meshMask = observation.mask
                         tracks[i].mask = observation.mask
@@ -1061,7 +1076,9 @@ struct LiveFoodTrackStore {
                       }),
                       let mesh = LiveFoodMesh.build(mask: observation.mask, grid: Self.maskGrid,
                                                    spacing: Self.spacing(for: observation.bounds),
-                                                   aspectRatio: observation.bounds.width / observation.bounds.height)
+                                                   aspectRatio: observation.bounds.width / observation.bounds.height),
+                      let silhouette = LiveFoodMesh.silhouette(mask: observation.mask,
+                                                               grid: Self.maskGrid, smooth: true)
                 else { continue }
                 let id = nextID
                 nextID += 1
@@ -1072,7 +1089,7 @@ struct LiveFoodTrackStore {
                     confidence: observation.confidence, bounds: observation.bounds,
                     mask: observation.mask, meshMask: observation.mask,
                     pendingMask: [], pendingMaskHits: 0,
-                    mesh: mesh, silhouette: mesh.region,
+                    mesh: mesh, silhouette: silhouette,
                     meshAspect: observation.bounds.width / observation.bounds.height,
                     revision: 1, hits: 1, misses: 0,
                     lastDetection: now, lastMotion: now))
@@ -1179,7 +1196,7 @@ struct LiveFoodFrameGate {
 /// camera buffer released right after a small square copy is made (so ARKit's
 /// frame pool is never starved). Backends, in order: the bundled YOLO-seg
 /// food model, then the dense food segmenter. No class-agnostic fallback.
-/// Each current mask becomes a wireframe triangle mesh without temporal smearing.
+/// Live tracks maintain a stable display silhouette independently of capture geometry.
 final class LiveFoodDetector {
 
     static let grid = 160
@@ -1702,7 +1719,7 @@ private final class LiveFoodHighlights {
 /// The wave and premium colour flow run on the render server, independently
 /// of the ~15 Hz detector and of main-thread load.
 enum LiveFoodWave {
-    static let duration: TimeInterval = 3.6
+    static let duration: TimeInterval = 6.0
 
     static func brightness(at point: CGPoint, elapsed: TimeInterval) -> CGFloat {
         let bend = 0.18 * sin(2 * Double.pi * Double(point.y))
@@ -1756,6 +1773,7 @@ private final class LiveGlowLayers {
     private let crop = CALayer()
     private let geometry = CALayer()
     private let silhouetteMask = CAShapeLayer()
+    private let outline = CAShapeLayer()
     private let glowContainer = CALayer()
     private let glowSource = CAGradientLayer()
     private let sweepSource = CALayer()
@@ -1804,6 +1822,13 @@ private final class LiveGlowLayers {
         crop.addSublayer(geometry)
         geometry.addSublayer(glowContainer)
         geometry.addSublayer(sweepContainer)
+        geometry.addSublayer(outline)
+        outline.fillColor = UIColor.clear.cgColor
+        outline.lineWidth = 2.0
+        outline.lineJoin = .round
+        outline.shadowOpacity = 0.55
+        outline.shadowRadius = 3
+        outline.shadowOffset = .zero
         apply(style: style)
     }
 
@@ -1907,8 +1932,10 @@ private final class LiveGlowLayers {
         for layer in [glowContainer, glowSource, sweepSource] {
             layer.removeAllAnimations()
         }
-        glowContainer.opacity = 0.12
-        sweepContainer.opacity = 0.35
+        glowContainer.opacity = 0.10
+        sweepContainer.opacity = 0.22
+        outline.strokeColor = bright.withAlphaComponent(0.65).cgColor
+        outline.shadowColor = bright.cgColor
 
         if style.premium && colors.count > 1 {
             glowSource.type = .conic
@@ -2021,6 +2048,7 @@ private final class LiveGlowLayers {
         let sizeChanged = geometry.bounds.size != b.size
         geometry.bounds = b
         silhouetteMask.frame = b
+        outline.frame = b
         for layer in [glowContainer, sweepContainer] {
             layer.frame = b
         }
@@ -2036,7 +2064,9 @@ private final class LiveGlowLayers {
         let size = geometry.bounds.size
         var transform = CGAffineTransform(scaleX: size.width / CGFloat(meshGrid),
                                           y: size.height / CGFloat(meshGrid))
-        silhouetteMask.path = path.copy(using: &transform)
+        let displayPath = path.copy(using: &transform)
+        silhouetteMask.path = displayPath
+        outline.path = displayPath
     }
 
     private func applyGlowCoverage() {

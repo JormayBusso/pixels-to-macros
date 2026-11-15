@@ -453,6 +453,9 @@ final class ScannerPlugin {
                     code: "SIDE_VIEW_REQUIRED",
                     message: InferencePipeline.PipelineError.sideViewRequiredMessage,
                     details: reason)
+            case .scaleReferenceRequired(let reason):
+                return FlutterError(code: "SCALE_REFERENCE_REQUIRED",
+                    message: "scale_reference_required", details: reason)
             case .containerPortionReviewRequired(let reason):
                 return FlutterError(code: "CONTAINER_PORTION_REVIEW_REQUIRED",
                     message: "Container hides the food portion", details: reason)

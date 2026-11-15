@@ -25,6 +25,7 @@ final class MultiFrameRecorder {
         let cameraIntrinsics: simd_float3x3
         let imageWidth:  Int
         let imageHeight: Int
+        var confidenceBuffer: CVPixelBuffer? = nil
     }
 
     // MARK: – Public state
@@ -200,7 +201,9 @@ final class MultiFrameRecorder {
                 depthBuffer:      depthBuf.flatMap { MultiFrameRecorder.copyPixelBuffer($0) },
                 cameraTransform:  transform,
                 cameraIntrinsics: intrinsics,
-                timestamp:        arFrame.timestamp
+                timestamp:        arFrame.timestamp,
+                confidenceBuffer: FrameCaptureService.preferredDepthConfidenceMap(from: arFrame)
+                    .map { MultiFrameRecorder.copyPixelBuffer($0) }
             )
 
             if let depth = depthBuf {
@@ -209,7 +212,8 @@ final class MultiFrameRecorder {
                     cameraTransform:  transform,
                     cameraIntrinsics: intrinsics,
                     imageWidth:  w,
-                    imageHeight: h
+                    imageHeight: h,
+                    confidenceBuffer: topFrame?.confidenceBuffer
                 )]
             }
             topImagePath = MultiFrameRecorder.writeSnapshot(pixBuf, suffix: "top")
@@ -266,7 +270,9 @@ final class MultiFrameRecorder {
                 depthBuffer:      depthBuf.flatMap { MultiFrameRecorder.copyPixelBuffer($0) },
                 cameraTransform:  transform,
                 cameraIntrinsics: intrinsics,
-                timestamp:        arFrame.timestamp
+                timestamp:        arFrame.timestamp,
+                confidenceBuffer: FrameCaptureService.preferredDepthConfidenceMap(from: arFrame)
+                    .map { MultiFrameRecorder.copyPixelBuffer($0) }
             )
 
             if let depth = depthBuf {
@@ -275,7 +281,8 @@ final class MultiFrameRecorder {
                     cameraTransform:  transform,
                     cameraIntrinsics: intrinsics,
                     imageWidth:  w,
-                    imageHeight: h
+                    imageHeight: h,
+                    confidenceBuffer: sideFrame?.confidenceBuffer
                 )]
             }
             sideImagePath = MultiFrameRecorder.writeSnapshot(pixBuf, suffix: "side")
@@ -365,7 +372,9 @@ final class MultiFrameRecorder {
                     depthBuffer:     depthBuf.flatMap { MultiFrameRecorder.copyPixelBuffer($0) },
                     cameraTransform: transform,
                     cameraIntrinsics: intrinsics,
-                    timestamp:       arFrame.timestamp
+                    timestamp:       arFrame.timestamp,
+                    confidenceBuffer: FrameCaptureService.preferredDepthConfidenceMap(from: arFrame)
+                        .map { MultiFrameRecorder.copyPixelBuffer($0) }
                 )
             }
 
@@ -379,7 +388,9 @@ final class MultiFrameRecorder {
                     depthBuffer:     depthBuf.flatMap { MultiFrameRecorder.copyPixelBuffer($0) },
                     cameraTransform: transform,
                     cameraIntrinsics: intrinsics,
-                    timestamp:       arFrame.timestamp
+                    timestamp:       arFrame.timestamp,
+                    confidenceBuffer: FrameCaptureService.preferredDepthConfidenceMap(from: arFrame)
+                        .map { MultiFrameRecorder.copyPixelBuffer($0) }
                 )
             }
 
@@ -390,7 +401,9 @@ final class MultiFrameRecorder {
                     cameraTransform:  transform,
                     cameraIntrinsics: intrinsics,
                     imageWidth:  w,
-                    imageHeight: h
+                    imageHeight: h,
+                    confidenceBuffer: FrameCaptureService.preferredDepthConfidenceMap(from: arFrame)
+                        .map { MultiFrameRecorder.copyPixelBuffer($0) }
                 )
                 if isTopView && topViewFrames.count < maxTopViewFrames {
                     topViewFrames.append(frame)
@@ -456,6 +469,7 @@ final class MultiFrameRecorder {
             // Allocation failed – return the original; ARC keeps it alive.
             return src
         }
+        CVBufferPropagateAttachments(src, dst)
 
         CVPixelBufferLockBaseAddress(src, .readOnly)
         CVPixelBufferLockBaseAddress(dst, [])
